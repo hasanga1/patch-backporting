@@ -1,0 +1,55 @@
+# Java Example - Backporting Configuration
+# 
+# This is an example configuration for testing Java patch backporting.
+# Before using this config, you need to initialize the git repository.
+
+project: java-example
+project_url: https://github.com/example/java-example
+new_patch: 3322baac23fff399e1dd230653d16b6c0e477558
+new_patch_parent: d06def426caef0bea16aaad74bcfdf90b3217af5
+target_release: d06def426caef0bea16aaad74bcfdf90b3217af5
+sanitizer: 
+error_message: "SQL injection vulnerability"
+tag: JAVA-EXAMPLE-CVE-2024-99999
+project_dir: /app/dataset/java-example
+patch_dataset_dir: /app/patch_dataset/java-example/JAVA-EXAMPLE-CVE-2024-99999/
+
+# OpenAI/Azure OpenAI Selection
+# Set use_azure: false (or omit) for regular OpenAI
+# Set use_azure: true for Azure OpenAI
+use_azure: false
+
+# OpenAI Configuration (for regular OpenAI)
+openai_key: "your-openai-api-key-here"
+
+# Azure OpenAI Configuration (only needed if use_azure: true)
+# openai_key: "your-azure-api-key-here"
+# azure_endpoint: "https://your-resource.openai.azure.com"
+# azure_deployment: "gpt-4"
+# azure_api_version: "2024-02-01"
+
+# Instructions for using this config:
+# 
+# 1. Initialize the git repository:
+#    cd dataset/java-example
+#    git init
+#    git config user.email "test@example.com"
+#    git config user.name "Test User"
+#    git add .
+#    git commit -m "Initial vulnerable version"
+#    
+# 2. Get commit hashes:
+#    git log --oneline  (get REPLACE_WITH_PARENT_COMMIT_HASH)
+#    git rev-parse HEAD (get REPLACE_WITH_TARGET_RELEASE_HASH)
+#
+# 3. Create a fix commit that includes the patch from patch_dataset/java-example/JAVA-EXAMPLE-CVE-2024-99999/fix.patch
+#    Apply the patch and commit it
+#    git am < ../../../patch_dataset/java-example/JAVA-EXAMPLE-CVE-2024-99999/fix.patch
+#    git log --oneline  (get REPLACE_WITH_FIX_COMMIT_HASH)
+#
+# 4. Update this config file with the actual commit hashes
+#
+# 5. Set your OpenAI API key (use_azure: false) or Azure credentials (use_azure: true)
+#
+# 6. Run the backporter:
+#    python src/backporting.py --config src/java-example.yml --debug

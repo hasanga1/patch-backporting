@@ -41,8 +41,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy the rest of the application code
 COPY . .
 
-# Change working directory to src as per usage instructions
-WORKDIR /app/src
+# Set working directory to /app for batch jobs
+WORKDIR /app
 
 # Default command to run the application (prints help)
-CMD ["python", "backporting.py", "--help"]
+CMD ["python", "src/backporting.py", "--help"]

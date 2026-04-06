@@ -19,9 +19,10 @@ from tools.utils import split_patch
 
 
 def initial_agent(project: Project, data, debug_mode: bool):
-    use_azure = data.use_azure
+    # Determine provider
+    provider = getattr(data, 'provider', 'azure' if data.use_azure else 'openai')
 
-    if use_azure:
+    if provider == "azure" or data.use_azure:
         azure_endpoint = data.azure_endpoint
         azure_deployment = data.azure_deployment
         azure_api_version = data.azure_api_version
@@ -37,15 +38,41 @@ def initial_agent(project: Project, data, debug_mode: bool):
             api_version=azure_api_version,
             verbose=True,
         )
-    else:
-        # Regular OpenAI configuration
-        logger.info("Using OpenAI API")
-        base_url = "https://api.openai.com/v1"
+    elif provider == "openrouter":
+        # OpenRouter configuration
+        api_key = data.openai_key
+        model = getattr(data, 'openai_model', 'openai/gpt-4.1-mini')
+        base_url = getattr(data, 'openai_base_url', 'https://openrouter.ai/api/v1')
+        
+        logger.info(f"Using OpenRouter API: {base_url} (model: {model})")
+        
+        # OpenRouter requires specific headers
+        default_headers = {
+            "HTTP-Referer": "https://github.com/patch-backporting",
+            "X-Title": "Patch Backporting Agent",
+        }
+        
         llm = ChatOpenAI(
             temperature=0.5,
-            model="gpt-4-turbo",
-            api_key=data.openai_key,
-            openai_api_base=base_url,
+            model=model,
+            api_key=api_key,
+            base_url=base_url,
+            default_headers=default_headers,
+            verbose=True,
+        )
+    else:
+        # Regular OpenAI configuration
+        api_key = data.openai_key
+        model = getattr(data, 'openai_model', 'gpt-4.1-mini')
+        base_url = getattr(data, 'openai_base_url', 'https://api.openai.com/v1')
+        
+        logger.info(f"Using OpenAI API (model: {model})")
+        
+        llm = ChatOpenAI(
+            temperature=0.5,
+            model=model,
+            api_key=api_key,
+            base_url=base_url,
             verbose=True,
         )
 
@@ -100,7 +127,7 @@ def do_backport(
                     f"Failed to backport the hunk {idx} \n----------------------------------\n{pp}\n----------------------------------\n"
                 )
                 logger.error(f"Reach max_iterations for hunk {idx}")
-                return
+                return False, None
 
     project.all_hunks_applied_succeeded = True
     logger.info(f"Aplly all hunks in the patch      PASS")
@@ -119,7 +146,7 @@ def do_backport(
         )
         for patch in project.succeeded_patches:
             logger.info(patch)
-        return
+        return True, complete_patch
 
     prompt = ChatPromptTemplate.from_messages(
         [
@@ -152,7 +179,9 @@ def do_backport(
         )
         for patch in project.succeeded_patches:
             logger.info(patch)
+        return True, complete_patch
     else:
         logger.error(
             f"Failed backport the patch to the target release {data.target_release}"
         )
+        return False, complete_patch

@@ -40,7 +40,14 @@ def get_usage(api_key):
         f"https://api.openai.com/v1/usage?date={data}", headers=headers
     )
     if not resp_billing.ok:
-        return resp_billing.text
+        # Return a dict with 0 values when API call fails
+        return {
+            "current_time": datetime.datetime.now(),
+            "total_cost": 0.0,
+            "total_consume_input": 0,
+            "total_consume_output": 0,
+            "total_consume_tokens": 0,
+        }
 
     billing_data = resp_billing.json()
     total_price = 0.0

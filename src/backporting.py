@@ -54,6 +54,12 @@ def load_yml(file_path: str):
     data.patch_dataset_dir = config.get("patch_dataset_dir")
     data.openai_key = config.get("openai_key")
     data.tag = config.get("tag")
+    data.results_dir = config.get("results_dir", None)  # Optional results directory
+
+    # LLM Provider configuration
+    data.provider = config.get("provider", "openai")
+    data.openai_model = config.get("openai_model", "gpt-4")
+    data.openai_base_url = config.get("openai_base_url", "https://api.openai.com/v1")
 
     # Azure OpenAI configuration (optional)
     data.use_azure = config.get("use_azure", False)
@@ -153,7 +159,22 @@ def main():
     before_usage = get_usage(data.openai_key)
     agent_executor, llm = initial_agent(project, data, debug_mode)
     try:
-        do_backport(agent_executor, project, data, llm, logfile)
+        success, complete_patch = do_backport(agent_executor, project, data, llm, logfile)
+        
+        # Save patch to results folder if successful
+        if success and complete_patch:
+            if data.results_dir:
+                results_dir = data.results_dir
+            else:
+                # Default: save to patch_dataset_dir if no results_dir specified
+                results_dir = data.patch_dataset_dir
+            
+            os.makedirs(results_dir, exist_ok=True)
+            patch_file = os.path.join(results_dir, f"{data.tag}_backported.patch")
+            with open(patch_file, 'w') as f:
+                f.write(complete_patch)
+            logger.info(f"Backported patch saved to {patch_file}")
+        
         end_time = time.time()
         time.sleep(10)
         after_usage = get_usage(data.openai_key)
