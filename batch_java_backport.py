@@ -12,6 +12,7 @@ import csv
 import json
 import logging
 import os
+import re
 import shutil
 import subprocess
 import sys
@@ -251,6 +252,10 @@ def parse_backport_output(output: str) -> Dict:
     """Parse backport output to extract relevant information."""
     details = {
         "success": False,
+        "status": "FAIL",
+        "compile_status": "FAIL",
+        "test_status": "FAIL",
+        "error_logs": "",
         "compilation_passed": False,
         "testcase_passed": False,
         "poc_passed": False,
@@ -297,14 +302,58 @@ def parse_backport_output(output: str) -> Dict:
             details["testcase_passed"] = True
         if "Compilation                       FAILED" not in output:
             details["compilation_passed"] = True
+
+    # Parse retrofit validation summary.
+    # Example: ValidationSummary status=PASS compile_status=PASS test_status=PASS
+    validation_match = re.search(
+        r"ValidationSummary\s+status=(PASS|FAIL)\s+compile_status=(PASS|FAIL)\s+test_status=(PASS|FAIL)",
+        output,
+    )
+    if validation_match:
+        details["status"] = validation_match.group(1)
+        details["compile_status"] = validation_match.group(2)
+        details["test_status"] = validation_match.group(3)
+        details["compilation_passed"] = details["compile_status"] == "PASS"
+        details["testcase_passed"] = details["test_status"] == "PASS"
+        details["success"] = details["status"] == "PASS"
+        details["poc_passed"] = details["status"] == "PASS"
+
+    # Capture multiline validation logs even when logger formatting wraps lines.
+    lines = output.split("\n")
+    capture_logs = False
+    captured_lines = []
+    for line in lines:
+        if "ValidationErrorLogs:" in line:
+            capture_logs = True
+            suffix = line.split("ValidationErrorLogs:", 1)[1].strip()
+            if suffix:
+                captured_lines.append(suffix)
+            continue
+
+        if capture_logs:
+            # Stop when next high-level logger entry starts.
+            if (
+                "Validation summary saved to" in line
+                or "Backported patch saved to" in line
+                or re.match(r"^\[\d{2}/\d{2}/\d{2}\s", line)
+            ):
+                break
+            stripped = line.strip()
+            if stripped:
+                captured_lines.append(stripped)
+
+    if captured_lines:
+        details["error_logs"] = "\n".join(captured_lines).strip()
     
     # Extract error messages (prioritize recent ones)
     if "ERROR" in output or "FAIL" in output or "Testsuite                         FAILED" in output:
-        lines = output.split("\n")
         for line in reversed(lines):  # Search from end to get most recent error
             if "ERROR" in line or "FAIL" in line:
                 details["error_message"] = line.strip()
                 break
+
+    if details["error_logs"] and not details["error_message"]:
+        details["error_message"] = details["error_logs"].splitlines()[-1]
     
     return details
 

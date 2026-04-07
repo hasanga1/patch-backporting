@@ -160,16 +160,35 @@ def main():
     agent_executor, llm = initial_agent(project, data, debug_mode)
     try:
         success, complete_patch = do_backport(agent_executor, project, data, llm, logfile)
+
+        # Persist structured validation result for fair cross-system comparison.
+        logger.info(
+            "ValidationSummary status=%s compile_status=%s test_status=%s",
+            project.validation_result.get("status", "FAIL"),
+            project.validation_result.get("compile_status", "FAIL"),
+            project.validation_result.get("test_status", "FAIL"),
+        )
+        if project.validation_result.get("error_logs"):
+            logger.error(
+                "ValidationErrorLogs:\n%s",
+                project.validation_result.get("error_logs", ""),
+            )
         
+        if data.results_dir:
+            results_dir = data.results_dir
+        else:
+            # Default: save to patch_dataset_dir if no results_dir specified
+            results_dir = data.patch_dataset_dir
+
+        os.makedirs(results_dir, exist_ok=True)
+
+        validation_file = os.path.join(results_dir, f"{data.tag}_validation.json")
+        with open(validation_file, "w") as f:
+            yaml.safe_dump(project.validation_result, f, default_flow_style=False)
+        logger.info(f"Validation summary saved to {validation_file}")
+
         # Save patch to results folder if successful
         if success and complete_patch:
-            if data.results_dir:
-                results_dir = data.results_dir
-            else:
-                # Default: save to patch_dataset_dir if no results_dir specified
-                results_dir = data.patch_dataset_dir
-            
-            os.makedirs(results_dir, exist_ok=True)
             patch_file = os.path.join(results_dir, f"{data.tag}_backported.patch")
             with open(patch_file, 'w') as f:
                 f.write(complete_patch)

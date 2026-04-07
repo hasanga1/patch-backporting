@@ -9,9 +9,7 @@ from langchain_openai import ChatOpenAI, AzureChatOpenAI
 
 from agent.prompt import (
     SYSTEM_PROMPT,
-    SYSTEM_PROMPT_PTACH,
     USER_PROMPT_HUNK,
-    USER_PROMPT_PATCH,
 )
 from tools.logger import logger
 from tools.project import Project
@@ -138,9 +136,13 @@ def do_backport(
         if os.path.exists(f"{data.project_dir}{file}"):
             os.remove(f"{data.project_dir}{file}")
         shutil.copy2(f"{data.patch_dataset_dir}{file}", f"{data.project_dir}{file}")
-    project.context_mismatch_times = 0
-    validate_ret = project._validate(data.target_release, complete_patch)
-    if project.poc_succeeded:
+
+    validation = project._validate_with_retrofit(data.target_release, complete_patch)
+    logger.info(
+        f"Retrofit validation result       status={validation['status']} compile_status={validation['compile_status']} test_status={validation['test_status']}"
+    )
+
+    if validation["status"] == "PASS":
         logger.info(
             f"Successfully backport the patch to the target release {data.target_release}"
         )
@@ -148,40 +150,9 @@ def do_backport(
             logger.info(patch)
         return True, complete_patch
 
-    prompt = ChatPromptTemplate.from_messages(
-        [
-            ("system", SYSTEM_PROMPT_PTACH),
-            ("user", USER_PROMPT_PATCH),
-            MessagesPlaceholder(variable_name="agent_scratchpad"),
-        ]
+    if validation.get("error_logs"):
+        logger.error(f"Retrofit validation failed. Logs:\n{validation['error_logs']}")
+    logger.error(
+        f"Failed backport the patch to the target release {data.target_release}"
     )
-    # XXX maybe refactor initial_agent function to cover
-    viewcode, locate_symbol, validate, _, _ = project.get_tools()
-    tools = [viewcode, locate_symbol, validate]
-    agent = create_tool_calling_agent(llm, tools, prompt)
-    agent_executor = AgentExecutor(
-        agent=agent, tools=tools, verbose=True, max_iterations=20
-    )
-    agent_executor.invoke(
-        {
-            "project_url": data.project_url,
-            "new_patch_parent": data.new_patch_parent,
-            "target_release": data.target_release,
-            "new_patch": patch,
-            "complete_patch": complete_patch,
-            "compile_ret": validate_ret,
-        },
-        {"callbacks": [log_handler]},
-    )
-    if project.poc_succeeded:
-        logger.info(
-            f"Successfully backport the patch to the target release {data.target_release}"
-        )
-        for patch in project.succeeded_patches:
-            logger.info(patch)
-        return True, complete_patch
-    else:
-        logger.error(
-            f"Failed backport the patch to the target release {data.target_release}"
-        )
-        return False, complete_patch
+    return False, complete_patch

@@ -7,6 +7,7 @@ set -e
 CONFIG_FILE="batch_java_config.yml"
 IMAGE_NAME="patch-backporting"
 CONTAINER_NAME="patch-backporting-batch"
+BUILD_IMAGE=true
 
 # Parse arguments
 while [[ $# -gt 0 ]]; do
@@ -17,6 +18,10 @@ while [[ $# -gt 0 ]]; do
             ;;
         --build)
             BUILD_IMAGE=true
+            shift
+            ;;
+        --no-build)
+            BUILD_IMAGE=false
             shift
             ;;
         --debug)
@@ -33,7 +38,7 @@ done
 # Get script directory
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
-# Build image if requested or if it doesn't exist
+# Build image by default so code changes in workspace are always reflected.
 if [ "$BUILD_IMAGE" = true ] || ! docker image inspect $IMAGE_NAME >/dev/null 2>&1; then
     echo "Building Docker image: $IMAGE_NAME"
     docker build -t $IMAGE_NAME "$SCRIPT_DIR"
@@ -67,6 +72,11 @@ docker run --rm \
     -v "$CONFIG_PATH:/app/$CONFIG_FILE" \
     -v "$DATASET_PATH:/app/java_dataset" \
     -v "$RESULTS_PATH:/app/java_results" \
+    -v "/var/run/docker.sock:/var/run/docker.sock" \
+    -e "DOCKER_HOST=unix:///var/run/docker.sock" \
+    -e "HOST_APP_ROOT=$SCRIPT_DIR" \
+    -e "HOST_JAVA_DATASET_DIR=$DATASET_PATH" \
+    -e "HOST_JAVA_RESULTS_DIR=$RESULTS_PATH" \
     --name "$CONTAINER_NAME" \
     "$IMAGE_NAME" \
     python batch_java_backport.py --config "$CONFIG_FILE" $DEBUG_FLAG

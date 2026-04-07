@@ -39,6 +39,12 @@ class Project:
         self.hunk_log_info = {}
         self.add_percent = 0
         self.last_context = []
+        self.validation_result = {
+            "status": "FAIL",
+            "compile_status": "FAIL",
+            "test_status": "FAIL",
+            "error_logs": "",
+        }
 
     def _checkout(self, ref: str) -> None:
         self.repo.git.reset("--hard")
@@ -706,6 +712,379 @@ class Project:
             self.succeeded_patches.append(complete_patch)
             self.poc_succeeded = True
         return ret
+
+    def _run_cmd_capture(self, cmd: List[str], env: dict | None = None) -> dict:
+        try:
+            result = subprocess.run(
+                cmd,
+                capture_output=True,
+                text=True,
+                cwd=self.dir,
+                env=env,
+            )
+            output = ((result.stdout or "") + "\n" + (result.stderr or "")).strip()
+            return {
+                "success": result.returncode == 0,
+                "returncode": result.returncode,
+                "output": output,
+            }
+        except Exception as e:
+            return {"success": False, "returncode": 1, "output": str(e)}
+
+    def _detect_project_name(self) -> str:
+        return os.path.basename(os.path.normpath(self.dir)).strip().lower()
+
+    def _find_module_for_path(self, rel_path: str) -> str:
+        head = (rel_path or "").replace("\\", "/")
+        while head:
+            head, _ = os.path.split(head)
+            for build_file in ("pom.xml", "build.gradle", "build.gradle.kts"):
+                if os.path.exists(os.path.join(self.dir, head, build_file)):
+                    return head
+
+        for build_file in ("pom.xml", "build.gradle", "build.gradle.kts"):
+            if os.path.exists(os.path.join(self.dir, build_file)):
+                return ""
+
+        return ""
+
+    def _extract_changed_files_from_patch(self, patch_text: str) -> List[str]:
+        changed_files = set()
+        for path in re.findall(r"^\+\+\+ b/(.+)$", patch_text, re.MULTILINE):
+            if path != "/dev/null":
+                changed_files.add(path.strip())
+        for path in re.findall(r"^--- a/(.+)$", patch_text, re.MULTILINE):
+            if path != "/dev/null":
+                changed_files.add(path.strip())
+        return sorted(changed_files)
+
+    def _detect_relevant_test_targets_from_patch(self, patch_text: str) -> dict:
+        changed_files = self._extract_changed_files_from_patch(patch_text)
+        test_targets = set()
+        source_modules = set()
+        all_modules = set()
+
+        test_source_sets = (
+            "/src/test/java/",
+            "/src/internalClusterTest/java/",
+            "/src/javaRestTest/java/",
+            "/src/yamlRestTest/java/",
+            "/src/integTest/java/",
+            "/src/integrationTest/java/",
+        )
+        test_suffixes = ("Test.java", "Tests.java", "IT.java", "TestCase.java")
+
+        for rel_path in changed_files:
+            path = rel_path.replace("\\", "/")
+            module_path = self._find_module_for_path(path)
+
+            if module_path:
+                all_modules.add(module_path)
+
+            if path.endswith(".java") and "src/main/java/" in path and module_path:
+                source_modules.add(module_path)
+
+            filename = os.path.basename(path)
+            is_test_file = path.endswith(test_suffixes) or (
+                filename.startswith("Test") and path.endswith(".java")
+            )
+
+            matched_test_dir = next((td for td in test_source_sets if td in path), None)
+            if not (is_test_file and matched_test_dir):
+                continue
+
+            try:
+                class_path = path.split(matched_test_dir, 1)[1]
+                class_name = class_path.replace("/", ".").replace(".java", "")
+                test_targets.add(f"{module_path}:{class_name}")
+            except Exception:
+                continue
+
+        return {
+            "test_targets": sorted(test_targets),
+            "source_modules": sorted(source_modules),
+            "all_modules": sorted(all_modules),
+            "raw": {"changed_files": changed_files},
+        }
+
+    def _get_retrofit_helpers_root(self) -> str:
+        return os.path.abspath(
+            os.path.join(
+                os.path.dirname(__file__),
+                "..",
+                "..",
+                "retrofit-java-new",
+                "agents-backend",
+                "evaluate",
+                "helpers",
+            )
+        )
+
+    def _get_retrofit_helper_dir(self, project_name: str) -> str:
+        return os.path.join(self._get_retrofit_helpers_root(), project_name)
+
+    def _resolve_host_project_dir(self) -> str:
+        host_app_root = os.getenv("HOST_APP_ROOT", "").strip()
+        if host_app_root and self.dir.startswith("/app/"):
+            suffix = self.dir[len("/app/") :]
+            return os.path.normpath(os.path.join(host_app_root, suffix))
+
+        host_java_dataset_dir = os.getenv("HOST_JAVA_DATASET_DIR", "").strip()
+        if host_java_dataset_dir and self.dir.startswith("/app/java_dataset/"):
+            suffix = self.dir[len("/app/java_dataset/") :]
+            return os.path.normpath(os.path.join(host_java_dataset_dir, suffix))
+
+        return self.dir
+
+    def _ensure_retrofit_builder_image(self, project_name: str) -> tuple[str | None, str]:
+        helper_dir = self._get_retrofit_helper_dir(project_name)
+        dockerfile = os.path.join(helper_dir, "Dockerfile")
+        if not os.path.exists(dockerfile):
+            return None, f"Helper Dockerfile not found: {dockerfile}"
+
+        image_tag = f"retrofit-{project_name}-builder:local"
+        inspect_result = self._run_cmd_capture(["docker", "image", "inspect", image_tag])
+        if inspect_result["success"]:
+            return image_tag, ""
+
+        build_result = self._run_cmd_capture(
+            ["docker", "build", "-t", image_tag, "-f", dockerfile, helper_dir]
+        )
+        if not build_result["success"]:
+            return None, build_result.get("output", "Failed to build helper image")
+
+        return image_tag, ""
+
+    def _run_retrofit_helper_build(self, project_name: str) -> dict:
+        helper_script = os.path.join(self._get_retrofit_helper_dir(project_name), "run_build.sh")
+        if not os.path.exists(helper_script):
+            return {"success": False, "output": f"Build helper not found: {helper_script}"}
+
+        image_tag, image_error = self._ensure_retrofit_builder_image(project_name)
+        if not image_tag:
+            return {"success": False, "output": image_error}
+
+        commit_sha = (self.repo.git.rev_parse("--short", "HEAD") or "worktree").strip()
+        host_project_dir = self._resolve_host_project_dir()
+        helper_env = os.environ.copy()
+        helper_env.update(
+            {
+                "PROJECT_NAME": project_name,
+                "PROJECT_DIR": self.dir,
+            "HOST_PROJECT_DIR": host_project_dir,
+                "TOOLKIT_DIR": self._get_retrofit_helper_dir(project_name),
+                "BUILDER_IMAGE_TAG": image_tag,
+                "IMAGE_TAG": image_tag,
+                "COMMIT_SHA": commit_sha,
+                "WORKTREE_MODE": "1",
+            }
+        )
+        result = self._run_cmd_capture(["bash", helper_script], env=helper_env)
+        result["mode"] = f"{project_name}-helper-script"
+        return result
+
+    def _run_retrofit_helper_tests(self, project_name: str, target_info: dict) -> dict:
+        helper_script = os.path.join(self._get_retrofit_helper_dir(project_name), "run_tests.sh")
+        if not os.path.exists(helper_script):
+            return {"success": True, "output": "No helper test script found. Skipping tests.", "mode": "skip"}
+
+        test_targets = list(target_info.get("test_targets") or [])
+        source_modules = list(target_info.get("source_modules") or [])
+        if not test_targets and not source_modules:
+            return {
+                "success": True,
+                "output": "No relevant test targets/modules detected. Skipping tests.",
+                "mode": "skip",
+            }
+
+        image_tag, image_error = self._ensure_retrofit_builder_image(project_name)
+        if not image_tag:
+            return {"success": False, "output": image_error}
+
+        commit_sha = (self.repo.git.rev_parse("--short", "HEAD") or "worktree").strip()
+        host_project_dir = self._resolve_host_project_dir()
+        helper_env = os.environ.copy()
+        helper_env.update(
+            {
+                "PROJECT_NAME": project_name,
+                "PROJECT_DIR": self.dir,
+            "HOST_PROJECT_DIR": host_project_dir,
+                "TOOLKIT_DIR": self._get_retrofit_helper_dir(project_name),
+                "BUILDER_IMAGE_TAG": image_tag,
+                "IMAGE_TAG": image_tag,
+                "COMMIT_SHA": commit_sha,
+                "WORKTREE_MODE": "1",
+                "TEST_TARGETS": " ".join(sorted(set(test_targets))) if test_targets else "NONE",
+                "TEST_MODULES": "" if test_targets else ",".join(sorted(set(source_modules))),
+            }
+        )
+
+        result = self._run_cmd_capture(["bash", helper_script], env=helper_env)
+        result["mode"] = f"{project_name}-helper-script"
+        return result
+
+    def _run_generic_build(self) -> dict:
+        gradle_wrapper = os.path.join(self.dir, "gradlew")
+        has_gradle = os.path.exists(os.path.join(self.dir, "build.gradle")) or os.path.exists(
+            os.path.join(self.dir, "build.gradle.kts")
+        )
+
+        if has_gradle:
+            gradle_cmd = "./gradlew" if os.path.exists(gradle_wrapper) else "gradle"
+            cmd = [gradle_cmd, "testClasses"]
+        else:
+            cmd = [
+                "mvn",
+                "clean",
+                "compile",
+                "-DskipTests",
+                "-Dmaven.javadoc.skip=true",
+                "-Dcheckstyle.skip=true",
+                "-Dpmd.skip=true",
+                "-Dforbiddenapis.skip=true",
+                "-Denforcer.skip=true",
+            ]
+
+        result = self._run_cmd_capture(cmd)
+        result["mode"] = "generic"
+        return result
+
+    def _run_generic_tests(self, target_info: dict) -> dict:
+        test_targets = list(target_info.get("test_targets") or [])
+        source_modules = list(target_info.get("source_modules") or [])
+        if not test_targets and not source_modules:
+            return {
+                "success": True,
+                "output": "No relevant test targets/modules detected. Skipping tests.",
+                "mode": "skip",
+            }
+
+        gradle_wrapper = os.path.join(self.dir, "gradlew")
+        has_gradle = os.path.exists(os.path.join(self.dir, "build.gradle")) or os.path.exists(
+            os.path.join(self.dir, "build.gradle.kts")
+        )
+        if has_gradle:
+            gradle_cmd = "./gradlew" if os.path.exists(gradle_wrapper) else "gradle"
+            cmd = [gradle_cmd, "test"]
+            for target in test_targets:
+                if ":" in target:
+                    _, cls = target.split(":", 1)
+                    cmd.extend(["--tests", cls])
+            result = self._run_cmd_capture(cmd)
+            result["mode"] = "gradle-targeted"
+            return result
+
+        module_set = set(source_modules)
+        test_classes = []
+        for target in test_targets:
+            if ":" not in target:
+                continue
+            module, cls = target.split(":", 1)
+            if module:
+                module_set.add(module)
+            if cls:
+                test_classes.append(cls)
+
+        module_list = sorted(module_set)
+        if not module_list:
+            return {
+                "success": True,
+                "output": "No relevant modules resolved for tests. Skipping tests.",
+                "mode": "skip",
+            }
+
+        cmd = [
+            "mvn",
+            "test",
+            "-pl",
+            ",".join(module_list),
+            "-am",
+            "-DfailIfNoTests=false",
+            "-Dsurefire.failIfNoSpecifiedTests=false",
+            "-Dmaven.javadoc.skip=true",
+            "-Dcheckstyle.skip=true",
+            "-Dpmd.skip=true",
+            "-Dforbiddenapis.skip=true",
+            "-Denforcer.skip=true",
+        ]
+        if test_classes:
+            cmd.insert(5, f"-Dtest={','.join(sorted(set(test_classes)))}")
+
+        result = self._run_cmd_capture(cmd)
+        result["mode"] = "maven-targeted"
+        return result
+
+    def _validate_with_retrofit(self, ref: str, complete_patch: str) -> dict:
+        result = {
+            "status": "FAIL",
+            "compile_status": "FAIL",
+            "test_status": "FAIL",
+            "error_logs": "",
+        }
+
+        self._checkout(ref)
+        self.repo.git.reset("--hard")
+
+        # Step 1: Apply generated patch to target codebase.
+        pps = utils.split_patch(complete_patch, False)
+        for idx, pp in enumerate(pps):
+            revised_patch, _ = utils.revise_patch(pp, self.dir, False)
+            tmp_file = None
+            try:
+                with tempfile.NamedTemporaryFile(mode="w", delete=False) as f:
+                    f.write(revised_patch)
+                    tmp_file = f.name
+                self.repo.git.apply([tmp_file], v=True)
+            except Exception as e:
+                result["error_logs"] = (
+                    f"Patch apply failed at hunk {idx}: {getattr(e, 'stderr', str(e))}"
+                )
+                self.validation_result = result
+                self.repo.git.reset("--hard")
+                return result
+            finally:
+                if tmp_file and os.path.exists(tmp_file):
+                    os.unlink(tmp_file)
+
+        # Step 2: Compile project using retrofit helper workflow when available.
+        project_name = self._detect_project_name()
+        helper_dir = self._get_retrofit_helper_dir(project_name)
+        has_helper = os.path.isdir(helper_dir)
+
+        build_result = (
+            self._run_retrofit_helper_build(project_name)
+            if has_helper
+            else self._run_generic_build()
+        )
+        if build_result.get("success"):
+            result["compile_status"] = "PASS"
+            self.compile_succeeded = True
+        else:
+            result["error_logs"] = build_result.get("output", "Build failed")
+            self.validation_result = result
+            self.repo.git.reset("--hard")
+            return result
+
+        # Step 3: Run tests with retrofit helper scripts (or generic fallback).
+        target_info = self._detect_relevant_test_targets_from_patch(complete_patch)
+        test_result = (
+            self._run_retrofit_helper_tests(project_name, target_info)
+            if has_helper
+            else self._run_generic_tests(target_info)
+        )
+        if test_result.get("success"):
+            result["test_status"] = "PASS"
+            self.testcase_succeeded = True
+            result["status"] = "PASS"
+            self.poc_succeeded = True
+            self.succeeded_patches.clear()
+            self.succeeded_patches.append(complete_patch)
+        else:
+            result["error_logs"] = test_result.get("output", "Tests failed")
+
+        self.validation_result = result
+        self.repo.git.reset("--hard")
+        return result
 
     def _validate(self, ref: str, patch: str) -> str:
         """
