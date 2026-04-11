@@ -47,7 +47,7 @@ fi
 # Get absolute paths
 CONFIG_PATH=$(cd "$SCRIPT_DIR" && pwd)/"$CONFIG_FILE"
 DATASET_PATH=$(cd "$SCRIPT_DIR" && pwd)/java_dataset
-RESULTS_PATH=$(cd "$SCRIPT_DIR" && pwd)/java_results
+RESULTS_PATH=$(cd "$SCRIPT_DIR" && pwd)/java_results_with_retrofit
 
 # Ensure directories exist
 mkdir -p "$DATASET_PATH/repos"
@@ -71,7 +71,7 @@ fi
 docker run --rm \
     -v "$CONFIG_PATH:/app/$CONFIG_FILE" \
     -v "$DATASET_PATH:/app/java_dataset" \
-    -v "$RESULTS_PATH:/app/java_results" \
+    -v "$RESULTS_PATH:/app/java_results_with_retrofit" \
     -v "/var/run/docker.sock:/var/run/docker.sock" \
     -e "DOCKER_HOST=unix:///var/run/docker.sock" \
     -e "HOST_APP_ROOT=$SCRIPT_DIR" \
