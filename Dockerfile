@@ -41,6 +41,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy the rest of the application code
 COPY . .
 
+RUN git config --global --add safe.directory '*'
+
 # Set working directory to /app for batch jobs
 WORKDIR /app
 
