@@ -1,0 +1,72 @@
+--- a/server/src/main/java/io/crate/rest/action/SqlHttpHandler.java
++++ b/server/src/main/java/io/crate/rest/action/SqlHttpHandler.java
+@@ -153,45 +153,45 @@
+-    void sendResponse(ChannelHandlerContext ctx,
++    void sendResponse(ChannelHandlerContext ctx,
+                       FullHttpRequest request,
+                       Map<String, List<String>> parameters,
+                       ByteBuf result,
+                       @Nullable Throwable t) {
+         final HttpVersion httpVersion = request.protocolVersion();
+         final DefaultFullHttpResponse resp;
+         final ByteBuf content;
+         if (t == null) {
+             content = result;
+             resp = new DefaultFullHttpResponse(httpVersion, HttpResponseStatus.OK, content);
+             resp.headers().add(HttpHeaderNames.CONTENT_TYPE, XContentType.JSON.mediaType());
+         } else {
+             // In case of partial success buffer can contain some data
+             // Clearing buffer to ensure that error is not mixed with partial result.
+             result.clear();
+             var sessionSettings = session.sessionSettings();
+             AccessControl accessControl = roles.getAccessControl(sessionSettings.authenticatedUser(), sessionSettings.sessionUser());
+             var throwable = SQLExceptions.prepareForClientTransmission(accessControl, t);
+             HttpError httpError = HttpError.fromThrowable(throwable);
+             String mediaType;
+             boolean includeErrorTrace = paramContainFlag(parameters, "error_trace");
+             try {
+                 content = httpError.toXContent(includeErrorTrace, result);
+                 mediaType = XContentType.JSON.mediaType();
+             } catch (IOException e) {
+                 throw new UncheckedIOException(e);
+             }
+             resp = new DefaultFullHttpResponse(
+                 httpVersion,
+                 httpError.httpResponseStatus(),
+                 content
+             );
+             resp.headers().add(HttpHeaderNames.CONTENT_TYPE, mediaType);
+         }
+         resp.headers().add(HttpHeaderNames.CONTENT_LENGTH, String.valueOf(content.readableBytes()));
+         boolean closeConnection = isCloseConnection(request);
+         ChannelPromise promise = ctx.newPromise();
+         if (closeConnection) {
+             promise.addListener(ChannelFutureListener.CLOSE);
+         } else {
+             Headers.setKeepAlive(httpVersion, resp);
+         }
+         ctx.writeAndFlush(resp, promise);
+     }
+
+--- a/server/src/test/java/io/crate/rest/action/SqlHttpHandlerTest.java
++++ b/server/src/test/java/io/crate/rest/action/SqlHttpHandlerTest.java
+@@ -20,17 +20,19 @@
+ import static io.crate.role.metadata.RolesHelper.JWT_TOKEN;
+ import static io.crate.role.metadata.RolesHelper.JWT_USER;
+ import static org.assertj.core.api.Assertions.assertThat;
++import static org.mockito.ArgumentMatchers.any;
++import static org.mockito.ArgumentMatchers.eq;
+ import static org.mockito.ArgumentMatchers.any;
+ import static org.mockito.ArgumentMatchers.eq;
+ import static org.mockito.Mockito.atLeast;
+ import static org.mockito.Mockito.mock;
+ import static org.mockito.Mockito.verify;
+ import static org.mockito.Mockito.when;
+ 
+ import java.net.InetAddress;
+ import java.nio.charset.StandardCharsets;
+ import java.util.List;
+ import java.util.Map;
+ 
+ import org.elasticsearch.common.breaker.CircuitBreakingException;
+ import org.elasticsearch.common.breaker.NoopCircuitBreaker;
