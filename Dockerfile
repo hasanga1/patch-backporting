@@ -21,7 +21,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libtool \
     pkg-config \
     zlib1g-dev \
-    && git config --global --add safe.directory /app/java_dataset/repos/crate \
     && rm -rf /var/lib/apt/lists/*
 
 # Install Docker CLI manually

@@ -264,8 +264,10 @@ def parse_backport_output(output: str) -> Dict:
         "hunks_failed": 0,
     }
     
-    # Check if all hunks were applied
-    all_hunks_passed = "Aplly all hunks in the patch      PASS" in output
+    # Check if all hunks were applied (handles wrapped rich logs)
+    all_hunks_passed = bool(
+        re.search(r"(?:Aplly|Apply) all hunks in the patch\s+PASS", output)
+    )
     
     # Parse compilation status
     if "Compilation                       PASS" in output:
@@ -306,8 +308,9 @@ def parse_backport_output(output: str) -> Dict:
     # Parse retrofit validation summary.
     # Example: ValidationSummary status=PASS compile_status=PASS test_status=PASS
     validation_match = re.search(
-        r"ValidationSummary\s+status=(PASS|FAIL)\s+compile_status=(PASS|FAIL)\s+test_status=(PASS|FAIL)",
+        r"ValidationSummary\s+status=(PASS|FAIL).*?compile_status=(PASS|FAIL).*?test_status=(PASS|FAIL)",
         output,
+        flags=re.DOTALL,
     )
     if validation_match:
         details["status"] = validation_match.group(1)
