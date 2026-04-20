@@ -27,6 +27,7 @@ class Project:
         self.new_patch_parent = data.new_patch_parent
         self.target_release = data.target_release
         self.succeeded_patches = []
+        self.applied_patch_records = []
         self.context_mismatch_times = 0
         self.round_succeeded = False
         self.all_hunks_applied_succeeded = False
@@ -197,8 +198,24 @@ class Project:
             )
             start_commit = merge_base[0].hexsha if merge_base else None
             hunk = self.now_hunk
-            filepath = re.findall(r"--- a/(.*)", hunk)[0]
-            chunks = re.findall(r"@@ -(\d+),(\d+) \+(\d+),(\d+) @@(.*)", hunk)[0]
+            filepath_matches = re.findall(r"--- a/(.*)", hunk)
+            if not filepath_matches:
+                filepath_matches = re.findall(r"\+\+\+ b/(.*)", hunk)
+            if not filepath_matches:
+                return (
+                    "Could not parse a target file path from the current hunk. "
+                    "Please ensure the patch is in unified diff format with file headers."
+                )
+
+            filepath = filepath_matches[0]
+            chunk_matches = re.findall(r"@@ -(\d+),(\d+) \+(\d+),(\d+) @@(.*)", hunk)
+            if not chunk_matches:
+                return (
+                    f"Could not parse hunk ranges for file {filepath}. "
+                    "Please include a valid @@ -old,count +new,count @@ header."
+                )
+
+            chunks = chunk_matches[0]
             start_line = chunks[0]
             end_line = int(chunks[0]) + int(chunks[1]) - 1
             log_message = self.repo.git.log(
@@ -206,6 +223,11 @@ class Project:
                 f"-L {start_line},{end_line}:{filepath}",
                 f"{start_commit}..{self.new_patch_parent}",
             )
+            if not log_message:
+                return (
+                    f"No git history found for lines {start_line}-{end_line} in {filepath} "
+                    "within the selected commit range."
+                )
             # save each hunk related refs
             if self.now_hunk_num not in self.hunk_log_info and log_message:
                 last_context = list(utils.split_patch(log_message, False))[-1]
@@ -312,7 +334,13 @@ class Project:
             Tuple[str, str]: Bug patch similar code block information and difference between patch context and original code context.
 
         """
-        path = re.findall(r"--- a/(.*)", revised_patch)[0]
+        path_matches = re.findall(r"--- a/(.*)", revised_patch)
+        if not path_matches:
+            # Some hunks (for example, malformed/new-file diffs) may not have --- a/ headers.
+            # Fall back to +++ b/ so we can still generate useful diagnostics.
+            path_matches = re.findall(r"\+\+\+ b/(.*)", revised_patch)
+
+        path = path_matches[0] if path_matches else "<unknown file>"
         revised_patch_line = revised_patch.split("\n")[3:]
         contexts, num_context, _, _ = utils.extract_context(revised_patch_line)
         lineno = -1
@@ -342,6 +370,18 @@ class Project:
                     path = similar_file
                     lines = similar_lines
 
+        # If no file/context could be resolved, return a safe fallback message instead of crashing.
+        if lineno <= 0 or not lines:
+            block = (
+                "Could not determine a reliable source context for this patch. "
+                "Please verify the patch file headers and context lines.\n"
+            )
+            differ = (
+                "Unable to compute context diff because patch headers/context are incomplete "
+                "or target file could not be resolved.\n"
+            )
+            return block, differ
+
         startline = max(lineno - 1, 0)
         endline = min(lineno + num_context, len(lines))
         block = "Here are lines {} through {} of file {} for commit {}.\n".format(
@@ -369,7 +409,9 @@ class Project:
             differ += "```\nPlease eliminate these diffs step by step. Be sure to eliminate these diffs the next time you generate a patch!\n"
         return block, differ
 
-    def _apply_file_move_handling(self, ref: str, old_patch: str) -> str:
+    def _apply_file_move_handling(
+        self, ref: str, old_patch: str, source_label: str = "generated"
+    ) -> str:
         """
         If a patch cannot apply for "No such file", try to find the symbol and apply the patch to the correct file.
 
@@ -431,7 +473,9 @@ class Project:
         for file_path in file_paths:
             new_patch = old_patch.replace(missing_file_path, file_path)
             logger.debug(f"Try to apply patch to {file_path}.")
-            apply_ret = self._apply_hunk(ref, new_patch, False)
+            apply_ret = self._apply_hunk(
+                ref, new_patch, False, source_label=source_label
+            )
             if "successfully" in apply_ret:
                 logger.debug(f"{missing_file_path} has been moved to {file_path}.")
                 return f"{missing_file_path} has been moved to {file_path}. Please use --- a/{file_path} in your patch.\n"
@@ -442,7 +486,13 @@ class Project:
         logger.debug(f"Patch can not be applied to {file_paths}.")
         return f"The target file has been moved, here is possible file paths:{file_paths}\n{ret}"
 
-    def _apply_hunk(self, ref: str, patch: str, revise_context: bool = False) -> str:
+    def _apply_hunk(
+        self,
+        ref: str,
+        patch: str,
+        revise_context: bool = False,
+        source_label: str = "generated",
+    ) -> str:
         """
         Apply a hunk to a specific ref of the target repository.
 
@@ -471,12 +521,26 @@ class Project:
             self.repo.git.apply([f.name], v=True)
             ret += "Patch applied successfully\n"
             self.succeeded_patches.append(revised_patch)
+            self.applied_patch_records.append(
+                {
+                    "source": source_label,
+                    "patch": revised_patch,
+                }
+            )
             self.round_succeeded = True
         except Exception as e:
             if "No such file" in e.stderr:
                 logger.debug(f"File not found")
-                find_ret = self._apply_file_move_handling(ref, revised_patch)
+                find_ret = self._apply_file_move_handling(
+                    ref, revised_patch, source_label=source_label
+                )
                 ret += find_ret
+            elif "already exists in working directory" in e.stderr:
+                logger.debug("Patch tries to create a file that already exists")
+                ret += (
+                    "This patch appears to add a file that already exists in the target source tree. "
+                    "Please regenerate this hunk as a modification to the existing file rather than as a new-file creation patch.\n"
+                )
             elif "corrupt patch" in e.stderr:
                 ret = "Unexpected corrupt patch, Please carefully check your answer, especially in your call tools arguments.\n"
                 # raise Exception("Unexpected corrupt patch")
@@ -1120,7 +1184,10 @@ class Project:
                 return "Patch applied successfully\n"
 
             ret = self._apply_hunk(
-                ref, patch, True if self.context_mismatch_times >= 2 else False
+                ref,
+                patch,
+                True if self.context_mismatch_times >= 2 else False,
+                source_label="generated",
             )
             if "CONTEXT MISMATCH" in ret:
                 self.context_mismatch_times += 1

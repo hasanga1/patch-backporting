@@ -1,0 +1,39 @@
+--- a/server/src/main/java/io/crate/replication/logical/action/PublicationsStateAction.java
++++ b/server/src/main/java/io/crate/replication/logical/action/PublicationsStateAction.java
+@@ -205,20 +205,21 @@
+         public Response(StreamInput in) throws IOException {
+             if (in.getVersion().before(Version.V_6_0_0)) {
+-                Map<RelationName, RelationMetadata> relationsInPublications = in.readMap(RelationName::new, RelationMetadata::new);
+                 this.relationsInPublications = relationsInPublications;
+-                Metadata.Builder mdBuilder = Metadata.builder();
+-                for (Map.Entry<RelationName, RelationMetadata> entry : relationsInPublications.entrySet()) {
+-                    RelationMetadata relationMetadata = entry.getValue();
+-                    for (IndexMetadata indexMetadata : relationMetadata.indices()) {
+-                        mdBuilder.put(indexMetadata, false);
+-                    }
+-                    IndexTemplateMetadata templateMetadata = relationMetadata.template();
+-                    if (templateMetadata != null) {
+-                        mdBuilder.put(templateMetadata);
+-                    }
+-                }
++                Map<RelationName, RelationMetadata> relationsInPublications = in.readMap(RelationName::new, RelationMetadata::new);
++                this.relationsInPublications = relationsInPublications;
++                Metadata.Builder mdBuilder = Metadata.builder();
++                for (Map.Entry<RelationName, RelationMetadata> entry : relationsInPublications.entrySet()) {
++                    RelationMetadata relationMetadata = entry.getValue();
++                    for (IndexMetadata indexMetadata : relationMetadata.indices()) {
++                        mdBuilder.put(indexMetadata, false);
++                    }
++                    IndexTemplateMetadata templateMetadata = relationMetadata.template();
++                    if (templateMetadata != null) {
++                        mdBuilder.put(templateMetadata);
++                    }
++                }
++                metadata = mdBuilder.build();
+-                metadata = mdBuilder.build();
+             } else {
+-                relationsInPublications = null;
++                relationsInPublications = null;
++                metadata = Metadata.readFrom(in);
+-                metadata = Metadata.readFrom(in);
+             }

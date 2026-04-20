@@ -1,0 +1,34 @@
+--- a/libs/shared/src/main/java/io/crate/common/collections/Maps.java
++++ b/libs/shared/src/main/java/io/crate/common/collections/Maps.java
+@@ -179,4 +179,31 @@
+         }
+         return null;
+     }
++
++    /**
++     * Returns a modifiable deep copy of the given map.
++     */
++    public static <K, V> Map<K, V> deepCopy(Map<K, V> map) {
++        Map<K, V> copy = new HashMap<>();
++        for (Map.Entry<K, V> e : map.entrySet()) {
++            K key = e.getKey();
++            V value = e.getValue();
++            if (value instanceof Map<?, ?> nested) {
++                copy.put(key, (V) deepCopy(nested));
++            } else if (value instanceof List<?> list) {
++                List<Object> newList = new ArrayList<>();
++                for (Object item : list) {
++                    if (item instanceof Map<?, ?> m) {
++                        newList.add(deepCopy(m));
++                    } else {
++                        newList.add(item);
++                    }
++                }
++                copy.put(key, (V) newList);
++            } else {
++                copy.put(key, value);
++            }
++        }
++        return copy;
++    }
+ 

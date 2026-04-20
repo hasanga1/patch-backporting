@@ -100,7 +100,12 @@ def do_backport(
     for idx, pp in enumerate(pps):
         project.round_succeeded = False
         project.context_mismatch_times = 0
-        ret = project._apply_hunk(data.target_release, pp, False)
+        ret = project._apply_hunk(
+            data.target_release,
+            pp,
+            False,
+            source_label="original",
+        )
         if project.round_succeeded:
             logger.debug(f"Hunk {idx} can be applied without any conflicts")
             continue

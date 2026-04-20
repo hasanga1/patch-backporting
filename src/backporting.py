@@ -125,6 +125,27 @@ def load_yml(file_path: str):
     return data
 
 
+def save_applied_patch_records(results_dir: str, tag: str, records: list[dict]):
+    """Persist each successfully applied patch chunk with deterministic filenames."""
+    source_counts = {}
+    for record in records:
+        patch_text = record.get("patch")
+        if not patch_text:
+            continue
+
+        source = (record.get("source") or "generated").strip().lower()
+        if source not in {"original", "generated"}:
+            source = "generated"
+
+        source_counts[source] = source_counts.get(source, 0) + 1
+        index = source_counts[source]
+        suffix = "" if index == 1 else f"_{index}"
+        patch_file = os.path.join(results_dir, f"{tag}_{source}{suffix}.patch")
+        with open(patch_file, "w") as f:
+            f.write(patch_text)
+        logger.info(f"Applied patch saved to {patch_file}")
+
+
 def main():
     # process arguments
     parser = argparse.ArgumentParser(
@@ -187,7 +208,14 @@ def main():
             yaml.safe_dump(project.validation_result, f, default_flow_style=False)
         logger.info(f"Validation summary saved to {validation_file}")
 
-        # Save patch to results folder if successful
+        # Save all successfully applied patch chunks regardless of final validation status.
+        save_applied_patch_records(
+            results_dir,
+            data.tag,
+            getattr(project, "applied_patch_records", []),
+        )
+
+        # Keep final combined patch output for successful runs.
         if success and complete_patch:
             patch_file = os.path.join(results_dir, f"{data.tag}_backported.patch")
             with open(patch_file, 'w') as f:

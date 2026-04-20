@@ -1,0 +1,54 @@
+--- a/server/src/main/java/io/crate/planner/node/management/ExplainPlan.java
++++ b/server/src/main/java/io/crate/planner/node/management/ExplainPlan.java
+@@ -130,30 +130,30 @@
+     @Override
+     public void executeOrFail(DependencyCarrier dependencies,
+                               PlannerContext plannerContext,
+                               RowConsumer consumer,
+                               Row params,
+                               SubQueryResults subQueryResults) {
+-        if (context != null) {
+-            assert subPlan instanceof LogicalPlan : "subPlan must be a LogicalPlan";
+-            LogicalPlan plan = (LogicalPlan) subPlan;
+-            var ramAccounting = ConcurrentRamAccounting.forCircuitBreaker(
+-                "multi-phase",
+-                dependencies.circuitBreaker(HierarchyCircuitBreakerService.QUERY),
+-                plannerContext.transactionContext().sessionSettings().memoryLimitInBytes()
+-            );
+-            consumer.completionFuture().whenComplete((_, _) -> ramAccounting.close());
+-            executePlan(
+-                plan,
+-                dependencies,
+-                plannerContext,
+-                consumer,
+-                params,
+-                subQueryResults,
+-                new IdentityHashMap<>(),
+-                new ArrayList<>(plan.dependencies().size()),
+-                ramAccounting,
+-                null
+-            );
++        if (context != null) {
++            assert subPlan instanceof LogicalPlan : "subPlan must be a LogicalPlan";
++            LogicalPlan plan = (LogicalPlan) subPlan;
++            var ramAccounting = ConcurrentRamAccounting.forCircuitBreaker(
++                "multi-phase",
++                dependencies.circuitBreaker(HierarchyCircuitBreakerService.QUERY),
++                plannerContext.transactionContext().sessionSettings().memoryLimitInBytes()
++            );
++            consumer.completionFuture().whenComplete((_, _) -> ramAccounting.close());
++            executePlan(
++                plan,
++                dependencies,
++                plannerContext,
++                consumer,
++                params,
++                subQueryResults,
++                new IdentityHashMap<>(),
++                new ArrayList<>(plan.dependencies().size()),
++                ramAccounting,
++                null
++            );
+         } else {
+             if (subPlan instanceof LogicalPlan logicalPlan) {
+                 if (verbose) {

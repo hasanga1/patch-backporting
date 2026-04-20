@@ -1,0 +1,15 @@
+--- a/server/src/main/java/io/crate/expression/symbol/GroupAndAggregateSemantics.java
++++ b/server/src/main/java/io/crate/expression/symbol/GroupAndAggregateSemantics.java
+@@ -231,6 +231,12 @@ public final class GroupAndAggregateSemantics {
+                     return offender;
+                 }
+             }
++            for (Symbol partition : function.windowDefinition().partitions()) {
++                Symbol offender = partition.accept(this, groupBy);
++                if (offender != null) {
++                    return offender;
++                }
++            }
+             return null;
+         }
+ 

@@ -1,0 +1,30 @@
+--- a/server/src/main/java/io/crate/planner/node/management/ExplainPlan.java
++++ b/server/src/main/java/io/crate/planner/node/management/ExplainPlan.java
+@@ -239,15 +239,25 @@
+                                              RowConsumer consumer,
+                                              Row params,
+                                              SubQueryResults subQueryResults,
+                                              Map<SelectSymbol, Object> valuesBySubQuery,
+                                              List<Map<String, Object>> explainResults,
+-                                             RamAccounting ramAccounting,
++                                             @Nullable RamAccounting ramAccounting,
++                                             @Nullable SelectSymbol selectSymbol) {
+-                                             @Nullable SelectSymbol selectSymbol) {
++
++        assert ramAccounting != null || isTopLevel : "ramAccounting must NOT be null for subPlans";
++
++        if (ramAccounting == null) {
++            ramAccounting = ConcurrentRamAccounting.forCircuitBreaker(
++                "multi-phase",
++                executor.circuitBreaker(HierarchyCircuitBreakerService.QUERY),
++                plannerContext.transactionContext().sessionSettings().memoryLimitInBytes()
++            );
++        }
+         boolean isTopLevel = selectSymbol == null;
+ 
+         if (isTopLevel == false) {
+             plannerContext = PlannerContext.forSubPlan(plannerContext);
+         }
+ 
+         IdentityHashMap<SelectSymbol, Object> subPlanValueBySubQuery = new IdentityHashMap<>();
+         ArrayList<Map<String, Object>> subPlansExplainResults = new ArrayList<>(plan.dependencies().size());

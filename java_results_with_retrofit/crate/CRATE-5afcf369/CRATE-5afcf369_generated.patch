@@ -1,0 +1,66 @@
+--- a/server/src/main/java/io/crate/protocols/postgres/DelayableWriteChannel.java
++++ b/server/src/main/java/io/crate/protocols/postgres/DelayableWriteChannel.java
+@@ -278,31 +278,33 @@
+-    public synchronized void discardDelayedWrites() {
+-        if (delay != null) {
+-            var parent = delay.parent;
+-            while (parent != null) {
+-                parent.discard();
+-                parent = parent.parent;
+-            }
+-            delay.discard();
+-            delay = null;
+-        }
+-    }
+-
+-    public synchronized void writePendingMessages(DelayedWrites delayedWrites) {
+-        if (delay == delayedWrites) {
+-            delay = null;
+-        }
+-        delayedWrites.writeDelayed();
+-    }
+-
+-    public synchronized void writePendingMessages() {
+-        if (delay != null) {
+-            var parent = delay.parent;
+-            while (parent != null) {
+-                parent.writeDelayed();
+-                parent = parent.parent;
+-            }
+-            delay.writeDelayed();
+-            delay = null;
+-        }
+-    }
++    public synchronized void discardDelayedWrites() {
++        if (delay != null) {
++            var currentDelay = delay;
++            delay = null;
++            var parent = currentDelay.parent;
++            while (parent != null) {
++                parent.discard();
++                parent = parent.parent;
++            }
++            currentDelay.discard();
++        }
++    }
++
++    public synchronized void writePendingMessages(DelayedWrites delayedWrites) {
++        if (delay == delayedWrites) {
++            delay = null;
++        }
++        delayedWrites.writeDelayed();
++    }
++
++    public synchronized void writePendingMessages() {
++        if (delay != null) {
++            var currentDelay = delay;
++            delay = null;
++            var parent = currentDelay.parent;
++            while (parent != null) {
++                parent.writeDelayed();
++                parent = parent.parent;
++            }
++            currentDelay.writeDelayed();
++        }
++    }
+ 
