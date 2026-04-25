@@ -23,7 +23,6 @@ blacklist = [
     ".uuid",
     ".test",
     "manifest",
-    ".xml",
     "_test.go",
     ".json",
     ".golden",

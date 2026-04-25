@@ -18,34 +18,37 @@ from tools.project import Project
 from tools.utils import split_patch
 
 
+def _write_patch_files(output_dirs, filename: str, content: str):
+    for out_dir in output_dirs:
+        if not out_dir:
+            continue
+        os.makedirs(out_dir, exist_ok=True)
+        with open(os.path.join(out_dir, filename), "w", encoding="utf-8") as f:
+            f.write(content)
+
+
 def initial_agent(project: Project, data, debug_mode: bool):
-    use_azure = data.use_azure
+    llm_provider = getattr(data, "llm_provider", "openai")
 
-    if use_azure:
-        azure_endpoint = data.azure_endpoint
-        azure_deployment = data.azure_deployment
-        azure_api_version = data.azure_api_version
-        api_key = data.openai_key
-
-        logger.info(f"Using Azure OpenAI: {azure_endpoint} (deployment: {azure_deployment})")
-
+    if llm_provider == "azure":
+        logger.info(f"Using Azure OpenAI: {data.azure_endpoint} (deployment: {data.azure_deployment})")
         llm = AzureChatOpenAI(
-            temperature=1.0,  # Set to 1.0 for GPT-5 model; can be changed if using other models
-            azure_deployment=azure_deployment,
-            api_key=api_key,
-            azure_endpoint=azure_endpoint,
-            api_version=azure_api_version,
+            temperature=1.0,
+            azure_deployment=data.azure_deployment,
+            api_key=data.openai_key,
+            azure_endpoint=data.azure_endpoint,
+            api_version=data.azure_api_version,
             verbose=True,
         )
     else:
-        # Regular OpenAI configuration
-        logger.info("Using OpenAI API")
-        base_url = "https://api.openai.com/v1"
+        model = getattr(data, "model", "gpt-4-turbo")
+        api_base = getattr(data, "openai_api_base", "https://api.openai.com/v1")
+        logger.info(f"Using {llm_provider} API: {api_base} (model: {model})")
         llm = ChatOpenAI(
             temperature=0.5,
-            model="gpt-4-turbo",
+            model=model,
             api_key=data.openai_key,
-            openai_api_base=base_url,
+            openai_api_base=api_base,
             verbose=True,
         )
 
@@ -69,8 +72,11 @@ def do_backport(
     agent_executor: AgentExecutor, project: Project, data, llm: ChatOpenAI, logfile: str
 ):
     log_handler = FileCallbackHandler(logfile)
+    artifact_dirs = [os.path.dirname(logfile), data.patch_dataset_dir]
+    project.patch_output_dirs = artifact_dirs
 
     patch = project._get_patch(data.new_patch)
+    _write_patch_files(artifact_dirs, "original.patch", patch)
     pps = split_patch(patch, True)
     for idx, pp in enumerate(pps):
         project.round_succeeded = False
@@ -114,6 +120,8 @@ def do_backport(
     project.context_mismatch_times = 0
     validate_ret = project._validate(data.target_release, complete_patch)
     if project.poc_succeeded:
+        applied_patch = project.succeeded_patches[-1] if project.succeeded_patches else complete_patch
+        _write_patch_files(artifact_dirs, "backport_applied.patch", applied_patch)
         logger.info(
             f"Successfully backport the patch to the target release {data.target_release}"
         )
@@ -147,6 +155,8 @@ def do_backport(
         {"callbacks": [log_handler]},
     )
     if project.poc_succeeded:
+        applied_patch = project.succeeded_patches[-1] if project.succeeded_patches else complete_patch
+        _write_patch_files(artifact_dirs, "backport_applied.patch", applied_patch)
         logger.info(
             f"Successfully backport the patch to the target release {data.target_release}"
         )

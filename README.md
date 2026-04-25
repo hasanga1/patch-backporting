@@ -30,6 +30,22 @@ cd src
 python backporting.py --config example.yml --debug # Remember fill out the config.
 ```
 
+### CSV Runner with .env (OpenRouter)
+
+```shell
+cp .env.example .env
+# edit .env and set PROVIDER/OPENAI_KEY/OPENAI_MODEL/OPENAI_BASE_URL
+
+cd src
+python run_from_csv.py \
+  --csv ../my_java_dataset/java_backports.csv \
+  --index 0 \
+  --repo-root /path/to/clones \
+  --llm-provider openrouter
+```
+
+If your .env is in a custom location, pass `--env-file /path/to/.env`.
+
 ## Docker Usage
 
 Build the docker image:

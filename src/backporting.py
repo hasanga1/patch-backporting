@@ -55,8 +55,22 @@ def load_yml(file_path: str):
     data.openai_key = config.get("openai_key")
     data.tag = config.get("tag")
 
+    # Build configuration
+    data.build_use_docker = config.get("build_use_docker", True)
+    data.build_docker_image = config.get("build_docker_image", "build-kernel-ubuntu-16.04")
+    data.build_command = config.get("build_command", "bash build.sh")
+
+    # LLM provider configuration
+    data.llm_provider = config.get("llm_provider", "openai")
+    data.model = config.get("model", "gpt-4-turbo")
+    if data.llm_provider == "openrouter":
+        _default_base = "https://openrouter.ai/api/v1"
+    else:
+        _default_base = "https://api.openai.com/v1"
+    data.openai_api_base = config.get("openai_api_base", _default_base)
+
     # Azure OpenAI configuration (optional)
-    data.use_azure = config.get("use_azure", False)
+    data.use_azure = config.get("use_azure", data.llm_provider == "azure")
     data.azure_endpoint = config.get("azure_endpoint", "")
     data.azure_deployment = config.get("azure_deployment", "gpt-4")
     data.azure_api_version = config.get("azure_api_version", "2024-12-01-preview")
@@ -119,6 +133,53 @@ def load_yml(file_path: str):
     return data
 
 
+def run_pipeline(data, debug_mode: bool):
+    log_dir = "../logs"
+    os.makedirs(log_dir, exist_ok=True)
+    now = datetime.datetime.now().strftime("%m%d%H%M")
+    logfile = os.path.join(log_dir, f"{data.project}-{data.tag}-{now}.log")
+    add_file_handler(logger, logfile)
+
+    project = Project(data)
+    project.repo.git.clean("-fdx")
+    start_time = time.time()
+
+    # Usage tracking is only supported for direct OpenAI API calls
+    should_track_usage = getattr(data, "llm_provider", "openai") == "openai"
+    before_usage = get_usage(data.openai_key) if should_track_usage else None
+
+    agent_executor, llm = initial_agent(project, data, debug_mode)
+    try:
+        do_backport(agent_executor, project, data, llm, logfile)
+        end_time = time.time()
+        if should_track_usage:
+            time.sleep(10)
+            after_usage = get_usage(data.openai_key)
+            if isinstance(after_usage, dict) and isinstance(before_usage, dict):
+                logger.debug(
+                    f"This patch total cost: ${(after_usage['total_cost'] - before_usage['total_cost']):.2f}"
+                )
+                logger.debug(
+                    f"This patch total consume tokens: {(after_usage['total_consume_tokens'] - before_usage['total_consume_tokens'])/1000}(k)"
+                )
+        logger.debug(f"This patch total cost time: {int(end_time - start_time)} Seconds.")
+    except KeyboardInterrupt:
+        logger.debug("Start to calculate cost!")
+        end_time = time.time()
+        if should_track_usage:
+            after_usage = get_usage(data.openai_key)
+            if isinstance(after_usage, dict) and isinstance(before_usage, dict):
+                logger.debug(
+                    f"This patch total cost: ${(after_usage['total_cost'] - before_usage['total_cost']):.2f}"
+                )
+                logger.debug(
+                    f"This patch total consume tokens: {(after_usage['total_consume_tokens'] - before_usage['total_consume_tokens'])/1000}(k)"
+                )
+        logger.debug(f"This patch total cost time: {int(end_time - start_time)} Seconds.")
+
+    shutil.copy(logfile, data.patch_dataset_dir)
+
+
 def main():
     # process arguments
     parser = argparse.ArgumentParser(
@@ -137,51 +198,8 @@ def main():
     else:
         logger.setLevel(logging.INFO)
 
-    # load and check config, create file log
     data = load_yml(config_file)
-    log_dir = "../logs"
-    os.makedirs(log_dir, exist_ok=True)
-    now = datetime.datetime.now().strftime("%m%d%H%M")
-    logfile = os.path.join(log_dir, f"{data.project}-{data.tag}-{now}.log")
-    add_file_handler(logger, logfile)
-
-    # use LLM to backport
-
-    project = Project(data)
-    project.repo.git.clean("-fdx")
-    start_time = time.time()
-    before_usage = get_usage(data.openai_key)
-    agent_executor, llm = initial_agent(project, data, debug_mode)
-    try:
-        do_backport(agent_executor, project, data, llm, logfile)
-        end_time = time.time()
-        time.sleep(10)
-        after_usage = get_usage(data.openai_key)
-        logger.debug(
-            f"This patch total cost: ${(after_usage['total_cost'] - before_usage['total_cost']):.2f}"
-        )
-        logger.debug(
-            f"This patch total consume tokens: {(after_usage['total_consume_tokens'] - before_usage['total_consume_tokens'])/1000}(k)"
-        )
-        logger.debug(
-            f"This patch total cost time: {int(end_time - start_time)} Seconds."
-        )
-    except KeyboardInterrupt:
-        logger.debug("Start to calculate cost!")
-        end_time = time.time()
-
-        after_usage = get_usage(data.openai_key)
-        logger.debug(
-            f"This patch total cost: ${(after_usage['total_cost'] - before_usage['total_cost']):.2f}"
-        )
-        logger.debug(
-            f"This patch total consume tokens: {(after_usage['total_consume_tokens'] - before_usage['total_consume_tokens'])/1000}(k)"
-        )
-        logger.debug(
-            f"This patch total cost time: {int(end_time - start_time)} Seconds."
-        )
-
-    shutil.copy(logfile, data.patch_dataset_dir)
+    run_pipeline(data, debug_mode)
 
 
 if __name__ == "__main__":

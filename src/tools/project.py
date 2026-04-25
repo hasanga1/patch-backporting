@@ -19,6 +19,10 @@ class Project:
         self.dir = data.project_dir
         self.repo = Repo(data.project_dir)
 
+        self.build_use_docker = getattr(data, "build_use_docker", True)
+        self.build_docker_image = getattr(data, "build_docker_image", "build-kernel-ubuntu-16.04")
+        self.build_command = getattr(data, "build_command", "bash build.sh")
+
         if not data.error_message:
             self.err_msg = "no err_msg"
         else:
@@ -39,6 +43,17 @@ class Project:
         self.hunk_log_info = {}
         self.add_percent = 0
         self.last_context = []
+        self.patch_output_dirs = []
+        self.backport_attempt_count = 0
+
+    def _write_patch_artifact(self, filename: str, content: str) -> None:
+        for out_dir in self.patch_output_dirs:
+            if not out_dir:
+                continue
+            os.makedirs(out_dir, exist_ok=True)
+            out_path = os.path.join(out_dir, filename)
+            with open(out_path, "w", encoding="utf-8") as f:
+                f.write(content)
 
     def _checkout(self, ref: str) -> None:
         self.repo.git.reset("--hard")
@@ -542,27 +557,16 @@ class Project:
             self.compile_succeeded = True
             return ret
 
-        # build_process = subprocess.Popen(
-        #     ["/bin/bash", "build.sh"],
-        #     stdin=subprocess.DEVNULL,
-        #     stdout=subprocess.PIPE,
-        #     stderr=subprocess.PIPE,
-        #     cwd=self.dir,
-        #     text=True,
-        # )
-        docker_command = [
-            "docker",
-            "run",
-            "-v",
-            f"{self.dir}:{self.dir}",
-            "--rm",
-            "build-kernel-ubuntu-16.04",
-            "/bin/bash",
-            "-c",
-            f"cd {self.dir}; bash build.sh",
-        ]
+        if self.build_use_docker:
+            build_cmd = [
+                "docker", "run", "-v", f"{self.dir}:{self.dir}", "--rm",
+                self.build_docker_image, "/bin/bash", "-c",
+                f"cd {self.dir}; {self.build_command}",
+            ]
+        else:
+            build_cmd = ["/bin/bash", "-c", f"cd {self.dir}; {self.build_command}"]
         build_process = subprocess.Popen(
-            docker_command,
+            build_cmd,
             stdin=subprocess.DEVNULL,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
@@ -720,6 +724,11 @@ class Project:
 
         """
         if self.all_hunks_applied_succeeded:
+            self.backport_attempt_count += 1
+            self._write_patch_artifact(
+                f"backport_{self.backport_attempt_count}.patch", patch
+            )
+
             ret = ""
             if not self.compile_succeeded:
                 ret += self._compile_patch(
@@ -795,7 +804,15 @@ def create_validate_tool(project: Project):
         """
         validate a patch on a specific ref of the target repository.
         """
-        return project._validate(ref, patch)
+        effective_ref = ref
+        try:
+            project.repo.commit(ref)
+        except Exception:
+            effective_ref = project.target_release
+            logger.warning(
+                f"Invalid ref passed to validate: {ref}. Falling back to target_release: {effective_ref}."
+            )
+        return project._validate(effective_ref, patch)
 
     return validate
 
