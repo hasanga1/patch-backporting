@@ -1,7 +1,10 @@
 import os
 import re
+import shutil
+import stat
 import subprocess
 import tempfile
+import time
 from types import SimpleNamespace
 from typing import List, Tuple
 
@@ -58,6 +61,60 @@ class Project:
     def _checkout(self, ref: str) -> None:
         self.repo.git.reset("--hard")
         self.repo.git.checkout(ref)
+
+    def _safe_clean_repo(self) -> None:
+        """
+        Clean untracked artifacts robustly.
+
+        Some build tools leave nested or partially locked directories that can make
+        `git clean -fdx` fail on macOS/Linux. We retry with best-effort forced
+        deletion of the specific paths reported by git.
+        """
+        def _on_rm_error(func, path, exc_info):
+            # Make readonly files/dirs writable, then retry the same remove op.
+            try:
+                os.chmod(path, stat.S_IWRITE | stat.S_IREAD | stat.S_IEXEC)
+                func(path)
+            except OSError:
+                pass
+
+        def _force_remove(abs_path: str) -> None:
+            if os.path.isdir(abs_path):
+                shutil.rmtree(abs_path, ignore_errors=False, onerror=_on_rm_error)
+            elif os.path.exists(abs_path):
+                os.chmod(abs_path, stat.S_IWRITE | stat.S_IREAD)
+                os.remove(abs_path)
+
+        repo_root = os.path.abspath(self.dir)
+        last_error = None
+
+        for _ in range(3):
+            try:
+                self.repo.git.clean("-ffdx")
+                return
+            except Exception as exc:
+                last_error = exc
+                message = str(exc)
+                failed_paths = re.findall(r"failed to remove (.*?):", message)
+                for rel_path in failed_paths:
+                    rel_path = rel_path.strip().strip("'\"")
+                    abs_path = os.path.abspath(os.path.join(self.dir, rel_path))
+                    if not (
+                        abs_path == repo_root
+                        or abs_path.startswith(repo_root + os.sep)
+                    ):
+                        continue
+                    try:
+                        _force_remove(abs_path)
+                    except OSError:
+                        pass
+                # Short backoff in case filesystem state is still settling.
+                time.sleep(0.2)
+
+        logger.warning(
+            "Best-effort cleanup could not fully remove untracked files. "
+            f"Continuing pipeline. Last clean error: {last_error}"
+        )
 
     def _get_patch(self, ref: str) -> str:
         try:

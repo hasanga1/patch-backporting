@@ -1,3 +1,20 @@
+diff --git a/docs/appendices/release-notes/6.1.0.rst b/docs/appendices/release-notes/6.1.0.rst
+index c09b088a23..e1c59004d8 100644
+--- a/docs/appendices/release-notes/6.1.0.rst
++++ b/docs/appendices/release-notes/6.1.0.rst
+@@ -57,6 +57,10 @@ Breaking Changes
+   the relative paths are resolved, thus conforming to the behavior already
+   described in the :ref:`documentation <conf-node-settings_paths>`.
+ 
++- Increased the ``FORCE_MERGE`` default thread pool size from ``1`` to ``1/8``
++  of the available processors, improving the performance of the :ref:`optimize`
++  operation on machines with more than ``15`` cores.
++
+ Deprecations
+ ============
+ 
+diff --git a/server/src/main/java/org/elasticsearch/threadpool/ThreadPool.java b/server/src/main/java/org/elasticsearch/threadpool/ThreadPool.java
+index 77edd21b5a..ab4a87422c 100644
 --- a/server/src/main/java/org/elasticsearch/threadpool/ThreadPool.java
 +++ b/server/src/main/java/org/elasticsearch/threadpool/ThreadPool.java
 @@ -145,7 +145,7 @@ public class ThreadPool implements Scheduler {
@@ -9,9 +26,6 @@
              new ScalingExecutorBuilder(Names.FETCH_SHARD_STORE, 1, 2 * availableProcessors, TimeValue.timeValueMinutes(5)),
              new FixedExecutorBuilder(settings, Names.LOGICAL_REPLICATION, searchThreadPoolSize(availableProcessors), 100)
          );
-
---- a/server/src/main/java/org/elasticsearch/threadpool/ThreadPool.java
-+++ b/server/src/main/java/org/elasticsearch/threadpool/ThreadPool.java
 @@ -229,6 +229,15 @@ public class ThreadPool implements Scheduler {
          return new ThreadPoolStats.Stats(name, -1, -1, -1, -1, -1, -1);
      }
@@ -28,9 +42,6 @@
      /**
       * Get the generic {@link ExecutorService}. This executor service
       * {@link Executor#execute(Runnable)} method will run the {@link Runnable} it is given in the
-
---- a/server/src/main/java/org/elasticsearch/threadpool/ThreadPool.java
-+++ b/server/src/main/java/org/elasticsearch/threadpool/ThreadPool.java
 @@ -373,6 +382,10 @@ public class ThreadPool implements Scheduler {
          return boundedBy((numberOfProcessors + 1) / 2, 1, 10);
      }
@@ -42,7 +53,9 @@
      public static int searchThreadPoolSize(int availableProcessors) {
          return ((availableProcessors * 3) / 2) + 1;
      }
-
+diff --git a/server/src/test/java/org/elasticsearch/threadpool/ThreadPoolTest.java b/server/src/test/java/org/elasticsearch/threadpool/ThreadPoolTest.java
+new file mode 100644
+index 0000000000..764f1f98de
 --- /dev/null
 +++ b/server/src/test/java/org/elasticsearch/threadpool/ThreadPoolTest.java
 @@ -0,0 +1,60 @@

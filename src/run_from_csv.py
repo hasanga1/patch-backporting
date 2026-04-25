@@ -44,6 +44,22 @@ def _get_parent_hexsha(repo: git.Repo, commit_id: str, parent_index: int = 0) ->
     return commit.parents[parent_index].hexsha
 
 
+def _get_patch_against_parent(repo: git.Repo, commit_id: str, parent_index: int = 0) -> str:
+    """
+    Return unified diff between commit and one of its parents.
+
+    For merge commits (e.g., backport PR merge commits), this captures the net
+    change introduced on the chosen parent side.
+    """
+    commit = repo.commit(commit_id)
+    if not commit.parents:
+        return repo.git.show(commit_id)
+
+    idx = parent_index if len(commit.parents) > parent_index else 0
+    parent = commit.parents[idx].hexsha
+    return repo.git.diff(parent, commit.hexsha)
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="Run PortGPT from a CSV dataset row index",
@@ -89,6 +105,26 @@ def main():
         help="Docker image used when --build-use-docker is set",
     )
     parser.add_argument("--build-command", type=str, default="bash build.sh", help="Build command to run")
+    parser.add_argument(
+        "--run-extra-validation", action="store_true",
+        help="Run extra Java validation using per-project helper scripts after default validation passes",
+    )
+    parser.add_argument(
+        "--helpers-root", type=str, default="",
+        help="Path to helpers directory containing per-project subdirectories (e.g. helpers/hbase/)",
+    )
+    parser.add_argument(
+        "--builder-image-tag", type=str, default="",
+        help="Docker image tag passed as BUILDER_IMAGE_TAG to helper scripts",
+    )
+    parser.add_argument(
+        "--build-timeout", type=int, default=3600,
+        help="Timeout in seconds for the build helper script (default: 3600)",
+    )
+    parser.add_argument(
+        "--tests-timeout", type=int, default=3600,
+        help="Timeout in seconds for the tests helper script (default: 3600)",
+    )
     parser.add_argument("-d", "--debug", action="store_true", help="Enable debug mode")
     args = parser.parse_args()
 
@@ -165,6 +201,23 @@ def main():
     )
     os.makedirs(patch_dataset_dir, exist_ok=True)
 
+    # Save ground-truth developer backport patch from the CSV Backport Commit.
+    # For merge commits, diff is taken against --backport-parent-index.
+    developer_backport_patch_path = os.path.join(
+        patch_dataset_dir, "developer_backport.patch"
+    )
+    try:
+        developer_backport_patch = _get_patch_against_parent(
+            repo, backport_commit, args.backport_parent_index
+        )
+        with open(developer_backport_patch_path, "w", encoding="utf-8") as f:
+            f.write(developer_backport_patch)
+        logger.info(f"Saved developer backport patch to {developer_backport_patch_path}")
+    except Exception as exc:
+        logger.warning(
+            f"Unable to export developer backport patch for {backport_commit}: {exc}"
+        )
+
     tag = f"{args.tag_prefix}-{args.index}"
 
     generated_config = {
@@ -200,9 +253,20 @@ def main():
     )
     logger.info(f"Generated config at {config_path}")
 
+    extra_validation_config = None
+    if args.run_extra_validation:
+        extra_validation_config = {
+            "enabled": True,
+            "row_index": args.index,
+            "helpers_root": os.path.abspath(os.path.expanduser(args.helpers_root)) if args.helpers_root else "",
+            "builder_image_tag": args.builder_image_tag,
+            "build_timeout": args.build_timeout,
+            "tests_timeout": args.tests_timeout,
+        }
+
     try:
         data = load_yml(config_path)
-        run_pipeline(data, args.debug)
+        run_pipeline(data, args.debug, extra_validation_config)
     finally:
         try:
             os.remove(config_path)

@@ -1,5 +1,6 @@
 import argparse
 import datetime
+import json
 import logging
 import os
 import shutil
@@ -11,6 +12,7 @@ import yaml
 
 from agent.invoke_llm import do_backport, initial_agent
 from check.usage import get_usage
+from java_extra_validator import run_extra_validation
 from tools.logger import add_file_handler, logger
 from tools.project import Project
 
@@ -133,7 +135,99 @@ def load_yml(file_path: str):
     return data
 
 
-def run_pipeline(data, debug_mode: bool):
+def _write_validation_summary(
+    data, project, extra_validation_config: dict, logfile: str, started_at: str, finished_at: str
+) -> None:
+    default_passed = project.poc_succeeded
+
+    if not project.all_hunks_applied_succeeded:
+        default_msg = "Hunk application failed"
+    elif not project.compile_succeeded:
+        default_msg = "Compilation failed"
+    elif not project.testcase_succeeded:
+        default_msg = "Testcase failed"
+    elif not project.poc_succeeded:
+        default_msg = "PoC validation failed"
+    else:
+        default_msg = "All validation steps passed"
+
+    log_basename = os.path.basename(logfile)
+    dataset_logfile = os.path.join(data.patch_dataset_dir, log_basename)
+
+    default_validation = {
+        "passed": default_passed,
+        "compile_passed": project.compile_succeeded,
+        "testcase_passed": project.testcase_succeeded,
+        "poc_passed": project.poc_succeeded,
+        "message": default_msg,
+        "logs": dataset_logfile,
+    }
+
+    extra_validation = {
+        "ran": False,
+        "passed": None,
+        "build_passed": None,
+        "tests_passed": None,
+        "selected_test_targets": [],
+        "message": "Skipped (default validation did not pass)",
+        "build_logs": None,
+        "test_logs": None,
+    }
+
+    if default_passed and extra_validation_config.get("enabled", True):
+        helpers_root = extra_validation_config.get("helpers_root", "")
+        if helpers_root:
+            extra_validation = run_extra_validation(
+                project_name=data.project,
+                project_dir=data.project_dir.rstrip("/"),
+                new_patch_commit=data.new_patch,
+                output_dir=data.patch_dataset_dir.rstrip("/"),
+                helpers_root=helpers_root,
+                builder_image_tag=extra_validation_config.get("builder_image_tag", ""),
+                build_timeout=extra_validation_config.get("build_timeout", 3600),
+                tests_timeout=extra_validation_config.get("tests_timeout", 3600),
+                python_exe=extra_validation_config.get("python_exe", ""),
+            )
+        else:
+            extra_validation["message"] = "Skipped (no helpers_root configured)"
+
+    if extra_validation["ran"]:
+        if default_passed and extra_validation["passed"] is True:
+            verdict = {"valid": True, "reason": "Default validation passed and extra validation passed"}
+        elif default_passed and extra_validation["passed"] is False:
+            verdict = {"valid": False, "reason": "Default validation passed but extra validation failed"}
+        else:
+            verdict = {"valid": default_passed, "reason": f"{default_msg}; extra validation inconclusive"}
+    else:
+        if default_passed:
+            verdict = {"valid": True, "reason": default_msg}
+        else:
+            verdict = {"valid": False, "reason": default_msg}
+
+    summary = {
+        "project": data.project,
+        "row_index": extra_validation_config.get("row_index", -1),
+        "commits": {
+            "original_commit": data.new_patch,
+            "target_release": data.target_release,
+            "new_patch_parent": data.new_patch_parent,
+        },
+        "default_validation": default_validation,
+        "extra_validation": extra_validation,
+        "final_verdict": verdict,
+        "timestamps": {
+            "started_at": started_at,
+            "finished_at": finished_at,
+        },
+    }
+
+    summary_path = os.path.join(data.patch_dataset_dir, "validation_summary.json")
+    with open(summary_path, "w", encoding="utf-8") as f:
+        json.dump(summary, f, indent=2)
+    logger.info(f"Validation summary written to {summary_path}")
+
+
+def run_pipeline(data, debug_mode: bool, extra_validation_config: dict | None = None):
     log_dir = "../logs"
     os.makedirs(log_dir, exist_ok=True)
     now = datetime.datetime.now().strftime("%m%d%H%M")
@@ -141,8 +235,9 @@ def run_pipeline(data, debug_mode: bool):
     add_file_handler(logger, logfile)
 
     project = Project(data)
-    project.repo.git.clean("-fdx")
+    project._safe_clean_repo()
     start_time = time.time()
+    started_at = datetime.datetime.fromtimestamp(start_time).isoformat()
 
     # Usage tracking is only supported for direct OpenAI API calls
     should_track_usage = getattr(data, "llm_provider", "openai") == "openai"
@@ -178,6 +273,10 @@ def run_pipeline(data, debug_mode: bool):
         logger.debug(f"This patch total cost time: {int(end_time - start_time)} Seconds.")
 
     shutil.copy(logfile, data.patch_dataset_dir)
+
+    if extra_validation_config is not None:
+        finished_at = datetime.datetime.now().isoformat()
+        _write_validation_summary(data, project, extra_validation_config, logfile, started_at, finished_at)
 
 
 def main():

@@ -112,7 +112,7 @@ def do_backport(
     logger.info(f"Aplly all hunks in the patch      PASS")
     project.now_hunk = "completed"
     complete_patch = "\n".join(project.succeeded_patches)
-    project.repo.git.clean("-fdx")
+    project._safe_clean_repo()
     for file in os.listdir(data.patch_dataset_dir):
         if os.path.exists(f"{data.project_dir}{file}"):
             os.remove(f"{data.project_dir}{file}")
