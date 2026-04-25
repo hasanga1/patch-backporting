@@ -69,12 +69,14 @@ def run_extra_validation(
     build_timeout: int = 3600,
     tests_timeout: int = 3600,
     python_exe: str = "",
+    test_targets_commit: str = "",
 ) -> dict:
     """
     Run per-project helper scripts (run_build.sh, get_test_targets.py, run_tests.sh)
     against the current working tree state (WORKTREE_MODE=1).
 
-    new_patch_commit is the original fix commit used to discover affected test targets.
+    test_targets_commit: commit used for test-target discovery (developer backport
+    commit preferred; falls back to new_patch_commit when not provided).
 
     Returns a dict matching the extra_validation section of validation_summary.json.
     """
@@ -127,11 +129,33 @@ def run_extra_validation(
         )
         logger.info(f"Extra build: {'PASS' if build_passed else 'FAIL'}")
 
+    # ── Gate: skip everything below when build explicitly failed ──────────────
+    # Matches omni-port phase0_optimistic.py: if build fails, return immediately
+    # without attempting test target discovery or test execution.
+    if build_passed is False:
+        with open(tests_log, "w", encoding="utf-8") as f:
+            f.write("Tests skipped: build did not pass.\n")
+        logger.info(f"Tests skipped for '{project_name}' because build failed")
+        return {
+            "ran": True,
+            "passed": False,
+            "build_passed": False,
+            "tests_passed": None,
+            "selected_test_targets": [],
+            "message": "build failed; tests skipped",
+            "build_logs": build_log,
+            "test_logs": tests_log,
+        }
+
     # ── Test target discovery ──────────────────────────────────────────────
+    # Use developer backport commit when available — it contains the test files
+    # the developer wrote to validate the backport, which are the right targets
+    # to run against the PortGPT-generated patch.
+    effective_test_commit = test_targets_commit or new_patch_commit
     test_targets = _discover_test_targets(
         os.path.abspath(os.path.join(helpers_dir, "get_test_targets.py")),
         project_dir,
-        new_patch_commit,
+        effective_test_commit,
         python_exe,
     )
 

@@ -13,6 +13,7 @@ import yaml
 from agent.invoke_llm import do_backport, initial_agent
 from check.usage import get_usage
 from java_extra_validator import run_extra_validation
+from java_patch_filter import count_eligible_files, filter_java_source_patch
 from tools.logger import add_file_handler, logger
 from tools.project import Project
 
@@ -51,6 +52,7 @@ def load_yml(file_path: str):
 
     data = SimpleNamespace()
     data.project = config.get("project")
+    data.patch_type = config.get("type", "")
     data.project_url = config.get("project_url")
     data.project_dir = config.get("project_dir")
     data.patch_dataset_dir = config.get("patch_dataset_dir")
@@ -97,6 +99,8 @@ def load_yml(file_path: str):
             "Please check your configuration to make sure target_release is correct!\n"
         )
         exit(1)
+
+    data.backport_commit = config.get("backport_commit", "")
 
     data.error_message = config.get("error_message", "")
     if not data.error_message:
@@ -181,6 +185,7 @@ def _write_validation_summary(
                 project_name=data.project,
                 project_dir=data.project_dir.rstrip("/"),
                 new_patch_commit=data.new_patch,
+                test_targets_commit=getattr(data, "backport_commit", ""),
                 output_dir=data.patch_dataset_dir.rstrip("/"),
                 helpers_root=helpers_root,
                 builder_image_tag=extra_validation_config.get("builder_image_tag", ""),
@@ -206,6 +211,7 @@ def _write_validation_summary(
 
     summary = {
         "project": data.project,
+        "type": getattr(data, "patch_type", ""),
         "row_index": extra_validation_config.get("row_index", -1),
         "commits": {
             "original_commit": data.new_patch,
@@ -227,7 +233,12 @@ def _write_validation_summary(
     logger.info(f"Validation summary written to {summary_path}")
 
 
-def run_pipeline(data, debug_mode: bool, extra_validation_config: dict | None = None):
+def run_pipeline(
+    data,
+    debug_mode: bool,
+    extra_validation_config: dict | None = None,
+    java_preprocessing_config: dict | None = None,
+):
     log_dir = "../logs"
     os.makedirs(log_dir, exist_ok=True)
     now = datetime.datetime.now().strftime("%m%d%H%M")
@@ -236,6 +247,21 @@ def run_pipeline(data, debug_mode: bool, extra_validation_config: dict | None = 
 
     project = Project(data)
     project._safe_clean_repo()
+
+    # ── Java preprocessing: filter patch to agent-eligible Java source hunks ─
+    if java_preprocessing_config and java_preprocessing_config.get("filter_java_source"):
+        raw_patch = project._get_patch(data.new_patch)
+        filtered_patch = filter_java_source_patch(raw_patch)
+        eligible_count = count_eligible_files(filtered_patch)
+        if eligible_count == 0:
+            logger.warning(
+                "Java source filter matched 0 eligible files — falling back to original patch"
+            )
+        else:
+            logger.info(f"Java source filter: {eligible_count} agent-eligible Java file(s) kept")
+            _fp = filtered_patch
+            project._get_patch = lambda ref: _fp  # noqa: E731
+
     start_time = time.time()
     started_at = datetime.datetime.fromtimestamp(start_time).isoformat()
 

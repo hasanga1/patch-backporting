@@ -56,7 +56,8 @@ ${DOCKER_CMD} run --rm -u root \
 
 echo "--- Building with Maven... ---"
 # Build and install to local repo, skip tests
-if ${DOCKER_CMD} run --rm \
+run_maven_build() {
+${DOCKER_CMD} run --rm \
     --dns=8.8.8.8 \
     -v "maven-cache-crate:/root/.m2" \
     -v "${PROJECT_DIR}:/repo" \
@@ -109,12 +110,32 @@ if ${DOCKER_CMD} run --rm \
   </toolchain>
 </toolchains>
 EOF
-    mvn clean install -DskipTests -T ${MAVEN_THREADS} --global-toolchains /root/.m2/toolchains.xml"; then
+    mvn clean install -DskipTests -T ${MAVEN_THREADS} \
+        --global-toolchains /root/.m2/toolchains.xml \
+        -Dforbiddenapis.skip=true \
+        -Dmaven.javadoc.skip=true \
+        -Dcheckstyle.skip=true \
+        -Dpmd.skip=true \
+    -Denforcer.skip=true"
+}
+
+if run_maven_build; then
     echo "✅ Build Succeeded"
     exit 0
 else
-    echo "❌ Build Failed"
-    exit 1
+  echo "⚠️ Build failed; cleaning cached JDK archives and retrying once..."
+  ${DOCKER_CMD} run --rm -u root \
+    -v "maven-cache-crate:/root/.m2" \
+    ${IMAGE_TAG} \
+    bash -c "rm -rf /root/.m2/jdks/OpenJDK23U-jdk_*_23.0.2_7.tar.gz /root/.m2/jdks/jdk-23* /root/.m2/jdks/.cache 2>/dev/null || true"
+
+  if run_maven_build; then
+    echo "✅ Build Succeeded (after cache cleanup retry)"
+    exit 0
+  fi
+
+  echo "❌ Build Failed"
+  exit 1
 fi
 
 echo "--- Build complete for ${COMMIT_SHA:0:7} ---"

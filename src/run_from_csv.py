@@ -125,6 +125,11 @@ def main():
         "--tests-timeout", type=int, default=3600,
         help="Timeout in seconds for the tests helper script (default: 3600)",
     )
+    parser.add_argument(
+        "--filter-java-patch", action="store_true",
+        help="Filter the mainline patch to agent-eligible Java source files before passing to PortGPT "
+             "(strips test files, non-Java files, and auto-generated Java files)",
+    )
     parser.add_argument("-d", "--debug", action="store_true", help="Enable debug mode")
     args = parser.parse_args()
 
@@ -176,6 +181,7 @@ def main():
     project = row["Project"]
     original_commit = row["Original Commit"].strip()
     backport_commit = row["Backport Commit"].strip()  # used only to derive target_release
+    patch_type = row.get("Type", "").strip()
 
     # Resolve local repo
     project_dir = _resolve_project_dir(project, args.repo_root, repo_map)
@@ -222,6 +228,7 @@ def main():
 
     generated_config = {
         "project": project,
+        "type": patch_type,
         "project_url": project_url,
         "new_patch": original_commit,
         "new_patch_parent": new_patch_parent,
@@ -241,6 +248,7 @@ def main():
         "build_use_docker": args.build_use_docker,
         "build_docker_image": args.build_docker_image,
         "build_command": args.build_command,
+        "backport_commit": backport_commit,
     }
 
     with tempfile.NamedTemporaryFile(mode="w", suffix=".yml", delete=False) as tmp:
@@ -264,9 +272,13 @@ def main():
             "tests_timeout": args.tests_timeout,
         }
 
+    java_preprocessing_config = None
+    if args.filter_java_patch:
+        java_preprocessing_config = {"filter_java_source": True}
+
     try:
         data = load_yml(config_path)
-        run_pipeline(data, args.debug, extra_validation_config)
+        run_pipeline(data, args.debug, extra_validation_config, java_preprocessing_config)
     finally:
         try:
             os.remove(config_path)
