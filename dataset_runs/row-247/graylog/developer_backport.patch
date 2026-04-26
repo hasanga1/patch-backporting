@@ -1,24 +1,6 @@
-commit 4a1cbb4dcb8563a6686e0709040dea75ed831359
-Author: Patrick Mann <patrickmann@users.noreply.github.com>
-Date:   Wed May 8 16:06:20 2024 +0200
-
-    New pipeline functions `remove_single_field` and `remove_multiple_fields` (#19268)
-    
-    * new pipeline functions remove_single_field and remove_multiple_fields
-    
-    * CL
-    
-    * improve rulebuilder descriptions
-    
-    * compile regex and other feedback changes
-    
-    * pre-compile pattern
-    
-    * UI string improvements
-
 diff --git a/changelog/unreleased/issue-19098.toml b/changelog/unreleased/issue-19098.toml
 new file mode 100644
-index 0000000000..70b2dbe6ac
+index 0000000000..08122e58f7
 --- /dev/null
 +++ b/changelog/unreleased/issue-19098.toml
 @@ -0,0 +1,16 @@
@@ -37,12 +19,12 @@ index 0000000000..70b2dbe6ac
 +"""
 +
 +issues=["19098"]
-+pulls=["19268"]
++pulls=["19301"]
 diff --git a/graylog2-server/src/main/java/org/graylog/plugins/pipelineprocessor/functions/ProcessorFunctionsModule.java b/graylog2-server/src/main/java/org/graylog/plugins/pipelineprocessor/functions/ProcessorFunctionsModule.java
-index 5510a1b93a..4fa2efa9fb 100644
+index b52d66b76a..4923452b40 100644
 --- a/graylog2-server/src/main/java/org/graylog/plugins/pipelineprocessor/functions/ProcessorFunctionsModule.java
 +++ b/graylog2-server/src/main/java/org/graylog/plugins/pipelineprocessor/functions/ProcessorFunctionsModule.java
-@@ -109,6 +109,8 @@ import org.graylog.plugins.pipelineprocessor.functions.messages.HasField;
+@@ -96,6 +96,8 @@ import org.graylog.plugins.pipelineprocessor.functions.messages.HasField;
  import org.graylog.plugins.pipelineprocessor.functions.messages.NormalizeFields;
  import org.graylog.plugins.pipelineprocessor.functions.messages.RemoveField;
  import org.graylog.plugins.pipelineprocessor.functions.messages.RemoveFromStream;
@@ -51,7 +33,7 @@ index 5510a1b93a..4fa2efa9fb 100644
  import org.graylog.plugins.pipelineprocessor.functions.messages.RenameField;
  import org.graylog.plugins.pipelineprocessor.functions.messages.RouteToStream;
  import org.graylog.plugins.pipelineprocessor.functions.messages.SetField;
-@@ -179,6 +181,8 @@ public class ProcessorFunctionsModule extends PluginModule {
+@@ -164,6 +166,8 @@ public class ProcessorFunctionsModule extends PluginModule {
          addMessageProcessorFunction(SetFields.NAME, SetFields.class);
          addMessageProcessorFunction(RenameField.NAME, RenameField.class);
          addMessageProcessorFunction(RemoveField.NAME, RemoveField.class);
@@ -61,25 +43,24 @@ index 5510a1b93a..4fa2efa9fb 100644
  
          addMessageProcessorFunction(DropMessage.NAME, DropMessage.class);
 diff --git a/graylog2-server/src/main/java/org/graylog/plugins/pipelineprocessor/functions/messages/RemoveField.java b/graylog2-server/src/main/java/org/graylog/plugins/pipelineprocessor/functions/messages/RemoveField.java
-index c8f2f39eab..50226f0b18 100644
+index c3d3cac68a..05aa21dd56 100644
 --- a/graylog2-server/src/main/java/org/graylog/plugins/pipelineprocessor/functions/messages/RemoveField.java
 +++ b/graylog2-server/src/main/java/org/graylog/plugins/pipelineprocessor/functions/messages/RemoveField.java
-@@ -25,6 +25,7 @@ import org.graylog.plugins.pipelineprocessor.ast.functions.ParameterDescriptor;
- import org.graylog.plugins.pipelineprocessor.rulebuilder.RuleBuilderFunctionGroup;
+@@ -24,6 +24,7 @@ import org.graylog.plugins.pipelineprocessor.ast.functions.FunctionDescriptor;
+ import org.graylog.plugins.pipelineprocessor.ast.functions.ParameterDescriptor;
  import org.graylog2.plugin.Message;
  
 +import java.util.regex.Pattern;
  import java.util.stream.Collectors;
  
  import static org.graylog.plugins.pipelineprocessor.ast.functions.ParameterDescriptor.type;
-@@ -33,25 +34,27 @@ public class RemoveField extends AbstractFunction<Void> {
+@@ -31,21 +32,23 @@ import static org.graylog.plugins.pipelineprocessor.ast.functions.ParameterDescr
+ public class RemoveField extends AbstractFunction<Void> {
      public static final String NAME = "remove_field";
      public static final String FIELD = "field";
-     public static final String INVERT = "invert";
 -    private final ParameterDescriptor<String, String> fieldParam;
 +    private final ParameterDescriptor<String, Pattern> fieldParam;
      private final ParameterDescriptor<Message, Message> messageParam;
-     private final ParameterDescriptor<Boolean, Boolean> invertParam;
  
      public RemoveField() {
 -        fieldParam = ParameterDescriptor.string(FIELD).description("The field(s) to remove (name or regex)").build();
@@ -87,7 +68,6 @@ index c8f2f39eab..50226f0b18 100644
 +                .transform(Pattern::compile)
 +                .description("The field(s) to remove (name or regex)").build();
          messageParam = type("message", Message.class).optional().description("The message to use, defaults to '$message'").build();
-         invertParam = ParameterDescriptor.bool(INVERT).optional().description("Invert: keep matching field(s) and remove all others").build();
      }
  
      @Override
@@ -95,35 +75,30 @@ index c8f2f39eab..50226f0b18 100644
 -        final String fieldOrPattern = fieldParam.required(args, context);
 +        final Pattern pattern = fieldParam.required(args, context);
          final Message message = messageParam.optional(args, context).orElse(context.currentMessage());
-         final Boolean invert = invertParam.optional(args, context).orElse(false);
  
          message.getFieldNames().stream()
-                 .filter(f -> {
--                    boolean condition = f.matches(fieldOrPattern);
-+                    boolean condition = pattern.matcher(f).matches();
-                     return invert ? !condition : condition;
-                 })
+-                .filter(f -> f.matches(fieldOrPattern))
++                .filter(f -> pattern.matcher(f).matches())
                  .collect(Collectors.toList()) // required to avoid ConcurrentModificationException
-@@ -67,9 +70,11 @@ public class RemoveField extends AbstractFunction<Void> {
+                 .forEach(message::removeField);
+ 
+@@ -59,7 +62,9 @@ public class RemoveField extends AbstractFunction<Void> {
                  .name(NAME)
                  .returnType(Void.class)
-                 .params(ImmutableList.of(fieldParam, messageParam, invertParam))
--                .description("Removes the named field from message, unless the field is reserved. If no specific message is provided, it removes the field from the currently processed message.")
+                 .params(ImmutableList.of(fieldParam, messageParam))
+-                .description("Removes a field from a message")
 +                .description("Removes the named field from message, unless the field is reserved. " +
 +                        "If no specific message is provided, it uses the currently processed message. " +
 +                        "This function is deprecated - use the more performant remove_single_field or remove_multiple_fields.")
-                 .ruleBuilderEnabled()
--                .ruleBuilderName("Remove field")
-+                .ruleBuilderName("Remove field (deprecated)")
-                 .ruleBuilderTitle("Remove field '${field}'")
-                 .ruleBuilderFunctionGroup(RuleBuilderFunctionGroup.MESSAGE)
                  .build();
+     }
+ }
 diff --git a/graylog2-server/src/main/java/org/graylog/plugins/pipelineprocessor/functions/messages/RemoveMultipleFields.java b/graylog2-server/src/main/java/org/graylog/plugins/pipelineprocessor/functions/messages/RemoveMultipleFields.java
 new file mode 100644
-index 0000000000..138ee598c3
+index 0000000000..10f8675be9
 --- /dev/null
 +++ b/graylog2-server/src/main/java/org/graylog/plugins/pipelineprocessor/functions/messages/RemoveMultipleFields.java
-@@ -0,0 +1,88 @@
+@@ -0,0 +1,83 @@
 +/*
 + * Copyright (C) 2020 Graylog, Inc.
 + *
@@ -148,7 +123,6 @@ index 0000000000..138ee598c3
 +import org.graylog.plugins.pipelineprocessor.ast.functions.FunctionArgs;
 +import org.graylog.plugins.pipelineprocessor.ast.functions.FunctionDescriptor;
 +import org.graylog.plugins.pipelineprocessor.ast.functions.ParameterDescriptor;
-+import org.graylog.plugins.pipelineprocessor.rulebuilder.RuleBuilderFunctionGroup;
 +import org.graylog2.plugin.Message;
 +
 +import java.util.List;
@@ -205,19 +179,15 @@ index 0000000000..138ee598c3
 +                .returnType(Void.class)
 +                .params(ImmutableList.of(regexParam, namesParam, messageParam))
 +                .description("Removes the specified field(s) from message, unless the field name is reserved. If no specific message is provided, it uses the currently processed message.")
-+                .ruleBuilderEnabled()
-+                .ruleBuilderName("Remove field - multiple")
-+                .ruleBuilderTitle("Remove multiple fields by<#if pattern??> regex '${pattern}'</#if><#if pattern?? && names??> or</#if><#if names??> name list '${names}'</#if>")
-+                .ruleBuilderFunctionGroup(RuleBuilderFunctionGroup.MESSAGE)
 +                .build();
 +    }
 +}
 diff --git a/graylog2-server/src/main/java/org/graylog/plugins/pipelineprocessor/functions/messages/RemoveSingleField.java b/graylog2-server/src/main/java/org/graylog/plugins/pipelineprocessor/functions/messages/RemoveSingleField.java
 new file mode 100644
-index 0000000000..4838ca8fff
+index 0000000000..7d3962065c
 --- /dev/null
 +++ b/graylog2-server/src/main/java/org/graylog/plugins/pipelineprocessor/functions/messages/RemoveSingleField.java
-@@ -0,0 +1,63 @@
+@@ -0,0 +1,58 @@
 +/*
 + * Copyright (C) 2020 Graylog, Inc.
 + *
@@ -242,7 +212,6 @@ index 0000000000..4838ca8fff
 +import org.graylog.plugins.pipelineprocessor.ast.functions.FunctionArgs;
 +import org.graylog.plugins.pipelineprocessor.ast.functions.FunctionDescriptor;
 +import org.graylog.plugins.pipelineprocessor.ast.functions.ParameterDescriptor;
-+import org.graylog.plugins.pipelineprocessor.rulebuilder.RuleBuilderFunctionGroup;
 +import org.graylog2.plugin.Message;
 +
 +import static org.graylog.plugins.pipelineprocessor.ast.functions.ParameterDescriptor.type;
@@ -274,18 +243,14 @@ index 0000000000..4838ca8fff
 +                .returnType(Void.class)
 +                .params(ImmutableList.of(fieldParam, messageParam))
 +                .description("Removes a field from a message")
-+                .ruleBuilderEnabled()
-+                .ruleBuilderName("Remove field - single")
-+                .ruleBuilderTitle("Remove the single field '${field}'")
-+                .ruleBuilderFunctionGroup(RuleBuilderFunctionGroup.MESSAGE)
 +                .build();
 +    }
 +}
 diff --git a/graylog2-server/src/test/java/org/graylog/plugins/pipelineprocessor/functions/FunctionsSnippetsTest.java b/graylog2-server/src/test/java/org/graylog/plugins/pipelineprocessor/functions/FunctionsSnippetsTest.java
-index 861d74c0ae..432c372b81 100644
+index 0ee1434c4c..e60e9d07b6 100644
 --- a/graylog2-server/src/test/java/org/graylog/plugins/pipelineprocessor/functions/FunctionsSnippetsTest.java
 +++ b/graylog2-server/src/test/java/org/graylog/plugins/pipelineprocessor/functions/FunctionsSnippetsTest.java
-@@ -113,6 +113,8 @@ import org.graylog.plugins.pipelineprocessor.functions.messages.HasField;
+@@ -100,6 +100,8 @@ import org.graylog.plugins.pipelineprocessor.functions.messages.HasField;
  import org.graylog.plugins.pipelineprocessor.functions.messages.NormalizeFields;
  import org.graylog.plugins.pipelineprocessor.functions.messages.RemoveField;
  import org.graylog.plugins.pipelineprocessor.functions.messages.RemoveFromStream;
@@ -294,15 +259,7 @@ index 861d74c0ae..432c372b81 100644
  import org.graylog.plugins.pipelineprocessor.functions.messages.RenameField;
  import org.graylog.plugins.pipelineprocessor.functions.messages.RouteToStream;
  import org.graylog.plugins.pipelineprocessor.functions.messages.SetField;
-@@ -221,7 +223,6 @@ public class FunctionsSnippetsTest extends BaseParserTest {
-     private static LookupTableService lookupTableService;
-     private static LookupTableService.Function lookupServiceFunction;
-     private static LookupTable lookupTable;
--    private static Map aMap;
- 
-     private static Logger loggerMock;
-     private static MessageFactory messageFactory = new TestMessageFactory();
-@@ -243,6 +244,8 @@ public class FunctionsSnippetsTest extends BaseParserTest {
+@@ -221,6 +223,8 @@ public class FunctionsSnippetsTest extends BaseParserTest {
          functions.put(SetFields.NAME, new SetFields());
          functions.put(RenameField.NAME, new RenameField());
          functions.put(RemoveField.NAME, new RemoveField());
@@ -311,14 +268,37 @@ index 861d74c0ae..432c372b81 100644
          functions.put(NormalizeFields.NAME, new NormalizeFields());
  
          functions.put(DropMessage.NAME, new DropMessage());
-@@ -1567,6 +1570,42 @@ public class FunctionsSnippetsTest extends BaseParserTest {
-         assertThat(message.getField("f3")).isEqualTo("f3");
+@@ -1388,7 +1392,7 @@ public class FunctionsSnippetsTest extends BaseParserTest {
+         assertThat(message.getField("one_entropy")).isEqualTo(1.0D);
      }
  
+-    @   Test
++    @Test
+     public void notExpressionTypeCheck() {
+         try {
+             Rule rule = parser.parseRule(ruleForTest(), true);
+@@ -1451,4 +1455,53 @@ public class FunctionsSnippetsTest extends BaseParserTest {
+         assertThat(message.getField("k_5")).isEqualTo("v_5");
+         assertThat(message.getField("k_6")).isEqualTo("will be added with clean_fields param");
+     }
++
++    @Test
++    public void removeField() {
++        final Rule rule = parser.parseRule(ruleForTest(), true);
++        final Message message = new Message("test", "test", Tools.nowUTC());
++        evaluateRule(rule, message);
++
++        assertThat(message.getField("f1")).isNull();
++        assertThat(message.getField("f2")).isNull();
++        assertThat(message.getField("f3")).isNull();
++        assertThat(message.getField("i1")).isEqualTo("i1");
++        assertThat(message.getField("i2")).isEqualTo("i2");
++    }
++
 +    @Test
 +    public void removeSingleField() {
 +        final Rule rule = parser.parseRule(ruleForTest(), true);
-+        final Message message = messageFactory.createMessage("test", "test", Tools.nowUTC());
++        final Message message = new Message("test", "test", Tools.nowUTC());
 +        evaluateRule(rule, message);
 +
 +        assertThat(message.getField("a.1")).isNull();
@@ -330,7 +310,7 @@ index 861d74c0ae..432c372b81 100644
 +    @Test
 +    public void removeFieldsByName() {
 +        final Rule rule = parser.parseRule(ruleForTest(), true);
-+        final Message message = messageFactory.createMessage("test", "test", Tools.nowUTC());
++        final Message message = new Message("test", "test", Tools.nowUTC());
 +        evaluateRule(rule, message);
 +
 +        assertThat(message.getField("a.1")).isNull();
@@ -342,7 +322,7 @@ index 861d74c0ae..432c372b81 100644
 +    @Test
 +    public void removeFieldsByRegex() {
 +        final Rule rule = parser.parseRule(ruleForTest(), true);
-+        final Message message = messageFactory.createMessage("test", "test", Tools.nowUTC());
++        final Message message = new Message("test", "test", Tools.nowUTC());
 +        evaluateRule(rule, message);
 +
 +        assertThat(message.getField("a.1")).isNull();
@@ -350,10 +330,25 @@ index 861d74c0ae..432c372b81 100644
 +        assertThat(message.getField("f2")).isNull();
 +        assertThat(message.getField("f1")).isEqualTo("f1");
 +    }
+ }
+diff --git a/graylog2-server/src/test/resources/org/graylog/plugins/pipelineprocessor/functions/removeField.txt b/graylog2-server/src/test/resources/org/graylog/plugins/pipelineprocessor/functions/removeField.txt
+new file mode 100644
+index 0000000000..dcad1b7e1b
+--- /dev/null
++++ b/graylog2-server/src/test/resources/org/graylog/plugins/pipelineprocessor/functions/removeField.txt
+@@ -0,0 +1,12 @@
++rule "remove_field"
++when true
++then
++  set_field(field: "f1", value: "f1");
++  set_field(field: "f2", value: "f2");
++  set_field(field: "f3", value: "f3");
++  set_field(field: "i1", value: "i1");
++  set_field(field: "i2", value: "i2");
 +
-     @Test
-     public void setField() {
-         final Rule rule = parser.parseRule(ruleForTest(), true);
++  remove_field(field:"f1");
++  remove_field(field:"f.");
++end
 diff --git a/graylog2-server/src/test/resources/org/graylog/plugins/pipelineprocessor/functions/removeFieldsByName.txt b/graylog2-server/src/test/resources/org/graylog/plugins/pipelineprocessor/functions/removeFieldsByName.txt
 new file mode 100644
 index 0000000000..538d3e2981
