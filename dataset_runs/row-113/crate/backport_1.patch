@@ -1,0 +1,26 @@
+--- a/server/src/main/java/io/crate/expression/scalar/systeminformation/FormatTypeFunction.java
++++ b/server/src/main/java/io/crate/expression/scalar/systeminformation/FormatTypeFunction.java
+@@ -43,8 +43,9 @@
+             Signature.scalar(
+                 FQN,
+                 DataTypes.INTEGER.getTypeSignature(),
+                 DataTypes.INTEGER.getTypeSignature(),
+                 DataTypes.STRING.getTypeSignature()
+-            ).withFeature(Feature.NULLABLE),
++            ).withFeature(Feature.DETERMINISTIC)
++             .withFeature(Feature.NULLABLE),
+             FormatTypeFunction::new
+         );
+
+--- a/server/src/test/java/io/crate/lucene/ThreeValuedLogicQueryBuilderTest.java
++++ b/server/src/test/java/io/crate/lucene/ThreeValuedLogicQueryBuilderTest.java
+@@ -120,3 +120,9 @@ public class ThreeValuedLogicQueryBuilderTest extends LuceneQueryBuilderTest {
+             .hasToString("+(+*:* -pg_catalog.current_setting(name, true)) #(NOT pg_catalog.current_setting(name, true))");
+     }
++
++    @Test
++    public void test_negated_format_type_with_three_valued_logic() {
++        assertThat(convert("NOT pg_catalog.format_type(x, null)")).hasToString(
++            "+(+*:* -pg_catalog.format_type(x, NULL)) #(NOT pg_catalog.format_type(x, NULL))");
++    }
+ }

@@ -60,13 +60,156 @@ def _get_patch_against_parent(repo: git.Repo, commit_id: str, parent_index: int 
     return repo.git.diff(parent, commit.hexsha)
 
 
+def _process_row(
+    row: dict,
+    row_index: int,
+    args,
+    api_key: str,
+    api_base: str,
+    llm_provider: str,
+    model: str,
+    repo_map: dict,
+) -> str:
+    """
+    Process a single CSV row. Returns 'ok', 'skipped', or 'error'.
+    Raises nothing — all exceptions are caught and logged.
+    """
+    patch_type = row.get("Type", "").strip()
+
+    project = row["Project"]
+    original_commit = row["Original Commit"].strip()
+    backport_commit = row["Backport Commit"].strip()
+
+    # Resolve local repo
+    try:
+        project_dir = _resolve_project_dir(project, args.repo_root, repo_map)
+    except ValueError as exc:
+        logger.error(f"Row {row_index}: cannot resolve project dir for '{project}': {exc}")
+        return "error"
+
+    if not os.path.isdir(project_dir):
+        logger.error(f"Row {row_index}: project directory does not exist: {project_dir}")
+        return "error"
+
+    try:
+        repo = git.Repo(project_dir)
+
+        new_patch_parent = _get_parent_hexsha(repo, original_commit, args.original_parent_index)
+        target_release = _get_parent_hexsha(repo, backport_commit, args.backport_parent_index)
+        project_url = _get_remote_url(repo)
+
+        patch_dataset_dir = os.path.expanduser(
+            os.path.join(args.dataset_root, f"row-{row_index}", project)
+        )
+        os.makedirs(patch_dataset_dir, exist_ok=True)
+
+        # Save ground-truth developer backport patch
+        developer_backport_patch_path = os.path.join(patch_dataset_dir, "developer_backport.patch")
+        try:
+            developer_backport_patch = _get_patch_against_parent(
+                repo, backport_commit, args.backport_parent_index
+            )
+            with open(developer_backport_patch_path, "w", encoding="utf-8") as f:
+                f.write(developer_backport_patch)
+            logger.info(f"Saved developer backport patch to {developer_backport_patch_path}")
+        except Exception as exc:
+            logger.warning(
+                f"Row {row_index}: unable to export developer backport patch for {backport_commit}: {exc}"
+            )
+
+        tag = f"{args.tag_prefix}-{row_index}"
+
+        generated_config = {
+            "project": project,
+            "type": patch_type,
+            "project_url": project_url,
+            "new_patch": original_commit,
+            "new_patch_parent": new_patch_parent,
+            "target_release": target_release,
+            "error_message": "",
+            "tag": tag,
+            "openai_key": api_key,
+            "project_dir": project_dir,
+            "patch_dataset_dir": patch_dataset_dir,
+            "llm_provider": llm_provider,
+            "model": model,
+            "openai_api_base": api_base,
+            "use_azure": llm_provider == "azure",
+            "azure_endpoint": "",
+            "azure_deployment": "gpt-4",
+            "azure_api_version": "2024-12-01-preview",
+            "build_use_docker": args.build_use_docker,
+            "build_docker_image": args.build_docker_image,
+            "build_command": args.build_command,
+            "backport_commit": backport_commit,
+        }
+
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".yml", delete=False) as tmp:
+            yaml.safe_dump(generated_config, tmp)
+            config_path = tmp.name
+
+        logger.info(
+            f"Running row {row_index}: {project} {original_commit[:8]}"
+            f" -> {row.get('Backport Version', '?')} (type={patch_type or 'unknown'})"
+        )
+        logger.info(f"Generated config at {config_path}")
+
+        extra_validation_config = None
+        if args.run_extra_validation:
+            extra_validation_config = {
+                "enabled": True,
+                "row_index": row_index,
+                "helpers_root": os.path.abspath(os.path.expanduser(args.helpers_root)) if args.helpers_root else "",
+                "builder_image_tag": args.builder_image_tag,
+                "build_timeout": args.build_timeout,
+                "tests_timeout": args.tests_timeout,
+            }
+
+        java_preprocessing_config = None
+        if args.filter_java_patch:
+            java_preprocessing_config = {"filter_java_source": True}
+
+        try:
+            data = load_yml(config_path)
+            run_pipeline(data, args.debug, extra_validation_config, java_preprocessing_config)
+        finally:
+            try:
+                os.remove(config_path)
+            except Exception:
+                pass
+
+        return "ok"
+
+    except Exception as exc:  # pylint: disable=broad-except
+        logger.error(f"Row {row_index}: unhandled error — {exc}", exc_info=args.debug)
+        return "error"
+
+
 def main():
     parser = argparse.ArgumentParser(
-        description="Run PortGPT from a CSV dataset row index",
-        usage="%(prog)s --csv path/to/java_backports.csv --index 0 --repo-root /path/to/clones",
+        description="Run PortGPT from a CSV dataset row index or range",
+        usage=(
+            "%(prog)s --csv path/to/java_backports.csv "
+            "--start-index 0 --end-index 10 --repo-root /path/to/clones"
+        ),
     )
     parser.add_argument("--csv", type=str, required=True, help="Path to dataset CSV")
-    parser.add_argument("--index", type=int, default=0, help="0-based CSV row index")
+    # Single-row shorthand (kept for backward compatibility)
+    parser.add_argument("--index", type=int, default=None, help="0-based CSV row index (single-row shorthand)")
+    # Batch range
+    parser.add_argument("--start-index", type=int, default=0, help="First row to process (inclusive, default: 0)")
+    parser.add_argument(
+        "--end-index", type=int, default=-1,
+        help="Last row to process (inclusive; -1 means last row, default: -1)",
+    )
+    # Type filter
+    parser.add_argument(
+        "--types", type=str, default="",
+        help=(
+            "Comma-separated list of patch types to process (case-insensitive). "
+            "E.g. 'TYPE-I,TYPE-II'. Empty means all types."
+        ),
+    )
     parser.add_argument(
         "--repo-root", type=str, default="",
         help="Root directory containing project clones as subfolders",
@@ -171,120 +314,54 @@ def main():
     # Load optional repo map
     repo_map = _load_repo_map(args.repo_map_file) if args.repo_map_file else {}
 
-    # Read CSV row
+    # Read CSV
     with open(args.csv, "r", encoding="utf-8") as f:
         rows = list(csv.DictReader(f))
-    if args.index >= len(rows):
-        raise IndexError(f"index {args.index} out of range for {len(rows)} rows")
 
-    row = rows[args.index]
-    project = row["Project"]
-    original_commit = row["Original Commit"].strip()
-    backport_commit = row["Backport Commit"].strip()  # used only to derive target_release
-    patch_type = row.get("Type", "").strip()
+    # Resolve row range — --index takes priority as a single-row shorthand
+    if args.index is not None:
+        start = args.index
+        end = args.index
+    else:
+        start = args.start_index
+        end = args.end_index if args.end_index >= 0 else len(rows) - 1
 
-    # Resolve local repo
-    project_dir = _resolve_project_dir(project, args.repo_root, repo_map)
-    if not os.path.isdir(project_dir):
-        raise FileNotFoundError(f"Project directory does not exist: {project_dir}")
+    if start < 0 or start >= len(rows):
+        raise IndexError(f"start-index {start} out of range for {len(rows)} rows")
+    end = min(end, len(rows) - 1)
 
-    repo = git.Repo(project_dir)
+    # Resolve type filter (normalise to upper-case, strip whitespace)
+    type_filter = set()
+    if args.types.strip():
+        type_filter = {t.strip().upper() for t in args.types.split(",") if t.strip()}
 
-    # Derive the three key commits
-    #   new_patch        = original_commit  (the fix on the main branch)
-    #   new_patch_parent = parent of original_commit  (pre-fix state on main branch)
-    #   target_release   = parent of backport_commit  (pre-backport state on target branch)
-    new_patch_parent = _get_parent_hexsha(repo, original_commit, args.original_parent_index)
-    target_release = _get_parent_hexsha(repo, backport_commit, args.backport_parent_index)
-
-    project_url = _get_remote_url(repo)
-
-    # Create an empty patch_dataset_dir.
-    # Without build.sh / test.sh / poc.sh the validation chain auto-passes,
-    # which is the correct behaviour for Java repositories.
-    patch_dataset_dir = os.path.expanduser(
-        os.path.join(args.dataset_root, f"row-{args.index}", project)
+    total = end - start + 1
+    logger.info(
+        f"Batch: rows {start}–{end} ({total} rows)"
+        + (f", types filter: {sorted(type_filter)}" if type_filter else ", all types")
     )
-    os.makedirs(patch_dataset_dir, exist_ok=True)
 
-    # Save ground-truth developer backport patch from the CSV Backport Commit.
-    # For merge commits, diff is taken against --backport-parent-index.
-    developer_backport_patch_path = os.path.join(
-        patch_dataset_dir, "developer_backport.patch"
-    )
-    try:
-        developer_backport_patch = _get_patch_against_parent(
-            repo, backport_commit, args.backport_parent_index
-        )
-        with open(developer_backport_patch_path, "w", encoding="utf-8") as f:
-            f.write(developer_backport_patch)
-        logger.info(f"Saved developer backport patch to {developer_backport_patch_path}")
-    except Exception as exc:
-        logger.warning(
-            f"Unable to export developer backport patch for {backport_commit}: {exc}"
-        )
+    counts = {"ok": 0, "skipped": 0, "error": 0}
 
-    tag = f"{args.tag_prefix}-{args.index}"
+    for i in range(start, end + 1):
+        row = rows[i]
+        patch_type = row.get("Type", "").strip().upper()
 
-    generated_config = {
-        "project": project,
-        "type": patch_type,
-        "project_url": project_url,
-        "new_patch": original_commit,
-        "new_patch_parent": new_patch_parent,
-        "target_release": target_release,
-        "error_message": "",
-        "tag": tag,
-        "openai_key": api_key,
-        "project_dir": project_dir,
-        "patch_dataset_dir": patch_dataset_dir,
-        "llm_provider": llm_provider,
-        "model": model,
-        "openai_api_base": api_base,
-        "use_azure": llm_provider == "azure",
-        "azure_endpoint": "",
-        "azure_deployment": "gpt-4",
-        "azure_api_version": "2024-12-01-preview",
-        "build_use_docker": args.build_use_docker,
-        "build_docker_image": args.build_docker_image,
-        "build_command": args.build_command,
-        "backport_commit": backport_commit,
-    }
+        if type_filter and patch_type not in type_filter:
+            logger.info(f"Row {i}: skipping type '{patch_type}' (not in filter)")
+            counts["skipped"] += 1
+            continue
 
-    with tempfile.NamedTemporaryFile(mode="w", suffix=".yml", delete=False) as tmp:
-        yaml.safe_dump(generated_config, tmp)
-        config_path = tmp.name
+        result = _process_row(row, i, args, api_key, api_base, llm_provider, model, repo_map)
+        counts[result] += 1
 
     logger.info(
-        f"Running row {args.index}: {project} {original_commit[:8]}"
-        f" -> {row.get('Backport Version', '?')}"
+        f"Batch complete — processed: {counts['ok']}, "
+        f"skipped: {counts['skipped']}, errors: {counts['error']} "
+        f"(out of {total} rows in range)"
     )
-    logger.info(f"Generated config at {config_path}")
-
-    extra_validation_config = None
-    if args.run_extra_validation:
-        extra_validation_config = {
-            "enabled": True,
-            "row_index": args.index,
-            "helpers_root": os.path.abspath(os.path.expanduser(args.helpers_root)) if args.helpers_root else "",
-            "builder_image_tag": args.builder_image_tag,
-            "build_timeout": args.build_timeout,
-            "tests_timeout": args.tests_timeout,
-        }
-
-    java_preprocessing_config = None
-    if args.filter_java_patch:
-        java_preprocessing_config = {"filter_java_source": True}
-
-    try:
-        data = load_yml(config_path)
-        run_pipeline(data, args.debug, extra_validation_config, java_preprocessing_config)
-    finally:
-        try:
-            os.remove(config_path)
-        except Exception:
-            pass
 
 
 if __name__ == "__main__":
     main()
+

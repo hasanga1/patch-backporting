@@ -47,6 +47,22 @@ else
     ${DOCKER_CMD} build -t ${IMAGE_TAG} "${HELPER_DIR}"
 fi
 
+echo "--- Verifying JDK executables in builder image... ---"
+if ! ${DOCKER_CMD} run --rm ${IMAGE_TAG} bash -c '
+set -e
+for jdk in /opt/java/openjdk /opt/java/jdk-22.0.2+9 /opt/java/jdk-21.0.4+7 /opt/java/jdk-17.0.12+7; do
+  if [ ! -x "$jdk/bin/java" ]; then
+    echo "Missing Java binary at: $jdk/bin/java"
+    exit 1
+  fi
+  "$jdk/bin/java" -version >/dev/null
+done
+'; then
+    echo "--- Cached image has unusable JDK binaries; rebuilding ${IMAGE_TAG} ---"
+    ${DOCKER_CMD} rmi -f ${IMAGE_TAG} >/dev/null 2>&1 || true
+    ${DOCKER_CMD} build --pull -t ${IMAGE_TAG} "${HELPER_DIR}"
+fi
+
 echo "--- Setting cache permissions... ---"
 ${DOCKER_CMD} run --rm -u root \
     -v "maven-cache-crate:/root/.m2" \

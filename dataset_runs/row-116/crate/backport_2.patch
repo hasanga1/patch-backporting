@@ -1,0 +1,42 @@
+--- a/server/src/main/java/io/crate/planner/operators/LogicalPlanner.java
++++ b/server/src/main/java/io/crate/planner/operators/LogicalPlanner.java
+@@ -329,15 +329,21 @@
+-        private final SubqueryPlanner subqueryPlanner;
+-        private final PlanStats planStats;
+-        private final ForeignDataWrappers foreignDataWrappers;
+-        private final ClusterState clusterState;
++        private final SubqueryPlanner subqueryPlanner;
++        private final PlanStats planStats;
++        private final ForeignDataWrappers foreignDataWrappers;
++        private final ClusterState clusterState;
++        private final CoordinatorTxnCtx coordinatorTxnCtx;
++        private final NodeContext nodeContext;
+ 
+-        private PlanBuilder(SubqueryPlanner subqueryPlanner,
+-                            ForeignDataWrappers foreignDataWrappers,
+-                            PlanStats planStats,
+-                            ClusterState clusterState) {
+-            this.subqueryPlanner = subqueryPlanner;
+-            this.foreignDataWrappers = foreignDataWrappers;
+-            this.planStats = planStats;
+-            this.clusterState = clusterState;
++        private PlanBuilder(SubqueryPlanner subqueryPlanner,
++                            ForeignDataWrappers foreignDataWrappers,
++                            PlanStats planStats,
++                            ClusterState clusterState,
++                            CoordinatorTxnCtx coordinatorTxnCtx,
++                            NodeContext nodeContext) {
++            this.subqueryPlanner = subqueryPlanner;
++            this.foreignDataWrappers = foreignDataWrappers;
++            this.planStats = planStats;
++            this.clusterState = clusterState;
++            this.coordinatorTxnCtx = coordinatorTxnCtx;
++            this.nodeContext = nodeContext;
+         }
+ 
+-        @Override
+-        public LogicalPlan visitAnalyzedRelation(AnalyzedRelation relation, List<Symbol> outputs) {
++        @Override
++        public LogicalPlan visitAnalyzedRelation(AnalyzedRelation relation, List<Symbol> outputs) {
+             return null;
+         }
