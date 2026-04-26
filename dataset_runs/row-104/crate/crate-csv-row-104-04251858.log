@@ -1,0 +1,57 @@
+2026-04-25 18:58:37,355 - backport - INFO - Using openrouter API: https://openrouter.ai/api/v1 (model: openai/gpt-4.1-mini)
+2026-04-25 18:58:37,798 - backport - INFO - Aplly all hunks in the patch      PASS
+2026-04-25 18:58:37,959 - backport - INFO - Successfully backport the patch to the target release 0b04fc5dff10113e738f3896300b3d0aed26111a
+2026-04-25 18:58:37,960 - backport - INFO - --- a/server/src/main/java/io/crate/execution/dml/Indexer.java
++++ b/server/src/main/java/io/crate/execution/dml/Indexer.java
+@@ -584,10 +584,9 @@ public class Indexer {
+                 // the reference may be invalid
+                 Reference newRef = getRef.apply(oldRef.column());
+                 if (newRef == null) {
+-                    // column was dropped or new column is invalid
+-                    it.remove();
+-                    valueIndexers.remove(idx);
+-                    // don't increase idx, since we removed the current element
++                    // column can be of an undetermined type, e.g. `[]` (array with undefined inner type)
++                    valueIndexers.get(idx).updateTargets(getRef);
++                    idx++;
+                     continue;
+                 }
+                 if (oldRef.equals(newRef) == false) {
+
+--- a/server/src/test/java/io/crate/execution/dml/IndexerTest.java
++++ b/server/src/test/java/io/crate/execution/dml/IndexerTest.java
+@@ -1176,6 +1176,33 @@ public class IndexerTest extends CrateDummyClusterServiceUnitTest {
+             .hasMessageContainingAll("Failed CONSTRAINT", "CHECK (\"obj\"['x'] > 10) for values: [{x=5}]");
+     }
+ 
++    @Test
++    public void test_empty_arrays_together_with_another_field_added_as_new_cols_with_dynamic_policy() throws Exception {
++        SQLExecutor e = SQLExecutor.of(clusterService)
++            .addTable("create table tbl (i int) with (column_policy='dynamic')");
++        DocTableInfo table = e.resolveTableInfo("tbl");
++
++        var indexer = getIndexer(e, "tbl", "i", "empty_arr", "a");
++        indexer.updateTargets(table::getReference);
++        IndexItem item = item(1, List.of(), "foo");
++        List<Reference> newColumns = indexer.collectSchemaUpdates(item);
++        assertThat(newColumns).satisfiesExactly(
++            x -> assertThat(x.column()).isEqualTo(ColumnIdent.of("a"))
++        );
++        ParsedDocument doc = indexer.index(item);
++        assertThat(doc.source().utf8ToString()).isEqualToIgnoringWhitespace(
++            """
++            {"1":1,"_u_empty_arr":[],"_u_a":"foo"}
++            """
++        );
++        // prefix is stripped on non _raw lookups
++        assertThat(source(doc, table)).isEqualToIgnoringWhitespace(
++            """
++            {"a":"foo","i":1,"empty_arr":[]}
++            """
++        );
++    }
++
+     @Test
+     public void test_empty_arrays_are_prefixed_as_unknown() throws Exception {
+         SQLExecutor e = SQLExecutor.of(clusterService)
+

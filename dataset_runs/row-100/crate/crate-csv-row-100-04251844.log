@@ -1,0 +1,2324 @@
+2026-04-25 18:44:26,818 - backport - INFO - Using openrouter API: https://openrouter.ai/api/v1 (model: openai/gpt-4.1-mini)
+
+
+[1m> Entering new AgentExecutor chain...[0m
+
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `git_history` with `{}`
+
+
+[0m[36;1m[1;3mfda33ed72f Refactor ObjectIndexer to avoid parallel maps (#16337)
+
+diff --git a/server/src/main/java/io/crate/execution/dml/ObjectIndexer.java b/server/src/main/java/io/crate/execution/dml/ObjectIndexer.java
+--- a/server/src/main/java/io/crate/execution/dml/ObjectIndexer.java
++++ b/server/src/main/java/io/crate/execution/dml/ObjectIndexer.java
+@@ -179,25 +171,15 @@
+ 
+     @Override
+     public void updateTargets(Function<ColumnIdent, Reference> getRef) {
+-        for (Map.Entry<String, Reference> entry : childColumns.entrySet()) {
+-            var innerName = entry.getKey();
+-            var oldChildRef = entry.getValue();
+-            var newChildRef = getRef.apply(oldChildRef.column());
+-            if (oldChildRef.equals(newChildRef) == false) {
+-                entry.setValue(newChildRef);
+-                if (newChildRef.granularity() != RowGranularity.PARTITION) {
+-                    //noinspection unchecked
+-                    ValueIndexer<Object> newIndexer = (ValueIndexer<Object>) newChildRef.valueType().valueIndexer(
+-                            newChildRef.ident().tableIdent(),
+-                            newChildRef,
+-                            getRef
+-                    );
+-                    innerIndexers.put(innerName, newIndexer);
+-                }
++        for (var entry : children.entrySet()) {
++            var newChildRef = getRef.apply(entry.getValue().ident());
++            if (Objects.equals(entry.getValue().reference, newChildRef) == false) {
++                // noinspection unchecked
++                ValueIndexer<Object> indexer = newChildRef.granularity() == RowGranularity.PARTITION
++                    ? null : (ValueIndexer<Object>) newChildRef.valueType().valueIndexer(newChildRef.ident().tableIdent(), newChildRef, getRef);
++                children.put(entry.getKey(), new Child(newChildRef, indexer));
+             }
+-        }
+-        for (var indexer : innerIndexers.values()) {
+-            indexer.updateTargets(getRef);
++            entry.getValue().indexer.updateTargets(getRef);
+         }
+     }
+
+You need to do the following analysis based on the information in the last commit:
+Analyze the code logic of the context of the patch to be ported in this commit step by step.
+If code logic already existed before this commit, the patch context can be assumed to remain in a similar location. Use `locate` and `viewcode` to check your results.
+If code logic were added in this commit, then you need to `git_show` for further details.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `locate_symbol` with `{'ref': 'fe6a722a71ab10973528a45ded5187b520e27c61', 'symbol': 'updateTargets'}`
+responded: The git history shows a commit (fda33ed72f) that refactored the `updateTargets` method in `ObjectIndexer` before the target ref fe6a722a71ab10973528a45ded5187b520e27c61. The refactor changed the method to iterate over `children.entrySet()` instead of `childColumns.entrySet()`, and updated the children references and indexers accordingly. 
+
+The patch to be backported builds on this refactored logic but adds additional logic to:
+- Retrieve the `objectColumn` and `updatedSelf` reference
+- Extract the `ObjectType` from the updated reference
+- After updating existing children, it adds new children for any inner columns that are in the `ObjectType` but not yet in `children`
+
+Since the refactor commit already introduced the core logic of updating children references and indexers, the patch we want to backport modifies and extends this logic.
+
+Next, I will locate the `updateTargets` method in the target ref to verify the exact code context and to view the full method for crafting the patch.
+
+I will use `locate_symbol` to find the `updateTargets` method in the target ref fe6a722a71ab10973528a45ded5187b520e27c61.
+
+[0m[33;1m[1;3mserver/src/main/java/io/crate/execution/dml/ArrayIndexer.java:84
+server/src/main/java/io/crate/execution/dml/Indexer.java:588
+server/src/main/java/io/crate/execution/dml/ObjectIndexer.java:181
+server/src/main/java/io/crate/execution/dml/RawIndexer.java:143
+server/src/main/java/io/crate/execution/dml/ValueIndexer.java:79[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': 'fe6a722a71ab10973528a45ded5187b520e27c61', 'path': 'server/src/main/java/io/crate/execution/dml/ObjectIndexer.java', 'startline': 170, 'endline': 194}`
+
+
+[0m[36;1m[1;3mHere are lines 170 through 194.
+
+                    onDynamicColumn,
+                    synthetics
+                );
+            }
+        }
+        if (value != null) {
+            addNewColumns(value, onDynamicColumn, synthetics);
+        }
+    }
+
+    @Override
+    public void updateTargets(Function<ColumnIdent, Reference> getRef) {
+        for (Map.Entry<String, Reference> entry : childColumns.entrySet()) {
+            var innerName = entry.getKey();
+            var oldChildRef = entry.getValue();
+            var newChildRef = getRef.apply(oldChildRef.column());
+            if (oldChildRef.equals(newChildRef) == false) {
+                entry.setValue(newChildRef);
+                if (newChildRef.granularity() != RowGranularity.PARTITION) {
+                    //noinspection unchecked
+                    ValueIndexer<Object> newIndexer = (ValueIndexer<Object>) newChildRef.valueType().valueIndexer(
+                            newChildRef.ident().tableIdent(),
+                            newChildRef,
+                            getRef
+                    );
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': 'fe6a722a71ab10973528a45ded5187b520e27c61', 'path': 'server/src/main/java/io/crate/execution/dml/ObjectIndexer.java', 'startline': 195, 'endline': 210}`
+
+
+[0m[36;1m[1;3mHere are lines 195 through 210.
+
+                    innerIndexers.put(innerName, newIndexer);
+                }
+            }
+        }
+        for (var indexer : innerIndexers.values()) {
+            indexer.updateTargets(getRef);
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private void addNewColumns(Map<String, Object> value,
+                               Consumer<? super Reference> onDynamicColumn,
+                               Synthetics synthetics) throws IOException {
+        int position = -1;
+        for (var entry : value.entrySet()) {
+            String innerName = entry.getKey();
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': 'fe6a722a71ab10973528a45ded5187b520e27c61', 'path': 'server/src/main/java/io/crate/execution/dml/ObjectIndexer.java', 'startline': 50, 'endline': 80}`
+responded: The code block in the older version (ref fe6a722a71ab10973528a45ded5187b520e27c61) for the method `updateTargets` is clearly different from the newer version patch context. 
+
+In the older version:
+- It iterates over `childColumns` which is a `Map<String, Reference>`.
+- It updates the references directly in this map.
+- It uses a secondary map `innerIndexers` to keep track of indexers.
+- It finally calls `updateTargets` on all indexers in `innerIndexers`.
+
+In the newer version (patch to be backported):
+- It iterates over `children` which is a `Map<String, Child>`.
+- It updates the children map with new `Child` objects if references change.
+- It calls `updateTargets` on the `indexer` inside each `Child`.
+- It also adds new children if they are missing in the `children` map based on `objectType.innerTypes()`.
+
+The patch changes the structure of how children are managed and deferred the update of children until after a successful add-column request.
+
+From the `git_history`, the commit with hash `fda33ed72f` refactored the `ObjectIndexer` to avoid parallel maps, changing from `childColumns` and `innerIndexers` to a single `children` map with `Child` objects. This refactor happened after the older ref `fe6a722a71ab10973528a45ded5187b520e27c61`.
+
+Therefore, the patch to be backported must be adapted to the older code structure:
+- Use `childColumns` and `innerIndexers` instead of `children`.
+- Adapt the logic of adding new children accordingly.
+
+Next, I want to check the definition of `children` and `childColumns` and `innerIndexers` in the older version to understand their types and usage to craft the patch properly.
+
+I will locate the class fields in the older version `fe6a722a71ab10973528a45ded5187b520e27c61` for `ObjectIndexer`.
+
+[0m[36;1m[1;3mHere are lines 50 through 80.
+
+import io.crate.types.DataType;
+import io.crate.types.ObjectType;
+import io.crate.types.StorageSupport;
+
+public class ObjectIndexer implements ValueIndexer<Map<String, Object>> {
+
+    private final ObjectType objectType;
+    private final HashMap<String, ValueIndexer<Object>> innerIndexers;
+    private final ColumnIdent column;
+    private final Map<String, Reference> childColumns;
+    private final Function<ColumnIdent, Reference> getRef;
+    private final RelationName table;
+    private final Reference ref;
+    private final boolean prefixUnknownColumns;
+
+    @SuppressWarnings("unchecked")
+    public ObjectIndexer(RelationName table,
+                         Reference ref,
+                         Function<ColumnIdent, Reference> getRef) {
+        this.table = table;
+        this.ref = ref;
+        this.getRef = getRef;
+        this.prefixUnknownColumns = ref.oid() != COLUMN_OID_UNASSIGNED;
+        this.column = ref.column();
+        this.objectType = (ObjectType) ArrayType.unnest(ref.valueType());
+        this.innerIndexers = new HashMap<>();
+        this.childColumns = new HashMap<>();
+        for (var entry : objectType.innerTypes().entrySet()) {
+            String innerName = entry.getKey();
+            DataType<?> value = entry.getValue();
+            ColumnIdent child = column.getChild(innerName);
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': 'fe6a722a71ab10973528a45ded5187b520e27c61', 'path': 'server/src/main/java/io/crate/execution/dml/ObjectIndexer.java', 'startline': 80, 'endline': 100}`
+
+
+[0m[36;1m[1;3mHere are lines 80 through 100.
+
+            ColumnIdent child = column.getChild(innerName);
+            Reference childRef = getRef.apply(child);
+            if (childRef == null) {
+                // Race, either column got deleted or stale DocTableInfo?
+                // Treat it as dynamic column if a value for the nested column is found
+                continue;
+            }
+            childColumns.put(innerName, childRef);
+            if (childRef.granularity() != RowGranularity.PARTITION) {
+                ValueIndexer<?> valueIndexer = value.valueIndexer(
+                    table,
+                    childRef,
+                    getRef
+                );
+                innerIndexers.put(innerName, (ValueIndexer<Object>) valueIndexer);
+            }
+        }
+    }
+
+    @Override
+    public void indexValue(@Nullable Map<String, Object> value,
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `git_history` with `{}`
+responded: I have found the full method updateTargets in the older version at lines 178-207, and it is clear that the method implementation is different from the newer version. The older version uses two maps: childColumns and innerIndexers, and updates them accordingly. The newer version uses a single map children with Child objects and updates them differently, also adding new children if missing.
+
+The patch changes the updateTargets method to delay changes to children until after add-column requests succeed. It also modifies the children map differently.
+
+Given the older version's different structure, I need to adapt the patch logic to the older version's data structures and flow.
+
+Next, I want to check the history of this updateTargets method to see if there were any relevant changes or if this method was added in a certain commit. This can guide me on how to backport the patch correctly.
+
+I will run git_history on this updateTargets method location in the older version to check its change history.
+
+[0m[36;1m[1;3mfda33ed72f Refactor ObjectIndexer to avoid parallel maps (#16337)
+
+diff --git a/server/src/main/java/io/crate/execution/dml/ObjectIndexer.java b/server/src/main/java/io/crate/execution/dml/ObjectIndexer.java
+--- a/server/src/main/java/io/crate/execution/dml/ObjectIndexer.java
++++ b/server/src/main/java/io/crate/execution/dml/ObjectIndexer.java
+@@ -179,25 +171,15 @@
+ 
+     @Override
+     public void updateTargets(Function<ColumnIdent, Reference> getRef) {
+-        for (Map.Entry<String, Reference> entry : childColumns.entrySet()) {
+-            var innerName = entry.getKey();
+-            var oldChildRef = entry.getValue();
+-            var newChildRef = getRef.apply(oldChildRef.column());
+-            if (oldChildRef.equals(newChildRef) == false) {
+-                entry.setValue(newChildRef);
+-                if (newChildRef.granularity() != RowGranularity.PARTITION) {
+-                    //noinspection unchecked
+-                    ValueIndexer<Object> newIndexer = (ValueIndexer<Object>) newChildRef.valueType().valueIndexer(
+-                            newChildRef.ident().tableIdent(),
+-                            newChildRef,
+-                            getRef
+-                    );
+-                    innerIndexers.put(innerName, newIndexer);
+-                }
++        for (var entry : children.entrySet()) {
++            var newChildRef = getRef.apply(entry.getValue().ident());
++            if (Objects.equals(entry.getValue().reference, newChildRef) == false) {
++                // noinspection unchecked
++                ValueIndexer<Object> indexer = newChildRef.granularity() == RowGranularity.PARTITION
++                    ? null : (ValueIndexer<Object>) newChildRef.valueType().valueIndexer(newChildRef.ident().tableIdent(), newChildRef, getRef);
++                children.put(entry.getKey(), new Child(newChildRef, indexer));
+             }
+-        }
+-        for (var indexer : innerIndexers.values()) {
+-            indexer.updateTargets(getRef);
++            entry.getValue().indexer.updateTargets(getRef);
+         }
+     }
+
+You need to do the following analysis based on the information in the last commit:
+Analyze the code logic of the context of the patch to be ported in this commit step by step.
+If code logic already existed before this commit, the patch context can be assumed to remain in a similar location. Use `locate` and `viewcode` to check your results.
+If code logic were added in this commit, then you need to `git_show` for further details.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': 'fe6a722a71ab10973528a45ded5187b520e27c61', 'path': 'server/src/main/java/io/crate/execution/dml/ObjectIndexer.java', 'startline': 178, 'endline': 210}`
+responded: The last commit (fda33ed72f) refactored the `updateTargets` method in `ObjectIndexer` to avoid parallel maps by changing from using two separate maps (`childColumns` and `innerIndexers`) to a single `children` map holding `Child` objects with both the reference and the indexer.
+
+The patch to be backported modifies this `updateTargets` method further. Since the refactor commit already changed the logic and data structures, the patch context in the older version (fe6a722a) is different and uses `childColumns` and `innerIndexers` maps instead of `children`.
+
+The patch also adds new logic to update the `ObjectIndexer` children only after a successful add-column request, by delaying updates until `updateTargets` is called.
+
+The older version's `updateTargets` method iterates over `childColumns`, updates references and indexers, and then calls `updateTargets` on all inner indexers.
+
+The patch in the newer version changes this to iterate over `children` entries, update the child references and indexers if changed, and then update targets on each child's indexer. It also adds logic to add missing children from the updated object type.
+
+Given this, the patch can be backported to the older version by adapting to the older data structures and logic, i.e., using `childColumns` and `innerIndexers` maps.
+
+Next, I will view the full `updateTargets` method in the older version to craft the backport patch properly.
+
+[0m[36;1m[1;3mHere are lines 178 through 210.
+
+    }
+
+    @Override
+    public void updateTargets(Function<ColumnIdent, Reference> getRef) {
+        for (Map.Entry<String, Reference> entry : childColumns.entrySet()) {
+            var innerName = entry.getKey();
+            var oldChildRef = entry.getValue();
+            var newChildRef = getRef.apply(oldChildRef.column());
+            if (oldChildRef.equals(newChildRef) == false) {
+                entry.setValue(newChildRef);
+                if (newChildRef.granularity() != RowGranularity.PARTITION) {
+                    //noinspection unchecked
+                    ValueIndexer<Object> newIndexer = (ValueIndexer<Object>) newChildRef.valueType().valueIndexer(
+                            newChildRef.ident().tableIdent(),
+                            newChildRef,
+                            getRef
+                    );
+                    innerIndexers.put(innerName, newIndexer);
+                }
+            }
+        }
+        for (var indexer : innerIndexers.values()) {
+            indexer.updateTargets(getRef);
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private void addNewColumns(Map<String, Object> value,
+                               Consumer<? super Reference> onDynamicColumn,
+                               Synthetics synthetics) throws IOException {
+        int position = -1;
+        for (var entry : value.entrySet()) {
+            String innerName = entry.getKey();
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': 'fe6a722a71ab10973528a45ded5187b520e27c61', 'path': 'server/src/main/java/io/crate/execution/dml/ObjectIndexer.java', 'startline': 170, 'endline': 210}`
+responded: The patch in the newer version modifies the `updateTargets` method of `ObjectIndexer` to use a different internal structure (`children` instead of `childColumns`), and it changes the logic to defer updating the `ObjectIndexer`'s children until after a successful add-column request. It also adds logic to add new children that weren't present before.
+
+In the older version (ref fe6a722a71ab10973528a45ded5187b520e27c61), the `updateTargets` method operates on `childColumns` and `innerIndexers`, updating the references and indexers directly without the additional logic of adding new children.
+
+The patch to backport should:
+- Adapt the newer patch's logic to the older version's use of `childColumns` and `innerIndexers`.
+- Implement the logic to update the references and indexers only after successful add-column requests.
+- Add the logic to add new children if they don't exist in `childColumns`.
+
+I will now locate the exact line numbers and the full method in the older version to prepare the patch. I will view the full `updateTargets` method and surrounding context for the older version to ensure the patch fits correctly.
+
+I will view lines 170 to 210 in the older version to cover the entire `updateTargets` method and its context.
+
+[0m[36;1m[1;3mHere are lines 170 through 210.
+
+                    onDynamicColumn,
+                    synthetics
+                );
+            }
+        }
+        if (value != null) {
+            addNewColumns(value, onDynamicColumn, synthetics);
+        }
+    }
+
+    @Override
+    public void updateTargets(Function<ColumnIdent, Reference> getRef) {
+        for (Map.Entry<String, Reference> entry : childColumns.entrySet()) {
+            var innerName = entry.getKey();
+            var oldChildRef = entry.getValue();
+            var newChildRef = getRef.apply(oldChildRef.column());
+            if (oldChildRef.equals(newChildRef) == false) {
+                entry.setValue(newChildRef);
+                if (newChildRef.granularity() != RowGranularity.PARTITION) {
+                    //noinspection unchecked
+                    ValueIndexer<Object> newIndexer = (ValueIndexer<Object>) newChildRef.valueType().valueIndexer(
+                            newChildRef.ident().tableIdent(),
+                            newChildRef,
+                            getRef
+                    );
+                    innerIndexers.put(innerName, newIndexer);
+                }
+            }
+        }
+        for (var indexer : innerIndexers.values()) {
+            indexer.updateTargets(getRef);
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private void addNewColumns(Map<String, Object> value,
+                               Consumer<? super Reference> onDynamicColumn,
+                               Synthetics synthetics) throws IOException {
+        int position = -1;
+        for (var entry : value.entrySet()) {
+            String innerName = entry.getKey();
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': 'fe6a722a71ab10973528a45ded5187b520e27c61', 'path': 'server/src/main/java/io/crate/execution/dml/ObjectIndexer.java', 'startline': 40, 'endline': 70}`
+responded: The code block in the older version (ref fe6a722a71ab10973528a45ded5187b520e27c61) for the method `updateTargets` is significantly different from the newer version (ref d28c3308dfbf2223a1f083db35fe61d79ac0953b) patch context. The older version uses two maps: `childColumns` (Map<String, Reference>) and `innerIndexers` (Map<String, ValueIndexer<Object>>) and updates them separately. The newer version uses a single map `children` which maps to a `Child` object containing both `Reference` and `ValueIndexer`.
+
+The patch to be backported involves:
+- Changing the `updateTargets` method to update the `children` map only after a successful add-column request.
+- Adding logic to add new children if they don't exist in `children` but exist in the updated `ObjectType`.
+
+Since the older version uses a different data structure (`childColumns` and `innerIndexers` instead of `children`), the patch cannot be applied directly. We need to backport the logic of the patch to the older style.
+
+To do this, I need to:
+1. Understand the structure and usage of `childColumns` and `innerIndexers` in the older version.
+2. Understand how `children` in the newer version corresponds to those.
+3. Write a patch that updates `childColumns` and `innerIndexers` similarly to how `children` is updated in the newer version.
+4. Add missing children from the updated `ObjectType` to `childColumns` and `innerIndexers`.
+
+Next, I will check the class fields and constructor in the older version to confirm `childColumns` and `innerIndexers` usage and types.
+
+I have already viewed lines 50-100 which show the constructor and initialization of `childColumns` and `innerIndexers`. I will now check the class fields declaration to confirm these maps.
+
+I will view lines 40-70 in `ObjectIndexer.java` in the older version to see the class fields.
+
+[0m[36;1m[1;3mHere are lines 40 through 70.
+
+import io.crate.expression.symbol.Symbol;
+import io.crate.metadata.ColumnIdent;
+import io.crate.metadata.IndexType;
+import io.crate.metadata.Reference;
+import io.crate.metadata.ReferenceIdent;
+import io.crate.metadata.RelationName;
+import io.crate.metadata.RowGranularity;
+import io.crate.metadata.SimpleReference;
+import io.crate.sql.tree.ColumnPolicy;
+import io.crate.types.ArrayType;
+import io.crate.types.DataType;
+import io.crate.types.ObjectType;
+import io.crate.types.StorageSupport;
+
+public class ObjectIndexer implements ValueIndexer<Map<String, Object>> {
+
+    private final ObjectType objectType;
+    private final HashMap<String, ValueIndexer<Object>> innerIndexers;
+    private final ColumnIdent column;
+    private final Map<String, Reference> childColumns;
+    private final Function<ColumnIdent, Reference> getRef;
+    private final RelationName table;
+    private final Reference ref;
+    private final boolean prefixUnknownColumns;
+
+    @SuppressWarnings("unchecked")
+    public ObjectIndexer(RelationName table,
+                         Reference ref,
+                         Function<ColumnIdent, Reference> getRef) {
+        this.table = table;
+        this.ref = ref;
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': 'fe6a722a71ab10973528a45ded5187b520e27c61', 'path': 'server/src/main/java/io/crate/execution/dml/ObjectIndexer.java', 'startline': 30, 'endline': 120}`
+responded: Analysis:
+
+1. The patch in the newer version changes the `updateTargets` method of `ObjectIndexer` class:
+   - Instead of iterating over `childColumns` (a Map<String, Reference>), it iterates over `children` (a Map<String, Child>).
+   - It updates the child references and indexers only after a successful add-column request.
+   - It also adds missing children for new inner columns from the updated object type.
+
+2. In the older version (ref fe6a722a71ab10973528a45ded5187b520e27c61):
+   - The `updateTargets` method iterates over `childColumns` (Map<String, Reference>).
+   - It updates the references in `childColumns` and the corresponding indexers in `innerIndexers`.
+   - It does not have a concept of `children` as a map of `Child` objects.
+
+3. The patch introduces a new structure `children` with `Child` objects that hold both the `Reference` and the `ValueIndexer`.
+   - The older version uses separate maps: `childColumns` for references and `innerIndexers` for indexers.
+
+4. The patch also adds new children in `updateTargets` based on the updated object type, which the older version does not do.
+
+Conclusion:
+- The patch changes the internal data structures and logic in `updateTargets`.
+- The older version lacks the `children` map and `Child` class.
+- To backport, we need to adapt the patch to the older structure: updating `childColumns` and `innerIndexers` maps.
+- We also need to add the logic of adding new children in the older version's `updateTargets` method.
+
+Next Steps:
+- Locate the full `ObjectIndexer` class in the older version to confirm the presence and structure of `childColumns`, `innerIndexers`, `objectType`, `column`, `ref`, and `table`.
+- Confirm if `Child` class exists or if we need to adapt without it.
+- View the full `updateTargets` method and relevant class fields.
+- Then craft the patch for the older version adapting the new logic to the older structure.
+
+I will view more lines around the `ObjectIndexer` class in the older version to confirm these details. I will view lines 30-120 to cover the constructor and fields.
+
+[0m[36;1m[1;3mHere are lines 30 through 120.
+
+import java.util.Map;
+import java.util.function.Consumer;
+import java.util.function.Function;
+
+import org.apache.lucene.index.IndexableField;
+import org.elasticsearch.common.xcontent.XContentBuilder;
+import org.jetbrains.annotations.Nullable;
+
+import io.crate.data.Input;
+import io.crate.execution.dml.Indexer.ColumnConstraint;
+import io.crate.expression.symbol.Symbol;
+import io.crate.metadata.ColumnIdent;
+import io.crate.metadata.IndexType;
+import io.crate.metadata.Reference;
+import io.crate.metadata.ReferenceIdent;
+import io.crate.metadata.RelationName;
+import io.crate.metadata.RowGranularity;
+import io.crate.metadata.SimpleReference;
+import io.crate.sql.tree.ColumnPolicy;
+import io.crate.types.ArrayType;
+import io.crate.types.DataType;
+import io.crate.types.ObjectType;
+import io.crate.types.StorageSupport;
+
+public class ObjectIndexer implements ValueIndexer<Map<String, Object>> {
+
+    private final ObjectType objectType;
+    private final HashMap<String, ValueIndexer<Object>> innerIndexers;
+    private final ColumnIdent column;
+    private final Map<String, Reference> childColumns;
+    private final Function<ColumnIdent, Reference> getRef;
+    private final RelationName table;
+    private final Reference ref;
+    private final boolean prefixUnknownColumns;
+
+    @SuppressWarnings("unchecked")
+    public ObjectIndexer(RelationName table,
+                         Reference ref,
+                         Function<ColumnIdent, Reference> getRef) {
+        this.table = table;
+        this.ref = ref;
+        this.getRef = getRef;
+        this.prefixUnknownColumns = ref.oid() != COLUMN_OID_UNASSIGNED;
+        this.column = ref.column();
+        this.objectType = (ObjectType) ArrayType.unnest(ref.valueType());
+        this.innerIndexers = new HashMap<>();
+        this.childColumns = new HashMap<>();
+        for (var entry : objectType.innerTypes().entrySet()) {
+            String innerName = entry.getKey();
+            DataType<?> value = entry.getValue();
+            ColumnIdent child = column.getChild(innerName);
+            Reference childRef = getRef.apply(child);
+            if (childRef == null) {
+                // Race, either column got deleted or stale DocTableInfo?
+                // Treat it as dynamic column if a value for the nested column is found
+                continue;
+            }
+            childColumns.put(innerName, childRef);
+            if (childRef.granularity() != RowGranularity.PARTITION) {
+                ValueIndexer<?> valueIndexer = value.valueIndexer(
+                    table,
+                    childRef,
+                    getRef
+                );
+                innerIndexers.put(innerName, (ValueIndexer<Object>) valueIndexer);
+            }
+        }
+    }
+
+    @Override
+    public void indexValue(@Nullable Map<String, Object> value,
+                           XContentBuilder xContentBuilder,
+                           Consumer<? super IndexableField> addField,
+                           Synthetics synthetics,
+                           Map<ColumnIdent, Indexer.ColumnConstraint> checks) throws IOException {
+        xContentBuilder.startObject();
+        for (var entry : childColumns.entrySet()) {
+            var childRef = entry.getValue();
+            String innerName = entry.getKey();
+            DataType<?> type = childRef.valueType();
+            ColumnIdent innerColumn = column.getChild(innerName);
+            Object innerValue = null;
+            if (value == null || value.containsKey(innerName) == false) {
+                Input<Object> synthetic = synthetics.get(innerColumn);
+                if (synthetic != null) {
+                    innerValue = synthetic.value();
+                }
+            } else {
+                innerValue = value.get(innerName);
+            }
+            ColumnConstraint check = checks.get(innerColumn);
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `locate_symbol` with `{'ref': 'd28c3308dfbf2223a1f083db35fe61d79ac0953b', 'symbol': 'ObjectIndexer'}`
+responded: The patch modifies the method `updateTargets` in the class `ObjectIndexer`. The older version's `updateTargets` method iterates over a `Map<String, Reference>` called `childColumns`, updating each entry's value and inner indexers accordingly. The newer version changes this to iterate over a `children` map holding `Child` objects, updates the references, and updates the children accordingly. It also adds logic to add new children if they do not exist in the `children` map.
+
+From the code snippets viewed, the older version uses `childColumns` and `innerIndexers` maps, while the newer version uses a `children` map of `Child` objects that encapsulate the reference and indexer.
+
+The patch also adds a piece of logic to add new children from the `objectType.innerTypes()` that are not already in the children map.
+
+This means the patch cannot be directly applied because the data structures and some logic have changed between the two versions.
+
+To backport this patch, I need to:
+
+1. Adapt the patch logic to the older version's structure:
+   - Instead of iterating over `children.entrySet()`, iterate over `childColumns.entrySet()`.
+   - Instead of updating `children.put(...)`, update `childColumns.put(...)`.
+   - Instead of updating `children.getValue().indexer.updateTargets(...)`, update `innerIndexers` accordingly.
+2. Add the logic to add new columns from `objectType.innerTypes()` that are not present in `childColumns`.
+3. Use the older version's types and methods.
+
+I will now check the declaration of `children` and `Child` in the newer version to understand the data structure better and see how to adapt it to the older version.
+
+I will locate `children` and `Child` in the newer version at ref d28c3308dfbf2223a1f083db35fe61d79ac0953b (the newer version) by searching for them in `ObjectIndexer.java`.
+
+I will use `locate_symbol` to locate the class `ObjectIndexer` in the newer version, then view the fields to find `children` and `Child`.
+
+This will help me understand how to map the newer version's logic to the older version's structure.
+
+[0m[33;1m[1;3mserver/src/main/java/io/crate/execution/dml/ObjectIndexer.java:53
+server/src/main/java/io/crate/execution/dml/ObjectIndexer.java:69[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': 'd28c3308dfbf2223a1f083db35fe61d79ac0953b', 'path': 'server/src/main/java/io/crate/execution/dml/ObjectIndexer.java', 'startline': 150, 'endline': 190}`
+
+
+[0m[36;1m[1;3mHere are lines 150 through 190.
+
+                    onDynamicColumn,
+                    synthetics
+                );
+            }
+        }
+        if (value != null) {
+            addNewColumns(value, onDynamicColumn, synthetics);
+        }
+    }
+
+    @Override
+    public void updateTargets(Function<ColumnIdent, Reference> getRef) {
+        for (var entry : children.entrySet()) {
+            var newChildRef = getRef.apply(entry.getValue().ident());
+            if (Objects.equals(entry.getValue().reference, newChildRef) == false) {
+                // noinspection unchecked
+                ValueIndexer<Object> indexer = newChildRef.granularity() == RowGranularity.PARTITION
+                    ? null : (ValueIndexer<Object>) newChildRef.valueType().valueIndexer(newChildRef.ident().tableIdent(), newChildRef, getRef);
+                children.put(entry.getKey(), new Child(newChildRef, indexer));
+            }
+            entry.getValue().indexer.updateTargets(getRef);
+        }
+    }
+
+    @Override
+    public String storageIdentLeafName() {
+        return ref.storageIdentLeafName();
+    }
+
+    @SuppressWarnings("unchecked")
+    private void addNewColumns(Map<String, Object> value,
+                               Consumer<? super Reference> onDynamicColumn,
+                               Synthetics synthetics) throws IOException {
+        ColumnPolicy columnPolicy = ref.columnPolicy();
+        if (columnPolicy == ColumnPolicy.IGNORED) {
+            return;
+        }
+        boolean isStrict = columnPolicy == ColumnPolicy.STRICT;
+        int position = -1;
+        for (var entry : value.entrySet()) {
+            String innerName = entry.getKey();
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': 'd28c3308dfbf2223a1f083db35fe61d79ac0953b', 'path': 'server/src/main/java/io/crate/execution/dml/ObjectIndexer.java', 'startline': 190, 'endline': 210}`
+
+
+[0m[36;1m[1;3mHere are lines 190 through 210.
+
+            String innerName = entry.getKey();
+            Object innerValue = entry.getValue();
+            if (children.containsKey(innerName) || innerValue == null) {
+                continue;
+            }
+            if (isStrict) {
+                throw new IllegalArgumentException(String.format(
+                    Locale.ENGLISH,
+                    "Cannot add column `%s` to strict object `%s`",
+                    innerName,
+                    ref.column()
+                ));
+            }
+            var type = DynamicIndexer.guessType(innerValue);
+            DynamicIndexer.throwOnNestedArray(type);
+            innerValue = type.sanitizeValue(innerValue);
+            StorageSupport<?> storageSupport = type.storageSupport();
+            if (storageSupport == null) {
+                if (DynamicIndexer.handleEmptyArray(type, innerValue)) {
+                    continue;
+                }
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `validate` with `{'ref': 'fe6a722a71ab10973528a45ded5187b520e27c61', 'patch': '--- a/server/src/main/java/io/crate/execution/dml/ObjectIndexer.java\n+++ b/server/src/main/java/io/crate/execution/dml/ObjectIndexer.java\n@@ -178,33 +178,49 @@\n-    public void updateTargets(Function<ColumnIdent, Reference> getRef) {\n-        for (Map.Entry<String, Reference> entry : childColumns.entrySet()) {\n-            var innerName = entry.getKey();\n-            var oldChildRef = entry.getValue();\n-            var newChildRef = getRef.apply(oldChildRef.column());\n-            if (oldChildRef.equals(newChildRef) == false) {\n-                entry.setValue(newChildRef);\n-                if (newChildRef.granularity() != RowGranularity.PARTITION) {\n-                    //noinspection unchecked\n-                    ValueIndexer<Object> newIndexer = (ValueIndexer<Object>) newChildRef.valueType().valueIndexer(\n-                            newChildRef.ident().tableIdent(),\n-                            newChildRef,\n-                            getRef\n-                    );\n-                    innerIndexers.put(innerName, newIndexer);\n-                }\n-            }\n-        }\n-        for (var indexer : innerIndexers.values()) {\n-            indexer.updateTargets(getRef);\n-        }\n+    public void updateTargets(Function<ColumnIdent, Reference> getRef) {\n+        ColumnIdent objectColumn = ref.column();\n+        Reference updatedSelf = getRef.apply(objectColumn);\n+        ObjectType objectType = (ObjectType) ArrayType.unnest(updatedSelf.valueType());\n+        for (var entry : childColumns.entrySet()) {\n+            var innerName = entry.getKey();\n+            Reference oldChildRef = entry.getValue();\n+            Reference newChildRef = getRef.apply(oldChildRef.column());\n+            if (Objects.equals(oldChildRef, newChildRef) == false) {\n+                entry.setValue(newChildRef);\n+                if (newChildRef.granularity() != RowGranularity.PARTITION) {\n+                    //noinspection unchecked\n+                    ValueIndexer<Object> newIndexer = (ValueIndexer<Object>) newChildRef.valueType().valueIndexer(\n+                        newChildRef.ident().tableIdent(),\n+                        newChildRef,\n+                        getRef\n+                    );\n+                    innerIndexers.put(innerName, newIndexer);\n+                }\n+            }\n+        }\n+        for (var indexer : innerIndexers.values()) {\n+            indexer.updateTargets(getRef);\n+        }\n+        for (String innerColumn : objectType.innerTypes().keySet()) {\n+            if (!childColumns.containsKey(innerColumn)) {\n+                Reference childRef = getRef.apply(objectColumn.getChild(innerColumn));\n+                //noinspection unchecked\n+                ValueIndexer<Object> childIndexer = (ValueIndexer<Object>) childRef.valueType().valueIndexer(\n+                    ref.ident().tableIdent(),\n+                    childRef,\n+                    getRef\n+                );\n+                childColumns.put(innerColumn, childRef);\n+                innerIndexers.put(innerColumn, childIndexer);\n+            }\n+        }\n+    }\n'}`
+responded: The patch to be backported modifies the `updateTargets` method of the `ObjectIndexer` class. The new version (commit d28c3308dfbf2223a1f083db35fe61d79ac0953b) changes the method to:
+
+- Use `children` map instead of `childColumns`.
+- For each child, get the new reference and if it differs from the current reference, update the child with a new `Child` object containing the updated reference and a new indexer.
+- Calls `updateTargets` recursively on each child's indexer.
+- Additionally, it iterates over the inner types of the object's type and adds any missing children to the `children` map.
+
+The older version (ref fe6a722a71ab10973528a45ded5187b520e27c61) uses a `childColumns` map with `Reference` values directly, and updates the map entries with new references if changed, also updating the `innerIndexers` map accordingly, then calls `updateTargets` on the indexers in `innerIndexers`.
+
+The commit fda33ed72f shows a refactor where the code moved from `childColumns` and `innerIndexers` to a single `children` map holding `Child` objects that contain both the reference and the indexer.
+
+From the code and history, it is clear that:
+
+- The older version uses `childColumns` and `innerIndexers` maps separately.
+- The newer version uses a combined `children` map holding `Child` objects.
+- The patch to backport adds logic to update `children` only after add-column requests succeeded, and adds creation of new children for missing inner types.
+
+Therefore, to backport the patch to the older version, we need to:
+
+- Modify `updateTargets` to update `childColumns` and `innerIndexers` maps similarly to how the patch updates `children`.
+- Add the logic to add new children for missing inner types (which is missing in the older version).
+- Adapt the code to the older version's context (variable names, structures).
+
+Next, I will craft a patch for the older version's `updateTargets` method that applies the patch logic appropriately.
+
+I will generate the patch for the file `server/src/main/java/io/crate/execution/dml/ObjectIndexer.java` at the `updateTargets` method, including the context lines before and after.
+
+Then I will validate the patch on the older version.
+
+[0m[38;5;200m[1;3mThis patch does not apply because of CONTEXT MISMATCH. Context are patch lines that already exist in the file, that is, lines starting with ` ` and `-`. You should modify the error patch according to the context of older version.
+Here are lines 180 through 202 of file server/src/main/java/io/crate/execution/dml/ObjectIndexer.java for commit fe6a722a71ab10973528a45ded5187b520e27c61.
+```code snippet
+    public void updateTargets(Function<ColumnIdent, Reference> getRef) {
+        for (Map.Entry<String, Reference> entry : childColumns.entrySet()) {
+            var innerName = entry.getKey();
+            var oldChildRef = entry.getValue();
+            var newChildRef = getRef.apply(oldChildRef.column());
+            if (oldChildRef.equals(newChildRef) == false) {
+                entry.setValue(newChildRef);
+                if (newChildRef.granularity() != RowGranularity.PARTITION) {
+                    //noinspection unchecked
+                    ValueIndexer<Object> newIndexer = (ValueIndexer<Object>) newChildRef.valueType().valueIndexer(
+                            newChildRef.ident().tableIdent(),
+                            newChildRef,
+                            getRef
+                    );
+                    innerIndexers.put(innerName, newIndexer);
+                }
+            }
+        }
+        for (var indexer : innerIndexers.values()) {
+            indexer.updateTargets(getRef);
+        }
+    }
+```
+Besides, here is detailed info about how the context differs between the patch and the old version.
+Here it shows that there is no difference between your context and the original code, the reason for the failure is that you didn't keep at least three lines of source code at the beginning and end of the patch, please follow this to fix it.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `validate` with `{'ref': 'fe6a722a71ab10973528a45ded5187b520e27c61', 'patch': '--- a/server/src/main/java/io/crate/execution/dml/ObjectIndexer.java\n+++ b/server/src/main/java/io/crate/execution/dml/ObjectIndexer.java\n@@ -178,15 +178,35 @@\n     @Override\n-    public void updateTargets(Function<ColumnIdent, Reference> getRef) {\n-        for (Map.Entry<String, Reference> entry : childColumns.entrySet()) {\n-            var innerName = entry.getKey();\n-            var oldChildRef = entry.getValue();\n-            var newChildRef = getRef.apply(oldChildRef.column());\n-            if (oldChildRef.equals(newChildRef) == false) {\n-                entry.setValue(newChildRef);\n-                if (newChildRef.granularity() != RowGranularity.PARTITION) {\n-                    //noinspection unchecked\n-                    ValueIndexer<Object> newIndexer = (ValueIndexer<Object>) newChildRef.valueType().valueIndexer(\n-                            newChildRef.ident().tableIdent(),\n-                            newChildRef,\n-                            getRef\n-                    );\n-                    innerIndexers.put(innerName, newIndexer);\n-                }\n-            }\n-        }\n-        for (var indexer : innerIndexers.values()) {\n-            indexer.updateTargets(getRef);\n-        }\n+    public void updateTargets(Function<ColumnIdent, Reference> getRef) {\n+        ColumnIdent objectColumn = ref.column();\n+        Reference updatedSelf = getRef.apply(objectColumn);\n+        ObjectType objectType = (ObjectType) ArrayType.unnest(updatedSelf.valueType());\n+        for (Map.Entry<String, Reference> entry : childColumns.entrySet()) {\n+            var innerName = entry.getKey();\n+            Reference oldChildRef = entry.getValue();\n+            Reference newChildRef = getRef.apply(oldChildRef.column());\n+            if (Objects.equals(oldChildRef, newChildRef) == false) {\n+                entry.setValue(newChildRef);\n+                if (newChildRef.granularity() != RowGranularity.PARTITION) {\n+                    //noinspection unchecked\n+                    ValueIndexer<Object> newIndexer = (ValueIndexer<Object>) newChildRef.valueType().valueIndexer(\n+                        newChildRef.ident().tableIdent(),\n+                        newChildRef,\n+                        getRef\n+                    );\n+                    innerIndexers.put(innerName, newIndexer);\n+                }\n+            }\n+        }\n+        for (var indexer : innerIndexers.values()) {\n+            indexer.updateTargets(getRef);\n+        }\n+        for (String innerColumn : objectType.innerTypes().keySet()) {\n+            if (!childColumns.containsKey(innerColumn)) {\n+                Reference childRef = getRef.apply(objectColumn.getChild(innerColumn));\n+                //noinspection unchecked\n+                ValueIndexer<Object> childIndexer = (ValueIndexer<Object>) childRef.valueType().valueIndexer(\n+                    ref.ident().tableIdent(),\n+                    childRef,\n+                    getRef\n+                );\n+                childColumns.put(innerColumn, childRef);\n+                innerIndexers.put(innerColumn, childIndexer);\n+            }\n+        }\n     }\n'}`
+responded: The main difference between the old and new versions is that in the new version, the method updateTargets was changed to delay updating the children of ObjectIndexer until after the add-column request succeeded. This is done by not immediately updating children on collectSchemaUpdates but on updateTargets, and also by adding missing children from the ObjectType inner types.
+
+In the older version, updateTargets only updates existing childColumns and their innerIndexers but does not add new children.
+
+To backport the patch, we need to keep the old method structure but add the logic to add new children from the ObjectType inner types, similar to the new version. We also need to adapt to the older code's field names: childColumns and innerIndexers instead of children.
+
+The old version uses childColumns as Map<String, Reference>, and innerIndexers as Map<String, ValueIndexer<Object>>.
+
+We must keep the old context lines intact and add the new logic for adding missing children at the end of the updateTargets method.
+
+The patch should look like this:
+
+```diff
+--- a/server/src/main/java/io/crate/execution/dml/ObjectIndexer.java
++++ b/server/src/main/java/io/crate/execution/dml/ObjectIndexer.java
+@@ -178,15 +178,35 @@
+     @Override
+-    public void updateTargets(Function<ColumnIdent, Reference> getRef) {
+-        for (Map.Entry<String, Reference> entry : childColumns.entrySet()) {
+-            var innerName = entry.getKey();
+-            var oldChildRef = entry.getValue();
+-            var newChildRef = getRef.apply(oldChildRef.column());
+-            if (oldChildRef.equals(newChildRef) == false) {
+-                entry.setValue(newChildRef);
+-                if (newChildRef.granularity() != RowGranularity.PARTITION) {
+-                    //noinspection unchecked
+-                    ValueIndexer<Object> newIndexer = (ValueIndexer<Object>) newChildRef.valueType().valueIndexer(
+-                            newChildRef.ident().tableIdent(),
+-                            newChildRef,
+-                            getRef
+-                    );
+-                    innerIndexers.put(innerName, newIndexer);
+-                }
+-            }
+-        }
+-        for (var indexer : innerIndexers.values()) {
+-            indexer.updateTargets(getRef);
+-        }
++    public void updateTargets(Function<ColumnIdent, Reference> getRef) {
++        ColumnIdent objectColumn = ref.column();
++        Reference updatedSelf = getRef.apply(objectColumn);
++        ObjectType objectType = (ObjectType) ArrayType.unnest(updatedSelf.valueType());
++        for (Map.Entry<String, Reference> entry : childColumns.entrySet()) {
++            var innerName = entry.getKey();
++            Reference oldChildRef = entry.getValue();
++            Reference newChildRef = getRef.apply(oldChildRef.column());
++            if (Objects.equals(oldChildRef, newChildRef) == false) {
++                entry.setValue(newChildRef);
++                if (newChildRef.granularity() != RowGranularity.PARTITION) {
++                    //noinspection unchecked
++                    ValueIndexer<Object> newIndexer = (ValueIndexer<Object>) newChildRef.valueType().valueIndexer(
++                        newChildRef.ident().tableIdent(),
++                        newChildRef,
++                        getRef
++                    );
++                    innerIndexers.put(innerName, newIndexer);
++                }
++            }
++        }
++        for (var indexer : innerIndexers.values()) {
++            indexer.updateTargets(getRef);
++        }
++        for (String innerColumn : objectType.innerTypes().keySet()) {
++            if (!childColumns.containsKey(innerColumn)) {
++                Reference childRef = getRef.apply(objectColumn.getChild(innerColumn));
++                //noinspection unchecked
++                ValueIndexer<Object> childIndexer = (ValueIndexer<Object>) childRef.valueType().valueIndexer(
++                    ref.ident().tableIdent(),
++                    childRef,
++                    getRef
++                );
++                childColumns.put(innerColumn, childRef);
++                innerIndexers.put(innerColumn, childIndexer);
++            }
++        }
+     }
+```
+
+I will now validate this patch.
+
+[0m[38;5;200m[1;3mPatch applied successfully
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3mI have backported the patch for the method updateTargets in ObjectIndexer.java to the older version at ref fe6a722a71ab10973528a45ded5187b520e27c61. The patch adapts the new logic of delaying the update of children until after a successful add-column request by updating the childColumns and innerIndexers maps accordingly, while respecting the older version's context and structure.
+
+Here is the backported patch:
+
+```diff
+--- a/server/src/main/java/io/crate/execution/dml/ObjectIndexer.java
++++ b/server/src/main/java/io/crate/execution/dml/ObjectIndexer.java
+@@ -178,15 +178,35 @@
+     @Override
+-    public void updateTargets(Function<ColumnIdent, Reference> getRef) {
+-        for (Map.Entry<String, Reference> entry : childColumns.entrySet()) {
+-            var innerName = entry.getKey();
+-            var oldChildRef = entry.getValue();
+-            var newChildRef = getRef.apply(oldChildRef.column());
+-            if (oldChildRef.equals(newChildRef) == false) {
+-                entry.setValue(newChildRef);
+-                if (newChildRef.granularity() != RowGranularity.PARTITION) {
+-                    //noinspection unchecked
+-                    ValueIndexer<Object> newIndexer = (ValueIndexer<Object>) newChildRef.valueType().valueIndexer(
+-                            newChildRef.ident().tableIdent(),
+-                            newChildRef,
+-                            getRef
+-                    );
+-                    innerIndexers.put(innerName, newIndexer);
+-                }
+-            }
+-        }
+-        for (var indexer : innerIndexers.values()) {
+-            indexer.updateTargets(getRef);
+-        }
++    public void updateTargets(Function<ColumnIdent, Reference> getRef) {
++        ColumnIdent objectColumn = ref.column();
++        Reference updatedSelf = getRef.apply(objectColumn);
++        ObjectType objectType = (ObjectType) ArrayType.unnest(updatedSelf.valueType());
++        for (Map.Entry<String, Reference> entry : childColumns.entrySet()) {
++            var innerName = entry.getKey();
++            Reference oldChildRef = entry.getValue();
++            Reference newChildRef = getRef.apply(oldChildRef.column());
++            if (Objects.equals(oldChildRef, newChildRef) == false) {
++                entry.setValue(newChildRef);
++                if (newChildRef.granularity() != RowGranularity.PARTITION) {
++                    //noinspection unchecked
++                    ValueIndexer<Object> newIndexer = (ValueIndexer<Object>) newChildRef.valueType().valueIndexer(
++                        newChildRef.ident().tableIdent(),
++                        newChildRef,
++                        getRef
++                    );
++                    innerIndexers.put(innerName, newIndexer);
++                }
++            }
++        }
++        for (var indexer : innerIndexers.values()) {
++            indexer.updateTargets(getRef);
++        }
++        for (String innerColumn : objectType.innerTypes().keySet()) {
++            if (!childColumns.containsKey(innerColumn)) {
++                Reference childRef = getRef.apply(objectColumn.getChild(innerColumn));
++                //noinspection unchecked
++                ValueIndexer<Object> childIndexer = (ValueIndexer<Object>) childRef.valueType().valueIndexer(
++                    ref.ident().tableIdent(),
++                    childRef,
++                    getRef
++                );
++                childColumns.put(innerColumn, childRef);
++                innerIndexers.put(innerColumn, childIndexer);
++            }
++        }
+     }
+```
+
+I have validated the patch and it applies cleanly without conflicts on the target ref. Let me know if you need any further assistance.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new AgentExecutor chain...[0m
+
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `git_history` with `{}`
+
+
+[0m[36;1m[1;3mfda33ed72f Refactor ObjectIndexer to avoid parallel maps (#16337)
+
+diff --git a/server/src/main/java/io/crate/execution/dml/ObjectIndexer.java b/server/src/main/java/io/crate/execution/dml/ObjectIndexer.java
+--- a/server/src/main/java/io/crate/execution/dml/ObjectIndexer.java
++++ b/server/src/main/java/io/crate/execution/dml/ObjectIndexer.java
+@@ -261,8 +239,7 @@
+                 newColumn,
+                 getRef
+             );
+-            innerIndexers.put(innerName, valueIndexer);
+-            childColumns.put(innerName, newColumn);
++            children.put(innerName, new Child(newColumn, valueIndexer));
+             valueIndexer.collectSchemaUpdates(
+                 innerValue,
+                 onDynamicColumn
+You need to do the following analysis based on the information in the last commit:
+Analyze the code logic of the context of the patch to be ported in this commit step by step.
+If code logic already existed before this commit, the patch context can be assumed to remain in a similar location. Use `locate` and `viewcode` to check your results.
+If code logic were added in this commit, then you need to `git_show` for further details.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `locate_symbol` with `{'ref': 'fe6a722a71ab10973528a45ded5187b520e27c61', 'symbol': 'ObjectIndexer'}`
+responded: The last commit fda33ed72f shows a refactor that changes the way the `children` map is updated in the `ObjectIndexer` class. Before the commit, the code used two maps `innerIndexers` and `childColumns` separately, but after the commit, it combined them into a single `children` map with `Child` objects.
+
+The patch to be backported removes the line that puts a new child into the `children` map immediately, which is consistent with the refactor in fda33ed72f.
+
+Since this refactor commit seems to have introduced the `children.put(innerName, new Child(newColumn, valueIndexer));` line, we need to check if this line exists in the older ref fe6a722a71ab10973528a45ded5187b520e27c61 or if the code still uses the two separate maps `innerIndexers` and `childColumns`.
+
+Next, I will locate the `ObjectIndexer` class in the older ref fe6a722a71ab10973528a45ded5187b520e27c61 to confirm the data structures used and the exact context for the patch.
+
+[0m[33;1m[1;3mserver/src/main/java/io/crate/execution/dml/ObjectIndexer.java:54
+server/src/main/java/io/crate/execution/dml/ObjectIndexer.java:66[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': 'fe6a722a71ab10973528a45ded5187b520e27c61', 'path': 'server/src/main/java/io/crate/execution/dml/ObjectIndexer.java', 'startline': 250, 'endline': 270}`
+
+
+[0m[36;1m[1;3mHere are lines 250 through 270.
+
+                nullable,
+                storageSupport.docValuesDefault(),
+                position,
+                COLUMN_OID_UNASSIGNED,
+                false,
+                defaultExpression
+            );
+            position--;
+            onDynamicColumn.accept(newColumn);
+            var valueIndexer = (ValueIndexer<Object>) type.valueIndexer(
+                table,
+                newColumn,
+                getRef
+            );
+            innerIndexers.put(innerName, valueIndexer);
+            childColumns.put(innerName, newColumn);
+            valueIndexer.collectSchemaUpdates(
+                innerValue,
+                onDynamicColumn,
+                synthetics
+            );
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': 'fe6a722a71ab10973528a45ded5187b520e27c61', 'path': 'server/src/main/java/io/crate/execution/dml/ObjectIndexer.java', 'startline': 40, 'endline': 80}`
+responded: The code snippet from the older version shows the following relevant lines:
+
+```java
+            var valueIndexer = (ValueIndexer<Object>) type.valueIndexer(
+                table,
+                newColumn,
+                getRef
+            );
+            innerIndexers.put(innerName, valueIndexer);
+            childColumns.put(innerName, newColumn);
+            valueIndexer.collectSchemaUpdates(
+                innerValue,
+                onDynamicColumn,
+                synthetics
+            );
+```
+
+The patch in the newer version changes this part by removing the lines:
+
+```java
+            children.put(innerName, new Child(newColumn, valueIndexer));
+```
+
+and also modifies the call to `collectSchemaUpdates` by removing the last argument `synthetics`.
+
+In the older version, instead of `children`, the maps `innerIndexers` and `childColumns` are used separately to store the `valueIndexer` and `newColumn`. The newer version unifies these into a single `children` map.
+
+Therefore, the patch in the older version should remove the lines:
+
+```java
+            innerIndexers.put(innerName, valueIndexer);
+            childColumns.put(innerName, newColumn);
+```
+
+and not add the `children.put(...)` line because this map does not exist in the old version.
+
+Also, the call to `collectSchemaUpdates` in the old version has three arguments, while in the new version it has two. This difference should be preserved.
+
+Hence, the backport patch should remove the lines that add to `innerIndexers` and `childColumns` and keep the rest as is.
+
+Next, I will prepare the patch for the old version based on this analysis.
+
+Before that, I will validate if the `children` map exists in the old version or not by checking the class members around line 54 or 66 (from locate_symbol results).
+
+I will view lines 40 to 80 to see the class members and confirm the existence of `children`.
+
+[0m[36;1m[1;3mHere are lines 40 through 80.
+
+import io.crate.expression.symbol.Symbol;
+import io.crate.metadata.ColumnIdent;
+import io.crate.metadata.IndexType;
+import io.crate.metadata.Reference;
+import io.crate.metadata.ReferenceIdent;
+import io.crate.metadata.RelationName;
+import io.crate.metadata.RowGranularity;
+import io.crate.metadata.SimpleReference;
+import io.crate.sql.tree.ColumnPolicy;
+import io.crate.types.ArrayType;
+import io.crate.types.DataType;
+import io.crate.types.ObjectType;
+import io.crate.types.StorageSupport;
+
+public class ObjectIndexer implements ValueIndexer<Map<String, Object>> {
+
+    private final ObjectType objectType;
+    private final HashMap<String, ValueIndexer<Object>> innerIndexers;
+    private final ColumnIdent column;
+    private final Map<String, Reference> childColumns;
+    private final Function<ColumnIdent, Reference> getRef;
+    private final RelationName table;
+    private final Reference ref;
+    private final boolean prefixUnknownColumns;
+
+    @SuppressWarnings("unchecked")
+    public ObjectIndexer(RelationName table,
+                         Reference ref,
+                         Function<ColumnIdent, Reference> getRef) {
+        this.table = table;
+        this.ref = ref;
+        this.getRef = getRef;
+        this.prefixUnknownColumns = ref.oid() != COLUMN_OID_UNASSIGNED;
+        this.column = ref.column();
+        this.objectType = (ObjectType) ArrayType.unnest(ref.valueType());
+        this.innerIndexers = new HashMap<>();
+        this.childColumns = new HashMap<>();
+        for (var entry : objectType.innerTypes().entrySet()) {
+            String innerName = entry.getKey();
+            DataType<?> value = entry.getValue();
+            ColumnIdent child = column.getChild(innerName);
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': 'fe6a722a71ab10973528a45ded5187b520e27c61', 'path': 'server/src/main/java/io/crate/execution/dml/ObjectIndexer.java', 'startline': 260, 'endline': 280}`
+
+
+[0m[36;1m[1;3mHere are lines 260 through 280.
+
+                table,
+                newColumn,
+                getRef
+            );
+            innerIndexers.put(innerName, valueIndexer);
+            childColumns.put(innerName, newColumn);
+            valueIndexer.collectSchemaUpdates(
+                innerValue,
+                onDynamicColumn,
+                synthetics
+            );
+        }
+    }
+
+    /**
+     * Writes keys and values for which there are no columns after {@link #collectSchemaUpdates(Map, Consumer, Synthetics) to the xContentBuilder.
+     *
+     * There are no columns for:
+     * <ul>
+     *  <li>OBJECT (IGNORED)</li>
+     *  <li>Empty arrays, or arrays with only null values</li>
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `validate` with `{'ref': 'fe6a722a71ab10973528a45ded5187b520e27c61', 'patch': '--- a/server/src/main/java/io/crate/execution/dml/ObjectIndexer.java\n+++ b/server/src/main/java/io/crate/execution/dml/ObjectIndexer.java\n@@ -260,9 +260,7 @@\n                 table,\n                 newColumn,\n                 getRef\n             );\n-            innerIndexers.put(innerName, valueIndexer);\n-            childColumns.put(innerName, newColumn);\n             valueIndexer.collectSchemaUpdates(\n                 innerValue,\n                 onDynamicColumn,\n                 synthetics\n             );\n'}`
+responded: The target code in the patch from the newer version removes the line that immediately updates the children map with a new Child object after detecting a new column. In the older version, the code still uses innerIndexers and childColumns maps separately and immediately puts the new valueIndexer and newColumn into these maps.
+
+The relevant lines in the older version are:
+
+```java
+innerIndexers.put(innerName, valueIndexer);
+childColumns.put(innerName, newColumn);
+```
+
+In the newer version, this is replaced by:
+
+```java
+children.put(innerName, new Child(newColumn, valueIndexer));
+```
+
+The rest of the code calling `valueIndexer.collectSchemaUpdates(...)` remains the same.
+
+This suggests that the patch for the older version should remove the two lines that put the new indexer and column into the innerIndexers and childColumns maps, similar to how the newer version removes the children.put line.
+
+I do not see any structural changes in the older version that would prevent this patch from being applied in the same relative location. The context lines before and after are present.
+
+Next, I will generate a patch for the older ref fe6a722a71ab10973528a45ded5187b520e27c61 that removes these two lines:
+
+```java
+innerIndexers.put(innerName, valueIndexer);
+childColumns.put(innerName, newColumn);
+```
+
+while keeping the rest of the code intact.
+
+I will prepare the patch now.
+
+[0m[38;5;200m[1;3mPatch applied successfully
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3mThe patch for the older version ref fe6a722a71ab10973528a45ded5187b520e27c61 is as follows:
+
+```diff
+--- a/server/src/main/java/io/crate/execution/dml/ObjectIndexer.java
++++ b/server/src/main/java/io/crate/execution/dml/ObjectIndexer.java
+@@ -260,9 +260,7 @@
+                 table,
+                 newColumn,
+                 getRef
+             );
+-            innerIndexers.put(innerName, valueIndexer);
+-            childColumns.put(innerName, newColumn);
+             valueIndexer.collectSchemaUpdates(
+                 innerValue,
+                 onDynamicColumn,
+                 synthetics
+             );
+```
+
+This patch removes the immediate update of the children (innerIndexers and childColumns) in the older version, matching the logic of the newer version where the update is deferred until `updateTargets`. This fixes the race condition vulnerability as described in the original patch.
+
+I have validated this patch on the target ref and it applies successfully without conflicts. If you need further assistance or want me to help with more hunks, please let me know.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new AgentExecutor chain...[0m
+
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `git_history` with `{}`
+
+
+[0m[36;1m[1;3md6cc2a6ac0 Replace getIndexMapping in IntegTestCase with getTable
+
+diff --git a/server/src/test/java/io/crate/integrationtests/DynamicMappingUpdateITest.java b/server/src/test/java/io/crate/integrationtests/DynamicMappingUpdateITest.java
+--- a/server/src/test/java/io/crate/integrationtests/DynamicMappingUpdateITest.java
++++ b/server/src/test/java/io/crate/integrationtests/DynamicMappingUpdateITest.java
+@@ -32,8 +32,6 @@
+ import java.nio.file.Paths;
+-import java.util.HashSet;
+ import java.util.List;
+-import java.util.Map;
+-import java.util.Set;
+ import java.util.UUID;
++import java.util.stream.StreamSupport;
+ 
+ import org.elasticsearch.test.IntegTestCase
+You need to do the following analysis based on the information in the last commit:
+Analyze the code logic of the context of the patch to be ported in this commit step by step.
+If code logic already existed before this commit, the patch context can be assumed to remain in a similar location. Use `locate` and `viewcode` to check your results.
+If code logic were added in this commit, then you need to `git_show` for further details.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `locate_symbol` with `{'ref': 'fe6a722a71ab10973528a45ded5187b520e27c61', 'symbol': 'DynamicMappingUpdateITest'}`
+responded: The last commit in the history shows a change in the imports of the file `server/src/test/java/io/crate/integrationtests/DynamicMappingUpdateITest.java`. Specifically, it removed imports of `HashSet`, `Map`, and `Set` and added the import of `java.util.stream.StreamSupport`.
+
+The patch that needs to be backported adds the import of `java.util.stream.Stream` in addition to `StreamSupport`.
+
+Since the last commit already added `StreamSupport`, the import of `Stream` might be a minor addition and likely can be added in a similar location in the older version.
+
+Next, I will locate the file `server/src/test/java/io/crate/integrationtests/DynamicMappingUpdateITest.java` in the older ref fe6a722a71ab10973528a45ded5187b520e27c61 to verify the import section and confirm the exact location to add the new import.
+
+[0m[33;1m[1;3mserver/src/test/java/io/crate/integrationtests/DynamicMappingUpdateITest.java:54[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': 'fe6a722a71ab10973528a45ded5187b520e27c61', 'path': 'server/src/test/java/io/crate/integrationtests/DynamicMappingUpdateITest.java', 'startline': 31, 'endline': 60}`
+
+
+[0m[36;1m[1;3mHere are lines 31 through 60.
+
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.UUID;
+
+import org.elasticsearch.test.IntegTestCase;
+import org.jetbrains.annotations.Nullable;
+import org.junit.Rule;
+import org.junit.Test;
+import org.junit.rules.TemporaryFolder;
+
+import io.crate.common.collections.Maps;
+import io.crate.testing.UseNewCluster;
+import io.crate.testing.UseRandomizedSchema;
+import io.crate.types.ArrayType;
+import io.crate.types.DataTypes;
+import io.crate.types.ObjectType;
+
+
+@UseRandomizedSchema(random = false)
+public class DynamicMappingUpdateITest extends IntegTestCase {
+
+    @Rule
+    public TemporaryFolder folder = new TemporaryFolder();
+
+    @Test
+    @UseNewCluster
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `validate` with `{'ref': 'fe6a722a71ab10973528a45ded5187b520e27c61', 'patch': '--- a/server/src/test/java/io/crate/integrationtests/DynamicMappingUpdateITest.java\n+++ b/server/src/test/java/io/crate/integrationtests/DynamicMappingUpdateITest.java\n@@ -31,8 +31,10 @@\n import java.nio.file.Paths;\n-import java.util.HashSet;\n-import java.util.List;\n-import java.util.Map;\n-import java.util.Set;\n-import java.util.UUID;\n+import java.util.List;\n+import java.util.UUID;\n+import java.util.stream.Stream;\n+import java.util.stream.StreamSupport;\n \n import org.elasticsearch.test.IntegTestCase;\n'}`
+responded: The patch to be backported adds the import statement:
+```java
+import java.util.stream.Stream;
+import java.util.stream.StreamSupport;
+```
+in the file `server/src/test/java/io/crate/integrationtests/DynamicMappingUpdateITest.java`.
+
+From the `viewcode` output for the older ref, I see the import block starts at line 31 and goes to line 45 or so. The imports `java.util.stream.Stream` and `java.util.stream.StreamSupport` are not present in the older version.
+
+The patch only adds these two import statements and does not change any other code in this file.
+
+Since the imports `Stream` and `StreamSupport` are not present in the older ref, the backport patch should add these two imports in the corresponding location.
+
+The rest of the imports and code structure appear similar, so no other changes are required for this specific patch hunk.
+
+Hence the backport patch for this hunk is simply adding the two import lines after the existing imports in the older version.
+
+I will generate the patch for this and then validate it on the older ref.
+
+[0m[38;5;200m[1;3mPatch applied successfully
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3mThe patch for the backport is as follows:
+
+```diff
+--- a/server/src/test/java/io/crate/integrationtests/DynamicMappingUpdateITest.java
++++ b/server/src/test/java/io/crate/integrationtests/DynamicMappingUpdateITest.java
+@@ -31,8 +31,10 @@
+ import java.nio.file.Paths;
+-import java.util.HashSet;
+-import java.util.List;
+-import java.util.Map;
+-import java.util.Set;
+-import java.util.UUID;
++import java.util.List;
++import java.util.UUID;
++import java.util.stream.Stream;
++import java.util.stream.StreamSupport;
+ 
+ import org.elasticsearch.test.IntegTestCase;
+```
+
+This patch adapts the imports in the older version to match the new imports introduced in the newer version for the file `DynamicMappingUpdateITest.java`. The patch was validated successfully on the target ref without conflicts.
+
+If you need further assistance or additional hunks to be backported, please let me know![0m
+
+[1m> Finished chain.[0m
+2026-04-25 18:47:24,764 - backport - INFO - Aplly all hunks in the patch      PASS
+2026-04-25 18:47:24,986 - backport - INFO - Successfully backport the patch to the target release fe6a722a71ab10973528a45ded5187b520e27c61
+2026-04-25 18:47:24,987 - backport - INFO - --- a/server/src/main/java/io/crate/execution/dml/ObjectIndexer.java
++++ b/server/src/main/java/io/crate/execution/dml/ObjectIndexer.java
+@@ -178,23 +178,39 @@
+     @Override
+-    public void updateTargets(Function<ColumnIdent, Reference> getRef) {
+-        for (Map.Entry<String, Reference> entry : childColumns.entrySet()) {
+-            var innerName = entry.getKey();
+-            var oldChildRef = entry.getValue();
+-            var newChildRef = getRef.apply(oldChildRef.column());
+-            if (oldChildRef.equals(newChildRef) == false) {
+-                entry.setValue(newChildRef);
+-                if (newChildRef.granularity() != RowGranularity.PARTITION) {
+-                    //noinspection unchecked
+-                    ValueIndexer<Object> newIndexer = (ValueIndexer<Object>) newChildRef.valueType().valueIndexer(
+-                            newChildRef.ident().tableIdent(),
+-                            newChildRef,
+-                            getRef
+-                    );
+-                    innerIndexers.put(innerName, newIndexer);
+-                }
+-            }
+-        }
+-        for (var indexer : innerIndexers.values()) {
+-            indexer.updateTargets(getRef);
+-        }
++    public void updateTargets(Function<ColumnIdent, Reference> getRef) {
++        ColumnIdent objectColumn = ref.column();
++        Reference updatedSelf = getRef.apply(objectColumn);
++        ObjectType objectType = (ObjectType) ArrayType.unnest(updatedSelf.valueType());
++        for (Map.Entry<String, Reference> entry : childColumns.entrySet()) {
++            var innerName = entry.getKey();
++            Reference oldChildRef = entry.getValue();
++            Reference newChildRef = getRef.apply(oldChildRef.column());
++            if (Objects.equals(oldChildRef, newChildRef) == false) {
++                entry.setValue(newChildRef);
++                if (newChildRef.granularity() != RowGranularity.PARTITION) {
++                    //noinspection unchecked
++                    ValueIndexer<Object> newIndexer = (ValueIndexer<Object>) newChildRef.valueType().valueIndexer(
++                        newChildRef.ident().tableIdent(),
++                        newChildRef,
++                        getRef
++                    );
++                    innerIndexers.put(innerName, newIndexer);
++                }
++            }
++        }
++        for (var indexer : innerIndexers.values()) {
++            indexer.updateTargets(getRef);
++        }
++        for (String innerColumn : objectType.innerTypes().keySet()) {
++            if (!childColumns.containsKey(innerColumn)) {
++                Reference childRef = getRef.apply(objectColumn.getChild(innerColumn));
++                //noinspection unchecked
++                ValueIndexer<Object> childIndexer = (ValueIndexer<Object>) childRef.valueType().valueIndexer(
++                    ref.ident().tableIdent(),
++                    childRef,
++                    getRef
++                );
++                childColumns.put(innerColumn, childRef);
++                innerIndexers.put(innerColumn, childIndexer);
++            }
++        }
+     }
+
+--- a/server/src/main/java/io/crate/execution/dml/ObjectIndexer.java
++++ b/server/src/main/java/io/crate/execution/dml/ObjectIndexer.java
+@@ -260,11 +260,9 @@
+                 table,
+                 newColumn,
+                 getRef
+             );
+-            innerIndexers.put(innerName, valueIndexer);
+-            childColumns.put(innerName, newColumn);
+             valueIndexer.collectSchemaUpdates(
+                 innerValue,
+                 onDynamicColumn,
+                 synthetics
+             );
+
+--- a/server/src/test/java/io/crate/execution/dml/IndexerTest.java
++++ b/server/src/test/java/io/crate/execution/dml/IndexerTest.java
+@@ -28,6 +28,7 @@ import static io.crate.types.GeoShapeType.Names.TREE_BKD;
+ import static io.crate.types.GeoShapeType.Names.TREE_GEOHASH;
+ import static io.crate.types.GeoShapeType.Names.TREE_LEGACY_QUADTREE;
+ import static io.crate.types.GeoShapeType.Names.TREE_QUADTREE;
++import static org.assertj.core.api.Assertions.assertThat;
+ import static org.assertj.core.api.Assertions.assertThatThrownBy;
+ import static org.elasticsearch.cluster.metadata.Metadata.COLUMN_OID_UNASSIGNED;
+ 
+
+--- a/server/src/test/java/io/crate/execution/dml/IndexerTest.java
++++ b/server/src/test/java/io/crate/execution/dml/IndexerTest.java
+@@ -69,6 +70,7 @@ import io.crate.expression.symbol.DynamicReference;
+ import io.crate.expression.symbol.Symbol;
+ import io.crate.metadata.ColumnIdent;
+ import io.crate.metadata.CoordinatorTxnCtx;
++import io.crate.metadata.NodeContext;
+ import io.crate.metadata.PartitionName;
+ import io.crate.metadata.Reference;
+ import io.crate.metadata.ReferenceIdent;
+
+--- a/server/src/test/java/io/crate/execution/dml/IndexerTest.java
++++ b/server/src/test/java/io/crate/execution/dml/IndexerTest.java
+@@ -1352,6 +1354,51 @@ public class IndexerTest extends CrateDummyClusterServiceUnitTest {
+         assertTranslogParses(doc, table);
+     }
+ 
++    @Test
++    public void test_handles_type_conflicts_in_dynamic_nested_objects() throws Exception {
++        var sqlExecutor = SQLExecutor.of(clusterService)
++            .addTable("create table tbl (o object(dynamic))");
++        DocTableInfo table = sqlExecutor.resolveTableInfo("tbl");
++        Indexer indexer = getIndexer(sqlExecutor, "tbl", "o");
++
++        Map<String, List<Map<String, Integer>>> value1 = Map.of("name", List.of(Map.of("a", 1)));
++        Map<String, Map<String, Integer>> value2 = Map.of("name", Map.of("a", 1));
++
++        List<Reference> newColumns = indexer.collectSchemaUpdates(item(value1));
++
++        assertThat(newColumns).satisfiesExactly(
++            x -> assertThat(x).hasName("o['name']"),
++            x -> assertThat(x).hasName("o['name']['a']")
++        );
++
++
++        newColumns = indexer.collectSchemaUpdates(item(value2));
++        assertThat(newColumns).as("collectSchemaUpdates must not apply the updates immediately").satisfiesExactly(
++            x -> assertThat(x).hasName("o['name']"),
++            x -> assertThat(x).hasName("o['name']['a']")
++        );
++
++        NodeContext nodeCtx = sqlExecutor.nodeCtx;
++        RelationName tableName = table.ident();
++        var addColumnTask = new AlterTableTask<>(
++            nodeCtx, tableName, TransportAddColumnAction.ADD_COLUMN_OPERATOR);
++        var request = new AddColumnRequest(
++            tableName,
++            newColumns,
++            Map.of(),
++            new IntArrayList()
++        );
++        ClusterState newState = addColumnTask.execute(clusterService.state(), request);
++        DocTableInfo newTable = new DocTableInfoFactory(nodeCtx).create(tableName, newState.metadata());
++
++        indexer.updateTargets(newTable::getReference);
++        newColumns = indexer.collectSchemaUpdates(item(value2));
++        assertThat(newColumns).isEmpty();
++
++        assertThatThrownBy(() -> indexer.index(item(value1)))
++            .isExactlyInstanceOf(ClassCastException.class);
++    }
++
+     public static void assertTranslogParses(ParsedDocument doc, DocTableInfo info) throws Exception {
+         TranslogIndexer ti = new TranslogIndexer(info);
+         ParsedDocument d = ti.index(doc.id(), doc.source());
+
+--- a/server/src/test/java/io/crate/integrationtests/DynamicMappingUpdateITest.java
++++ b/server/src/test/java/io/crate/integrationtests/DynamicMappingUpdateITest.java
+@@ -31,8 +31,7 @@
+ import java.nio.file.Paths;
+-import java.util.HashSet;
+-import java.util.List;
+-import java.util.Map;
+-import java.util.Set;
+-import java.util.UUID;
++import java.util.List;
++import java.util.UUID;
++import java.util.stream.Stream;
++import java.util.stream.StreamSupport;
+ 
+ import org.elasticsearch.test.IntegTestCase;
+
+--- a/server/src/test/java/io/crate/integrationtests/DynamicMappingUpdateITest.java
++++ b/server/src/test/java/io/crate/integrationtests/DynamicMappingUpdateITest.java
+@@ -437,4 +438,29 @@ public class DynamicMappingUpdateITest extends IntegTestCase {
+             () -> execute("insert into t (n) values ([[1, 2], [3, 4]])")
+         ).hasMessageContaining("Dynamic nested arrays are not supported");
+     }
++
++    @Test
++    public void test_conflicting_object_updates_do_not_allow_inserting_incompatible_values() throws Exception {
++        execute("""
++            CREATE TABLE exp1 (id TEXT PRIMARY KEY, doc OBJECT(dynamic))
++            """);
++        execute(
++            """
++            INSERT INTO exp1 (id, doc)
++            VALUES
++                ('4', {"name" = [{ "a" = 1 }]}),
++                ('1', {"name" = { "a" = 1 }}),
++                ('2', {"name" = { "a" = 2 }}),
++                ('3', {"name" = { "a" = null }})
++            ;
++              """
++        );
++        execute("REFRESH TABLE exp1");
++        execute("SELECT id FROM exp1 order by id");
++        List<Integer> ids = Stream.of(response.rows()).map(row -> Integer.parseInt(row[0].toString())).toList();
++        assertThat(ids).satisfiesAnyOf(
++            xs -> assertThat(xs).isEqualTo(List.of(1, 2, 3)),
++            xs -> assertThat(xs).isEqualTo(List.of(4))
++        );
++    }
+ }
+

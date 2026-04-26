@@ -1,0 +1,43 @@
+2026-04-25 18:50:21,215 - backport - INFO - Using openrouter API: https://openrouter.ai/api/v1 (model: openai/gpt-4.1-mini)
+2026-04-25 18:50:21,833 - backport - INFO - Aplly all hunks in the patch      PASS
+2026-04-25 18:50:21,954 - backport - INFO - Successfully backport the patch to the target release d033bf1bc0e27a370f99d3ce3f84cd60f4ffebbf
+2026-04-25 18:50:21,956 - backport - INFO - --- a/server/src/main/java/io/crate/expression/predicate/NotPredicate.java
++++ b/server/src/main/java/io/crate/expression/predicate/NotPredicate.java
+@@ -153,6 +153,7 @@ public class NotPredicate extends Scalar<Boolean, Boolean> {
+                 var b = function.arguments().get(1);
+                 if (a instanceof Reference ref && b instanceof Literal<?>) {
+                     if (ref.valueType().id() == DataTypes.UNTYPED_OBJECT.id()) {
++                        context.enforceThreeValuedLogic = true;
+                         return null;
+                     }
+                 }
+
+--- a/server/src/test/java/io/crate/expression/predicate/FieldExistsQueryTest.java
++++ b/server/src/test/java/io/crate/expression/predicate/FieldExistsQueryTest.java
+@@ -102,10 +102,9 @@ public class FieldExistsQueryTest extends LuceneQueryBuilderTest {
+             if (values == null) {
+                 assertThat(results).isEmpty();
+             } else {
+-                assertThat(results).hasSize(2);
++                assertThat(results).hasSize(1);
+                 assertThat(results.get(0)).isInstanceOf(Map.class);
+                 assertThat((Map<?, ?>) results.get(0)).isEmpty();
+-                assertThat(results.get(1)).isNull();
+             }
+         }
+     }
+
+--- a/server/src/test/java/io/crate/lucene/ThreeValuedLogicQueryBuilderTest.java
++++ b/server/src/test/java/io/crate/lucene/ThreeValuedLogicQueryBuilderTest.java
+@@ -135,4 +135,10 @@ public class ThreeValuedLogicQueryBuilderTest extends LuceneQueryBuilderTest {
+         assertThat(convert("NOT pg_catalog.format_type(x, null)")).hasToString(
+             "+(+*:* -pg_catalog.format_type(x, NULL)) #(NOT pg_catalog.format_type(x, NULL))");
+     }
++
++    @Test
++    public void test_negated_cast_on_object() {
++        assertThat(convert("NOT (cast(obj as string))")).hasToString(
++            "+(+*:* -cast(obj AS text)) #(NOT cast(obj AS text))");
++    }
+ }
+

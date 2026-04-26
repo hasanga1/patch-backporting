@@ -1,0 +1,109 @@
+2026-04-25 17:26:08,461 - backport - INFO - Using openrouter API: https://openrouter.ai/api/v1 (model: openai/gpt-4.1-mini)
+2026-04-25 17:26:09,633 - backport - INFO - Aplly all hunks in the patch      PASS
+2026-04-25 17:26:09,784 - backport - INFO - Successfully backport the patch to the target release 974c8fa17059821d2f2233d05a7eeb6c85aa3c42
+2026-04-25 17:26:09,785 - backport - INFO - --- a/server/src/main/java/io/crate/metadata/Routing.java
++++ b/server/src/main/java/io/crate/metadata/Routing.java
+@@ -27,11 +27,13 @@ import java.util.Map;
+ import java.util.Set;
+ import java.util.TreeMap;
+ 
++import org.elasticsearch.cluster.ClusterState;
+ import org.elasticsearch.cluster.node.DiscoveryNode;
+ import org.elasticsearch.cluster.node.DiscoveryNodes;
+ import org.elasticsearch.common.io.stream.StreamInput;
+ import org.elasticsearch.common.io.stream.StreamOutput;
+ import org.elasticsearch.common.io.stream.Writeable;
++import org.elasticsearch.discovery.MasterNotDiscoveredException;
+ 
+ import com.carrotsearch.hppc.IntArrayList;
+ import com.carrotsearch.hppc.IntIndexedContainer;
+
+--- a/server/src/main/java/io/crate/metadata/Routing.java
++++ b/server/src/main/java/io/crate/metadata/Routing.java
+@@ -207,6 +209,14 @@ public class Routing implements Writeable {
+         return new Routing(indicesByNode);
+     }
+ 
++    public static Routing forMasterNode(RelationName relationName, ClusterState clusterState) {
++        String masterNodeId = clusterState.nodes().getMasterNodeId();
++        if (masterNodeId == null) {
++            throw new MasterNotDiscoveredException();
++        }
++        return forTableOnSingleNode(relationName, masterNodeId);
++    }
++
+     @Override
+     public boolean equals(Object o) {
+         if (this == o) return true;
+
+--- a/server/src/main/java/io/crate/metadata/sys/SysAllocationsTableInfo.java
++++ b/server/src/main/java/io/crate/metadata/sys/SysAllocationsTableInfo.java
+@@ -56,6 +56,6 @@ public class SysAllocationsTableInfo {
+             ColumnIdent.of("partition_ident"),
+             ColumnIdent.of("shard_id")
+         )
+-        .withRouting((state, ignored, ignored2) -> Routing.forTableOnSingleNode(IDENT, state.nodes().getMasterNodeId()))
++        .withRouting((state, ignored, ignored2) -> Routing.forMasterNode(IDENT, state))
+         .build();
+ }
+
+--- a/server/src/main/java/io/crate/planner/operators/LogicalPlanner.java
++++ b/server/src/main/java/io/crate/planner/operators/LogicalPlanner.java
+@@ -34,6 +34,7 @@ import java.util.function.Predicate;
+ import java.util.function.Supplier;
+ import java.util.function.UnaryOperator;
+ 
++import org.elasticsearch.ElasticsearchException;
+ import org.elasticsearch.Version;
+ import org.elasticsearch.cluster.ClusterState;
+ import org.elasticsearch.cluster.metadata.Metadata;
+
+--- a/server/src/main/java/io/crate/planner/operators/LogicalPlanner.java
++++ b/server/src/main/java/io/crate/planner/operators/LogicalPlanner.java
+@@ -701,7 +702,7 @@ public class LogicalPlanner {
+         } catch (ConversionException e) {
+             throw e;
+         } catch (Exception e) {
+-            if (e instanceof CrateException) {
++            if (e instanceof CrateException || e instanceof ElasticsearchException) {
+                 // Don't hide errors like MissingShardOperationsException, UnavailableShardsException
+                 throw e;
+             }
+
+--- a/server/src/test/java/io/crate/metadata/sys/SysAllocationsTableInfoTest.java
++++ b/server/src/test/java/io/crate/metadata/sys/SysAllocationsTableInfoTest.java
+@@ -23,6 +23,7 @@ package io.crate.metadata.sys;
+ 
+ 
+ import static org.assertj.core.api.Assertions.assertThat;
++import static org.assertj.core.api.Assertions.assertThatThrownBy;
+ import static org.elasticsearch.cluster.node.DiscoveryNodeRole.DATA_ROLE;
+ import static org.elasticsearch.test.ClusterServiceUtils.setState;
+ 
+
+--- a/server/src/test/java/io/crate/metadata/sys/SysAllocationsTableInfoTest.java
++++ b/server/src/test/java/io/crate/metadata/sys/SysAllocationsTableInfoTest.java
+@@ -33,6 +34,7 @@ import org.elasticsearch.Version;
+ import org.elasticsearch.cluster.ClusterState;
+ import org.elasticsearch.cluster.node.DiscoveryNode;
+ import org.elasticsearch.cluster.node.DiscoveryNodes;
++import org.elasticsearch.discovery.MasterNotDiscoveredException;
+ import org.junit.Before;
+ import org.junit.Test;
+ 
+
+--- a/server/src/test/java/io/crate/metadata/sys/SysAllocationsTableInfoTest.java
++++ b/server/src/test/java/io/crate/metadata/sys/SysAllocationsTableInfoTest.java
+@@ -64,4 +66,11 @@ public class SysAllocationsTableInfoTest extends CrateDummyClusterServiceUnitTes
+         var routing = allocationsTable.getRouting(clusterService.state(), null, null, null, null);
+         assertThat(routing.nodes()).contains(NODE_ID);
+     }
++
++    @Test
++    public void test_exception_is_thrown_when_no_master_is_discovered() {
++        var allocationsTable = SysAllocationsTableInfo.INSTANCE;
++        assertThatThrownBy(() -> allocationsTable.getRouting(ClusterState.EMPTY_STATE, null, null, null, null))
++            .isInstanceOf(MasterNotDiscoveredException.class);
++    }
+ }
+

@@ -1,0 +1,2517 @@
+2026-04-25 18:52:58,648 - backport - INFO - Using openrouter API: https://openrouter.ai/api/v1 (model: openai/gpt-4.1-mini)
+
+
+[1m> Entering new AgentExecutor chain...[0m
+
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `git_history` with `{}`
+
+
+[0m[36;1m[1;3me1013a428f Move PartitionInfo creation from PartitionInfos to DocTableInfo
+
+diff --git a/server/src/main/java/io/crate/metadata/doc/DocTableInfo.java b/server/src/main/java/io/crate/metadata/doc/DocTableInfo.java
+--- a/server/src/main/java/io/crate/metadata/doc/DocTableInfo.java
++++ b/server/src/main/java/io/crate/metadata/doc/DocTableInfo.java
+@@ -83,5 +85,6 @@
+ import io.crate.metadata.ColumnIdent;
+ import io.crate.metadata.CoordinatorTxnCtx;
+ import io.crate.metadata.GeneratedReference;
+ import io.crate.metadata.IndexReference;
+ import io.crate.metadata.NodeContext;
++import io.crate.metadata.PartitionInfo
+You need to do the following analysis based on the information in the last commit:
+Analyze the code logic of the context of the patch to be ported in this commit step by step.
+If code logic already existed before this commit, the patch context can be assumed to remain in a similar location. Use `locate` and `viewcode` to check your results.
+If code logic were added in this commit, then you need to `git_show` for further details.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `git_show` with `{}`
+
+
+[0m[33;1m[1;3mcommit e1013a428f1132efb7fef0c02cb4538fccd68f8f
+Author: Mathias Fussenegger <f.mathias@zignar.net>
+Date:   Mon Jul 8 12:28:19 2024 +0200
+
+    Move PartitionInfo creation from PartitionInfos to DocTableInfo
+    
+    `PartitionInfos` used `IndexMetadata.mapping()` to create the values for
+    the `PartitionInfo`.
+    
+    Direct `.mapping()` access is problematic in the context of:
+    
+    https://github.com/crate/crate/issues/11939
+
+ .../crate/analyze/where/WhereClauseAnalyzer.java   |   8 +-
+ .../sources/InformationSchemaIterables.java        |   2 +-
+ .../check/cluster/NumberOfPartitionsSysCheck.java  |  14 +--
+ .../java/io/crate/metadata/PartitionInfos.java     |  90 +++---------------
+ .../main/java/io/crate/metadata/PartitionName.java |   2 +-
+ .../java/io/crate/metadata/doc/DocTableInfo.java   |  51 ++++++++++-
+ .../io/crate/planner/WhereClauseOptimizer.java     |   2 +-
+ .../io/crate/planner/statement/DeletePlanner.java  |   2 +-
+ .../elasticsearch/cluster/metadata/Metadata.java   |   5 +-
+ .../reference/sys/check/cluster/SysChecksTest.java |   6 +-
+ .../java/io/crate/metadata/PartitionInfosTest.java | 101 +++++++++------------
+ 11 files changed, 123 insertions(+), 160 deletions(-)
+[IMPORTANT] The relevant code shown by `git_history` is not fully `+` lines.
+[IMPORTANT] This means that the code in question was not added or migrated in this commit.
+[IMPORTANT] Please think step by step and check the abstract below carefully. If error exists in abstract, please ignore the info below.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `locate_symbol` with `{'ref': 'c48c2b7e1cf3a33aa022a55572bd3a64b67c533c', 'symbol': 'IndexParts'}`
+responded: The last git_history and git_show show that the import of `PartitionInfo` was added in the commit e1013a428f1132efb7fef0c02cb4538fccd68f8f, which is before the target ref c48c2b7e1cf3a33aa022a55572bd3a64b67c533c. This means the import of `PartitionInfo` should exist in the target ref and we need to check the imports in the target ref to confirm.
+
+The patch to backport adds the import:
+```java
++import io.crate.metadata.IndexParts;
+```
+This import does not appear in the old version snippet you provided.
+
+To confirm the presence of `IndexParts` in the old version, I will locate the symbol `IndexParts` in the old ref c48c2b7e1cf3a33aa022a55572bd3a64b67c533c to check if it exists and where it is imported from.
+
+This will help me understand if the import line for `IndexParts` should be added or adapted differently in the old version.
+
+Next, I will locate the symbol `IndexParts` in the old ref.
+
+[0m[33;1m[1;3mserver/src/main/java/io/crate/metadata/IndexParts.java:37
+server/src/main/java/io/crate/metadata/IndexParts.java:51[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': 'c48c2b7e1cf3a33aa022a55572bd3a64b67c533c', 'path': 'server/src/main/java/io/crate/metadata/doc/DocTableInfo.java', 'startline': 80, 'endline': 95}`
+
+
+[0m[36;1m[1;3mHere are lines 80 through 95.
+
+import io.crate.expression.symbol.Symbols;
+import io.crate.expression.symbol.VoidReference;
+import io.crate.expression.symbol.format.Style;
+import io.crate.metadata.ColumnIdent;
+import io.crate.metadata.CoordinatorTxnCtx;
+import io.crate.metadata.GeneratedReference;
+import io.crate.metadata.IndexReference;
+import io.crate.metadata.NodeContext;
+import io.crate.metadata.PartitionName;
+import io.crate.metadata.Reference;
+import io.crate.metadata.ReferenceIdent;
+import io.crate.metadata.RelationName;
+import io.crate.metadata.Routing;
+import io.crate.metadata.RoutingProvider;
+import io.crate.metadata.RowGranularity;
+import io.crate.metadata.settings.CoordinatorSessionSettings;
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `validate` with `{'ref': 'c48c2b7e1cf3a33aa022a55572bd3a64b67c533c', 'patch': '--- a/server/src/main/java/io/crate/metadata/doc/DocTableInfo.java\n+++ b/server/src/main/java/io/crate/metadata/doc/DocTableInfo.java\n@@ -82,9 +82,10 @@\n-import io.crate.metadata.PartitionName;\n-import io.crate.metadata.Reference;\n+import io.crate.metadata.IndexParts;\n+import io.crate.metadata.PartitionName;\n+import io.crate.metadata.Reference;\n '}`
+responded: The patch adds an import statement:
+
+```java
++import io.crate.metadata.IndexParts;
+```
+
+In the older version at ref c48c2b7e1cf3a33aa022a55572bd3a64b67c533c, the import block around the patch location does not have this import. Instead, it has other imports in that area:
+
+```java
+import io.crate.metadata.PartitionName;
+import io.crate.metadata.Reference;
+```
+
+The patch is only about adding the import statement for `IndexParts`. The rest of the imports are unchanged.
+
+The patch context is very small and only involves this import addition. The code logic or other parts of the file are not changed in this patch.
+
+Since the older version does not have this import, and the patch adds it, I need to check if the class `IndexParts` exists in the older version (which I found it does exist in `server/src/main/java/io/crate/metadata/IndexParts.java`).
+
+Therefore, the backport for this hunk is simply to add the import line in the same place as the newer version, adapting the context lines to the older version's imports.
+
+I will generate the patch for the older version by adding the import line after the existing imports in the right place.
+
+Next, I will generate the patch and then validate it on the older ref.
+
+[0m[38;5;200m[1;3mThis patch does not apply because of CONTEXT MISMATCH. Context are patch lines that already exist in the file, that is, lines starting with ` ` and `-`. You should modify the error patch according to the context of older version.
+Here are lines 107 through 111 of file server/src/main/java/io/crate/metadata/doc/DocTableInfo.java for commit c48c2b7e1cf3a33aa022a55572bd3a64b67c533c.
+```code snippet
+import io.crate.types.DataType;
+import io.crate.types.ObjectType;
+
+
+```
+Besides, here is detailed info about how the context differs between the patch and the old version.
+```context diff
+On the line 4 of your patch.
+          Your patch:import io.crate.metadata.PartitionName;
+Original source code:import io.crate.types.DataType;
+On the line 5 of your patch.
+          Your patch:import io.crate.metadata.Reference;
+Original source code:import io.crate.types.ObjectType;
+```
+Please eliminate these diffs step by step. Be sure to eliminate these diffs the next time you generate a patch!
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': 'c48c2b7e1cf3a33aa022a55572bd3a64b67c533c', 'path': 'server/src/main/java/io/crate/metadata/doc/DocTableInfo.java', 'startline': 95, 'endline': 115}`
+
+
+[0m[36;1m[1;3mHere are lines 95 through 115.
+
+import io.crate.metadata.settings.CoordinatorSessionSettings;
+import io.crate.metadata.settings.NumberOfReplicas;
+import io.crate.metadata.sys.TableColumn;
+import io.crate.metadata.table.Operation;
+import io.crate.metadata.table.ShardedTable;
+import io.crate.metadata.table.StoredTable;
+import io.crate.metadata.table.TableInfo;
+import io.crate.sql.ExpressionFormatter;
+import io.crate.sql.parser.SqlParser;
+import io.crate.sql.tree.CheckConstraint;
+import io.crate.sql.tree.ColumnPolicy;
+import io.crate.sql.tree.Expression;
+import io.crate.types.ArrayType;
+import io.crate.types.DataType;
+import io.crate.types.ObjectType;
+
+
+/**
+ * Represents a user table.
+ * <p>
+ *     A user table either maps to 1 lucene index (if not partitioned)
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `validate` with `{'ref': 'c48c2b7e1cf3a33aa022a55572bd3a64b67c533c', 'patch': '--- a/server/src/main/java/io/crate/metadata/doc/DocTableInfo.java\n+++ b/server/src/main/java/io/crate/metadata/doc/DocTableInfo.java\n@@ -82,10 +82,13 @@\n import io.crate.metadata.ColumnIdent;\n import io.crate.metadata.CoordinatorTxnCtx;\n import io.crate.metadata.GeneratedReference;\n-import io.crate.metadata.IndexReference;\n-import io.crate.metadata.NodeContext;\n-import io.crate.metadata.PartitionName;\n-import io.crate.metadata.Reference;\n+import io.crate.metadata.IndexReference;\n+import io.crate.metadata.IndexParts;\n+import io.crate.metadata.NodeContext;\n+import io.crate.metadata.PartitionName;\n+import io.crate.metadata.Reference;\n+import io.crate.types.DataType;\n+import io.crate.types.ObjectType;\n '}`
+responded: The target patch modifies imports by adding `import io.crate.metadata.IndexParts;` before `import io.crate.metadata.PartitionName;` in the file `server/src/main/java/io/crate/metadata/doc/DocTableInfo.java`.
+
+In the older version (ref c48c2b7e1cf3a33aa022a55572bd3a64b67c533c), the imports around this location are slightly different in order compared to the newer version, and there are additional imports related to `DataType` and `ObjectType` after `PartitionName` and `Reference`.
+
+The key difference causing the validation failure is that the context lines in the patch do not match the older version's imports exactly. The older version has:
+
+```java
+import io.crate.metadata.PartitionName;
+import io.crate.metadata.Reference;
+import io.crate.types.DataType;
+import io.crate.types.ObjectType;
+```
+
+Whereas the patch context is missing the `DataType` and `ObjectType` imports.
+
+To fix this, I need to insert the new import `import io.crate.metadata.IndexParts;` in the correct place without removing or changing the existing imports in the older version.
+
+Hence, the backported patch for this hunk should be:
+
+```diff
+--- a/server/src/main/java/io/crate/metadata/doc/DocTableInfo.java
++++ b/server/src/main/java/io/crate/metadata/doc/DocTableInfo.java
+@@ -82,10 +82,11 @@
+ import io.crate.metadata.ColumnIdent;
+ import io.crate.metadata.CoordinatorTxnCtx;
+ import io.crate.metadata.GeneratedReference;
+-import io.crate.metadata.IndexReference;
+-import io.crate.metadata.NodeContext;
+-import io.crate.metadata.PartitionName;
+-import io.crate.metadata.Reference;
++import io.crate.metadata.IndexReference;
++import io.crate.metadata.IndexParts;
++import io.crate.metadata.NodeContext;
++import io.crate.metadata.PartitionName;
++import io.crate.metadata.Reference;
++import io.crate.types.DataType;
++import io.crate.types.ObjectType;
+```
+
+This preserves the existing imports and adds the new one in the correct place.
+
+Next, I will validate this patch on the older ref.
+
+[0m[38;5;200m[1;3mThis patch does not apply because of CONTEXT MISMATCH. Context are patch lines that already exist in the file, that is, lines starting with ` ` and `-`. You should modify the error patch according to the context of older version.
+Here are lines 82 through 91 of file server/src/main/java/io/crate/metadata/doc/DocTableInfo.java for commit c48c2b7e1cf3a33aa022a55572bd3a64b67c533c.
+```code snippet
+import io.crate.metadata.ColumnIdent;
+import io.crate.metadata.CoordinatorTxnCtx;
+import io.crate.metadata.GeneratedReference;
+import io.crate.metadata.IndexReference;
+import io.crate.metadata.NodeContext;
+import io.crate.metadata.PartitionName;
+import io.crate.metadata.Reference;
+import io.crate.metadata.ReferenceIdent;
+import io.crate.metadata.RelationName;
+```
+Besides, here is detailed info about how the context differs between the patch and the old version.
+```context diff
+On the line 18 of your patch.
+          Your patch:
+Original source code:import io.crate.metadata.ReferenceIdent;
+```
+Please eliminate these diffs step by step. Be sure to eliminate these diffs the next time you generate a patch!
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': 'c48c2b7e1cf3a33aa022a55572bd3a64b67c533c', 'path': 'server/src/main/java/io/crate/metadata/doc/DocTableInfo.java', 'startline': 80, 'endline': 100}`
+
+
+[0m[36;1m[1;3mHere are lines 80 through 100.
+
+import io.crate.expression.symbol.Symbols;
+import io.crate.expression.symbol.VoidReference;
+import io.crate.expression.symbol.format.Style;
+import io.crate.metadata.ColumnIdent;
+import io.crate.metadata.CoordinatorTxnCtx;
+import io.crate.metadata.GeneratedReference;
+import io.crate.metadata.IndexReference;
+import io.crate.metadata.NodeContext;
+import io.crate.metadata.PartitionName;
+import io.crate.metadata.Reference;
+import io.crate.metadata.ReferenceIdent;
+import io.crate.metadata.RelationName;
+import io.crate.metadata.Routing;
+import io.crate.metadata.RoutingProvider;
+import io.crate.metadata.RowGranularity;
+import io.crate.metadata.settings.CoordinatorSessionSettings;
+import io.crate.metadata.settings.NumberOfReplicas;
+import io.crate.metadata.sys.TableColumn;
+import io.crate.metadata.table.Operation;
+import io.crate.metadata.table.ShardedTable;
+import io.crate.metadata.table.StoredTable;
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `validate` with `{'ref': 'c48c2b7e1cf3a33aa022a55572bd3a64b67c533c', 'patch': '--- a/server/src/main/java/io/crate/metadata/doc/DocTableInfo.java\n+++ b/server/src/main/java/io/crate/metadata/doc/DocTableInfo.java\n@@ -87,7 +87,8 @@\n import io.crate.metadata.IndexReference;\n+import io.crate.metadata.IndexParts;\n import io.crate.metadata.NodeContext;\n import io.crate.metadata.PartitionName;\n import io.crate.metadata.Reference;\n'}`
+responded: The older version (ref c48c2b7e1cf3a33aa022a55572bd3a64b67c533c) does not have the import `io.crate.metadata.IndexParts` which is added in the newer version patch. The other imports are consistent with the older version.
+
+The patch in the newer version adds the import `io.crate.metadata.IndexParts` at a specific location among other imports. In the older version, this import does not exist at all.
+
+Since the patch only adds this import and does not remove or modify any other imports, the backport patch for this hunk should add the import `io.crate.metadata.IndexParts` at the appropriate location among existing imports in the older version.
+
+The appropriate location based on the older version import order is after `io.crate.metadata.IndexReference` and before `io.crate.metadata.NodeContext`.
+
+So the backport patch for this hunk should be:
+
+```diff
+--- a/server/src/main/java/io/crate/metadata/doc/DocTableInfo.java
++++ b/server/src/main/java/io/crate/metadata/doc/DocTableInfo.java
+@@ -87,7 +87,8 @@
+ import io.crate.metadata.IndexReference;
++import io.crate.metadata.IndexParts;
+ import io.crate.metadata.NodeContext;
+ import io.crate.metadata.PartitionName;
+ import io.crate.metadata.Reference;
+```
+
+I will now validate this patch against the older version.
+
+[0m[38;5;200m[1;3mPatch applied successfully
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3mI have successfully generated and validated the backport patch for the given hunk. The patch adapts the import statements in the file server/src/main/java/io/crate/metadata/doc/DocTableInfo.java to include the new import io.crate.metadata.IndexParts; while preserving the original import order and context of the older version.
+
+Here is the backport patch:
+
+```diff
+--- a/server/src/main/java/io/crate/metadata/doc/DocTableInfo.java
++++ b/server/src/main/java/io/crate/metadata/doc/DocTableInfo.java
+@@ -87,7 +87,8 @@
+ import io.crate.metadata.IndexReference;
++import io.crate.metadata.IndexParts;
+ import io.crate.metadata.NodeContext;
+ import io.crate.metadata.PartitionName;
+ import io.crate.metadata.Reference;
+```
+
+This patch has been validated to apply cleanly on the target ref c48c2b7e1cf3a33aa022a55572bd3a64b67c533c. If you need assistance with further hunks or any other backporting, feel free to ask.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new AgentExecutor chain...[0m
+
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `git_history` with `{}`
+
+
+[0m[36;1m[1;3md6cc2a6ac0 Replace getIndexMapping in IntegTestCase with getTable
+
+diff --git a/server/src/test/java/io/crate/metadata/doc/DocTableInfoTest.java b/server/src/test/java/io/crate/metadata/doc/DocTableInfoTest.java
+--- a/server/src/test/java/io/crate/metadata/doc/DocTableInfoTest.java
++++ b/server/src/test/java/io/crate/metadata/doc/DocTableInfoTest.java
+@@ -574,4 +569,4 @@
+             .hasType(ooType);
+-        assertThat(table.getReference(o)).isReference().hasName("o").hasType(oType);
++        assertThat(table.getReference(o)).hasName("o").hasType(oType);
+     }
+ 
+You need to do the following analysis based on the information in the last commit:
+Analyze the code logic of the context of the patch to be ported in this commit step by step.
+If code logic already existed before this commit, the patch context can be assumed to remain in a similar location. Use `locate` and `viewcode` to check your results.
+If code logic were added in this commit, then you need to `git_show` for further details.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `locate_symbol` with `{'ref': 'c48c2b7e1cf3a33aa022a55572bd3a64b67c533c', 'symbol': 'DocTableInfoTest'}`
+responded: The last commit in the history for the relevant lines shows a minor change in the assertion line, removing `.isReference()` call. This indicates that the test code was slightly modified but the overall test method structure likely existed before this commit.
+
+The patch to be backported adds a new test method `test_write_to_preserves_number_of_shards_of_partitions` after the existing test method in the file `DocTableInfoTest.java`.
+
+Since the last commit only changed an assertion in the existing test method and did not add or remove the new test method, it is likely that the new test method did not exist in the older version.
+
+Next, I will locate the class `DocTableInfoTest` in the older ref `c48c2b7e1cf3a33aa022a55572bd3a64b67c533c` to find the exact position and surrounding context to add the new test method.
+
+I will use `locate_symbol` to find the location of the class or the existing test method in the old ref.
+
+[0m[33;1m[1;3mserver/src/test/java/io/crate/metadata/doc/DocTableInfoTest.java:67[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': 'c48c2b7e1cf3a33aa022a55572bd3a64b67c533c', 'path': 'server/src/test/java/io/crate/metadata/doc/DocTableInfoTest.java', 'startline': 560, 'endline': 580}`
+
+
+[0m[36;1m[1;3mThis file only has 578 lines. Here are lines 560 through 578.
+
+            .setInnerType("b1", DataTypes.INTEGER).build();
+        var oType = ObjectType.builder()
+            .setInnerType("o", ooType)
+            .setInnerType("a1", DataTypes.INTEGER).build();
+
+        ColumnIdent oo = ColumnIdent.of("o", List.of("o"));
+        ColumnIdent o = ColumnIdent.of("o");
+
+        assertThat(table.getReference(ooo)).isNull();
+        assertThat(table.getReference(ooo2))
+            .isReference()
+            .hasName("o['o']['o2']")
+            .hasType(ooo2Type);
+        assertThat(table.getReference(oo)).isReference().hasName("o['o']")
+            .hasType(ooType);
+        assertThat(table.getReference(o)).isReference().hasName("o").hasType(oType);
+    }
+}
+
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': 'c48c2b7e1cf3a33aa022a55572bd3a64b67c533c', 'path': 'server/src/test/java/io/crate/metadata/doc/DocTableInfoTest.java', 'startline': 1, 'endline': 40}`
+responded: The last lines (560-578) of the older version's DocTableInfoTest.java file show the end of a test method, ending with a closing brace for the class. The context lines from the patch to be backported start just after the last assert statement of the existing test method.
+
+The patch to be backported adds a new test method named `test_write_to_preserves_number_of_shards_of_partitions`, which starts after the last closing brace of the existing test method and before the class closing brace.
+
+Given this, the new test method from the patch should be inserted just before the closing brace of the class in the older version, adapting the indentation and any minor syntax differences.
+
+Next, I want to verify if the annotations used in the patch (@UseRandomizedSchema, @Test) exist in the older version or if they need to be imported or adapted.
+
+I will locate the imports at the top of the file to check if these annotations or their imports exist in the older version.
+
+I will view the first 40 lines of the older version's DocTableInfoTest.java to check the imports and class declaration.
+
+[0m[36;1m[1;3mHere are lines 1 through 40.
+
+/*
+ * Licensed to Crate.io GmbH ("Crate") under one or more contributor
+ * license agreements.  See the NOTICE file distributed with this work for
+ * additional information regarding copyright ownership.  Crate licenses
+ * this file to you under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.  You may
+ * obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.  See the
+ * License for the specific language governing permissions and limitations
+ * under the License.
+ *
+ * However, if you have executed another commercial license agreement
+ * with Crate these terms will supersede the license and you may use the
+ * software solely pursuant to the terms of the relevant commercial agreement.
+ */
+
+package io.crate.metadata.doc;
+
+import static io.crate.testing.Asserts.assertThat;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.elasticsearch.cluster.metadata.Metadata.COLUMN_OID_UNASSIGNED;
+
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.atomic.AtomicLong;
+
+import org.assertj.core.api.Assertions;
+import org.elasticsearch.Version;
+import org.elasticsearch.cluster.ClusterState;
+import org.elasticsearch.cluster.metadata.IndexMetadata;
+import org.elasticsearch.cluster.metadata.Metadata;
+import org.elasticsearch.common.settings.Settings;
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': 'c48c2b7e1cf3a33aa022a55572bd3a64b67c533c', 'path': 'server/src/test/java/io/crate/metadata/doc/DocTableInfoTest.java', 'startline': 570, 'endline': 578}`
+
+
+[0m[36;1m[1;3mHere are lines 570 through 578.
+
+            .isReference()
+            .hasName("o['o']['o2']")
+            .hasType(ooo2Type);
+        assertThat(table.getReference(oo)).isReference().hasName("o['o']")
+            .hasType(ooType);
+        assertThat(table.getReference(o)).isReference().hasName("o").hasType(oType);
+    }
+}
+
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': 'c48c2b7e1cf3a33aa022a55572bd3a64b67c533c', 'path': 'server/src/test/java/io/crate/metadata/doc/DocTableInfoTest.java', 'startline': 1, 'endline': 60}`
+responded: The target patch adds a new test method `test_write_to_preserves_number_of_shards_of_partitions` at the end of the `DocTableInfoTest` class. The old version `c48c2b7e1cf3a33aa022a55572bd3a64b67c533c` ends the class just after the method containing the last assertion on `table.getReference(o)`.
+
+The new test method is completely new and does not exist in the old version. Since it is a test method, it likely does not depend on other new code beyond the existing class and imports.
+
+Next, I need to confirm the exact location to insert the new test method and check for any import or annotation differences that might affect the backport.
+
+I will check the imports and class-level annotations in the old version to see if the new test method's annotations and imports are already present or need to be added.
+
+I will view the first 60 lines of the old version to see the imports and class annotations in the file `server/src/test/java/io/crate/metadata/doc/DocTableInfoTest.java`.
+
+[0m[36;1m[1;3mHere are lines 1 through 60.
+
+/*
+ * Licensed to Crate.io GmbH ("Crate") under one or more contributor
+ * license agreements.  See the NOTICE file distributed with this work for
+ * additional information regarding copyright ownership.  Crate licenses
+ * this file to you under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.  You may
+ * obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.  See the
+ * License for the specific language governing permissions and limitations
+ * under the License.
+ *
+ * However, if you have executed another commercial license agreement
+ * with Crate these terms will supersede the license and you may use the
+ * software solely pursuant to the terms of the relevant commercial agreement.
+ */
+
+package io.crate.metadata.doc;
+
+import static io.crate.testing.Asserts.assertThat;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.elasticsearch.cluster.metadata.Metadata.COLUMN_OID_UNASSIGNED;
+
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.atomic.AtomicLong;
+
+import org.assertj.core.api.Assertions;
+import org.elasticsearch.Version;
+import org.elasticsearch.cluster.ClusterState;
+import org.elasticsearch.cluster.metadata.IndexMetadata;
+import org.elasticsearch.cluster.metadata.Metadata;
+import org.elasticsearch.common.settings.Settings;
+import org.junit.Test;
+
+import com.carrotsearch.hppc.IntArrayList;
+
+import io.crate.analyze.DropColumn;
+import io.crate.exceptions.ColumnUnknownException;
+import io.crate.expression.symbol.DynamicReference;
+import io.crate.expression.symbol.VoidReference;
+import io.crate.metadata.ColumnIdent;
+import io.crate.metadata.IndexReference;
+import io.crate.metadata.IndexType;
+import io.crate.metadata.Reference;
+import io.crate.metadata.ReferenceIdent;
+import io.crate.metadata.RelationName;
+import io.crate.metadata.RowGranularity;
+import io.crate.metadata.Schemas;
+import io.crate.metadata.SimpleReference;
+import io.crate.metadata.table.Operation;
+import io.crate.metadata.table.TableInfo;
+import io.crate.sql.tree.ColumnPolicy;
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': 'c48c2b7e1cf3a33aa022a55572bd3a64b67c533c', 'path': 'server/src/test/java/io/crate/metadata/doc/DocTableInfoTest.java', 'startline': 580, 'endline': 578}`
+
+
+[0m[36;1m[1;3mThis file only has 578 lines. Here are lines 578 through 578.
+
+
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `git_history` with `{}`
+
+
+[0m[36;1m[1;3md6cc2a6ac0 Replace getIndexMapping in IntegTestCase with getTable
+
+diff --git a/server/src/test/java/io/crate/metadata/doc/DocTableInfoTest.java b/server/src/test/java/io/crate/metadata/doc/DocTableInfoTest.java
+--- a/server/src/test/java/io/crate/metadata/doc/DocTableInfoTest.java
++++ b/server/src/test/java/io/crate/metadata/doc/DocTableInfoTest.java
+@@ -574,4 +569,4 @@
+             .hasType(ooType);
+-        assertThat(table.getReference(o)).isReference().hasName("o").hasType(oType);
++        assertThat(table.getReference(o)).hasName("o").hasType(oType);
+     }
+ 
+You need to do the following analysis based on the information in the last commit:
+Analyze the code logic of the context of the patch to be ported in this commit step by step.
+If code logic already existed before this commit, the patch context can be assumed to remain in a similar location. Use `locate` and `viewcode` to check your results.
+If code logic were added in this commit, then you need to `git_show` for further details.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `git_show` with `{}`
+
+
+[0m[33;1m[1;3mcommit d6cc2a6ac021cfcd2a0460e6325e7eda31abb4bf
+Author: Mathias Fussenegger <f.mathias@zignar.net>
+Date:   Mon Jul 8 15:47:41 2024 +0200
+
+    Replace getIndexMapping in IntegTestCase with getTable
+    
+    Relates to https://github.com/crate/crate/issues/11939
+
+ .../analyze/AlterTableAddColumnAnalyzerTest.java   |   6 +-
+ .../analyze/AlterTableDropColumnAnalyzerTest.java  |  19 +-
+ .../AlterTableRenameColumnAnalyzerTest.java        |   6 +-
+ .../CreateAlterTableStatementAnalyzerTest.java     |   9 +-
+ .../java/io/crate/analyze/InsertAnalyzerTest.java  |   6 +-
+ .../execution/ddl/tables/AddColumnTaskTest.java    |   4 +-
+ .../execution/ddl/tables/DropColumnTaskTest.java   |   2 +-
+ .../execution/ddl/tables/RenameColumnTaskTest.java |  16 +-
+ .../java/io/crate/execution/dml/IndexerTest.java   |  12 +-
+ .../execution/dml/upsert/UpdateToInsertTest.java   |  20 +-
+ .../ColumnPolicyIntegrationTest.java               |  17 --
+ .../crate/integrationtests/DDLIntegrationTest.java | 309 ++++++++++-----------
+ .../DynamicMappingUpdateITest.java                 |  53 +---
+ .../java/io/crate/metadata/SystemTableTest.java    |   6 +-
+ .../crate/metadata/doc/DocIndexMetadataTest.java   |   3 +-
+ .../io/crate/metadata/doc/DocTableInfoTest.java    |  27 +-
+ .../java/io/crate/testing/Asserts.java             |   5 +
+ .../java/io/crate/testing/ReferenceAssert.java     |  20 +-
+ .../java/org/elasticsearch/test/IntegTestCase.java |  31 +--
+ 19 files changed, 253 insertions(+), 318 deletions(-)
+[IMPORTANT] The relevant code shown by `git_history` is not fully `+` lines.
+[IMPORTANT] This means that the code in question was not added or migrated in this commit.
+[IMPORTANT] Please think step by step and check the abstract below carefully. If error exists in abstract, please ignore the info below.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `locate_symbol` with `{'ref': 'c48c2b7e1cf3a33aa022a55572bd3a64b67c533c', 'symbol': 'test_write_to_preserves_number_of_shards_of_partitions'}`
+
+
+[0m[33;1m[1;3mThe symbol test_write_to_preserves_number_of_shards_of_partitions you are looking for does not exist in the current ref.
+But here is a symbol similar to it. It's `test_increase_number_of_shards_for_existing_partition`.
+The file where this symbol is located is: 
+server/src/test/java/io/crate/integrationtests/PartitionedTableIntegrationTest.java:1758
+Please be careful to check that this symbol indicates the same thing as the previous symbol.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': 'c48c2b7e1cf3a33aa022a55572bd3a64b67c533c', 'path': 'server/src/test/java/io/crate/integrationtests/PartitionedTableIntegrationTest.java', 'startline': 1750, 'endline': 1780}`
+
+
+[0m[36;1m[1;3mHere are lines 1750 through 1780.
+
+                "order by number_of_shards ASC");
+        assertThat(response).as("only new partition has updated number of shards").hasRows(
+            "{p=2}| 1",
+            "{p=1}| 2"
+        );
+    }
+
+    @Test
+    public void test_increase_number_of_shards_for_existing_partition() throws Exception {
+        execute("CREATE TABLE tbl_parted (x int, p int) PARTITIONED BY(p) " +
+            "CLUSTERED INTO 2 SHARDS WITH (number_of_replicas = 0)");
+
+        execute("INSERT INTO tbl_parted(x, p) SELECT g, 1 FROM generate_series(1, 4, 1) AS g");
+        execute("refresh table tbl_parted");
+
+        execute("SELECT count(*) FROM sys.shards WHERE table_name = 'tbl_parted'");
+        assertThat(response).hasRows("2");
+
+        execute("ALTER TABLE tbl_parted PARTITION (p=1) SET (\"blocks.write\" = true)");
+        execute("ALTER TABLE tbl_parted PARTITION (p=1) SET (number_of_shards = 4)");
+        execute("ALTER TABLE tbl_parted PARTITION (p=1) SET (\"blocks.write\" = false)");
+
+        execute("INSERT INTO tbl_parted(x, p) SELECT g, 1 FROM generate_series(5, 10, 1) AS g");
+        execute("refresh table tbl_parted");
+
+        execute("SELECT count(*) FROM sys.shards WHERE table_name = 'tbl_parted'");
+        assertThat(response).hasRows("4");
+    }
+
+    @Test
+    public void testGroupOnDynamicObjectColumn() throws Exception {
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': 'c48c2b7e1cf3a33aa022a55572bd3a64b67c533c', 'path': 'server/src/test/java/io/crate/integrationtests/PartitionedTableIntegrationTest.java', 'startline': 1780, 'endline': 1800}`
+
+
+[0m[36;1m[1;3mHere are lines 1780 through 1800.
+
+    public void testGroupOnDynamicObjectColumn() throws Exception {
+        execute("create table event (day timestamp with time zone primary key, data object) " +
+            "clustered into 6 shards " +
+            "partitioned by (day)");
+        ensureYellow();
+        execute("insert into event (day, data) values ('2015-01-03', {sessionid = null})");
+        execute("insert into event (day, data) values ('2015-01-01', {sessionid = 'hello'})");
+        execute("refresh table event");
+        execute("select data['sessionid'] from event group by data['sessionid'] " +
+                "order by format('%s', data['sessionid'])");
+        assertThat(response.rows().length).isEqualTo(2);
+        assertThat((String) response.rows()[0][0]).isEqualTo("hello");
+        assertThat(response.rows()[1][0]).isNull();;
+    }
+
+    @Test
+    public void testFilterOnDynamicObjectColumn() throws Exception {
+        execute(
+            "create table event (" +
+            "   day timestamp with time zone primary key," +
+            "   data object" +
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `locate_symbol` with `{'ref': 'c48c2b7e1cf3a33aa022a55572bd3a64b67c533c', 'symbol': 'DocTableInfoFactory'}`
+
+
+[0m[33;1m[1;3mserver/src/main/java/io/crate/metadata/doc/DocTableInfoFactory.java:102
+server/src/main/java/io/crate/metadata/doc/DocTableInfoFactory.java:89[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': 'c48c2b7e1cf3a33aa022a55572bd3a64b67c533c', 'path': 'server/src/main/java/io/crate/metadata/doc/DocTableInfoFactory.java', 'startline': 80, 'endline': 110}`
+
+
+[0m[36;1m[1;3mHere are lines 80 through 110.
+
+import io.crate.types.BitStringType;
+import io.crate.types.CharacterType;
+import io.crate.types.DataType;
+import io.crate.types.DataTypes;
+import io.crate.types.FloatVectorType;
+import io.crate.types.ObjectType;
+import io.crate.types.StorageSupport;
+import io.crate.types.StringType;
+
+public class DocTableInfoFactory {
+
+    private final NodeContext nodeCtx;
+    private final ExpressionAnalyzer expressionAnalyzer;
+    private final CoordinatorTxnCtx systemTransactionContext;
+
+    public static class MappingKeys {
+        public static final String DOC_VALUES = "doc_values";
+        public static final String DATE = "date";
+        public static final String KEYWORD = "keyword";
+        public static final String BITSTRING = "bit";
+    }
+
+    public DocTableInfoFactory(NodeContext nodeCtx) {
+        this.nodeCtx = nodeCtx;
+        this.systemTransactionContext = CoordinatorTxnCtx.systemTransactionContext();
+        this.expressionAnalyzer = new ExpressionAnalyzer(
+            systemTransactionContext,
+            nodeCtx,
+            ParamTypeHints.EMPTY,
+            FieldProvider.UNSUPPORTED,
+            null
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': 'c48c2b7e1cf3a33aa022a55572bd3a64b67c533c', 'path': 'server/src/main/java/io/crate/metadata/doc/DocTableInfoFactory.java', 'startline': 90, 'endline': 130}`
+
+
+[0m[36;1m[1;3mHere are lines 90 through 130.
+
+
+    private final NodeContext nodeCtx;
+    private final ExpressionAnalyzer expressionAnalyzer;
+    private final CoordinatorTxnCtx systemTransactionContext;
+
+    public static class MappingKeys {
+        public static final String DOC_VALUES = "doc_values";
+        public static final String DATE = "date";
+        public static final String KEYWORD = "keyword";
+        public static final String BITSTRING = "bit";
+    }
+
+    public DocTableInfoFactory(NodeContext nodeCtx) {
+        this.nodeCtx = nodeCtx;
+        this.systemTransactionContext = CoordinatorTxnCtx.systemTransactionContext();
+        this.expressionAnalyzer = new ExpressionAnalyzer(
+            systemTransactionContext,
+            nodeCtx,
+            ParamTypeHints.EMPTY,
+            FieldProvider.UNSUPPORTED,
+            null
+        );
+    }
+
+    public void validateSchema(IndexMetadata indexMetadata) {
+        String indexName = indexMetadata.getIndex().getName();
+        if (IndexParts.isDangling(indexName)) {
+            return;
+        }
+        RelationName relationName = RelationName.fromIndexName(indexName);
+        Settings tableParameters = indexMetadata.getSettings();
+        Version versionCreated = IndexMetadata.SETTING_INDEX_VERSION_CREATED.get(tableParameters);
+        Version versionUpgraded = tableParameters.getAsVersion(IndexMetadata.SETTING_VERSION_UPGRADED, null);
+        MappingMetadata mapping = indexMetadata.mapping();
+        Map<String, Object> mappingSource = mapping == null ? Map.of() : mapping.sourceAsMap();
+        final Map<String, Object> metaMap = Maps.getOrDefault(mappingSource, "_meta", Map.of());
+        final List<ColumnIdent> partitionedBy = parsePartitionedByStringsList(
+            Maps.getOrDefault(metaMap, "partitioned_by", List.of())
+        );
+        List<ColumnIdent> primaryKeys = getPrimaryKeys(metaMap);
+        Set<ColumnIdent> notNullColumns = getNotNullColumns(metaMap);
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `locate_symbol` with `{'ref': 'c48c2b7e1cf3a33aa022a55572bd3a64b67c533c', 'symbol': 'DocTableInfo.writeTo'}`
+
+
+[0m[33;1m[1;3mThe symbol DocTableInfo.writeTo you are looking for does not exist in the current ref.
+But here is a symbol similar to it. It's `DocTableInfoFactory`.
+The file where this symbol is located is: 
+server/src/main/java/io/crate/metadata/doc/DocTableInfoFactory.java:102
+server/src/main/java/io/crate/metadata/doc/DocTableInfoFactory.java:89
+Please be careful to check that this symbol indicates the same thing as the previous symbol.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `locate_symbol` with `{'ref': 'c48c2b7e1cf3a33aa022a55572bd3a64b67c533c', 'symbol': 'DocTableInfoFactory.create'}`
+
+
+[0m[33;1m[1;3mThe symbol DocTableInfoFactory.create you are looking for does not exist in the current ref.
+But here is a symbol similar to it. It's `DocTableInfoFactoryTest`.
+The file where this symbol is located is: 
+server/src/test/java/io/crate/metadata/doc/DocTableInfoFactoryTest.java:46
+Please be careful to check that this symbol indicates the same thing as the previous symbol.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `locate_symbol` with `{'ref': 'c48c2b7e1cf3a33aa022a55572bd3a64b67c533c', 'symbol': 'DocTableInfoFactory.create'}`
+
+
+[0m[33;1m[1;3mThe symbol DocTableInfoFactory.create you are looking for does not exist in the current ref.
+But here is a symbol similar to it. It's `DocTableInfoFactoryTest`.
+The file where this symbol is located is: 
+server/src/test/java/io/crate/metadata/doc/DocTableInfoFactoryTest.java:46
+Please be careful to check that this symbol indicates the same thing as the previous symbol.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `locate_symbol` with `{'ref': 'c48c2b7e1cf3a33aa022a55572bd3a64b67c533c', 'symbol': 'DocTableInfo'}`
+
+
+[0m[33;1m[1;3mserver/src/main/java/io/crate/metadata/doc/DocTableInfo.java:164
+server/src/main/java/io/crate/metadata/doc/DocTableInfo.java:202[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': 'c48c2b7e1cf3a33aa022a55572bd3a64b67c533c', 'path': 'server/src/main/java/io/crate/metadata/doc/DocTableInfo.java', 'startline': 150, 'endline': 210}`
+
+
+[0m[36;1m[1;3mHere are lines 150 through 210.
+
+ *         <td>[ custom.t1 ]</td>
+ *         <td>NO</td>
+ *         <td></td>
+ *     </tr>
+ *     <tr>
+ *         <td>custom</td>
+ *         <td>t1p</td>
+ *         <td>[ custom..partitioned.t1p.&lt;ident&gt; ]</td>
+ *         <td>YES</td>
+ *         <td>custom..partitioned.t1p.</td>
+ *     </tr>
+ * </table>
+ *
+ */
+public class DocTableInfo implements TableInfo, ShardedTable, StoredTable {
+
+    public static final Setting<Long> TOTAL_COLUMNS_LIMIT =
+        Setting.longSetting("index.mapping.total_fields.limit", 1000L, 0, Property.Dynamic, Property.IndexScope);
+    public static final Setting<Long> DEPTH_LIMIT_SETTING =
+        Setting.longSetting("index.mapping.depth.limit", 20L, 1, Property.Dynamic, Property.IndexScope);
+
+    private final List<Reference> columns;
+    private final Set<Reference> droppedColumns;
+    private final List<GeneratedReference> generatedColumns;
+    private final List<Reference> partitionedByColumns;
+    private final List<Reference> defaultExpressionColumns;
+    private final Collection<ColumnIdent> notNullColumns;
+    private final Map<ColumnIdent, IndexReference> indexColumns;
+    private final Map<ColumnIdent, Reference> references;
+    private final Map<String, String> leafNamesByOid;
+    private final Map<ColumnIdent, String> analyzers;
+    private final RelationName ident;
+    @Nullable
+    private final String pkConstraintName;
+    private final List<ColumnIdent> primaryKeys;
+    private final List<CheckConstraint<Symbol>> checkConstraints;
+    private final ColumnIdent clusteredBy;
+    private final List<ColumnIdent> partitionedBy;
+    private final int numberOfShards;
+    private final String numberOfReplicas;
+    private final Settings tableParameters;
+    private final TableColumn docColumn;
+    private final Set<Operation> supportedOperations;
+    private final boolean hasAutoGeneratedPrimaryKey;
+    private final boolean isPartitioned;
+    private final Version versionCreated;
+    private final Version versionUpgraded;
+    private final boolean closed;
+    private final ColumnPolicy columnPolicy;
+    private TranslogIndexer translogIndexer; // lazily initialised
+    private final long tableVersion;
+
+    public DocTableInfo(RelationName ident,
+                        Map<ColumnIdent, Reference> references,
+                        Map<ColumnIdent, IndexReference> indexColumns,
+                        Map<ColumnIdent, String> analyzers,
+                        @Nullable String pkConstraintName,
+                        List<ColumnIdent> primaryKeys,
+                        List<CheckConstraint<Symbol>> checkConstraints,
+                        ColumnIdent clusteredBy,
+                        Settings tableParameters,
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': 'c48c2b7e1cf3a33aa022a55572bd3a64b67c533c', 'path': 'server/src/main/java/io/crate/metadata/doc/DocTableInfo.java', 'startline': 200, 'endline': 230}`
+
+
+[0m[36;1m[1;3mHere are lines 200 through 230.
+
+    private final long tableVersion;
+
+    public DocTableInfo(RelationName ident,
+                        Map<ColumnIdent, Reference> references,
+                        Map<ColumnIdent, IndexReference> indexColumns,
+                        Map<ColumnIdent, String> analyzers,
+                        @Nullable String pkConstraintName,
+                        List<ColumnIdent> primaryKeys,
+                        List<CheckConstraint<Symbol>> checkConstraints,
+                        ColumnIdent clusteredBy,
+                        Settings tableParameters,
+                        List<ColumnIdent> partitionedBy,
+                        ColumnPolicy columnPolicy,
+                        Version versionCreated,
+                        @Nullable Version versionUpgraded,
+                        boolean closed,
+                        Set<Operation> supportedOperations,
+                        long tableVersion) {
+        this.notNullColumns = references.values().stream()
+            .filter(r -> !r.column().isSystemColumn())
+            .filter(r -> !primaryKeys.contains(r.column()))
+            .filter(r -> !r.isNullable())
+            .sorted(Reference.CMP_BY_POSITION_THEN_NAME)
+            .map(Reference::column)
+            .toList();
+        this.droppedColumns = references.values().stream()
+            .filter(Reference::isDropped)
+            .collect(Collectors.toSet());
+        this.references = references.entrySet().stream()
+            .filter(entry -> !entry.getValue().isDropped())
+            .collect(Collectors.toMap(Entry::getKey, Entry::getValue));
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': 'c48c2b7e1cf3a33aa022a55572bd3a64b67c533c', 'path': 'server/src/main/java/io/crate/metadata/doc/DocTableInfo.java', 'startline': 300, 'endline': 340}`
+
+
+[0m[36;1m[1;3mHere are lines 300 through 340.
+
+    @Nullable
+    public Reference getReference(ColumnIdent columnIdent) {
+        Reference reference = references.get(columnIdent);
+        if (reference == null) {
+            return docColumn.getReference(ident(), columnIdent);
+        }
+        return reference;
+    }
+
+    @Nullable
+    public Reference getReference(String storageIdent) {
+        try {
+            long oid = Long.parseLong(storageIdent);
+            for (var ref : references.values()) {
+                if (ref.oid() == oid) {
+                    return ref;
+                }
+            }
+            for (var ref: indexColumns.values()) {
+                if (ref.oid() == oid) {
+                    return ref;
+                }
+            }
+            return null;
+        } catch (NumberFormatException ex) {
+            return getReference(ColumnIdent.fromPath(storageIdent));
+        }
+    }
+
+    @Override
+    public List<Reference> columns() {
+        return columns;
+    }
+
+    @Override
+    public Set<Reference> droppedColumns() {
+        return droppedColumns;
+    }
+
+    /**
+     * Get a TranslogIndexer based on this table
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': 'c48c2b7e1cf3a33aa022a55572bd3a64b67c533c', 'path': 'server/src/main/java/io/crate/metadata/doc/DocTableInfo.java', 'startline': 400, 'endline': 440}`
+
+
+[0m[36;1m[1;3mHere are lines 400 through 440.
+
+    }
+
+    @Override
+    @Nullable
+    public String pkConstraintName() {
+        return pkConstraintName;
+    }
+
+    public List<ColumnIdent> primaryKey() {
+        return primaryKeys;
+    }
+
+    @Override
+    public List<CheckConstraint<Symbol>> checkConstraints() {
+        return checkConstraints;
+    }
+
+    @Override
+    public int numberOfShards() {
+        return numberOfShards;
+    }
+
+    @Override
+    public String numberOfReplicas() {
+        return numberOfReplicas;
+    }
+
+    @Override
+    public ColumnIdent clusteredBy() {
+        return clusteredBy;
+    }
+
+    public boolean hasAutoGeneratedPrimaryKey() {
+        return hasAutoGeneratedPrimaryKey;
+    }
+
+    public String[] concreteIndices(Metadata metadata) {
+        try {
+            return IndexNameExpressionResolver.concreteIndexNames(
+                metadata,
+                isPartitioned
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': 'c48c2b7e1cf3a33aa022a55572bd3a64b67c533c', 'path': 'server/src/main/java/io/crate/metadata/doc/DocTableInfo.java', 'startline': 440, 'endline': 480}`
+
+
+[0m[36;1m[1;3mHere are lines 440 through 480.
+
+                isPartitioned
+                    ? IndicesOptions.lenientExpandOpen()
+                    : IndicesOptions.strictExpandOpen(),
+                ident.indexNameOrAlias()
+            );
+        } catch (IndexNotFoundException e) {
+            throw new RelationUnknown(ident.fqn(), e);
+        }
+    }
+
+    public String[] concreteOpenIndices(Metadata metadata) {
+        String[] concreteIndices = concreteIndices(metadata);
+        if (!isPartitioned) {
+            IndexMetadata index = metadata.index(ident.indexNameOrAlias());
+            if (index == null) {
+                throw new RelationUnknown(ident);
+            }
+            if (concreteIndices.length == 0) {
+                throw new RelationUnknown(ident);
+            }
+            return concreteIndices;
+        } else {
+            return IndexNameExpressionResolver.concreteIndexNames(
+                metadata,
+                IndicesOptions.fromOptions(true, true, true, false, IndicesOptions.strictExpandOpenAndForbidClosed()),
+                ident.indexNameOrAlias()
+            );
+        }
+    }
+
+    /**
+     * columns this table is partitioned by.
+     * <p>
+     * guaranteed to be in the same order as defined in CREATE TABLE statement
+     *
+     * @return always a list, never null
+     */
+    public List<Reference> partitionedByColumns() {
+        return partitionedByColumns;
+    }
+
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': 'c48c2b7e1cf3a33aa022a55572bd3a64b67c533c', 'path': 'server/src/main/java/io/crate/metadata/doc/DocTableInfo.java', 'startline': 480, 'endline': 520}`
+
+
+[0m[36;1m[1;3mHere are lines 480 through 520.
+
+
+    /**
+     * column names of columns this table is partitioned by (in dotted syntax).
+     * <p>
+     * guaranteed to be in the same order as defined in CREATE TABLE statement
+     *
+     * @return always a list, never null
+     */
+    public List<ColumnIdent> partitionedBy() {
+        return partitionedBy;
+    }
+
+    public List<PartitionName> getPartitions(Metadata metadata) {
+        if (!isPartitioned) {
+            throw new IllegalArgumentException("Relation " + ident + " isn't partitioned, cannot get partitions");
+        }
+        String[] concreteIndices = concreteIndices(metadata);
+        ArrayList<PartitionName> partitions = new ArrayList<>(concreteIndices.length);
+        for (String indexName : concreteIndices) {
+            partitions.add(PartitionName.fromIndexOrTemplate(indexName));
+        }
+        return partitions;
+    }
+
+    /**
+     * returns <code>true</code> if this table is a partitioned table,
+     * <code>false</code> otherwise
+     * <p>
+     * if so, {@linkplain #getPartitions(Metadata)} returns infos about the concrete indices that make
+     * up this virtual partitioned table
+     */
+    public boolean isPartitioned() {
+        return isPartitioned;
+    }
+
+    public IndexReference indexColumn(ColumnIdent ident) {
+        return indexColumns.get(ident);
+    }
+
+    public Collection<IndexReference> indexColumns() {
+        return indexColumns.values();
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': 'c48c2b7e1cf3a33aa022a55572bd3a64b67c533c', 'path': 'server/src/main/java/io/crate/metadata/doc/DocTableInfo.java', 'startline': 560, 'endline': 600}`
+
+
+[0m[36;1m[1;3mHere are lines 560 through 600.
+
+
+    public Settings parameters() {
+        return tableParameters;
+    }
+
+    @Override
+    public Set<Operation> supportedOperations() {
+        return supportedOperations;
+    }
+
+    @Override
+    public RelationType relationType() {
+        return RelationType.BASE_TABLE;
+    }
+
+    public String getAnalyzerForColumnIdent(ColumnIdent ident) {
+        return analyzers.get(ident);
+    }
+
+    @Nullable
+    public DynamicReference getDynamic(ColumnIdent ident,
+                                       boolean forWrite,
+                                       boolean errorOnUnknownObjectKey) {
+        boolean parentIsIgnored = false;
+        ColumnPolicy parentPolicy = columnPolicy();
+        int position = 0;
+
+        for (var parent : getParents(ident)) {
+            if (parent != null) {
+                parentPolicy = parent.columnPolicy();
+                position = parent.position();
+                break;
+            }
+        }
+        switch (parentPolicy) {
+            case DYNAMIC:
+                if (!forWrite) {
+                    if (!errorOnUnknownObjectKey) {
+                        return new VoidReference(new ReferenceIdent(ident(), ident), position);
+                    }
+                    return null;
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': 'c48c2b7e1cf3a33aa022a55572bd3a64b67c533c', 'path': 'server/src/main/java/io/crate/metadata/doc/DocTableInfo.java', 'startline': 620, 'endline': 660}`
+
+
+[0m[36;1m[1;3mHere are lines 620 through 660.
+
+            );
+        }
+        return new DynamicReference(new ReferenceIdent(ident(), ident), rowGranularity(), position);
+    }
+
+    @NotNull
+    public Reference resolveColumn(String targetColumnName,
+                                   boolean forWrite,
+                                   boolean errorOnUnknownObjectKey) throws ColumnUnknownException {
+        ColumnIdent columnIdent = ColumnIdent.fromPath(targetColumnName);
+        Reference reference = getReference(columnIdent);
+        if (reference == null) {
+            reference = getDynamic(columnIdent, forWrite, errorOnUnknownObjectKey);
+            if (reference == null) {
+                throw new ColumnUnknownException(columnIdent, ident);
+            }
+        }
+        return reference;
+    }
+
+    @Override
+    public String toString() {
+        return ident.fqn();
+    }
+
+    /**
+     * @return columns which are not nullable; excludes primary keys which are implicitly not-null
+     **/
+    public Collection<ColumnIdent> notNullColumns() {
+        return notNullColumns;
+    }
+
+    /**
+     * Starting from 5.5 column OID-s are used as source keys.
+     * Even of 5.5, there are no OIDs (and thus no source key rewrite happening) for:
+     * <ul>
+     *  <li>OBJECT (IGNORED) sub-columns</li>
+     *  <li>Empty arrays, or arrays with only null values</li>
+     *  <li>Internal object keys of the geo shape column, such as "coordinates", "type"</li>
+     * </ul>
+     */
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': 'c48c2b7e1cf3a33aa022a55572bd3a64b67c533c', 'path': 'server/src/main/java/io/crate/metadata/doc/DocTableInfo.java', 'startline': 660, 'endline': 700}`
+
+
+[0m[36;1m[1;3mHere are lines 660 through 700.
+
+     */
+    public UnaryOperator<String> lookupNameBySourceKey() {
+        if (versionCreated.onOrAfter(Version.V_5_5_0)) {
+            return oidOrName -> {
+                String name = leafNamesByOid.get(oidOrName);
+                if (name == null) {
+                    if (oidOrName.startsWith(UNKNOWN_COLUMN_PREFIX)) {
+                        assert oidOrName.length() >= UNKNOWN_COLUMN_PREFIX.length() + 1 : "Column name must consist of at least one character";
+                        return oidOrName.substring(UNKNOWN_COLUMN_PREFIX.length());
+                    }
+                    return oidOrName;
+                }
+                return name;
+            };
+        } else {
+            return UnaryOperator.identity();
+        }
+    }
+
+
+    private void validateDropColumns(List<DropColumn> dropColumns) {
+        var leftOverCols = columns().stream().map(Reference::column).collect(Collectors.toSet());
+        for (int i = 0 ; i < dropColumns.size(); i++) {
+            var refToDrop = dropColumns.get(i).ref();
+            var colToDrop = refToDrop.column();
+            for (var indexRef : indexColumns()) {
+                if (indexRef.columns().contains(refToDrop)) {
+                    throw new UnsupportedOperationException("Dropping column: " + colToDrop.sqlFqn() + " which " +
+                                                            "is part of INDEX: " + indexRef + " is not allowed");
+                }
+            }
+            for (var genRef : generatedColumns()) {
+                if (genRef.referencedReferences().contains(refToDrop)) {
+                    throw new UnsupportedOperationException(String.format(
+                        Locale.ENGLISH,
+                        "Cannot drop column `%s`. It's used in generated column `%s`: %s",
+                        colToDrop.sqlFqn(),
+                        genRef.column().sqlFqn(),
+                        genRef.formattedGeneratedExpression()
+                    ));
+                }
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': 'c48c2b7e1cf3a33aa022a55572bd3a64b67c533c', 'path': 'server/src/main/java/io/crate/metadata/doc/DocTableInfo.java', 'startline': 700, 'endline': 740}`
+
+
+[0m[36;1m[1;3mHere are lines 700 through 740.
+
+                }
+            }
+            for (var checkConstraint : checkConstraints()) {
+                Set<ColumnIdent> columnsInConstraint = new HashSet<>();
+                checkConstraint.expression().visit(Reference.class, r -> columnsInConstraint.add(r.column()));
+                if (columnsInConstraint.size() > 1 && columnsInConstraint.contains(colToDrop)) {
+                    throw new UnsupportedOperationException("Dropping column: " + colToDrop.sqlFqn() + " which " +
+                        "is used in CHECK CONSTRAINT: " + checkConstraint.name() + " is not allowed");
+                }
+                boolean constraintColIsSubColOfColToDrop = false;
+                for (var columnInConstraint : columnsInConstraint) {
+                    if (columnInConstraint.isChildOf(colToDrop)) {
+                        constraintColIsSubColOfColToDrop = true; // subcol of the dropped col referred in constraint
+                    }
+                }
+                if (constraintColIsSubColOfColToDrop) {
+                    for (var columnInConstraint : columnsInConstraint) {
+                        // Check if sibling, parent, or cols of another object are contained in the same constraint
+                        if (columnInConstraint.isChildOf(colToDrop) == false
+                            && columnInConstraint.path().equals(colToDrop.path()) == false) {
+                            throw new UnsupportedOperationException("Dropping column: " + colToDrop.sqlFqn() +
+                                " which is used in CHECK CONSTRAINT: " + checkConstraint.name() +
+                                " is not allowed");
+                        }
+                    }
+                }
+            }
+            leftOverCols.remove(colToDrop);
+        }
+        if (leftOverCols.isEmpty()) {
+            throw new UnsupportedOperationException("Dropping all columns of a table is not allowed");
+        }
+    }
+
+    /**
+     * Propagates the changes occurred to child columns to the parent columns inner types, e.g.::
+     *   ALTER TABLE ADD COLUMN o['o2']['o3']['x'] INT;
+     *   ==> after adding the column `x`, column `o`, `o['o2']`, and `o['o2']['o3']` also need to append `x` to its inner types.
+     * @param column the column changed
+     * @param type the type that the column changed to (null if dropped)
+     * @param newReferences all references of the current table including the changed references
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': 'c48c2b7e1cf3a33aa022a55572bd3a64b67c533c', 'path': 'server/src/main/java/io/crate/metadata/doc/DocTableInfo.java', 'startline': 740, 'endline': 780}`
+
+
+[0m[36;1m[1;3mHere are lines 740 through 780.
+
+     * @param newReferences all references of the current table including the changed references
+     */
+    private void updateParentsInnerTypes(ColumnIdent column,
+                                         @Nullable DataType<?> type,
+                                         Map<ColumnIdent, Reference> newReferences) {
+        ColumnIdent[] child = new ColumnIdent[]{column};
+        DataType<?>[] childType = new DataType[]{type};
+        for (var parent : column.parents()) {
+            Reference parentRef = newReferences.get(parent);
+            if (parentRef == null) {
+                throw new ColumnUnknownException(column, ident);
+            }
+            DataType<?> newParentType = ArrayType.updateLeaf(
+                parentRef.valueType(),
+                leaf -> childType[0] == null ?
+                    ((ObjectType) leaf).withoutChild(child[0].leafName()) :
+                    ((ObjectType) leaf).withChild(child[0].leafName(), childType[0])
+            );
+            Reference updatedParent = parentRef.withValueType(newParentType);
+            newReferences.replace(parent, updatedParent);
+            child[0] = updatedParent.column();
+            childType[0] = updatedParent.valueType();
+        }
+    }
+
+    public DocTableInfo dropConstraint(String constraint) {
+        List<CheckConstraint<Symbol>> newConstraints = checkConstraints.stream()
+            .filter(x -> !x.name().equals(constraint))
+            .toList();
+        if (newConstraints.size() == checkConstraints.size()) {
+            return this;
+        }
+        return new DocTableInfo(
+            ident,
+            references,
+            indexColumns,
+            analyzers,
+            pkConstraintName,
+            primaryKeys,
+            newConstraints,
+            clusteredBy,
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m[32;1m[1;3m[0m
+
+[1m> Finished chain.[0m
+2026-04-25 18:55:11,089 - backport - ERROR - Reach max_iterations for hunk 6

@@ -1,0 +1,1350 @@
+2026-04-25 18:10:50,656 - backport - INFO - Using openrouter API: https://openrouter.ai/api/v1 (model: openai/gpt-4.1-mini)
+
+
+[1m> Entering new AgentExecutor chain...[0m
+
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `git_history` with `{}`
+
+
+[0m[36;1m[1;3m8758bd7ea0 Guess inner types for objects and unify list/union cast semantics
+
+diff --git a/server/src/main/java/io/crate/planner/optimizer/symbol/rule/SwapCastsInComparisonOperators.java b/server/src/main/java/io/crate/planner/optimizer/symbol/rule/SwapCastsInComparisonOperators.java
+--- a/server/src/main/java/io/crate/planner/optimizer/symbol/rule/SwapCastsInComparisonOperators.java
++++ b/server/src/main/java/io/crate/planner/optimizer/symbol/rule/SwapCastsInComparisonOperators.java
+@@ -61,13 +60,10 @@
+             Reference ref = (Reference) cast.arguments().getFirst();
+             DataType<?> refInnerType = ArrayType.unnest(ref.valueType());
+             DataType<?> literalInnerType = ArrayType.unnest(literal.valueType());
+             if (!DataTypes.isNumeric(literalInnerType) || !DataTypes.isNumeric(refInnerType)) {
+                 return true;
+             }
+-            if (isSafeConversion(literalInnerType, refInnerType)) {
+-                return true;
+-            }
+             return isNarrowingConversionPossible(literal.value(), ref.valueType());
+         }
+         return true;
+     
+You need to do the following analysis based on the information in the last commit:
+Analyze the code logic of the context of the patch to be ported in this commit step by step.
+If code logic already existed before this commit, the patch context can be assumed to remain in a similar location. Use `locate` and `viewcode` to check your results.
+If code logic were added in this commit, then you need to `git_show` for further details.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `locate_symbol` with `{'ref': '8de35b2287cf3e7fe63a33c26f06168f4353ebfe', 'symbol': 'SwapCastsInComparisonOperators'}`
+responded: The git history shows the last change related to this code snippet was in commit `8758bd7ea0` titled "Guess inner types for objects and unify list/union cast semantics".
+
+In this commit, the code logic is slightly different from the patch we want to backport:
+- The check for `isSafeConversion(literalInnerType, refInnerType)` was removed in the patch we want to backport.
+- The patch we want to backport adds a variable `value` to store `literal.value()` and changes the return logic for non-numeric types to `literalInnerType.isConvertableTo(refInnerType, false)`.
+
+The surrounding code logic is mostly the same, so the patch likely needs to be adapted to the older version's context.
+
+Next, I will locate the function or class where this code is located in the older version to get the full context of the code for generating the patch.
+
+[0m[33;1m[1;3mserver/src/main/java/io/crate/planner/optimizer/symbol/rule/SwapCastsInComparisonOperators.java:48
+server/src/main/java/io/crate/planner/optimizer/symbol/rule/SwapCastsInComparisonOperators.java:93[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': '8de35b2287cf3e7fe63a33c26f06168f4353ebfe', 'path': 'server/src/main/java/io/crate/planner/optimizer/symbol/rule/SwapCastsInComparisonOperators.java', 'startline': 40, 'endline': 80}`
+
+
+[0m[36;1m[1;3mHere are lines 40 through 80.
+
+import io.crate.planner.optimizer.matcher.Captures;
+import io.crate.planner.optimizer.matcher.Pattern;
+import io.crate.planner.optimizer.symbol.FunctionLookup;
+import io.crate.planner.optimizer.symbol.Rule;
+import io.crate.types.ArrayType;
+import io.crate.types.DataType;
+import io.crate.types.DataTypes;
+
+public class SwapCastsInComparisonOperators implements Rule<Function> {
+
+    private final Capture<Function> castCapture;
+    private final Pattern<Function> pattern;
+
+    /**
+     * A cast is 'swappable' if the cast does not cause loss of precision. This method executes the casts in uncertain
+     * situations. i.e.:: casting 126 type of int to a byte, which is a narrowing conversion, is convertable since 126
+     * does fit in a byte.
+     */
+    private static boolean isSwappable(Function cmpOp) {
+        if (cmpOp.arguments().get(1) instanceof Literal<?> literal) {
+            Function cast = (Function) cmpOp.arguments().getFirst();
+            Reference ref = (Reference) cast.arguments().getFirst();
+            DataType<?> refInnerType = ArrayType.unnest(ref.valueType());
+            DataType<?> literalInnerType = ArrayType.unnest(literal.valueType());
+            if (!DataTypes.isNumeric(literalInnerType) || !DataTypes.isNumeric(refInnerType)) {
+                return true;
+            }
+            if (isSafeConversion(literalInnerType, refInnerType)) {
+                return true;
+            }
+            return isNarrowingConversionPossible(literal.value(), ref.valueType());
+        }
+        return true;
+    }
+
+    /**
+     * Executes a narrowing conversion to verify that it is possible.
+     */
+    private static boolean isNarrowingConversionPossible(Object value, DataType<?> targetType) {
+        if (DataTypes.isArray(targetType)) {
+            return ((List<?>) value).stream().allMatch(e -> isNarrowingConversionPossible(e, ((ArrayType<?>) targetType).innerType()));
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': '8de35b2287cf3e7fe63a33c26f06168f4353ebfe', 'path': 'server/src/main/java/io/crate/planner/optimizer/symbol/rule/SwapCastsInComparisonOperators.java', 'startline': 81, 'endline': 95}`
+
+
+[0m[36;1m[1;3mHere are lines 81 through 95.
+
+        } else {
+            try {
+                Number n = (Number) value;
+                var literalStr = String.valueOf(n);
+                var castedStr = String.valueOf(targetType.implicitCast(n));
+                return new BigDecimal(literalStr).compareTo(new BigDecimal(castedStr)) == 0;
+            } catch (IllegalArgumentException | ClassCastException e) {
+                return false;
+            }
+        }
+    }
+
+    public SwapCastsInComparisonOperators() {
+        this.castCapture = new Capture<>();
+        this.pattern = typeOf(Function.class)
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `locate_symbol` with `{'ref': '8de35b2287cf3e7fe63a33c26f06168f4353ebfe', 'symbol': 'isSafeConversion'}`
+responded: I have found the target code block in the older version (ref 8de35b2287cf3e7fe63a33c26f06168f4353ebfe) inside the method isSwappable(Function cmpOp). The code block is:
+
+```java
+Reference ref = (Reference) cast.arguments().getFirst();
+DataType<?> refInnerType = ArrayType.unnest(ref.valueType());
+DataType<?> literalInnerType = ArrayType.unnest(literal.valueType());
+if (!DataTypes.isNumeric(literalInnerType) || !DataTypes.isNumeric(refInnerType)) {
+    return true;
+}
+if (isSafeConversion(literalInnerType, refInnerType)) {
+    return true;
+}
+return isNarrowingConversionPossible(literal.value(), ref.valueType());
+```
+
+The patch from the newer version changes the logic inside this block by introducing a variable `value` to hold `literal.value()` and modifies the return condition for non-numeric types to `return literalInnerType.isConvertableTo(refInnerType, false);`.
+
+The older version uses `isSafeConversion(literalInnerType, refInnerType)` which is removed in the newer version.
+
+Now, I will check the definition of `isSafeConversion` and if `literalInnerType.isConvertableTo(refInnerType, false)` is available in the older version or if it needs to be backported as well.
+
+I will locate the symbol `isSafeConversion` in the older version to understand its implementation and usage.
+
+[0m[33;1m[1;3mserver/src/main/java/io/crate/types/DataTypes.java:391[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': '8de35b2287cf3e7fe63a33c26f06168f4353ebfe', 'path': 'server/src/main/java/io/crate/types/DataTypes.java', 'startline': 380, 'endline': 410}`
+
+
+[0m[36;1m[1;3mHere are lines 380 through 410.
+
+            }
+            if (current.precedes(highest)) {
+                highest = current;
+            }
+        }
+        if (upcast) {
+            highest = upcast(highest);
+        }
+        return new ArrayType<>(highest);
+    }
+
+    public static boolean isSafeConversion(DataType<?> source, DataType<?> target) {
+        return SAFE_CONVERSIONS.getOrDefault(source.id(), Set.of()).contains(target);
+    }
+
+    private static boolean safeConversionPossible(DataType<?> type1, DataType<?> type2) {
+        final DataType<?> source;
+        final DataType<?> target;
+        if (type1.precedes(type2)) {
+            source = type2;
+            target = type1;
+        } else {
+            source = type1;
+            target = type2;
+        }
+        if (source.id() == DataTypes.UNDEFINED.id()) {
+            return true;
+        }
+        Set<DataType<?>> conversions = SAFE_CONVERSIONS.get(source.id());
+        return conversions != null && conversions.contains(target);
+    }
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': '8de35b2287cf3e7fe63a33c26f06168f4353ebfe', 'path': 'server/src/main/java/io/crate/planner/optimizer/symbol/rule/SwapCastsInComparisonOperators.java', 'startline': 50, 'endline': 75}`
+responded: The patch in the newer version changes the logic inside the method isSwappable in SwapCastsInComparisonOperators.java. The older version code snippet for this method is:
+
+```java
+private static boolean isSwappable(Function cmpOp) {
+    if (cmpOp.arguments().get(1) instanceof Literal<?> literal) {
+        Function cast = (Function) cmpOp.arguments().getFirst();
+        Reference ref = (Reference) cast.arguments().getFirst();
+        DataType<?> refInnerType = ArrayType.unnest(ref.valueType());
+        DataType<?> literalInnerType = ArrayType.unnest(literal.valueType());
+        if (!DataTypes.isNumeric(literalInnerType) || !DataTypes.isNumeric(refInnerType)) {
+            return true;
+        }
+        if (isSafeConversion(literalInnerType, refInnerType)) {
+            return true;
+        }
+        return isNarrowingConversionPossible(literal.value(), ref.valueType());
+    }
+    return true;
+}
+```
+
+The newer version patch changes the part inside the if condition from:
+
+```java
+if (!DataTypes.isNumeric(literalInnerType) || !DataTypes.isNumeric(refInnerType)) {
+    return true;
+}
+if (isSafeConversion(literalInnerType, refInnerType)) {
+    return true;
+}
+return isNarrowingConversionPossible(literal.value(), ref.valueType());
+```
+
+to:
+
+```java
+var value = literal.value();
+if (!DataTypes.isNumeric(literalInnerType) || !DataTypes.isNumeric(refInnerType)) {
+    return literalInnerType.isConvertableTo(refInnerType, false);
+}
+return isNarrowingConversionPossible(value, ref.valueType());
+```
+
+So the patch changes the logic for non-numeric types to check if literalInnerType is convertible to refInnerType instead of returning true or checking isSafeConversion.
+
+I need to backport this logic to the older version at the same place inside the isSwappable method.
+
+Next, I will view more lines around this method in the older version to get full context for the patch. I will view lines 50 to 75 in the older version SwapCastsInComparisonOperators.java to see the full method and some context.
+
+[0m[36;1m[1;3mHere are lines 50 through 75.
+
+    private final Capture<Function> castCapture;
+    private final Pattern<Function> pattern;
+
+    /**
+     * A cast is 'swappable' if the cast does not cause loss of precision. This method executes the casts in uncertain
+     * situations. i.e.:: casting 126 type of int to a byte, which is a narrowing conversion, is convertable since 126
+     * does fit in a byte.
+     */
+    private static boolean isSwappable(Function cmpOp) {
+        if (cmpOp.arguments().get(1) instanceof Literal<?> literal) {
+            Function cast = (Function) cmpOp.arguments().getFirst();
+            Reference ref = (Reference) cast.arguments().getFirst();
+            DataType<?> refInnerType = ArrayType.unnest(ref.valueType());
+            DataType<?> literalInnerType = ArrayType.unnest(literal.valueType());
+            if (!DataTypes.isNumeric(literalInnerType) || !DataTypes.isNumeric(refInnerType)) {
+                return true;
+            }
+            if (isSafeConversion(literalInnerType, refInnerType)) {
+                return true;
+            }
+            return isNarrowingConversionPossible(literal.value(), ref.valueType());
+        }
+        return true;
+    }
+
+    /**
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `locate_symbol` with `{'ref': '8de35b2287cf3e7fe63a33c26f06168f4353ebfe', 'symbol': 'DataType'}`
+responded: The target code to backport modifies the method isSwappable in SwapCastsInComparisonOperators.java.
+
+In the older version (ref 8de35b2287cf3e7fe63a33c26f06168f4353ebfe), the method isSwappable has this logic:
+- It gets literal and reference types.
+- If either type is not numeric, it returns true.
+- If isSafeConversion(literalInnerType, refInnerType) returns true, it returns true.
+- Otherwise, it returns isNarrowingConversionPossible(literal.value(), ref.valueType()).
+
+In the newer version, the patch changes this logic:
+- It adds a variable `value` for literal.value().
+- It changes the condition: if not numeric, it returns literalInnerType.isConvertableTo(refInnerType, false) instead of just true.
+- It removes the isSafeConversion check.
+- It calls isNarrowingConversionPossible(value, ref.valueType()).
+
+So the key changes are:
+1. Instead of returning true when either type is not numeric, it returns literalInnerType.isConvertableTo(refInnerType, false).
+2. The isSafeConversion check is removed.
+3. The literal value is stored in a variable before passing to isNarrowingConversionPossible.
+
+I need to check if literalInnerType.isConvertableTo exists in the older version and what is the equivalent of isSafeConversion in the newer version.
+
+I will check the class DataType for the method isConvertableTo in the older version. This will help me know if I can use that method in the backport.
+
+I will locate the class DataType in the older version and check for isConvertableTo method.
+
+[0m[33;1m[1;3mserver/src/main/java/io/crate/types/DataType.java:51[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': '8de35b2287cf3e7fe63a33c26f06168f4353ebfe', 'path': 'server/src/main/java/io/crate/types/DataType.java', 'startline': 40, 'endline': 70}`
+
+
+[0m[36;1m[1;3mHere are lines 40 through 70.
+
+import io.crate.execution.dml.ValueIndexer;
+import io.crate.metadata.ColumnIdent;
+import io.crate.metadata.Reference;
+import io.crate.metadata.RelationName;
+import io.crate.metadata.settings.SessionSettings;
+import io.crate.sql.tree.ColumnDefinition;
+import io.crate.sql.tree.ColumnPolicy;
+import io.crate.sql.tree.ColumnType;
+import io.crate.sql.tree.Expression;
+import io.crate.statistics.ColumnStatsSupport;
+
+public abstract class DataType<T> implements Comparable<DataType<?>>, Writeable, Comparator<T>, Accountable {
+
+    /**
+     * Type precedence ids which help to decide when a type can be cast
+     * into another type without losing information (upcasting).
+     *
+     * Lower ordinal => Lower precedence
+     * Higher ordinal => Higher precedence
+     *
+     * Precedence list inspired by
+     * https://docs.microsoft.com/en-us/sql/t-sql/data-types/data-type-precedence-transact-sql
+     *
+     */
+    public enum Precedence {
+        NOT_SUPPORTED,
+        UNDEFINED,
+        STRING,
+        CHARACTER,
+        BYTE,
+        BOOLEAN,
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `locate_symbol` with `{'ref': '8de35b2287cf3e7fe63a33c26f06168f4353ebfe', 'symbol': 'isConvertableTo'}`
+responded: The target code to be backported is within the method `isSwappable` in the class `SwapCastsInComparisonOperators`. The old version has the method `isSwappable` that looks like this:
+
+```java
+private static boolean isSwappable(Function cmpOp) {
+    if (cmpOp.arguments().get(1) instanceof Literal<?> literal) {
+        Function cast = (Function) cmpOp.arguments().getFirst();
+        Reference ref = (Reference) cast.arguments().getFirst();
+        DataType<?> refInnerType = ArrayType.unnest(ref.valueType());
+        DataType<?> literalInnerType = ArrayType.unnest(literal.valueType());
+        if (!DataTypes.isNumeric(literalInnerType) || !DataTypes.isNumeric(refInnerType)) {
+            return true;
+        }
+        if (isSafeConversion(literalInnerType, refInnerType)) {
+            return true;
+        }
+        return isNarrowingConversionPossible(literal.value(), ref.valueType());
+    }
+    return true;
+}
+```
+
+The new version patch changes the logic in the `if` block for non-numeric types to:
+
+```java
+if (!DataTypes.isNumeric(literalInnerType) || !DataTypes.isNumeric(refInnerType)) {
+    return literalInnerType.isConvertableTo(refInnerType, false);
+}
+```
+
+and introduces a local variable `var value = literal.value();` reused in the last return statement.
+
+The old version returns `true` immediately if either type is not numeric, while the new version returns the result of `literalInnerType.isConvertableTo(refInnerType, false)` in that case.
+
+To backport this, I need to check if the method `isConvertableTo` exists in the old version for `DataType`. I will check this next.
+
+I will locate the symbol `isConvertableTo` in the old version.
+
+[0m[33;1m[1;3mserver/src/main/java/io/crate/types/ArrayType.java:385
+server/src/main/java/io/crate/types/DataType.java:230
+server/src/main/java/io/crate/types/GeoPointType.java:227
+server/src/main/java/io/crate/types/NotSupportedType.java:35
+server/src/main/java/io/crate/types/ObjectType.java:268
+server/src/main/java/io/crate/types/StringType.java:339
+server/src/main/java/io/crate/types/UndefinedType.java:75[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': '8de35b2287cf3e7fe63a33c26f06168f4353ebfe', 'path': 'server/src/main/java/io/crate/types/DataType.java', 'startline': 220, 'endline': 240}`
+
+
+[0m[36;1m[1;3mHere are lines 220 through 240.
+
+        }
+        return thisOrdinal > thatOrdinal;
+    }
+
+    /**
+     * check whether a value of this type is convertible to <code>other</code>
+     *
+     * @param other the DataType to check conversion to
+     * @return true or false
+     */
+    public boolean isConvertableTo(DataType<?> other, boolean explicitCast) {
+        if (this.equals(other)) {
+            return true;
+        }
+        Set<Integer> possibleConversions = DataTypes.ALLOWED_CONVERSIONS.get(id());
+        //noinspection SimplifiableIfStatement
+        if (possibleConversions == null) {
+            return false;
+        }
+        return possibleConversions.contains(other.id());
+    }
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `validate` with `{'ref': '8de35b2287cf3e7fe63a33c26f06168f4353ebfe', 'patch': '--- a/server/src/main/java/io/crate/planner/optimizer/symbol/rule/SwapCastsInComparisonOperators.java\n+++ b/server/src/main/java/io/crate/planner/optimizer/symbol/rule/SwapCastsInComparisonOperators.java\n@@ -59,13 +59,14 @@\n-            Reference ref = (Reference) cast.arguments().getFirst();\n-            DataType<?> refInnerType = ArrayType.unnest(ref.valueType());\n-            DataType<?> literalInnerType = ArrayType.unnest(literal.valueType());\n-            if (!DataTypes.isNumeric(literalInnerType) || !DataTypes.isNumeric(refInnerType)) {\n-                return true;\n-            }\n-            if (isSafeConversion(literalInnerType, refInnerType)) {\n-                return true;\n-            }\n-            return isNarrowingConversionPossible(literal.value(), ref.valueType());\n+            Reference ref = (Reference) cast.arguments().getFirst();\n+            DataType<?> refInnerType = ArrayType.unnest(ref.valueType());\n+            DataType<?> literalInnerType = ArrayType.unnest(literal.valueType());\n+            var value = literal.value();\n+            if (!DataTypes.isNumeric(literalInnerType) || !DataTypes.isNumeric(refInnerType)) {\n+                return literalInnerType.isConvertableTo(refInnerType, false);\n+            }\n+            return isNarrowingConversionPossible(value, ref.valueType());\n'}`
+responded: The original patch modifies the isSwappable method in SwapCastsInComparisonOperators.java to handle the case where a non-boolean column is compared to a boolean literal in a WHERE clause. Specifically, it introduces a variable for the literal value and changes the logic for non-numeric types to use the isConvertableTo method.
+
+In the older version (ref 8de35b2287cf3e7fe63a33c26f06168f4353ebfe), the method isSwappable is present with similar logic but slightly different. It returns true immediately if either literalInnerType or refInnerType is not numeric, while the new patch changes this to return literalInnerType.isConvertableTo(refInnerType, false) instead.
+
+The rest of the logic is similar, with a call to isNarrowingConversionPossible.
+
+Therefore, the patch for the older version should replace the immediate return true for non-numeric types with the call to isConvertableTo on literalInnerType, passing refInnerType and false as parameters, and introduce the variable for literal.value() to avoid repeated calls.
+
+I will now generate the patch for the older version accordingly, adapting the context and ensuring the context lines are consistent with the older codebase.
+
+The old code snippet:
+```java
+Reference ref = (Reference) cast.arguments().getFirst();
+DataType<?> refInnerType = ArrayType.unnest(ref.valueType());
+DataType<?> literalInnerType = ArrayType.unnest(literal.valueType());
+if (!DataTypes.isNumeric(literalInnerType) || !DataTypes.isNumeric(refInnerType)) {
+    return true;
+}
+if (isSafeConversion(literalInnerType, refInnerType)) {
+    return true;
+}
+return isNarrowingConversionPossible(literal.value(), ref.valueType());
+```
+
+The new patch should be:
+```java
+Reference ref = (Reference) cast.arguments().getFirst();
+DataType<?> refInnerType = ArrayType.unnest(ref.valueType());
+DataType<?> literalInnerType = ArrayType.unnest(literal.valueType());
+var value = literal.value();
+if (!DataTypes.isNumeric(literalInnerType) || !DataTypes.isNumeric(refInnerType)) {
+    return literalInnerType.isConvertableTo(refInnerType, false);
+}
+return isNarrowingConversionPossible(value, ref.valueType());
+```
+
+Note: The isSafeConversion check is removed in the new patch.
+
+I will now produce the patch diff accordingly.
+
+[0m[38;5;200m[1;3mThis patch does not apply because of CONTEXT MISMATCH. Context are patch lines that already exist in the file, that is, lines starting with ` ` and `-`. You should modify the error patch according to the context of older version.
+Here are lines 60 through 71 of file server/src/main/java/io/crate/planner/optimizer/symbol/rule/SwapCastsInComparisonOperators.java for commit 8de35b2287cf3e7fe63a33c26f06168f4353ebfe.
+```code snippet
+            Reference ref = (Reference) cast.arguments().getFirst();
+            DataType<?> refInnerType = ArrayType.unnest(ref.valueType());
+            DataType<?> literalInnerType = ArrayType.unnest(literal.valueType());
+            if (!DataTypes.isNumeric(literalInnerType) || !DataTypes.isNumeric(refInnerType)) {
+                return true;
+            }
+            if (isSafeConversion(literalInnerType, refInnerType)) {
+                return true;
+            }
+            return isNarrowingConversionPossible(literal.value(), ref.valueType());
+        }
+```
+Besides, here is detailed info about how the context differs between the patch and the old version.
+Here it shows that there is no difference between your context and the original code, the reason for the failure is that you didn't keep at least three lines of source code at the beginning and end of the patch, please follow this to fix it.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `validate` with `{'ref': '8de35b2287cf3e7fe63a33c26f06168f4353ebfe', 'patch': '--- a/server/src/main/java/io/crate/planner/optimizer/symbol/rule/SwapCastsInComparisonOperators.java\n+++ b/server/src/main/java/io/crate/planner/optimizer/symbol/rule/SwapCastsInComparisonOperators.java\n@@ -60,12 +60,13 @@\n             Reference ref = (Reference) cast.arguments().getFirst();\n             DataType<?> refInnerType = ArrayType.unnest(ref.valueType());\n             DataType<?> literalInnerType = ArrayType.unnest(literal.valueType());\n-            if (!DataTypes.isNumeric(literalInnerType) || !DataTypes.isNumeric(refInnerType)) {\n-                return true;\n-            }\n-            if (isSafeConversion(literalInnerType, refInnerType)) {\n-                return true;\n-            }\n-            return isNarrowingConversionPossible(literal.value(), ref.valueType());\n+            var value = literal.value();\n+            if (!DataTypes.isNumeric(literalInnerType) || !DataTypes.isNumeric(refInnerType)) {\n+                return literalInnerType.isConvertableTo(refInnerType, false);\n+            }\n+            return isNarrowingConversionPossible(value, ref.valueType());\n         }\n         return true;\n     }\n'}`
+responded: The main difference between the old version and the new patch is that the old version uses:
+
+```java
+if (!DataTypes.isNumeric(literalInnerType) || !DataTypes.isNumeric(refInnerType)) {
+    return true;
+}
+if (isSafeConversion(literalInnerType, refInnerType)) {
+    return true;
+}
+return isNarrowingConversionPossible(literal.value(), ref.valueType());
+```
+
+While the new patch changes this to:
+
+```java
+var value = literal.value();
+if (!DataTypes.isNumeric(literalInnerType) || !DataTypes.isNumeric(refInnerType)) {
+    return literalInnerType.isConvertableTo(refInnerType, false);
+}
+return isNarrowingConversionPossible(value, ref.valueType());
+```
+
+So the patch removes the `isSafeConversion` check and changes the `if` block for non-numeric types to use `isConvertableTo` instead of always returning true. It also assigns `literal.value()` to a variable `value` for reuse.
+
+Since the old version context includes the `isSafeConversion` check, and the new patch removes it, I need to adapt the patch for the old version by removing the `isSafeConversion` check and modifying the `if` block accordingly, but keeping the original context lines intact.
+
+I will generate a patch for the old version that:
+
+- keeps the first three lines of context before the `if` statement
+- replaces the `if (!DataTypes.isNumeric(...))` block to return `literalInnerType.isConvertableTo(refInnerType, false)` instead of `true`
+- removes the `isSafeConversion` check lines completely
+- assigns `literal.value()` to a variable `value` before the last return statement
+- keeps the last return statement but uses `value` variable
+
+This patch will respect the context lines of the old version and apply the logic changes from the patch.
+
+I will now generate the patch accordingly.
+
+[0m[38;5;200m[1;3mPatch applied successfully
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3mThe patch has been successfully backported to the older version with the necessary context adjustments. Here is the final patch diff for your reference:
+
+```diff
+--- a/server/src/main/java/io/crate/planner/optimizer/symbol/rule/SwapCastsInComparisonOperators.java
++++ b/server/src/main/java/io/crate/planner/optimizer/symbol/rule/SwapCastsInComparisonOperators.java
+@@ -60,12 +60,13 @@
+             Reference ref = (Reference) cast.arguments().getFirst();
+             DataType<?> refInnerType = ArrayType.unnest(ref.valueType());
+             DataType<?> literalInnerType = ArrayType.unnest(literal.valueType());
+-            if (!DataTypes.isNumeric(literalInnerType) || !DataTypes.isNumeric(refInnerType)) {
+-                return true;
+-            }
+-            if (isSafeConversion(literalInnerType, refInnerType)) {
+-                return true;
+-            }
+-            return isNarrowingConversionPossible(literal.value(), ref.valueType());
++            var value = literal.value();
++            if (!DataTypes.isNumeric(literalInnerType) || !DataTypes.isNumeric(refInnerType)) {
++                return literalInnerType.isConvertableTo(refInnerType, false);
++            }
++            return isNarrowingConversionPossible(value, ref.valueType());
+         }
+         return true;
+     }
+```
+
+This patch adapts the logic from the newer version to the older code context, ensuring the fix is correctly applied without conflicts.
+
+If you need further assistance or additional backports, feel free to ask![0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new AgentExecutor chain...[0m
+
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `git_history` with `{}`
+
+
+[0m[36;1m[1;3m1b6d968de2 Generate Lucene queries for AllEqOperator
+
+diff --git a/server/src/test/java/io/crate/lucene/CommonQueryBuilderTest.java b/server/src/test/java/io/crate/lucene/CommonQueryBuilderTest.java
+--- a/server/src/test/java/io/crate/lucene/CommonQueryBuilderTest.java
++++ b/server/src/test/java/io/crate/lucene/CommonQueryBuilderTest.java
+@@ -832,2 +833,6 @@
+         assertThat(query).hasToString("(f = 0.99999999)");
+     }
++
++    public void test_all_eq_on_empty_array_literal() {
++        Query query = convert("y = all([])");
++        assertThat(query).hasToString("*:*")
+You need to do the following analysis based on the information in the last commit:
+Analyze the code logic of the context of the patch to be ported in this commit step by step.
+If code logic already existed before this commit, the patch context can be assumed to remain in a similar location. Use `locate` and `viewcode` to check your results.
+If code logic were added in this commit, then you need to `git_show` for further details.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `locate_symbol` with `{'ref': '8de35b2287cf3e7fe63a33c26f06168f4353ebfe', 'symbol': 'test_all_eq_on_empty_array_literal'}`
+responded: The last change in the history added a new test method `test_all_eq_on_empty_array_literal` right after the existing test method that ends with `assertThat(query).hasToString("(f = 0.99999999)");`.
+
+The patch to be backported adds a new test method `test_can_compare_any_type_with_boolean` between these two methods. The presence of the `test_all_eq_on_empty_array_literal` method in the older version indicates that the original context for the patch to be backported should be around this place after the method that ends with `assertThat(query).hasToString("(f = 0.99999999)");`.
+
+Since the method `test_all_eq_on_empty_array_literal` already exists in the older version, it suggests that the patch context is still valid around this location in the older version.
+
+Next, I will locate the method `test_all_eq_on_empty_array_literal` or the surrounding test class in the older version to confirm the exact line number and context for placing the new test method.
+
+I'll use `locate_symbol` for the test method `test_all_eq_on_empty_array_literal` in the older ref 8de35b2287cf3e7fe63a33c26f06168f4353ebfe to get the exact file and line number.
+
+[0m[33;1m[1;3mThe symbol test_all_eq_on_empty_array_literal you are looking for does not exist in the current ref.
+But here is a symbol similar to it. It's `test_any_equals_nested_array_literal`.
+The file where this symbol is located is: 
+server/src/test/java/io/crate/lucene/NestedArrayLuceneQueryBuilderTest.java:118
+Please be careful to check that this symbol indicates the same thing as the previous symbol.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `locate_symbol` with `{'ref': '8de35b2287cf3e7fe63a33c26f06168f4353ebfe', 'symbol': 'test_can_compare_any_type_with_boolean'}`
+
+
+[0m[33;1m[1;3mThe symbol test_can_compare_any_type_with_boolean you are looking for does not exist in the current ref.
+But here is a symbol similar to it. It's `test_cast_text_to_boolean`.
+The file where this symbol is located is: 
+server/src/test/java/io/crate/types/BooleanTypeTest.java:41
+Please be careful to check that this symbol indicates the same thing as the previous symbol.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': '8de35b2287cf3e7fe63a33c26f06168f4353ebfe', 'path': 'server/src/test/java/io/crate/lucene/CommonQueryBuilderTest.java', 'startline': 110, 'endline': 130}`
+
+
+[0m[36;1m[1;3mHere are lines 110 through 130.
+
+        // 3vl
+        Query query = convert("name = name");
+        assertThat(query).isExactlyInstanceOf(FieldExistsQuery.class);
+        // 2vl
+        query = convert("ignore3vl(name = name)");
+        assertThat(query).isExactlyInstanceOf(MatchAllDocsQuery.class);
+    }
+
+    @Test
+    public void testWhereRefEqLiteral() throws Exception {
+        Query query = convert("10 = x");
+        assertThat(query).hasToString("x:[10 TO 10]");
+    }
+
+    @Test
+    public void testWhereLiteralEqReference() throws Exception {
+        Query query = convert("x = 10");
+        assertThat(query).hasToString("x:[10 TO 10]");
+    }
+
+    @Test
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': '8de35b2287cf3e7fe63a33c26f06168f4353ebfe', 'path': 'server/src/test/java/io/crate/lucene/CommonQueryBuilderTest.java', 'startline': 830, 'endline': 840}`
+
+
+[0m[36;1m[1;3mThis file only has 835 lines. Here are lines 830 through 835.
+
+        query = convert("f = 0.99999999"); // float to double conparison
+        assertThat(query).isExactlyInstanceOf(GenericFunctionQuery.class);
+        assertThat(query).hasToString("(f = 0.99999999)");
+    }
+}
+
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `validate` with `{'ref': '8de35b2287cf3e7fe63a33c26f06168f4353ebfe', 'patch': '--- a/server/src/test/java/io/crate/lucene/CommonQueryBuilderTest.java\n+++ b/server/src/test/java/io/crate/lucene/CommonQueryBuilderTest.java\n@@ -830,6 +830,13 @@ public class CommonQueryBuilderTest extends LuceneQueryBuilderTest {\n         assertThat(query).hasToString("(f = 0.99999999)");\n     }\n+\n+    @Test\n+    public void test_can_compare_any_type_with_boolean() {\n+        Query query = convert("x = true");\n+        assertThat(query).isExactlyInstanceOf(GenericFunctionQuery.class);\n+        assertThat(query).hasToString("(x = true)");\n+    }\n }'}`
+responded: The patch to backport involves adding a new test method `test_can_compare_any_type_with_boolean` in the file `server/src/test/java/io/crate/lucene/CommonQueryBuilderTest.java` around line 833 in the newer ref.
+
+In the old ref, the file ends at line 835 and the last test method is just before the file end:
+```java
+    @Test
+    public void test_all_eq_on_empty_array_literal() {
+        Query query = convert("y = all([])");
+        assertThat(query).hasToString("*:*");
+    }
+```
+does not exist in the old ref, so the new test method is not present in the old ref.
+
+The previous test methods like `testWhereRefEqLiteral` and `testWhereLiteralEqReference` are present in the old ref around line 115-120. The context of the test methods is similar, so the new test method can be added just before the end of the class in the old ref.
+
+Since the patch is just adding a new test method and no other code changes, the backport should only add this test method in the similar location in the old ref.
+
+I will now generate the patch for the old ref to add this new test method in the file `server/src/test/java/io/crate/lucene/CommonQueryBuilderTest.java` before the final closing brace.
+
+The patch should look like this:
+
+```diff
+--- a/server/src/test/java/io/crate/lucene/CommonQueryBuilderTest.java
++++ b/server/src/test/java/io/crate/lucene/CommonQueryBuilderTest.java
+@@ -830,6 +830,13 @@ public class CommonQueryBuilderTest extends LuceneQueryBuilderTest {
+         assertThat(query).hasToString("(f = 0.99999999)");
+     }
++
++    @Test
++    public void test_can_compare_any_type_with_boolean() {
++        Query query = convert("x = true");
++        assertThat(query).isExactlyInstanceOf(GenericFunctionQuery.class);
++        assertThat(query).hasToString("(x = true)");
++    }
+ }
+```
+
+I will now validate this patch on the old ref.
+
+[0m[38;5;200m[1;3mPatch applied successfully
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3mI have generated the backport patch for the test hunk from the newer version to the older version. The patch adds the test method `test_can_compare_any_type_with_boolean` to the class `CommonQueryBuilderTest` in the file `server/src/test/java/io/crate/lucene/CommonQueryBuilderTest.java` at the appropriate location near similar tests.
+
+The patch is as follows:
+
+```diff
+--- a/server/src/test/java/io/crate/lucene/CommonQueryBuilderTest.java
++++ b/server/src/test/java/io/crate/lucene/CommonQueryBuilderTest.java
+@@ -830,6 +830,13 @@ public class CommonQueryBuilderTest extends LuceneQueryBuilderTest {
+         assertThat(query).hasToString("(f = 0.99999999)");
+     }
+
++    @Test
++    public void test_can_compare_any_type_with_boolean() {
++        Query query = convert("x = true");
++        assertThat(query).isExactlyInstanceOf(GenericFunctionQuery.class);
++        assertThat(query).hasToString("(x = true)");
++    }
+ }
+```
+
+I have validated the patch on the target ref 8de35b2287cf3e7fe63a33c26f06168f4353ebfe and it applies cleanly without conflicts.
+
+If you want, I can assist you further with backporting other hunks or patches.[0m
+
+[1m> Finished chain.[0m
+2026-04-25 18:12:30,831 - backport - INFO - Aplly all hunks in the patch      PASS
+2026-04-25 18:12:31,002 - backport - INFO - Successfully backport the patch to the target release 8de35b2287cf3e7fe63a33c26f06168f4353ebfe
+2026-04-25 18:12:31,003 - backport - INFO - --- a/server/src/main/java/io/crate/planner/optimizer/symbol/rule/SwapCastsInComparisonOperators.java
++++ b/server/src/main/java/io/crate/planner/optimizer/symbol/rule/SwapCastsInComparisonOperators.java
+@@ -60,13 +60,11 @@
+             Reference ref = (Reference) cast.arguments().getFirst();
+             DataType<?> refInnerType = ArrayType.unnest(ref.valueType());
+             DataType<?> literalInnerType = ArrayType.unnest(literal.valueType());
+-            if (!DataTypes.isNumeric(literalInnerType) || !DataTypes.isNumeric(refInnerType)) {
+-                return true;
+-            }
+-            if (isSafeConversion(literalInnerType, refInnerType)) {
+-                return true;
+-            }
+-            return isNarrowingConversionPossible(literal.value(), ref.valueType());
++            var value = literal.value();
++            if (!DataTypes.isNumeric(literalInnerType) || !DataTypes.isNumeric(refInnerType)) {
++                return literalInnerType.isConvertableTo(refInnerType, false);
++            }
++            return isNarrowingConversionPossible(value, ref.valueType());
+         }
+         return true;
+     }
+
+--- a/server/src/test/java/io/crate/lucene/CommonQueryBuilderTest.java
++++ b/server/src/test/java/io/crate/lucene/CommonQueryBuilderTest.java
+@@ -830,3 +830,10 @@ public class CommonQueryBuilderTest extends LuceneQueryBuilderTest {
+         assertThat(query).hasToString("(f = 0.99999999)");
+     }
++
++    @Test
++    public void test_can_compare_any_type_with_boolean() {
++        Query query = convert("x = true");
++        assertThat(query).isExactlyInstanceOf(GenericFunctionQuery.class);
++        assertThat(query).hasToString("(x = true)");
++    }
+ }
+

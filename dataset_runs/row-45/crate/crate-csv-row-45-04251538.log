@@ -1,0 +1,39 @@
+2026-04-25 15:38:45,180 - backport - INFO - Using openrouter API: https://openrouter.ai/api/v1 (model: openai/gpt-4.1-mini)
+2026-04-25 15:38:45,689 - backport - INFO - Aplly all hunks in the patch      PASS
+2026-04-25 15:38:45,796 - backport - INFO - Successfully backport the patch to the target release 25e5a2ec36ff874387aca178888f0a4f4a4bf907
+2026-04-25 15:38:45,797 - backport - INFO - --- a/server/src/main/java/io/crate/types/ObjectType.java
++++ b/server/src/main/java/io/crate/types/ObjectType.java
+@@ -210,6 +210,12 @@ public class ObjectType extends DataType<Map<String, Object>> implements Streame
+         }
+     }
+ 
++    @Override
++    @SuppressWarnings("unchecked")
++    public Map<String, Object> valueForInsert(Map<String, Object> value) {
++        return convert(value, (dataType, v) -> ((DataType<Object>) dataType).valueForInsert(v));
++    }
++
+     @SuppressWarnings("unchecked")
+     private Map<String, Object> convert(Object value,
+                                         BiFunction<DataType<?>, Object, Object> innerType) {
+
+--- a/server/src/test/java/io/crate/types/ObjectTypeTest.java
++++ b/server/src/test/java/io/crate/types/ObjectTypeTest.java
+@@ -249,4 +249,16 @@ public class ObjectTypeTest extends DataTypeTestCase<Map<String, Object>> {
+         );
+         assertThat(valueBytes).isEqualTo(2504L);
+     }
++
++    @Test
++    public void test_valueForInsert_on_nested_object() {
++        Map<String, Object> map = new HashMap<>();
++        map.put("c", "abcd");
++        var type = ObjectType.of(ColumnPolicy.DYNAMIC)
++            .setInnerType("c", CharacterType.of(3))
++            .build();
++        assertThatThrownBy(() -> type.valueForInsert(map))
++            .isExactlyInstanceOf(ConversionException.class)
++            .hasMessage("Cannot cast object element `c` with value `abcd` to type `text(3)`");
++    }
+ }
+

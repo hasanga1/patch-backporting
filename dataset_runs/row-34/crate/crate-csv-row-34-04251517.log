@@ -1,0 +1,1181 @@
+2026-04-25 15:17:57,635 - backport - INFO - Using openrouter API: https://openrouter.ai/api/v1 (model: openai/gpt-4.1-mini)
+
+
+[1m> Entering new AgentExecutor chain...[0m
+
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `git_history` with `{}`
+
+
+[0m[36;1m[1;3m35acbf31de Merge Client, AbstractClient and ElasticsearchClient
+
+diff --git a/server/src/test/java/io/crate/session/SessionTest.java b/server/src/test/java/io/crate/session/SessionTest.java
+--- a/server/src/test/java/io/crate/session/SessionTest.java
++++ b/server/src/test/java/io/crate/session/SessionTest.java
+@@ -43,6 +44,6 @@
+ import java.util.concurrent.ScheduledFuture;
+ import java.util.concurrent.ScheduledThreadPoolExecutor;
+ import java.util.concurrent.TimeUnit;
+ 
+-import org.elasticsearch.client.ElasticsearchClient;
++import org.elasticsearch.client.Client;
+ import org.elasticsearch.threadpool.ThreadPool;
+e71e127665 Cancel statement_timeout interrupts on result completion to release memory eagerly
+
+diff --git a/server/src/test/java/io/crate/session/SessionTest.java b/server/src/test/java/io/crate/session/SessionTest.java
+--- a/server/src/test/java/io/crate/session/SessionTest.java
++++ b/server/src/test/java/io/crate/session/SessionTest.java
+@@ -43,5 +44,6 @@
+ import java.util.concurrent.ScheduledFuture;
++import java.util.concurrent.ScheduledThreadPoolExecutor;
+ import java.util.concurrent.TimeUnit;
+ 
+ import org.elasticsearch.client.ElasticsearchClient;
+ import org.elasticsearch.threadpool.ThreadPool
+You need to do the following analysis based on the information in the last commit:
+Analyze the code logic of the context of the patch to be ported in this commit step by step.
+If code logic already existed before this commit, the patch context can be assumed to remain in a similar location. Use `locate` and `viewcode` to check your results.
+If code logic were added in this commit, then you need to `git_show` for further details.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `locate_symbol` with `{'ref': '508dde5d0e2435314c8b36280ea3e579a99838f5', 'symbol': 'SessionTest'}`
+responded: The last commit history shows two changes related to imports in the file `server/src/test/java/io/crate/session/SessionTest.java`:
+- One commit changed import from `org.elasticsearch.client.ElasticsearchClient` to `org.elasticsearch.client.Client`.
+- Another commit added `import java.util.concurrent.ScheduledThreadPoolExecutor;`.
+
+The patch to be backported adds the import `java.util.concurrent.atomic.AtomicReference`, which is a new import not present in the older version.
+
+Since the patch we want to backport only adds this import line and the previous commits don't show any addition of this import or related code, it indicates that this import is new and was added in the newer version.
+
+Now, I will locate the exact import section in the older version (ref 508dde5d0e2435314c8b36280ea3e579a99838f5) to ensure the patch can be applied correctly by adding the new import line after the last import line.
+
+I will locate the symbol "SessionTest" in the older version to find the file and line number for better context.
+
+[0m[33;1m[1;3mserver/src/test/java/io/crate/session/SessionTest.java:78[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': '508dde5d0e2435314c8b36280ea3e579a99838f5', 'path': 'server/src/test/java/io/crate/session/SessionTest.java', 'startline': 70, 'endline': 90}`
+
+
+[0m[36;1m[1;3mHere are lines 70 through 90.
+
+import io.crate.planner.PlannerContext;
+import io.crate.planner.operators.SubQueryResults;
+import io.crate.protocols.postgres.Portal;
+import io.crate.test.integration.CrateDummyClusterServiceUnitTest;
+import io.crate.testing.SQLExecutor;
+import io.crate.types.DataType;
+import io.crate.types.DataTypes;
+
+public class SessionTest extends CrateDummyClusterServiceUnitTest {
+
+    @Test
+    public void test_out_of_bounds_getParamType_fails() throws Exception {
+        SQLExecutor sqlExecutor = SQLExecutor.builder(clusterService).build();
+        try (Session session = sqlExecutor.createSession()) {
+            session.parse("S_1", "Select 1 + ? + ?;", Collections.emptyList());
+            assertThatThrownBy(() -> session.getParamType("S_1", 3))
+                .isExactlyInstanceOf(IllegalArgumentException.class)
+                .hasMessage("Requested parameter index exceeds the number of parameters: 3");
+        }
+    }
+
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': '508dde5d0e2435314c8b36280ea3e579a99838f5', 'path': 'server/src/test/java/io/crate/session/SessionTest.java', 'startline': 40, 'endline': 50}`
+
+
+[0m[36;1m[1;3mHere are lines 40 through 50.
+
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.ScheduledThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
+
+import org.elasticsearch.client.ElasticsearchClient;
+import org.elasticsearch.threadpool.ThreadPool;
+import org.junit.Test;
+import org.mockito.Answers;
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `validate` with `{'ref': '508dde5d0e2435314c8b36280ea3e579a99838f5', 'patch': '--- a/server/src/test/java/io/crate/session/SessionTest.java\n+++ b/server/src/test/java/io/crate/session/SessionTest.java\n@@ -42,10 +42,11 @@\n import java.util.concurrent.ScheduledFuture;\n import java.util.concurrent.ScheduledThreadPoolExecutor;\n import java.util.concurrent.TimeUnit;\n+\n import org.elasticsearch.client.ElasticsearchClient;\n import org.elasticsearch.threadpool.ThreadPool;\n import org.junit.Test;\n+import java.util.concurrent.atomic.AtomicReference;\n'}`
+responded: The patch to be backported is an addition of an import statement:
+```java
+import java.util.concurrent.atomic.AtomicReference;
+```
+
+In the older version (ref 508dde5d0e2435314c8b36280ea3e579a99838f5), the import statements around line 42-49 in `server/src/test/java/io/crate/session/SessionTest.java` are:
+
+```java
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.ScheduledThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
+
+import org.elasticsearch.client.ElasticsearchClient;
+import org.elasticsearch.threadpool.ThreadPool;
+import org.junit.Test;
+```
+
+The only difference is that the older version uses `org.elasticsearch.client.ElasticsearchClient` instead of `org.elasticsearch.client.Client`.
+
+The patch only adds one line:
+```java
+import java.util.concurrent.atomic.AtomicReference;
+```
+
+Given this, the patch is straightforward: add the line `import java.util.concurrent.atomic.AtomicReference;` after the existing imports in the older version, adapting the context as necessary.
+
+I will now generate the corresponding patch for the older version.
+
+[0m[38;5;200m[1;3mThis patch does not apply because of CONTEXT MISMATCH. Context are patch lines that already exist in the file, that is, lines starting with ` ` and `-`. You should modify the error patch according to the context of older version.
+Here are lines 42 through 49 of file server/src/test/java/io/crate/session/SessionTest.java for commit 508dde5d0e2435314c8b36280ea3e579a99838f5.
+```code snippet
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.ScheduledThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
+
+import org.elasticsearch.client.ElasticsearchClient;
+import org.elasticsearch.threadpool.ThreadPool;
+import org.junit.Test;
+```
+Besides, here is detailed info about how the context differs between the patch and the old version.
+```context diff
+On the line 8 of your patch.
+          Your patch:import org.elasticsearch.client.ElasticsearchClient;
+Original source code:
+On the line 9 of your patch.
+          Your patch:import org.elasticsearch.threadpool.ThreadPool;
+Original source code:import org.elasticsearch.client.ElasticsearchClient;
+On the line 10 of your patch.
+          Your patch:import org.junit.Test;
+Original source code:import org.elasticsearch.threadpool.ThreadPool;
+```
+Please eliminate these diffs step by step. Be sure to eliminate these diffs the next time you generate a patch!
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `validate` with `{'ref': '508dde5d0e2435314c8b36280ea3e579a99838f5', 'patch': '--- a/server/src/test/java/io/crate/session/SessionTest.java\n+++ b/server/src/test/java/io/crate/session/SessionTest.java\n@@ -42,7 +42,8 @@\n import java.util.concurrent.ScheduledFuture;\n import java.util.concurrent.ScheduledThreadPoolExecutor;\n import java.util.concurrent.TimeUnit;\n+\n+import java.util.concurrent.atomic.AtomicReference;\n \n import org.elasticsearch.client.ElasticsearchClient;\n import org.elasticsearch.threadpool.ThreadPool;\n import org.junit.Test;\n'}`
+responded: The main difference between the patch context and the old version context is the import statements order and content. The old version has the following imports:
+
+```
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.ScheduledThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
+
+import org.elasticsearch.client.ElasticsearchClient;
+import org.elasticsearch.threadpool.ThreadPool;
+import org.junit.Test;
+```
+
+The patch tries to add the import:
+
+```
+import java.util.concurrent.atomic.AtomicReference;
+```
+
+I need to adapt the patch so that it fits the context of the old version without changing the existing import statements or their order, just adding the new import at the appropriate place.
+
+I will generate a patch that adds the line `import java.util.concurrent.atomic.AtomicReference;` after the existing imports without changing the existing lines.
+
+I'll proceed to generate the patch accordingly.
+
+[0m[38;5;200m[1;3mPatch applied successfully
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3mI have generated the backport patch for the given hunk to the older version ref 508dde5d0e2435314c8b36280ea3e579a99838f5. The main change was to add the import of java.util.concurrent.atomic.AtomicReference, adapting the context to fit the older version's import structure without changing the existing imports.
+
+Here is the patch:
+
+```diff
+--- a/server/src/test/java/io/crate/session/SessionTest.java
++++ b/server/src/test/java/io/crate/session/SessionTest.java
+@@ -42,7 +42,8 @@
+ import java.util.concurrent.ScheduledFuture;
+ import java.util.concurrent.ScheduledThreadPoolExecutor;
+ import java.util.concurrent.TimeUnit;
++
++import java.util.concurrent.atomic.AtomicReference;
+ 
+ import org.elasticsearch.client.ElasticsearchClient;
+ import org.elasticsearch.threadpool.ThreadPool;
+ import org.junit.Test;
+```
+
+I have validated this patch on the target ref and it applies cleanly without conflicts. If you need further backporting for other hunks or files, please let me know.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new AgentExecutor chain...[0m
+
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `git_history` with `{}`
+
+
+[0m[36;1m[1;3mba4babe38c Turn test_simple_query_failures_are_logged_in_sys_jobs_log into unit test
+
+diff --git a/server/src/test/java/io/crate/session/SessionTest.java b/server/src/test/java/io/crate/session/SessionTest.java
+--- a/server/src/test/java/io/crate/session/SessionTest.java
++++ b/server/src/test/java/io/crate/session/SessionTest.java
+@@ -461,3 +461,6 @@
+         }
+     }
+ 
++    @Test
++    public void test_simple_query_parse_failure_is_logged() throws Exception {
++        // https://github.com/crate/crate/issues/17651
+9cdd94e1c1 Fix NPE due to JobContext.stmt incorrectly set to null
+
+diff --git a/server/src/test/java/io/crate/session/SessionTest.java b/server/src/test/java/io/crate/session/SessionTest.java
+--- a/server/src/test/java/io/crate/session/SessionTest.java
++++ b/server/src/test/java/io/crate/session/SessionTest.java
+@@ -437,0 +446,3 @@
++        }
++    }
+
+You need to do the following analysis based on the information in the last commit:
+Analyze the code logic of the context of the patch to be ported in this commit step by step.
+If code logic already existed before this commit, the patch context can be assumed to remain in a similar location. Use `locate` and `viewcode` to check your results.
+If code logic were added in this commit, then you need to `git_show` for further details.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `git_show` with `{}`
+
+
+[0m[33;1m[1;3mcommit 9cdd94e1c1bd2b594bb9546aa86188c61cdd695a
+Author: jeeminso <jeeminso@gmail.com>
+Date:   Thu Feb 20 16:48:29 2025 +0900
+
+    Fix NPE due to JobContext.stmt incorrectly set to null
+
+ docs/appendices/release-notes/5.10.2.rst                     |  3 +++
+ .../io/crate/protocols/postgres/PostgresWireProtocol.java    |  2 ++
+ server/src/main/java/io/crate/session/Session.java           |  2 +-
+ server/src/test/java/io/crate/session/SessionTest.java       | 12 ++++++++++++
+ 4 files changed, 18 insertions(+), 1 deletion(-)
+This commit shows that there is a high probability that this code is new, so the corresponding code segment cannot be found in the old version.
+You can call `viewcode` and `locate_symbol` to further check the results step by step. For newly introduced code, we consider that this hunk `need not ported`.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `locate_symbol` with `{'ref': '508dde5d0e2435314c8b36280ea3e579a99838f5', 'symbol': 'test_binding_portal_again_closes_suspended_consumers_eventually'}`
+
+
+[0m[33;1m[1;3mThe symbol test_binding_portal_again_closes_suspended_consumers_eventually you are looking for does not exist in the current ref.
+But here is a symbol similar to it. It's `test_closing_a_statement_closes_related_portals`.
+The file where this symbol is located is: 
+server/src/test/java/io/crate/session/SessionTest.java:224
+Please be careful to check that this symbol indicates the same thing as the previous symbol.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': '508dde5d0e2435314c8b36280ea3e579a99838f5', 'path': 'server/src/test/java/io/crate/session/SessionTest.java', 'startline': 210, 'endline': 240}`
+
+
+[0m[36;1m[1;3mHere are lines 210 through 240.
+
+        session.parse("test_prep_stmt", "select * from sys.cluster;", Collections.emptyList());
+        session.bind("Portal", "test_prep_stmt", Collections.emptyList(), null);
+        session.describe('S', "test_prep_stmt");
+
+        session.parse("stmt", "DEALLOCATE test_prep_stmt;", Collections.emptyList());
+        session.bind("", "stmt", Collections.emptyList(), null);
+        session.execute("", 0, new BaseResultReceiver());
+
+        assertThat(session.portals).hasSizeGreaterThan(0);
+        assertThat(session.preparedStatements).hasSize(1);
+        assertThat(session.preparedStatements.get("stmt").rawStatement()).isEqualTo("DEALLOCATE test_prep_stmt;");
+    }
+
+    @Test
+    public void test_closing_a_statement_closes_related_portals() {
+        SQLExecutor sqlExecutor = SQLExecutor.builder(clusterService).build();
+        Session session = sqlExecutor.createSession();
+
+        session.parse("S_1", "SELECT 1", List.of());
+        session.bind("P_1", "S_1", List.of(), null);
+
+        assertThat(session.portals).hasSize(1);
+        assertThat(session.preparedStatements).hasSize(1);
+
+        session.close((byte) 'S', "S_1");
+        assertThat(session.portals).isEmpty();
+        assertThat(session.preparedStatements).isEmpty();
+    }
+
+    @Test
+    public void test_can_describe_cursor_created_using_declare() throws Exception {
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': '508dde5d0e2435314c8b36280ea3e579a99838f5', 'path': 'server/src/test/java/io/crate/session/SessionTest.java', 'startline': 500, 'endline': 520}`
+
+
+[0m[36;1m[1;3mHere are lines 500 through 520.
+
+            session.close((byte) 'S', "S1");
+            assertThatThrownBy(() -> session.bind("", "S1", List.of(), null))
+                .isExactlyInstanceOf(IllegalArgumentException.class)
+                .hasMessage("No statement found with name: S1");
+
+            assertThat(sqlExecutor.jobsLogs.activeJobs()).isEmpty();
+            assertThat(sqlExecutor.jobsLogs.jobsLog()).satisfiesExactly(
+                x -> {
+                    assertThat(x.statement()).isEqualTo("");
+                    assertThat(x.errorMessage()).isEqualTo("No statement found with name: S1");
+                }
+            );
+        }
+    }
+
+    @Test
+    public void test_bulk_operations_completed_exceptionally_sys_job_cleared() throws Exception {
+        Planner planner = mock(Planner.class, Answers.RETURNS_MOCKS);
+        SQLExecutor sqlExecutor = SQLExecutor.builder(clusterService)
+            .setPlanner(planner)
+            .build()
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `validate` with `{'ref': '508dde5d0e2435314c8b36280ea3e579a99838f5', 'patch': 'need not ported'}`
+responded: The target test method `test_binding_portal_again_closes_suspended_consumers_eventually` does not exist in the older version ref 508dde5d0e2435314c8b36280ea3e579a99838f5. The surrounding tests and code structure are present, but this particular test method is not found.
+
+The last commit 9cdd94e1c1bd2b594bb9546aa86188c61cdd695a suggests this test method was added after that commit, indicating this test is new and does not exist in the older version.
+
+Therefore, this test method is new and does not need to be ported to the older version.
+
+I will now validate this conclusion by marking the patch as `need not ported` for the older ref.
+
+[0m[38;5;200m[1;3mPatch applied successfully
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3mThe test method test_binding_portal_again_closes_suspended_consumers_eventually does not exist in the older ref 508dde5d0e2435314c8b36280ea3e579a99838f5 and appears to be newly added in a later commit. The surrounding code context in the older version confirms that this test was not present.
+
+Therefore, this patch hunk adding this test does not need to be backported to the older version.
+
+I have validated that the patch for this hunk is "need not ported" on the target ref.
+
+Summary:
+- The patch adds a new test method in the newer version.
+- This test method does not exist in the older version.
+- The patch does not need to be ported to the older version.
+
+If you need assistance with any other hunks or patches, please let me know.[0m
+
+[1m> Finished chain.[0m
+2026-04-25 15:18:46,277 - backport - INFO - Aplly all hunks in the patch      PASS
+2026-04-25 15:18:46,709 - backport - INFO - Successfully backport the patch to the target release 508dde5d0e2435314c8b36280ea3e579a99838f5
+2026-04-25 15:18:46,710 - backport - INFO - --- a/server/src/main/java/io/crate/protocols/postgres/Portal.java
++++ b/server/src/main/java/io/crate/protocols/postgres/Portal.java
+@@ -25,9 +25,9 @@ import java.util.List;
+ 
+ import org.jetbrains.annotations.Nullable;
+ 
++import io.crate.analyze.AnalyzedStatement;
+ import io.crate.session.PreparedStmt;
+ import io.crate.session.RowConsumerToResultReceiver;
+-import io.crate.analyze.AnalyzedStatement;
+ 
+ public final class Portal {
+ 
+
+--- a/server/src/main/java/io/crate/protocols/postgres/Portal.java
++++ b/server/src/main/java/io/crate/protocols/postgres/Portal.java
+@@ -91,6 +91,7 @@ public final class Portal {
+         return "Portal{" +
+                "portalName=" + portalName +
+                ", preparedStmt=" + preparedStmt.rawStatement() +
++               ", consumer=" + consumer +
+                '}';
+     }
+ }
+
+--- a/server/src/main/java/io/crate/session/RowConsumerToResultReceiver.java
++++ b/server/src/main/java/io/crate/session/RowConsumerToResultReceiver.java
+@@ -45,12 +45,12 @@ public class RowConsumerToResultReceiver implements RowConsumer {
+      * Reset per suspend/execute
+      */
+     private int rowCount = 0;
+-    private BatchIterator<Row> activeIt;
++    private CompletableFuture<BatchIterator<Row>> suspendedIt = new CompletableFuture<>();
+ 
+     public RowConsumerToResultReceiver(ResultReceiver<?> resultReceiver, int maxRows, Consumer<Throwable> onCompletion) {
+         this.resultReceiver = resultReceiver;
+         this.maxRows = maxRows;
+-        completionFuture.whenComplete((res, err) -> {
++        completionFuture.whenComplete((_, err) -> {
+             onCompletion.accept(err);
+         });
+     }
+
+--- a/server/src/main/java/io/crate/session/RowConsumerToResultReceiver.java
++++ b/server/src/main/java/io/crate/session/RowConsumerToResultReceiver.java
+@@ -77,23 +77,24 @@ public class RowConsumerToResultReceiver implements RowConsumer {
+         while (true) {
+             try {
+                 while (iterator.moveNext()) {
++                    if (rowCount > 0 && maxRows > 0 && rowCount % maxRows == 0) {
++                        suspendedIt.complete(iterator);
++                        resultReceiver.batchFinished();
++                        return; // resumed via postgres protocol, close is done later
++                    }
+                     rowCount++;
+                     CompletableFuture<Void> writeFuture = resultReceiver.setNextRow(iterator.currentElement());
+                     if (writeFuture != null) {
+                         LOGGER.trace("Suspended execution after {} rows as the receiver is not writable anymore", rowCount);
+-                        activeIt = iterator;
++                        suspendedIt.complete(iterator);
+                         writeFuture.thenRun(() -> {
+                             LOGGER.trace("Resume execution after {} rows", rowCount);
+-                            resume();
++                            suspendedIt = new CompletableFuture<>();
++                            rowCount = 0;
++                            consumeIt(iterator);
+                         });
+                         return;
+                     }
+-
+-                    if (maxRows > 0 && rowCount % maxRows == 0) {
+-                        activeIt = iterator;
+-                        resultReceiver.batchFinished();
+-                        return; // resumed via postgres protocol, close is done later
+-                    }
+                 }
+                 if (iterator.allLoaded()) {
+                     completionFuture.complete(null);
+
+--- a/server/src/main/java/io/crate/session/RowConsumerToResultReceiver.java
++++ b/server/src/main/java/io/crate/session/RowConsumerToResultReceiver.java
+@@ -109,7 +110,7 @@ public class RowConsumerToResultReceiver implements RowConsumer {
+                         }
+                         continue;
+                     }
+-                    nextBatch.whenComplete((r, f) -> {
++                    nextBatch.whenComplete((_, f) -> {
+                         if (f == null) {
+                             consumeIt(iterator);
+                         } else {
+
+--- a/server/src/main/java/io/crate/session/RowConsumerToResultReceiver.java
++++ b/server/src/main/java/io/crate/session/RowConsumerToResultReceiver.java
+@@ -135,17 +136,17 @@ public class RowConsumerToResultReceiver implements RowConsumer {
+      * and finish the ResultReceiver
+      */
+     public void closeAndFinishIfSuspended() {
+-        if (activeIt != null) {
+-            activeIt.close();
++        suspendedIt.whenComplete((it, _) -> {
++            it.close();
+             completionFuture.complete(null);
+             // resultReceiver is left untouched:
+             // - A previous .batchCompleted() call already flushed out pending messages
+             // - Calling failure/allFinished would lead to extra messages, including  sentCommandComplete, to the client, which can lead to issues on the client.
+-        }
++        });
+     }
+ 
+     public boolean suspended() {
+-        return activeIt != null;
++        return suspendedIt.isDone();
+     }
+ 
+     public void replaceResultReceiver(ResultReceiver<?> resultReceiver, int maxRows) {
+
+--- a/server/src/main/java/io/crate/session/RowConsumerToResultReceiver.java
++++ b/server/src/main/java/io/crate/session/RowConsumerToResultReceiver.java
+@@ -159,10 +160,20 @@ public class RowConsumerToResultReceiver implements RowConsumer {
+     }
+ 
+     public void resume() {
+-        assert activeIt != null : "resume must only be called if suspended() returned true and activeIt is not null";
+-        BatchIterator<Row> iterator = this.activeIt;
+-        this.activeIt = null;
+-        consumeIt(iterator);
++        assert suspended() : "resume must only be called if suspended() returned true";
++        BatchIterator<Row> it = null;
++        try {
++            it = suspendedIt.join();
++            suspendedIt = new CompletableFuture<>();
++            resultReceiver.setNextRow(it.currentElement());
++            consumeIt(it);
++        } catch (Throwable t) {
++            if (it != null) {
++                it.close();
++            }
++            completionFuture.completeExceptionally(t);
++            resultReceiver.fail(t);
++        }
+     }
+ 
+     @Override
+
+--- a/server/src/main/java/io/crate/session/RowConsumerToResultReceiver.java
++++ b/server/src/main/java/io/crate/session/RowConsumerToResultReceiver.java
+@@ -171,7 +182,7 @@ public class RowConsumerToResultReceiver implements RowConsumer {
+                "resultReceiver=" + resultReceiver +
+                ", maxRows=" + maxRows +
+                ", rowCount=" + rowCount +
+-               ", activeIt=" + activeIt +
++               ", activeIt=" + suspendedIt +
+                '}';
+     }
+ }
+
+--- a/server/src/main/java/io/crate/session/Session.java
++++ b/server/src/main/java/io/crate/session/Session.java
+@@ -630,6 +630,7 @@ public class Session implements AutoCloseable {
+         if (activeExecution == null) {
+             return triggerDeferredExecutions(forceBulk);
+         } else {
++            LOGGER.debug("method=sync activeExecution={}", activeExecution);
+             var result = activeExecution;
+             activeExecution = null;
+             return result;
+
+--- a/server/src/main/java/io/crate/session/Session.java
++++ b/server/src/main/java/io/crate/session/Session.java
+@@ -679,9 +680,10 @@ public class Session implements AutoCloseable {
+     }
+ 
+     private CompletableFuture<?> triggerDeferredExecutions(boolean forceBulk) {
+-        switch (deferredExecutionsByStmt.size()) {
++        int numDeferred = deferredExecutionsByStmt.size();
++        LOGGER.debug("method=sync deferredExecutions={}", numDeferred);
++        switch (numDeferred) {
+             case 0:
+-                LOGGER.debug("method=sync deferredExecutions=0");
+                 return CompletableFuture.completedFuture(null);
+             case 1: {
+                 var deferredExecutions = deferredExecutionsByStmt.values().iterator().next();
+
+--- a/server/src/main/java/io/crate/session/Session.java
++++ b/server/src/main/java/io/crate/session/Session.java
+@@ -689,7 +691,7 @@ public class Session implements AutoCloseable {
+                 return exec(deferredExecutions, forceBulk);
+             }
+             default: {
+-                // Mix of different defered execution is PG specific.
++                // Mix of different deferred execution is PG specific.
+                 // HTTP sync-s at the end of both single/bulk requests, and it's always one statement.
+                 // sequentiallize execution to ensure client receives row counts in correct order
+                 CompletableFuture<?> allCompleted = null;
+
+--- a/server/src/test/java/io/crate/integrationtests/PostgresITest.java
++++ b/server/src/test/java/io/crate/integrationtests/PostgresITest.java
+@@ -969,6 +969,22 @@ public class PostgresITest extends IntegTestCase {
+         }
+     }
+ 
++    @Test
++    public void testExecuteBatchDoesNotLeakSysJobsLog() throws Exception {
++        try (Connection conn = DriverManager.getConnection(url(RW), properties)) {
++            PreparedStatement stmt = conn.prepareStatement("SELECT ?");
++            for (int i = 1; i <= 3; i++) {
++                stmt.setInt(1, i);
++                stmt.addBatch();
++            }
++            stmt.executeBatch();
++        }
++        for (JobsLogService jobsLogService : cluster().getDataNodeInstances(JobsLogService.class)) {
++            assertBusy(() -> assertThat(jobsLogService.get().activeJobs()).isEmpty());
++        }
++    }
++
++
+     @Test
+     public void test_insert_with_on_conflict_do_nothing_batch_error_resp_is_0_for_conflicting_items() throws Exception {
+         try (Connection conn = DriverManager.getConnection(url(RW), properties)) {
+
+--- a/server/src/test/java/io/crate/session/RowConsumerToResultReceiverTest.java
++++ b/server/src/test/java/io/crate/session/RowConsumerToResultReceiverTest.java
+@@ -21,7 +21,7 @@
+ 
+ package io.crate.session;
+ 
+-import static io.crate.testing.Asserts.assertThat;
++import static org.assertj.core.api.Assertions.assertThat;
+ 
+ import java.util.ArrayList;
+ import java.util.List;
+
+--- a/server/src/test/java/io/crate/session/RowConsumerToResultReceiverTest.java
++++ b/server/src/test/java/io/crate/session/RowConsumerToResultReceiverTest.java
+@@ -30,15 +30,17 @@ import java.util.concurrent.TimeUnit;
+ import java.util.concurrent.atomic.AtomicReference;
+ import java.util.stream.IntStream;
+ 
++import org.elasticsearch.test.ESTestCase;
+ import org.jetbrains.annotations.Nullable;
+ import org.junit.Test;
+ 
++import io.crate.data.BatchIterator;
+ import io.crate.data.Row;
+ import io.crate.data.testing.BatchSimulatingIterator;
+ import io.crate.data.testing.FailingBatchIterator;
+ import io.crate.data.testing.TestingBatchIterators;
+ 
+-public class RowConsumerToResultReceiverTest {
++public class RowConsumerToResultReceiverTest extends ESTestCase {
+ 
+     @Test
+     public void testBatchedIteratorConsumption() throws Exception {
+
+--- a/server/src/test/java/io/crate/session/RowConsumerToResultReceiverTest.java
++++ b/server/src/test/java/io/crate/session/RowConsumerToResultReceiverTest.java
+@@ -101,7 +103,7 @@ public class RowConsumerToResultReceiverTest {
+             }
+         };
+         RowConsumerToResultReceiver batchConsumer =
+-            new RowConsumerToResultReceiver(resultReceiver, 0, t -> {});
++            new RowConsumerToResultReceiver(resultReceiver, 1, t -> {});
+ 
+         batchConsumer.accept(batchSimulatingIterator, null);
+ 
+
+--- a/server/src/test/java/io/crate/session/RowConsumerToResultReceiverTest.java
++++ b/server/src/test/java/io/crate/session/RowConsumerToResultReceiverTest.java
+@@ -114,4 +116,29 @@ public class RowConsumerToResultReceiverTest {
+         assertThat(batchConsumer.suspended()).isFalse();
+         assertThat(rowCount[0]).isEqualTo(10);
+     }
++
++    @Test
++    public void test_does_not_suspend_consumer_on_last_row() throws Exception {
++        {
++            int numRows = randomIntBetween(1, 10);
++            BatchIterator<Row> batchIterator = TestingBatchIterators.range(0, numRows);
++            BaseResultReceiver resultReceiver = new BaseResultReceiver();
++            var consumer = new RowConsumerToResultReceiver(resultReceiver, numRows, _ -> {});
++
++            consumer.accept(batchIterator, null);
++            assertThat(consumer.suspended()).isFalse();
++            assertThat(consumer.completionFuture()).isDone();
++        }
++        {
++            int numRows = randomIntBetween(2, 10);
++            BatchIterator<Row> numbers = TestingBatchIterators.range(0, numRows);
++            var batchIterator = new BatchSimulatingIterator<>(numbers, numRows - 1, 1, null);
++            BaseResultReceiver resultReceiver = new BaseResultReceiver();
++            var consumer = new RowConsumerToResultReceiver(resultReceiver, numRows, _ -> {});
++
++            consumer.accept(batchIterator, null);
++            assertThat(consumer.completionFuture()).succeedsWithin(5, TimeUnit.SECONDS);
++            assertThat(consumer.suspended()).isFalse();
++        }
++    }
+ }
+
+--- a/server/src/test/java/io/crate/session/SessionTest.java
++++ b/server/src/test/java/io/crate/session/SessionTest.java
+@@ -24,6 +24,7 @@ package io.crate.session;
+ import static io.crate.session.Session.UNNAMED;
+ import static io.crate.testing.Asserts.assertThat;
+ import static java.util.concurrent.CompletableFuture.completedFuture;
++import static org.assertj.core.api.Assertions.assertThat;
+ import static org.assertj.core.api.Assertions.assertThatThrownBy;
+ import static org.mockito.ArgumentMatchers.any;
+ import static org.mockito.ArgumentMatchers.anyInt;
+
+--- a/server/src/test/java/io/crate/session/SessionTest.java
++++ b/server/src/test/java/io/crate/session/SessionTest.java
+@@ -42,7 +42,9 @@
+ import java.util.concurrent.ScheduledFuture;
+ import java.util.concurrent.ScheduledThreadPoolExecutor;
+ import java.util.concurrent.TimeUnit;
++
++import java.util.concurrent.atomic.AtomicReference;
+ 
+ import org.elasticsearch.client.ElasticsearchClient;
+ import org.elasticsearch.threadpool.ThreadPool;
+ import org.junit.Test;
+
+--- a/server/src/test/java/io/crate/session/SessionTest.java
++++ b/server/src/test/java/io/crate/session/SessionTest.java
+@@ -59,6 +61,7 @@ import io.crate.common.unit.TimeValue;
+ import io.crate.data.InMemoryBatchIterator;
+ import io.crate.data.Row;
+ import io.crate.data.RowConsumer;
++import io.crate.data.testing.TestingBatchIterators;
+ import io.crate.exceptions.JobKilledException;
+ import io.crate.execution.dml.BulkResponse;
+ import io.crate.execution.engine.collect.stats.QueueSink;
+
+--- a/server/src/test/java/io/crate/session/SessionTest.java
++++ b/server/src/test/java/io/crate/session/SessionTest.java
+@@ -69,6 +72,7 @@ import io.crate.planner.Plan;
+ import io.crate.planner.Planner;
+ import io.crate.planner.PlannerContext;
+ import io.crate.planner.operators.SubQueryResults;
++import io.crate.protocols.postgres.FormatCodes.FormatCode;
+ import io.crate.protocols.postgres.Portal;
+ import io.crate.test.integration.CrateDummyClusterServiceUnitTest;
+ import io.crate.testing.SQLExecutor;
+
+--- a/server/src/test/java/io/crate/session/SessionTest.java
++++ b/server/src/test/java/io/crate/session/SessionTest.java
+@@ -398,35 +402,34 @@ public class SessionTest extends CrateDummyClusterServiceUnitTest {
+     @Test
+     public void test_statement_timeout_schedule_is_removed_for_finished_jobs() throws Exception {
+         Planner planner = mock(Planner.class, Answers.RETURNS_MOCKS);
++        Plan plan = new Plan() {
++            @Override
++            public StatementType type() {
++                return StatementType.INSERT;
++            }
++
++            @Override
++            public void executeOrFail(DependencyCarrier dependencies,
++                                      PlannerContext plannerContext,
++                                      RowConsumer consumer,
++                                      Row params,
++                                      SubQueryResults subQueryResults) throws Exception {
++                consumer.accept(InMemoryBatchIterator.empty(null), null);
++            }
++
++            @Override
++            public CompletableFuture<BulkResponse> executeBulk(DependencyCarrier executor,
++                                                               PlannerContext plannerContext,
++                                                               List<Row> bulkParams,
++                                                               SubQueryResults subQueryResults) {
++                return new CompletableFuture<>();
++            }
++        };
++        when(planner.plan(any(AnalyzedStatement.class), any(PlannerContext.class)))
++            .thenReturn(plan);
+         SQLExecutor sqlExecutor = SQLExecutor.builder(clusterService)
+             .setPlanner(planner)
+             .build();
+-        when(planner.plan(any(AnalyzedStatement.class), any(PlannerContext.class)))
+-            .thenReturn(
+-                new Plan() {
+-                    @Override
+-                    public StatementType type() {
+-                        return StatementType.INSERT;
+-                    }
+-
+-                    @Override
+-                    public void executeOrFail(DependencyCarrier dependencies,
+-                                              PlannerContext plannerContext,
+-                                              RowConsumer consumer,
+-                                              Row params,
+-                                              SubQueryResults subQueryResults) throws Exception {
+-                        consumer.accept(InMemoryBatchIterator.empty(null), null);
+-                    }
+-
+-                    @Override
+-                    public CompletableFuture<BulkResponse> executeBulk(DependencyCarrier executor,
+-                                                                       PlannerContext plannerContext,
+-                                                                       List<Row> bulkParams,
+-                                                                       SubQueryResults subQueryResults) {
+-                        return new CompletableFuture<>();
+-                    }
+-                }
+-            );
+ 
+         DependencyCarrier dependencies = sqlExecutor.dependencyMock;
+         when(dependencies.scheduler()).thenReturn(THREAD_POOL.scheduler());
+

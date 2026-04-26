@@ -1,0 +1,700 @@
+2026-04-25 18:24:04,011 - backport - INFO - Using openrouter API: https://openrouter.ai/api/v1 (model: openai/gpt-4.1-mini)
+
+
+[1m> Entering new AgentExecutor chain...[0m
+
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `git_history` with `{}`
+
+
+[0m[36;1m[1;3m14b093eaf6 Use fastdoubleparser for string -> float/double parsing
+
+diff --git a/server/src/main/java/io/crate/types/DoubleType.java b/server/src/main/java/io/crate/types/DoubleType.java
+--- a/server/src/main/java/io/crate/types/DoubleType.java
++++ b/server/src/main/java/io/crate/types/DoubleType.java
+@@ -159,8 +160,8 @@
+         } else if (value instanceof String s) {
+-            return Double.valueOf(s);
++            return JavaDoubleParser.parseDouble(s);
+         } else if (value instanceof BigDecimal bigDecimalValue) {
+             if (DOUBLE_MAX.compareTo(bigDecimalValue.toBigInteger()) <= 0
+                 || DOUBLE_MIN.compareTo(bigDecimalValue.toBigInteger()) >= 0) {
+                 throw new IllegalArgumentException(getName() + " value out of range: " + value);
+             }
+             return bigDecimalValue.doubleValue()
+You need to do the following analysis based on the information in the last commit:
+Analyze the code logic of the context of the patch to be ported in this commit step by step.
+If code logic already existed before this commit, the patch context can be assumed to remain in a similar location. Use `locate` and `viewcode` to check your results.
+If code logic were added in this commit, then you need to `git_show` for further details.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `locate_symbol` with `{'ref': '064c90f128f7455932a50006eaa4af4c4528c5d4', 'symbol': 'DoubleType'}`
+responded: The git_history shows a commit 14b093eaf6 which replaced the code for parsing string to double from `Double.valueOf(s)` to `JavaDoubleParser.parseDouble(s)`.
+
+The rest of the code logic related to BigDecimal comparisons and throwing an IllegalArgumentException if out of range seems to be already present before this commit.
+
+The patch we want to backport modifies the BigDecimal comparison to avoid converting to BigInteger, which can be computationally expensive.
+
+Since the BigDecimal comparison code block existed before commit 14b093eaf6, the patch context should be in a similar location in the older version.
+
+Next, I will locate the function or class where this code exists in the older version 064c90f128f7455932a50006eaa4af4c4528c5d4 to confirm the exact lines for patching.
+
+[0m[33;1m[1;3mserver/src/main/java/io/crate/protocols/postgres/types/DoubleType.java:30
+server/src/main/java/io/crate/protocols/postgres/types/DoubleType.java:38
+server/src/main/java/io/crate/types/DoubleType.java:125
+server/src/main/java/io/crate/types/DoubleType.java:46[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': '064c90f128f7455932a50006eaa4af4c4528c5d4', 'path': 'server/src/main/java/io/crate/types/DoubleType.java', 'startline': 150, 'endline': 170}`
+
+
+[0m[36;1m[1;3mHere are lines 150 through 170.
+
+        return this;
+    }
+
+    @Override
+    public Double implicitCast(Object value) throws IllegalArgumentException, ClassCastException {
+        if (value == null) {
+            return null;
+        } else if (value instanceof Double d) {
+            return d;
+        } else if (value instanceof String s) {
+            return Double.valueOf(s);
+        } else if (value instanceof BigDecimal bigDecimalValue) {
+            if (DOUBLE_MAX.compareTo(bigDecimalValue.toBigInteger()) <= 0
+                || DOUBLE_MIN.compareTo(bigDecimalValue.toBigInteger()) >= 0) {
+                throw new IllegalArgumentException(getName() + " value out of range: " + value);
+            }
+            return bigDecimalValue.doubleValue();
+        } else if (value instanceof Number n) {
+            return n.doubleValue();
+        } else {
+            throw new ClassCastException("Can't cast '" + value + "' to " + getName());
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `validate` with `{'ref': '064c90f128f7455932a50006eaa4af4c4528c5d4', 'patch': '--- a/server/src/main/java/io/crate/types/DoubleType.java\n+++ b/server/src/main/java/io/crate/types/DoubleType.java\n@@ -158,10 +158,14 @@\n         } else if (value instanceof String s) {\n-            return Double.valueOf(s);\n+            return Double.valueOf(s);\n         } else if (value instanceof BigDecimal bigDecimalValue) {\n-            if (DOUBLE_MAX.compareTo(bigDecimalValue.toBigInteger()) <= 0\n-                || DOUBLE_MIN.compareTo(bigDecimalValue.toBigInteger()) >= 0) {\n+            // Preferring compareTo over equals as it gives safer equality check.\n+            // From the compareTo docs:\n+            // Two BigDecimal objects that are equal in value but have a different scale (like 2.0 and 2.00)\n+            // are considered equal by this method.\n+            if (DOUBLE_MAX.compareTo(bigDecimalValue) <= 0\n+                || DOUBLE_MIN.compareTo(bigDecimalValue) >= 0) {\n                 throw new IllegalArgumentException(getName() + " value out of range: " + value);\n             }\n-            return bigDecimalValue.doubleValue();\n+            return bigDecimalValue.doubleValue();\n         } else if (value instanceof Number n) {\n             return n.doubleValue();\n         } else {\n             throw new ClassCastException("Can\'t cast \'" + value + "\' to " + getName());\n         }\n     }\n'}`
+responded: The target code for the patch is indeed visible in the old version at lines 150-170. It includes the method `implicitCast` where the `BigDecimal` value is checked using `bigDecimalValue.toBigInteger()` for range comparison. The patch in the newer version changes this to compare the `BigDecimal` directly instead of converting to `BigInteger`.
+
+The context lines before and after the patch are present, including the check for `String` and the throwing of `IllegalArgumentException`.
+
+Since this code existed before the commit that introduced the `JavaDoubleParser`, and the patch only modifies the `BigDecimal` comparison logic, the patch can be adapted to this location in the old version.
+
+Next, I will generate the patch for the old version to replace the `bigDecimalValue.toBigInteger()` calls with direct `bigDecimalValue` comparisons, and add the comment lines from the newer patch for clarity. The `String` parsing remains `Double.valueOf(s)` as in the old version.
+
+I will now proceed to craft the patch.
+
+[0m[38;5;200m[1;3mPatch applied successfully
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3mI have analyzed the patch and the similar code block in the older version. The main change in the patch is to avoid converting BigDecimal to BigInteger for comparison, which prevents heavy computations. The older version uses BigDecimal.toBigInteger() for comparison, which matches the original code before the patch.
+
+I have crafted the backport patch for the older version by adapting the patch logic to the older code context, replacing the comparisons with BigDecimal directly instead of converting to BigInteger. The context lines are consistent with the older version.
+
+Here is the backport patch:
+
+```diff
+--- a/server/src/main/java/io/crate/types/DoubleType.java
++++ b/server/src/main/java/io/crate/types/DoubleType.java
+@@ -158,10 +158,14 @@
+         } else if (value instanceof String s) {
+-            return Double.valueOf(s);
++            return Double.valueOf(s);
+         } else if (value instanceof BigDecimal bigDecimalValue) {
+-            if (DOUBLE_MAX.compareTo(bigDecimalValue.toBigInteger()) <= 0
+-                || DOUBLE_MIN.compareTo(bigDecimalValue.toBigInteger()) >= 0) {
++            // Preferring compareTo over equals as it gives safer equality check.
++            // From the compareTo docs:
++            // Two BigDecimal objects that are equal in value but have a different scale (like 2.0 and 2.00)
++            // are considered equal by this method.
++            if (DOUBLE_MAX.compareTo(bigDecimalValue) <= 0
++                || DOUBLE_MIN.compareTo(bigDecimalValue) >= 0) {
+                 throw new IllegalArgumentException(getName() + " value out of range: " + value);
+             }
+-            return bigDecimalValue.doubleValue();
++            return bigDecimalValue.doubleValue();
+         } else if (value instanceof Number n) {
+             return n.doubleValue();
+         } else {
+             throw new ClassCastException("Can't cast '" + value + "' to " + getName());
+         }
+     }
+```
+
+I have validated this patch on the target ref 064c90f128f7455932a50006eaa4af4c4528c5d4 and it applies successfully without conflict.
+
+If you want, I can assist you with any further backporting or clarifications.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new AgentExecutor chain...[0m
+
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `git_history` with `{}`
+
+
+[0m[36;1m[1;3m14b093eaf6 Use fastdoubleparser for string -> float/double parsing
+
+diff --git a/server/src/main/java/io/crate/types/FloatType.java b/server/src/main/java/io/crate/types/FloatType.java
+--- a/server/src/main/java/io/crate/types/FloatType.java
++++ b/server/src/main/java/io/crate/types/FloatType.java
+@@ -159,8 +160,8 @@
+         } else if (value instanceof String s) {
+-            return Float.parseFloat(s);
++            return JavaFloatParser.parseFloat(s);
+         } else if (value instanceof BigDecimal bigDecimalValue) {
+             if (MAX.compareTo(bigDecimalValue.toBigInteger()) <= 0
+                 || MIN.compareTo(bigDecimalValue.toBigInteger()) >= 0) {
+                 throw new IllegalArgumentException("float value out of range: " + value);
+             }
+             return bigDecimalValue.floatValue()
+You need to do the following analysis based on the information in the last commit:
+Analyze the code logic of the context of the patch to be ported in this commit step by step.
+If code logic already existed before this commit, the patch context can be assumed to remain in a similar location. Use `locate` and `viewcode` to check your results.
+If code logic were added in this commit, then you need to `git_show` for further details.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `locate_symbol` with `{'ref': '064c90f128f7455932a50006eaa4af4c4528c5d4', 'symbol': 'FloatType'}`
+responded: The git history shows a commit (14b093eaf6) that already modified the code to use `JavaFloatParser.parseFloat(s)` instead of `Float.parseFloat(s)` for string to float parsing.
+
+The code logic for checking the BigDecimal value against MAX and MIN using `toBigInteger()` and throwing an IllegalArgumentException if out of range already existed before this commit, as shown in the snippet:
+```java
+if (MAX.compareTo(bigDecimalValue.toBigInteger()) <= 0
+    || MIN.compareTo(bigDecimalValue.toBigInteger()) >= 0) {
+    throw new IllegalArgumentException("float value out of range: " + value);
+}
+```
+
+The patch to be backported changes this logic to compare directly with the BigDecimal value instead of converting it to BigInteger, and adds comments explaining the reasoning.
+
+Since this logic existed before 14b093eaf6, it is likely present in the older ref 064c90f128f7455932a50006eaa4af4c4528c5d4 in a similar location.
+
+Next, I will locate the function or the class that contains this code in the older ref to confirm the exact location and view the surrounding code context for crafting the patch.
+
+I will use `locate_symbol` to locate the function or class containing this code in the older ref 064c90f128f7455932a50006eaa4af4c4528c5d4. The patch is in the class `FloatType`, so I will locate the class `FloatType` in the older ref.
+
+[0m[33;1m[1;3mserver/src/main/java/io/crate/types/FloatType.java:125
+server/src/main/java/io/crate/types/FloatType.java:46[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': '064c90f128f7455932a50006eaa4af4c4528c5d4', 'path': 'server/src/main/java/io/crate/types/FloatType.java', 'startline': 150, 'endline': 170}`
+
+
+[0m[36;1m[1;3mHere are lines 150 through 170.
+
+        return this;
+    }
+
+    @Override
+    public Float implicitCast(Object value) throws IllegalArgumentException, ClassCastException {
+        if (value == null) {
+            return null;
+        } else if (value instanceof Float f) {
+            return f;
+        } else if (value instanceof String s) {
+            return Float.parseFloat(s);
+        } else if (value instanceof BigDecimal bigDecimalValue) {
+            if (MAX.compareTo(bigDecimalValue.toBigInteger()) <= 0
+                || MIN.compareTo(bigDecimalValue.toBigInteger()) >= 0) {
+                throw new IllegalArgumentException("float value out of range: " + value);
+            }
+            return bigDecimalValue.floatValue();
+        } else if (value instanceof Number number) {
+            float val = number.floatValue();
+            if (Float.isInfinite(val) && !Double.isInfinite(number.doubleValue())) {
+                throw new IllegalArgumentException("float value out of range: " + value);
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `validate` with `{'ref': '064c90f128f7455932a50006eaa4af4c4528c5d4', 'patch': '--- a/server/src/main/java/io/crate/types/FloatType.java\n+++ b/server/src/main/java/io/crate/types/FloatType.java\n@@ -158,10 +158,14 @@\n         } else if (value instanceof String s) {\n-            return Float.parseFloat(s);\n+            return Float.parseFloat(s);\n         } else if (value instanceof BigDecimal bigDecimalValue) {\n-            if (MAX.compareTo(bigDecimalValue.toBigInteger()) <= 0\n-                || MIN.compareTo(bigDecimalValue.toBigInteger()) >= 0) {\n+            // Preferring compareTo over equals as it gives safer equality check.\n+            // From the compareTo docs:\n+            // Two BigDecimal objects that are equal in value but have a different scale (like 2.0 and 2.00)\n+            // are considered equal by this method.\n+            if (MAX.compareTo(bigDecimalValue) <= 0\n+                || MIN.compareTo(bigDecimalValue) >= 0) {\n                 throw new IllegalArgumentException("float value out of range: " + value);\n             }\n-            return bigDecimalValue.floatValue();\n+            return bigDecimalValue.floatValue();\n         } else if (value instanceof Number number) {\n             float val = number.floatValue();\n             if (Float.isInfinite(val) && !Double.isInfinite(number.doubleValue())) {\n'}`
+responded: I have found the exact code block in the older version (ref 064c90f128f7455932a50006eaa4af4c4528c5d4) that corresponds to the patch location in the newer version. The key difference in the patch is that the comparison for the BigDecimal value is done directly with BigDecimal rather than converting to BigInteger.
+
+The existing code in the older version is:
+
+```java
+} else if (value instanceof BigDecimal bigDecimalValue) {
+    if (MAX.compareTo(bigDecimalValue.toBigInteger()) <= 0
+        || MIN.compareTo(bigDecimalValue.toBigInteger()) >= 0) {
+        throw new IllegalArgumentException("float value out of range: " + value);
+    }
+    return bigDecimalValue.floatValue();
+}
+```
+
+The patched code in the newer version is:
+
+```java
+} else if (value instanceof BigDecimal bigDecimalValue) {
+    // Preferring compareTo over equals as it gives safer equality check.
+    // From the compareTo docs:
+    // Two BigDecimal objects that are equal in value but have a different scale (like 2.0 and 2.00)
+    // are considered equal by this method.
+    if (MAX.compareTo(bigDecimalValue) <= 0
+        || MIN.compareTo(bigDecimalValue) >= 0) {
+        throw new IllegalArgumentException("float value out of range: " + value);
+    }
+    return bigDecimalValue.floatValue();
+}
+```
+
+So the patch is to remove the `toBigInteger()` conversion in the comparison with MAX and MIN and compare directly with BigDecimal values.
+
+The rest of the code remains unchanged.
+
+Next, I will generate a patch for the older version that applies this fix.
+
+The context lines before and after the patch in the older version are available, so I can use them in the patch.
+
+I will now generate the patch diff for this change.
+
+[0m[38;5;200m[1;3mPatch applied successfully
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3mI have reviewed the patch in the newer version and compared it with the corresponding code block in the older version. The main change is in the way BigDecimal values are compared: the newer version uses compareTo directly on BigDecimal instead of converting to BigInteger first, which avoids heavy computations.
+
+I located the corresponding code block in the older version at the same file and lines 158-167. The code structure is mostly the same except for the use of Float.parseFloat instead of JavaFloatParser.parseFloat, which is unrelated to the security fix.
+
+I created the patch for the older version that adapts the logic of the newer patch to the older code context by replacing the BigDecimal toBigInteger comparison with direct BigDecimal compareTo checks.
+
+I validated the patch on the older version ref 064c90f128f7455932a50006eaa4af4c4528c5d4, and it applied successfully without conflicts.
+
+Here is the backported patch:
+
+```diff
+--- a/server/src/main/java/io/crate/types/FloatType.java
++++ b/server/src/main/java/io/crate/types/FloatType.java
+@@ -158,10 +158,14 @@
+         } else if (value instanceof String s) {
+-            return Float.parseFloat(s);
++            return Float.parseFloat(s);
+         } else if (value instanceof BigDecimal bigDecimalValue) {
+-            if (MAX.compareTo(bigDecimalValue.toBigInteger()) <= 0
+-                || MIN.compareTo(bigDecimalValue.toBigInteger()) >= 0) {
++            // Preferring compareTo over equals as it gives safer equality check.
++            // From the compareTo docs:
++            // Two BigDecimal objects that are equal in value but have a different scale (like 2.0 and 2.00)
++            // are considered equal by this method.
++            if (MAX.compareTo(bigDecimalValue) <= 0
++                || MIN.compareTo(bigDecimalValue) >= 0) {
+                 throw new IllegalArgumentException("float value out of range: " + value);
+             }
+-            return bigDecimalValue.floatValue();
++            return bigDecimalValue.floatValue();
+         } else if (value instanceof Number number) {
+             float val = number.floatValue();
+             if (Float.isInfinite(val) && !Double.isInfinite(number.doubleValue())) {
+```
+
+This patch matches the older code style and logic while incorporating the security fix from the newer version.[0m
+
+[1m> Finished chain.[0m
+2026-04-25 18:24:56,104 - backport - INFO - Aplly all hunks in the patch      PASS
+2026-04-25 18:24:56,286 - backport - INFO - Successfully backport the patch to the target release 064c90f128f7455932a50006eaa4af4c4528c5d4
+2026-04-25 18:24:56,288 - backport - INFO - --- a/server/src/main/java/io/crate/types/DoubleType.java
++++ b/server/src/main/java/io/crate/types/DoubleType.java
+@@ -23,7 +23,6 @@ package io.crate.types;
+ 
+ import java.io.IOException;
+ import java.math.BigDecimal;
+-import java.math.BigInteger;
+ import java.util.List;
+ import java.util.function.Function;
+ 
+
+--- a/server/src/main/java/io/crate/types/DoubleType.java
++++ b/server/src/main/java/io/crate/types/DoubleType.java
+@@ -120,8 +119,8 @@ public class DoubleType extends DataType<Double> implements FixedWidthType, Stre
+         }
+     };
+ 
+-    private static final BigInteger DOUBLE_MAX = BigDecimal.valueOf(Double.MAX_VALUE).toBigInteger();
+-    private static final BigInteger DOUBLE_MIN = BigDecimal.valueOf(-Double.MAX_VALUE).toBigInteger();
++    private static final BigDecimal DOUBLE_MAX = BigDecimal.valueOf(Double.MAX_VALUE);
++    private static final BigDecimal DOUBLE_MIN = BigDecimal.valueOf(-Double.MAX_VALUE);
+ 
+     private DoubleType() {
+     }
+
+--- a/server/src/main/java/io/crate/types/DoubleType.java
++++ b/server/src/main/java/io/crate/types/DoubleType.java
+@@ -158,14 +158,18 @@
+         } else if (value instanceof String s) {
+-            return Double.valueOf(s);
++            return Double.valueOf(s);
+         } else if (value instanceof BigDecimal bigDecimalValue) {
+-            if (DOUBLE_MAX.compareTo(bigDecimalValue.toBigInteger()) <= 0
+-                || DOUBLE_MIN.compareTo(bigDecimalValue.toBigInteger()) >= 0) {
++            // Preferring compareTo over equals as it gives safer equality check.
++            // From the compareTo docs:
++            // Two BigDecimal objects that are equal in value but have a different scale (like 2.0 and 2.00)
++            // are considered equal by this method.
++            if (DOUBLE_MAX.compareTo(bigDecimalValue) <= 0
++                || DOUBLE_MIN.compareTo(bigDecimalValue) >= 0) {
+                 throw new IllegalArgumentException(getName() + " value out of range: " + value);
+             }
+-            return bigDecimalValue.doubleValue();
++            return bigDecimalValue.doubleValue();
+         } else if (value instanceof Number n) {
+             return n.doubleValue();
+         } else {
+             throw new ClassCastException("Can't cast '" + value + "' to " + getName());
+         }
+     }
+
+--- a/server/src/main/java/io/crate/types/FloatType.java
++++ b/server/src/main/java/io/crate/types/FloatType.java
+@@ -23,7 +23,6 @@ package io.crate.types;
+ 
+ import java.io.IOException;
+ import java.math.BigDecimal;
+-import java.math.BigInteger;
+ import java.util.List;
+ import java.util.function.Function;
+ 
+
+--- a/server/src/main/java/io/crate/types/FloatType.java
++++ b/server/src/main/java/io/crate/types/FloatType.java
+@@ -120,8 +119,8 @@ public class FloatType extends DataType<Float> implements Streamer<Float>, Fixed
+         }
+     };
+ 
+-    private static final BigInteger MAX = BigDecimal.valueOf(Float.MAX_VALUE).toBigInteger();
+-    private static final BigInteger MIN = BigDecimal.valueOf(-Float.MAX_VALUE).toBigInteger();
++    private static final BigDecimal MAX = BigDecimal.valueOf(Float.MAX_VALUE);
++    private static final BigDecimal MIN = BigDecimal.valueOf(-Float.MAX_VALUE);
+ 
+     private FloatType() {
+     }
+
+--- a/server/src/main/java/io/crate/types/FloatType.java
++++ b/server/src/main/java/io/crate/types/FloatType.java
+@@ -158,11 +158,15 @@
+         } else if (value instanceof String s) {
+-            return Float.parseFloat(s);
++            return Float.parseFloat(s);
+         } else if (value instanceof BigDecimal bigDecimalValue) {
+-            if (MAX.compareTo(bigDecimalValue.toBigInteger()) <= 0
+-                || MIN.compareTo(bigDecimalValue.toBigInteger()) >= 0) {
++            // Preferring compareTo over equals as it gives safer equality check.
++            // From the compareTo docs:
++            // Two BigDecimal objects that are equal in value but have a different scale (like 2.0 and 2.00)
++            // are considered equal by this method.
++            if (MAX.compareTo(bigDecimalValue) <= 0
++                || MIN.compareTo(bigDecimalValue) >= 0) {
+                 throw new IllegalArgumentException("float value out of range: " + value);
+             }
+-            return bigDecimalValue.floatValue();
++            return bigDecimalValue.floatValue();
+         } else if (value instanceof Number number) {
+             float val = number.floatValue();
+             if (Float.isInfinite(val) && !Double.isInfinite(number.doubleValue())) {
+
+--- a/server/src/test/java/io/crate/planner/SelectPlannerTest.java
++++ b/server/src/test/java/io/crate/planner/SelectPlannerTest.java
+@@ -1633,4 +1633,17 @@ public class SelectPlannerTest extends CrateDummyClusterServiceUnitTest {
+         );
+     }
+ 
++    @Test
++    public void test_float_and_double_implicit_cast_dont_hang_on_range_validation() throws Exception {
++        var e = SQLExecutor.of(clusterService);
++
++        // Used to hang in the value range validation in FloatType.implicitCast.
++        LogicalPlan logicalPlan = e.logicalPlan("SELECT EXP(-1110102730.1852759636)::float");
++        assertThat(logicalPlan).hasOperators("TableFunction[empty_row | [0.0] | true]");
++
++        // Used to hang in the value range validation in DoubleType.implicitCast.
++        logicalPlan = e.logicalPlan("SELECT EXP(-1110102730.1852759636)::double");
++        assertThat(logicalPlan).hasOperators("TableFunction[empty_row | [0.0] | true]");
++    }
++
+ }
+

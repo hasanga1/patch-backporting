@@ -1,0 +1,88 @@
+2026-04-25 19:34:34,960 - backport - INFO - Using openrouter API: https://openrouter.ai/api/v1 (model: openai/gpt-4.1-mini)
+2026-04-25 19:34:35,655 - backport - INFO - Aplly all hunks in the patch      PASS
+2026-04-25 19:34:35,784 - backport - INFO - Successfully backport the patch to the target release e66d8509b017e3d856796c35eb86b5c242d9213b
+2026-04-25 19:34:35,785 - backport - INFO - --- a/server/src/main/java/io/crate/types/ResultSetParser.java
++++ b/server/src/main/java/io/crate/types/ResultSetParser.java
+@@ -80,11 +80,14 @@ public class ResultSetParser {
+                 return PgOidVectorType.listFromOidVectorString(textval);
+             }
+             case "char":
+-                String strValue = resultSet.getString(columnIndex);
+-                if (strValue == null) {
++                // It->NOT char(1) which is actually "character".
++                // It->char with OID 18, ie single byte "char" which can store single ASCII character.
++                // See also https://www.postgresql.org/docs/15/datatype-character.html#DATATYPE-CHARACTER-SPECIAL-TABLE
++                String str = resultSet.getString(columnIndex);
++                if (str == null) {
+                     return null;
+                 }
+-                return Byte.valueOf(strValue);
++                return str;
+             case "byte":
+                 value = resultSet.getByte(columnIndex);
+                 break;
+
+--- /dev/null
++++ b/server/src/test/java/io/crate/types/ResultSetParserTest.java
+@@ -0,0 +1,43 @@
++/*
++ * Licensed to Crate.io GmbH ("Crate") under one or more contributor
++ * license agreements.  See the NOTICE file distributed with this work for
++ * additional information regarding copyright ownership.  Crate licenses
++ * this file to you under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.  You may
++ * obtain a copy of the License at
++ *
++ *     http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
++ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.  See the
++ * License for the specific language governing permissions and limitations
++ * under the License.
++ *
++ * However, if you have executed another commercial license agreement
++ * with Crate these terms will supersede the license and you may use the
++ * software solely pursuant to the terms of the relevant commercial agreement.
++ */
++
++package io.crate.types;
++
++import static org.assertj.core.api.Assertions.assertThat;
++import static org.mockito.ArgumentMatchers.anyInt;
++import static org.mockito.Mockito.mock;
++import static org.mockito.Mockito.when;
++
++import java.sql.ResultSet;
++
++import org.junit.Test;
++
++public class ResultSetParserTest {
++
++    @Test
++    public void test_can_query_char_column_via_jdbc_from_foreign_table() throws Exception {
++        // Concrete example would be `select prokind from remote_pg_proc`
++        ResultSet resultSet = mock(ResultSet.class);
++        when(resultSet.getString(anyInt())).thenReturn("f");
++        assertThat(ResultSetParser.getObject(resultSet, 1, "char")).isEqualTo("f");
++    }
++
++}
+
+--- a/server/src/testFixtures/java/io/crate/testing/SQLTransportExecutor.java
++++ b/server/src/testFixtures/java/io/crate/testing/SQLTransportExecutor.java
+@@ -430,6 +430,13 @@ public class SQLTransportExecutor {
+                     Object value;
+                     String typeName = metadata.getColumnTypeName(i + 1);
+                     value = getObject(resultSet, i, typeName);
++                    if (typeName.equals("char") && value != null) {
++                        // ResultSetParser is dedicated to deal with Postgres specific "char" type which can be single ASCII character.
++                        // This code is also used in tests to get results via JDBC which is not necessarily bound to PG logic.
++                        // Hence, cancel PG specific logic here.
++                        assert value instanceof String;
++                        value = Byte.parseByte((String) value);
++                    }
+                     row[i] = value;
+                 }
+                 rows.add(row);
+

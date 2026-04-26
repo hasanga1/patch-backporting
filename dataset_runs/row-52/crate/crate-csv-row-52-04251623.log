@@ -1,0 +1,53 @@
+2026-04-25 16:23:48,307 - backport - INFO - Using openrouter API: https://openrouter.ai/api/v1 (model: openai/gpt-4.1-mini)
+2026-04-25 16:23:49,008 - backport - INFO - Aplly all hunks in the patch      PASS
+2026-04-25 16:23:49,151 - backport - INFO - Successfully backport the patch to the target release 4a35dcbe90f2963bd9e55a0439d95c9841decbb1
+2026-04-25 16:23:49,153 - backport - INFO - --- a/server/src/main/java/io/crate/analyze/expressions/ExpressionAnalyzer.java
++++ b/server/src/main/java/io/crate/analyze/expressions/ExpressionAnalyzer.java
+@@ -907,11 +907,15 @@ public class ExpressionAnalyzer {
+             if (node.getEscape() != null) {
+                 throw new UnsupportedOperationException("ESCAPE is not supported.");
+             }
+-            Symbol arraySymbol = node.getValue().accept(this, context);
+-            Symbol leftSymbol = node.getPattern().accept(this, context);
++            Symbol value = node.getValue().accept(this, context);
++            Symbol pattern = node.getPattern().accept(this, context);
++            int valueDimensions = ArrayType.dimensions(value.valueType());
++            int patternDimensions = ArrayType.dimensions(pattern.valueType());
++            int diff = valueDimensions - patternDimensions;
++            value = ArrayUnnestFunction.unnest(value, diff - 1);
+             return allocateFunction(
+                 LikeOperators.arrayOperatorName(node.quantifier(), node.inverse(), node.ignoreCase()),
+-                List.of(leftSymbol, arraySymbol),
++                List.of(pattern, value),
+                 context);
+         }
+ 
+
+--- a/server/src/test/java/io/crate/analyze/expressions/ExpressionAnalyzerTest.java
++++ b/server/src/test/java/io/crate/analyze/expressions/ExpressionAnalyzerTest.java
+@@ -521,6 +521,8 @@ public class ExpressionAnalyzerTest extends CrateDummyClusterServiceUnitTest {
+     public void test_any_automatically_levels_array_dimensions() throws Exception {
+         assertThat(executor.asSymbol("1 = ANY([1, 2])")).isLiteral(true);
+         assertThat(executor.asSymbol("3 = ANY([1, 2])")).isLiteral(false);
++        assertThat(executor.asSymbol("'Hello' LIKE ANY(['Hell%', 'No'])")).isLiteral(true);
++        assertThat(executor.asSymbol("'Hello' LIKE ANY([['Hell', 'No'], ['Hell_']])")).isLiteral(true);
+ 
+         assertThat(executor.asSymbol("[1, 2] = ANY([[3, 4], [1, 2]])")).isLiteral(true);
+         assertThat(executor.asSymbol("[1, 3] = ANY([[3, 4], [1, 2]])")).isLiteral(false);
+
+--- a/server/src/test/java/io/crate/lucene/CommonQueryBuilderTest.java
++++ b/server/src/test/java/io/crate/lucene/CommonQueryBuilderTest.java
+@@ -525,6 +525,12 @@ public class CommonQueryBuilderTest extends LuceneQueryBuilderTest {
+             "+o_array.xs:{1 2} #([1, 2] = ANY(o_array['xs']))");
+     }
+ 
++    @Test
++    public void test_like_any_on_nested_array() throws Exception {
++        assertThat(convert("'Hello' LIKE ANY(o_array['xs'])"))
++            .hasToString("('Hello' LIKE ANY(array_unnest(o_array['xs'])))");
++    }
++
+     @Test
+     public void testGtAnyOnNestedArrayIsNotSupported() {
+         assertThatThrownBy(() -> convert("[1, 2] > any(o_array['xs'])"))
+

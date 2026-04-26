@@ -1,0 +1,846 @@
+2026-04-25 19:44:45,862 - backport - INFO - Using openrouter API: https://openrouter.ai/api/v1 (model: openai/gpt-4.1-mini)
+
+
+[1m> Entering new AgentExecutor chain...[0m
+
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `git_history` with `{}`
+
+
+[0m[36;1m[1;3mea1802a469 Let all functions be non-deterministic by default; Explicitly set deterministic flag
+
+diff --git a/server/src/main/java/io/crate/expression/scalar/systeminformation/FormatTypeFunction.java b/server/src/main/java/io/crate/expression/scalar/systeminformation/FormatTypeFunction.java
+--- a/server/src/main/java/io/crate/expression/scalar/systeminformation/FormatTypeFunction.java
++++ b/server/src/main/java/io/crate/expression/scalar/systeminformation/FormatTypeFunction.java
+@@ -45,8 +46,8 @@
+-                FQN,
+-                DataTypes.INTEGER.getTypeSignature(),
+-                DataTypes.INTEGER.getTypeSignature(),
+-                DataTypes.STRING.getTypeSignature()
+-            ).withFeature(Feature.NULLABLE),
++                    DataTypes.INTEGER.getTypeSignature(),
++                    DataTypes.INTEGER.getTypeSignature(),
++                    DataTypes.STRING.getTypeSignature()
++                ).withFeature(Feature.DETERMINISTIC)
++                .withFeature(Feature.NULLABLE),
+             FormatTypeFunction::new
+         );
+     
+You need to do the following analysis based on the information in the last commit:
+Analyze the code logic of the context of the patch to be ported in this commit step by step.
+If code logic already existed before this commit, the patch context can be assumed to remain in a similar location. Use `locate` and `viewcode` to check your results.
+If code logic were added in this commit, then you need to `git_show` for further details.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `locate_symbol` with `{'ref': 'a8e016489cc4829433493682dfbf2e2de9f86f62', 'symbol': 'FormatTypeFunction'}`
+responded: The git history shows a commit "ea1802a469" that modified the features of the function in FormatTypeFunction.java. It changed the function features to be deterministic and nullable. This indicates that the feature flags have been adjusted in the past.
+
+The patch we want to backport removes the .withFeature(Feature.NULLABLE) and only keeps .withFeature(Feature.DETERMINISTIC).
+
+Given the history, the nullable feature was added in the past commit, so it might be necessary to check the code before that commit to see the original state. However, since the similar code block provided from the older version already contains .withFeature(Feature.NULLABLE), it suggests that the nullable feature was present in the older code.
+
+Our patch removes the nullable feature, so the backport should remove the .withFeature(Feature.NULLABLE) from the older code.
+
+Next, I will locate the class FormatTypeFunction in the older ref a8e016489cc4829433493682dfbf2e2de9f86f62 to confirm the exact location and the surrounding code for the patch.
+
+[0m[33;1m[1;3mserver/src/main/java/io/crate/expression/scalar/systeminformation/FormatTypeFunction.java:37
+server/src/main/java/io/crate/expression/scalar/systeminformation/FormatTypeFunction.java:54[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': 'a8e016489cc4829433493682dfbf2e2de9f86f62', 'path': 'server/src/main/java/io/crate/expression/scalar/systeminformation/FormatTypeFunction.java', 'startline': 30, 'endline': 60}`
+
+
+[0m[36;1m[1;3mHere are lines 30 through 60.
+
+import io.crate.metadata.functions.BoundSignature;
+import io.crate.metadata.functions.Signature;
+import io.crate.metadata.pgcatalog.PgCatalogSchemaInfo;
+import io.crate.protocols.postgres.types.PGTypes;
+import io.crate.types.ArrayType;
+import io.crate.types.DataTypes;
+
+public final class FormatTypeFunction extends Scalar<String, Object> {
+
+    private static final String NAME = "format_type";
+    private static final FunctionName FQN = new FunctionName(PgCatalogSchemaInfo.NAME, NAME);
+
+    public static void register(Functions.Builder module) {
+        module.add(
+            Signature.scalar(
+                FQN,
+                DataTypes.INTEGER.getTypeSignature(),
+                DataTypes.INTEGER.getTypeSignature(),
+                DataTypes.STRING.getTypeSignature()
+            ).withFeature(Feature.NULLABLE),
+            FormatTypeFunction::new
+        );
+    }
+
+    public FormatTypeFunction(Signature signature, BoundSignature boundSignature) {
+        super(signature, boundSignature);
+    }
+
+    @Override
+    @SafeVarargs
+    public final String evaluate(TransactionContext txnCtx, NodeContext nodeCtx, Input<Object>... args) {
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `locate_symbol` with `{'ref': 'a8e016489cc4829433493682dfbf2e2de9f86f62', 'symbol': 'Feature'}`
+responded: I see the target code block in the older version ref a8e016489cc4829433493682dfbf2e2de9f86f62 in the file server/src/main/java/io/crate/expression/scalar/systeminformation/FormatTypeFunction.java. The code block is inside the register method, where the Signature.scalar method is called with arguments including FQN, and three DataTypes.getTypeSignature calls, followed by a call to withFeature(Feature.NULLABLE), then FormatTypeFunction::new.
+
+The patch in the newer version removes the withFeature(Feature.NULLABLE) call and adds withFeature(Feature.DETERMINISTIC) instead.
+
+The older code has:
+```java
+).withFeature(Feature.NULLABLE),
+```
+The newer code has:
+```java
+).withFeature(Feature.DETERMINISTIC),
+```
+
+From the git_history output, there was a commit that changed this code to add withFeature(Feature.DETERMINISTIC) and also kept withFeature(Feature.NULLABLE). But in the patch to be backported, the withFeature(Feature.NULLABLE) is removed.
+
+I need to check if in the older version, the Feature.DETERMINISTIC is available and can be used similarly.
+
+Next, I will check the definition or usage of Feature.DETERMINISTIC in the older version to confirm if it's available and how it is used.
+
+I will locate the Feature symbol in the older version to understand its usage.
+
+[0m[33;1m[1;3mserver/src/main/java/io/crate/metadata/Scalar.java:152[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': 'a8e016489cc4829433493682dfbf2e2de9f86f62', 'path': 'server/src/main/java/io/crate/metadata/Scalar.java', 'startline': 140, 'endline': 160}`
+
+
+[0m[36;1m[1;3mHere are lines 140 through 160.
+
+            }
+        }
+        Input[] inputs = new Input[arguments.size()];
+        int idx = 0;
+        for (Symbol arg : arguments) {
+            inputs[idx] = (Input<?>) arg;
+            idx++;
+        }
+        //noinspection unchecked
+        return Literal.ofUnchecked(function.valueType(), scalar.evaluate(txnCtx, nodeCtx, inputs));
+    }
+
+    public enum Feature {
+        DETERMINISTIC,
+        /**
+         * If this feature is set, for this function it is possible to replace the containing
+         * comparison while preserving the truth value for all used operators
+         * with or without an operator mapping.
+         * <p>
+         * It describes the following:
+         * <p>
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': 'a8e016489cc4829433493682dfbf2e2de9f86f62', 'path': 'server/src/main/java/io/crate/expression/scalar/systeminformation/FormatTypeFunction.java', 'startline': 40, 'endline': 50}`
+
+
+[0m[36;1m[1;3mHere are lines 40 through 50.
+
+    private static final FunctionName FQN = new FunctionName(PgCatalogSchemaInfo.NAME, NAME);
+
+    public static void register(Functions.Builder module) {
+        module.add(
+            Signature.scalar(
+                FQN,
+                DataTypes.INTEGER.getTypeSignature(),
+                DataTypes.INTEGER.getTypeSignature(),
+                DataTypes.STRING.getTypeSignature()
+            ).withFeature(Feature.NULLABLE),
+            FormatTypeFunction::new
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `validate` with `{'ref': 'a8e016489cc4829433493682dfbf2e2de9f86f62', 'patch': '--- a/server/src/main/java/io/crate/expression/scalar/systeminformation/FormatTypeFunction.java\n+++ b/server/src/main/java/io/crate/expression/scalar/systeminformation/FormatTypeFunction.java\n@@ -43,8 +43,9 @@\n             Signature.scalar(\n                 FQN,\n                 DataTypes.INTEGER.getTypeSignature(),\n                 DataTypes.INTEGER.getTypeSignature(),\n                 DataTypes.STRING.getTypeSignature()\n-            ).withFeature(Feature.NULLABLE),\n+            ).withFeature(Feature.DETERMINISTIC)\n+             .withFeature(Feature.NULLABLE),\n             FormatTypeFunction::new\n         );\n'}`
+responded: The original code in the older ref a8e016489cc4829433493682dfbf2e2de9f86f62 in FormatTypeFunction.java at the registration of the scalar function has the following snippet:
+
+```java
+Signature.scalar(
+    FQN,
+    DataTypes.INTEGER.getTypeSignature(),
+    DataTypes.INTEGER.getTypeSignature(),
+    DataTypes.STRING.getTypeSignature()
+).withFeature(Feature.NULLABLE),
+FormatTypeFunction::new
+```
+
+The patch in the newer ref changes this to:
+
+```java
+Signature.scalar(
+    FQN,
+    DataTypes.INTEGER.getTypeSignature(),
+    DataTypes.INTEGER.getTypeSignature(),
+    DataTypes.STRING.getTypeSignature()
+).withFeature(Feature.DETERMINISTIC)
+ .withFeature(Feature.NULLABLE),
+FormatTypeFunction::new
+```
+
+This means the patch removes the `.withFeature(Feature.NULLABLE)` alone and adds `.withFeature(Feature.DETERMINISTIC)` before it.
+
+From the git history, I see a commit that adds `.withFeature(Feature.DETERMINISTIC)` and `.withFeature(Feature.NULLABLE)` both, meaning that previously only `.withFeature(Feature.NULLABLE)` was set.
+
+The patch to backport is to add `.withFeature(Feature.DETERMINISTIC)` before `.withFeature(Feature.NULLABLE)` to the scalar signature registration.
+
+This is a simple patch to the scalar registration line, with no other changes.
+
+There is no change in code logic, just adding a feature flag to the function signature.
+
+Hence the patch to backport is:
+
+```diff
+--- a/server/src/main/java/io/crate/expression/scalar/systeminformation/FormatTypeFunction.java
++++ b/server/src/main/java/io/crate/expression/scalar/systeminformation/FormatTypeFunction.java
+@@ -43,8 +43,9 @@
+             Signature.scalar(
+                 FQN,
+                 DataTypes.INTEGER.getTypeSignature(),
+                 DataTypes.INTEGER.getTypeSignature(),
+                 DataTypes.STRING.getTypeSignature()
+-            ).withFeature(Feature.NULLABLE),
++            ).withFeature(Feature.DETERMINISTIC)
++             .withFeature(Feature.NULLABLE),
+             FormatTypeFunction::new
+         );
+```
+
+I will now validate this patch on the target ref.
+
+[0m[38;5;200m[1;3mPatch applied successfully
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3mI have analyzed the patch and the corresponding code in the older version. The main difference is that in the older version the scalar signature is marked only with Feature.NULLABLE, but in the newer version it is marked with Feature.DETERMINISTIC and Feature.NULLABLE.
+
+The code structure around the patch is quite similar between the two versions, so the backport only requires adding the .withFeature(Feature.DETERMINISTIC) call before the existing .withFeature(Feature.NULLABLE) in the older version.
+
+Here is the backported patch for the older version a8e016489cc4829433493682dfbf2e2de9f86f62:
+
+```diff
+--- a/server/src/main/java/io/crate/expression/scalar/systeminformation/FormatTypeFunction.java
++++ b/server/src/main/java/io/crate/expression/scalar/systeminformation/FormatTypeFunction.java
+@@ -43,8 +43,9 @@
+             Signature.scalar(
+                 FQN,
+                 DataTypes.INTEGER.getTypeSignature(),
+                 DataTypes.INTEGER.getTypeSignature(),
+                 DataTypes.STRING.getTypeSignature()
+-            ).withFeature(Feature.NULLABLE),
++            ).withFeature(Feature.DETERMINISTIC)
++             .withFeature(Feature.NULLABLE),
+             FormatTypeFunction::new
+         );
+```
+
+I have validated this patch on the target ref and it applies cleanly without conflicts. This patch corresponds to the security fix in the newer version.
+
+If you want, I can assist you with any further backports or explanations.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new AgentExecutor chain...[0m
+
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `git_history` with `{}`
+
+
+[0m[36;1m[1;3maa1aaa6a8d Identify has-privilege scalar functions as NULLABLE
+
+diff --git a/server/src/test/java/io/crate/lucene/ThreeValuedLogicQueryBuilderTest.java b/server/src/test/java/io/crate/lucene/ThreeValuedLogicQueryBuilderTest.java
+--- a/server/src/test/java/io/crate/lucene/ThreeValuedLogicQueryBuilderTest.java
++++ b/server/src/test/java/io/crate/lucene/ThreeValuedLogicQueryBuilderTest.java
+@@ -116,1 +123,4 @@
++        assertThat(convert("NOT (has_table_privilege(name, 'select'))"))
++            .hasToString("+(+*:* -pg_catalog.has_table_privilege(name, 'select')) +FieldExistsQuery [field=name]");
++    }
+ 
+You need to do the following analysis based on the information in the last commit:
+Analyze the code logic of the context of the patch to be ported in this commit step by step.
+If code logic already existed before this commit, the patch context can be assumed to remain in a similar location. Use `locate` and `viewcode` to check your results.
+If code logic were added in this commit, then you need to `git_show` for further details.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `git_show` with `{}`
+
+
+[0m[33;1m[1;3mcommit aa1aaa6a8dd6254060508be3af176ba3f4b07bb9
+Author: jeeminso <jeeminso@gmail.com>
+Date:   Tue Jun 4 10:46:27 2024 -0400
+
+    Identify has-privilege scalar functions as NULLABLE
+
+ .../expression/scalar/HasDatabasePrivilegeFunction.java  | 16 +++++++++-------
+ .../io/crate/expression/scalar/HasPrivilegeFunction.java |  1 +
+ .../expression/scalar/HasSchemaPrivilegeFunction.java    | 16 +++++++++-------
+ .../expression/scalar/HasTablePrivilegeFunction.java     | 16 +++++++++-------
+ .../crate/lucene/ThreeValuedLogicQueryBuilderTest.java   | 10 ++++++++++
+ 5 files changed, 38 insertions(+), 21 deletions(-)
+This commit shows that there is a high probability that this code is new, so the corresponding code segment cannot be found in the old version.
+You can call `viewcode` and `locate_symbol` to further check the results step by step. For newly introduced code, we consider that this hunk `need not ported`.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `locate_symbol` with `{'ref': 'a8e016489cc4829433493682dfbf2e2de9f86f62', 'symbol': 'test_negated_format_type_with_three_valued_logic'}`
+
+
+[0m[33;1m[1;3mThe symbol test_negated_format_type_with_three_valued_logic you are looking for does not exist in the current ref.
+But here is a symbol similar to it. It's `test_negated_concat_ws_with_three_valued_logic`.
+The file where this symbol is located is: 
+server/src/test/java/io/crate/lucene/ThreeValuedLogicQueryBuilderTest.java:77
+Please be careful to check that this symbol indicates the same thing as the previous symbol.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': 'a8e016489cc4829433493682dfbf2e2de9f86f62', 'path': 'server/src/test/java/io/crate/lucene/ThreeValuedLogicQueryBuilderTest.java', 'startline': 70, 'endline': 90}`
+
+
+[0m[36;1m[1;3mHere are lines 70 through 90.
+
+    @Test
+    public void test_negated_concat_with_three_valued_logic() {
+        assertThat(convert("NOT (x || 1) < -1")).hasToString(
+            "+(+*:* -(concat(x, '1') < -1))");
+    }
+
+    @Test
+    public void test_negated_concat_ws_with_three_valued_logic() {
+        // Important, y is nullable column.
+        assertThat(convert("NOT CONCAT_WS('dummy', y, false)")).hasToString(
+            "+(+*:* -concat_ws('dummy', y, 'f')) #(NOT concat_ws('dummy', y, 'f'))");
+    }
+
+    @Test
+    public void test_nullif() {
+        assertThat(convert("NULLIF(2, x) != 1")).hasToString(
+            "+(+*:* -(nullif(2, x) = 1)) #(NOT (nullif(2, x) = 1))");
+    }
+
+    @Test
+    public void test_negated_or() {
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': 'a8e016489cc4829433493682dfbf2e2de9f86f62', 'path': 'server/src/test/java/io/crate/lucene/ThreeValuedLogicQueryBuilderTest.java', 'startline': 120, 'endline': 130}`
+
+
+[0m[36;1m[1;3mThis file only has 123 lines. Here are lines 120 through 123.
+
+            .hasToString("+(+*:* -pg_catalog.current_setting(name, true)) #(NOT pg_catalog.current_setting(name, true))");
+    }
+}
+
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `validate` with `{'ref': 'a8e016489cc4829433493682dfbf2e2de9f86f62', 'patch': '--- a/server/src/test/java/io/crate/lucene/ThreeValuedLogicQueryBuilderTest.java\n+++ b/server/src/test/java/io/crate/lucene/ThreeValuedLogicQueryBuilderTest.java\n@@ -120,4 +120,10 @@ public class ThreeValuedLogicQueryBuilderTest extends LuceneQueryBuilderTest {\n             .hasToString("+(+*:* -pg_catalog.current_setting(name, true)) #(NOT pg_catalog.current_setting(name, true))");\n     }\n+\n+    @Test\n+    public void test_negated_format_type_with_three_valued_logic() {\n+        assertThat(convert("NOT pg_catalog.format_type(x, null)")).hasToString(\n+            "+(+*:* -pg_catalog.format_type(x, NULL)) #(NOT pg_catalog.format_type(x, NULL))");\n+    }\n }\n'}`
+responded: The target test method `test_negated_format_type_with_three_valued_logic` is not present in the older version (ref a8e016489cc4829433493682dfbf2e2de9f86f62) of the file `server/src/test/java/io/crate/lucene/ThreeValuedLogicQueryBuilderTest.java`. The latest similar test method in the old version is `test_negated_concat_ws_with_three_valued_logic` at line 77, and the last lines of the file end at line 123 with a different test method.
+
+The commit history shows this test was added recently (after the older ref), so this is new test code that does not exist in the older version.
+
+Given this, the patch to add the test `test_negated_format_type_with_three_valued_logic` is new code and does not conflict with existing code in the older version. Hence, the patch for this test can be adapted by simply adding the new test method at the appropriate place before the closing brace of the class in the older version.
+
+I will now generate the patch for the older version to add this test method accordingly, preserving the context lines from the older version.
+
+The patch will add the following method after the last test method in the older version:
+```java
+    @Test
+    public void test_negated_format_type_with_three_valued_logic() {
+        assertThat(convert("NOT pg_catalog.format_type(x, null)")).hasToString(
+            "+(+*:* -pg_catalog.format_type(x, NULL)) #(NOT pg_catalog.format_type(x, NULL))");
+    }
+```
+
+Now I will generate the patch for this backport.
+
+[0m[38;5;200m[1;3mPatch applied successfully
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3mThe patch for the older version ref a8e016489cc4829433493682dfbf2e2de9f86f62 is as follows:
+
+```diff
+--- a/server/src/test/java/io/crate/lucene/ThreeValuedLogicQueryBuilderTest.java
++++ b/server/src/test/java/io/crate/lucene/ThreeValuedLogicQueryBuilderTest.java
+@@ -120,4 +120,10 @@ public class ThreeValuedLogicQueryBuilderTest extends LuceneQueryBuilderTest {
+             .hasToString("+(+*:* -pg_catalog.current_setting(name, true)) #(NOT pg_catalog.current_setting(name, true))");
+     }
++
++    @Test
++    public void test_negated_format_type_with_three_valued_logic() {
++        assertThat(convert("NOT pg_catalog.format_type(x, null)")).hasToString(
++            "+(+*:* -pg_catalog.format_type(x, NULL)) #(NOT pg_catalog.format_type(x, NULL))");
++    }
+ }
+```
+
+This patch adds the test method `test_negated_format_type_with_three_valued_logic` to the file `ThreeValuedLogicQueryBuilderTest.java` in the appropriate location based on the existing code context in the older version. The patch was validated successfully on the target ref without conflicts.
+
+If you need further assistance, feel free to ask.[0m
+
+[1m> Finished chain.[0m
+2026-04-25 19:45:48,722 - backport - INFO - Aplly all hunks in the patch      PASS
+2026-04-25 19:45:48,890 - backport - INFO - Successfully backport the patch to the target release a8e016489cc4829433493682dfbf2e2de9f86f62
+2026-04-25 19:45:48,891 - backport - INFO - --- a/server/src/main/java/io/crate/expression/scalar/systeminformation/FormatTypeFunction.java
++++ b/server/src/main/java/io/crate/expression/scalar/systeminformation/FormatTypeFunction.java
+@@ -43,8 +43,9 @@
+             Signature.scalar(
+                 FQN,
+                 DataTypes.INTEGER.getTypeSignature(),
+                 DataTypes.INTEGER.getTypeSignature(),
+                 DataTypes.STRING.getTypeSignature()
+-            ).withFeature(Feature.NULLABLE),
++            ).withFeature(Feature.DETERMINISTIC)
++             .withFeature(Feature.NULLABLE),
+             FormatTypeFunction::new
+         );
+
+--- a/server/src/test/java/io/crate/lucene/ThreeValuedLogicQueryBuilderTest.java
++++ b/server/src/test/java/io/crate/lucene/ThreeValuedLogicQueryBuilderTest.java
+@@ -120,3 +120,9 @@ public class ThreeValuedLogicQueryBuilderTest extends LuceneQueryBuilderTest {
+             .hasToString("+(+*:* -pg_catalog.current_setting(name, true)) #(NOT pg_catalog.current_setting(name, true))");
+     }
++
++    @Test
++    public void test_negated_format_type_with_three_valued_logic() {
++        assertThat(convert("NOT pg_catalog.format_type(x, null)")).hasToString(
++            "+(+*:* -pg_catalog.format_type(x, NULL)) #(NOT pg_catalog.format_type(x, NULL))");
++    }
+ }
+

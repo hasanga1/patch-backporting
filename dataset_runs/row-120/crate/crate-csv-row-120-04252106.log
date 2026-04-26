@@ -1,0 +1,2380 @@
+2026-04-25 21:06:22,248 - backport - INFO - Using openrouter API: https://openrouter.ai/api/v1 (model: openai/gpt-4.1-mini)
+
+
+[1m> Entering new AgentExecutor chain...[0m
+
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `git_history` with `{}`
+
+
+[0m[36;1m[1;3m008a5dfe7e Load functions without guice
+
+diff --git a/server/src/main/java/io/crate/expression/scalar/HasDatabasePrivilegeFunction.java b/server/src/main/java/io/crate/expression/scalar/HasDatabasePrivilegeFunction.java
+--- a/server/src/main/java/io/crate/expression/scalar/HasDatabasePrivilegeFunction.java
++++ b/server/src/main/java/io/crate/expression/scalar/HasDatabasePrivilegeFunction.java
+@@ -30,8 +30,9 @@
+ 
+ import io.crate.Constants;
+ import io.crate.common.FourFunction;
++import io.crate.metadata.Functions;
+ import io.crate.metadata.functions.BoundSignature;
+ import io.crate.metadata.functions.Signature;
+ import io.crate.role.Permission;
+ import io.crate.role.Privilege;
+ import io.crate.role.Role
+You need to do the following analysis based on the information in the last commit:
+Analyze the code logic of the context of the patch to be ported in this commit step by step.
+If code logic already existed before this commit, the patch context can be assumed to remain in a similar location. Use `locate` and `viewcode` to check your results.
+If code logic were added in this commit, then you need to `git_show` for further details.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `locate_symbol` with `{'ref': '7af74117dd8cca8210519cbb2b9b27b57d3ad96c', 'symbol': 'HasDatabasePrivilegeFunction'}`
+responded: The last commit in the history is about loading functions without guice. It shows that the import `import io.crate.metadata.Functions;` was added in this commit.
+
+From the patch to be backported, we see that the added imports in the new version include `io.crate.metadata.Functions` and `io.crate.metadata.pgcatalog.PgCatalogSchemaInfo`.
+
+Since `Functions` was added in the last commit according to the history, it means this import did not exist before that commit. The other import `PgCatalogSchemaInfo` is not mentioned in the last commit, so it might be added later.
+
+The patch also shows that the new version registers the functions under `pg_catalog` schema. This likely involves using `PgCatalogSchemaInfo` which might be a newer addition.
+
+I need to check where the `HasDatabasePrivilegeFunction` class is located and its context in the older version to understand how to adapt the patch. I will locate the symbol `HasDatabasePrivilegeFunction` in the older ref 7af74117dd8cca8210519cbb2b9b27b57d3ad96c to get the file path and line number.
+
+I will proceed with `locate_symbol` for `HasDatabasePrivilegeFunction` in the older ref.
+
+[0m[33;1m[1;3mserver/src/main/java/io/crate/expression/scalar/HasDatabasePrivilegeFunction.java:195
+server/src/main/java/io/crate/expression/scalar/HasDatabasePrivilegeFunction.java:42[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': '7af74117dd8cca8210519cbb2b9b27b57d3ad96c', 'path': 'server/src/main/java/io/crate/expression/scalar/HasDatabasePrivilegeFunction.java', 'startline': 30, 'endline': 50}`
+
+
+[0m[36;1m[1;3mHere are lines 30 through 50.
+
+
+import io.crate.Constants;
+import io.crate.common.FourFunction;
+import io.crate.metadata.functions.BoundSignature;
+import io.crate.metadata.functions.Signature;
+import io.crate.role.Permission;
+import io.crate.role.Privilege;
+import io.crate.role.Role;
+import io.crate.role.Roles;
+import io.crate.role.Securable;
+import io.crate.types.DataTypes;
+
+public class HasDatabasePrivilegeFunction extends HasPrivilegeFunction {
+
+    public static final String NAME = "has_database_privilege";
+
+    private static final FourFunction<Roles, Role, Object, Collection<Permission>, Boolean> CHECK_BY_DB_NAME =
+        (roles, user, db, permissions) -> {
+            if (Constants.DB_NAME.equals(db) == false) {
+                throw new IllegalArgumentException(String.format(Locale.ENGLISH,
+                                                                 "database \"%s\" does not exist",
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': '7af74117dd8cca8210519cbb2b9b27b57d3ad96c', 'path': 'server/src/main/java/io/crate/expression/scalar/HasDatabasePrivilegeFunction.java', 'startline': 10, 'endline': 29}`
+
+
+[0m[36;1m[1;3mHere are lines 10 through 29.
+
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.  See the
+ * License for the specific language governing permissions and limitations
+ * under the License.
+ *
+ * However, if you have executed another commercial license agreement
+ * with Crate these terms will supersede the license and you may use the
+ * software solely pursuant to the terms of the relevant commercial agreement.
+ */
+
+package io.crate.expression.scalar;
+
+import java.util.Collection;
+import java.util.HashSet;
+import java.util.Locale;
+import java.util.function.BiFunction;
+
+import org.jetbrains.annotations.Nullable;
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': '7af74117dd8cca8210519cbb2b9b27b57d3ad96c', 'path': 'server/src/main/java/io/crate/expression/scalar/HasDatabasePrivilegeFunction.java', 'startline': 40, 'endline': 60}`
+
+
+[0m[36;1m[1;3mHere are lines 40 through 60.
+
+import io.crate.types.DataTypes;
+
+public class HasDatabasePrivilegeFunction extends HasPrivilegeFunction {
+
+    public static final String NAME = "has_database_privilege";
+
+    private static final FourFunction<Roles, Role, Object, Collection<Permission>, Boolean> CHECK_BY_DB_NAME =
+        (roles, user, db, permissions) -> {
+            if (Constants.DB_NAME.equals(db) == false) {
+                throw new IllegalArgumentException(String.format(Locale.ENGLISH,
+                                                                 "database \"%s\" does not exist",
+                                                                 db));
+            }
+            return checkPrivileges(user, permissions);
+        };
+
+    private static final FourFunction<Roles, Role, Object, Collection<Permission>, Boolean> CHECK_BY_DB_OID =
+        (roles, user, db, privileges) -> {
+            if (Constants.DB_OID != (Integer) db) {
+                throw new IllegalArgumentException(String.format(Locale.ENGLISH,
+                                                                 "database with OID \"%s\" does not exist",
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': '7af74117dd8cca8210519cbb2b9b27b57d3ad96c', 'path': 'server/src/main/java/io/crate/expression/scalar/HasDatabasePrivilegeFunction.java', 'startline': 20, 'endline': 39}`
+
+
+[0m[36;1m[1;3mHere are lines 20 through 39.
+
+ */
+
+package io.crate.expression.scalar;
+
+import java.util.Collection;
+import java.util.HashSet;
+import java.util.Locale;
+import java.util.function.BiFunction;
+
+import org.jetbrains.annotations.Nullable;
+
+import io.crate.Constants;
+import io.crate.common.FourFunction;
+import io.crate.metadata.functions.BoundSignature;
+import io.crate.metadata.functions.Signature;
+import io.crate.role.Permission;
+import io.crate.role.Privilege;
+import io.crate.role.Role;
+import io.crate.role.Roles;
+import io.crate.role.Securable;
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `git_history` with `{}`
+
+
+[0m[36;1m[1;3m008a5dfe7e Load functions without guice
+
+diff --git a/server/src/main/java/io/crate/expression/scalar/HasDatabasePrivilegeFunction.java b/server/src/main/java/io/crate/expression/scalar/HasDatabasePrivilegeFunction.java
+--- a/server/src/main/java/io/crate/expression/scalar/HasDatabasePrivilegeFunction.java
++++ b/server/src/main/java/io/crate/expression/scalar/HasDatabasePrivilegeFunction.java
+@@ -30,8 +30,9 @@
+ 
+ import io.crate.Constants;
+ import io.crate.common.FourFunction;
++import io.crate.metadata.Functions;
+ import io.crate.metadata.functions.BoundSignature;
+ import io.crate.metadata.functions.Signature;
+ import io.crate.role.Permission;
+ import io.crate.role.Privilege;
+ import io.crate.role.Role
+You need to do the following analysis based on the information in the last commit:
+Analyze the code logic of the context of the patch to be ported in this commit step by step.
+If code logic already existed before this commit, the patch context can be assumed to remain in a similar location. Use `locate` and `viewcode` to check your results.
+If code logic were added in this commit, then you need to `git_show` for further details.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `git_show` with `{}`
+
+
+[0m[33;1m[1;3mcommit 008a5dfe7ef329f4012677f4e6a7c9f767948fd6
+Author: Mathias Fussenegger <f.mathias@zignar.net>
+Date:   Tue Feb 27 10:14:01 2024 +0100
+
+    Load functions without guice
+    
+    This will make it possible to use Functions within guice modules like
+    the `MetadataModule`, to use them in `fromXContent` implementations like
+    `ForeignTable.fromXContent` - to parse expressions into symbols.
+    
+    The registration mechanism is quite similar to from before, except that
+    the guice modules are replaced with components implementing a
+    `FunctionsProvider`. These `FunctionsProvider` are loaded via a service
+    loader to trigger the registration of the functions.
+
+ .../data/join/RowsBatchIteratorBenchmark.java      |   8 +-
+ .../aggregation/AggregateCollectorBenchmark.java   |  10 +-
+ .../GroupingLongCollectorBenchmark.java            |  10 +-
+ .../GroupingStringCollectorBenchmark.java          |   8 +-
+ .../HyperLogLogDistinctAggregationBenchmark.java   |   9 +-
+ .../aggregation/IntervalAggregationBenchmark.java  |   9 +-
+ ...traFunctionsModule.java => ExtraFunctions.java} |  21 +-
+ .../HyperLogLogDistinctAggregation.java            |   8 +-
+ .../java/io/crate/plugin/ExtraFunctionsPlugin.java |   9 -
+ .../java/io/crate/window/NthValueFunctions.java    |  10 +-
+ .../java/io/crate/window/OffsetValueFunctions.java |  16 +-
+ .../main/java/io/crate/window/RankFunctions.java   |   8 +-
+ .../services/io.crate.metadata.FunctionsProvider   |   1 +
+ .../HyperLogLogDistinctAggregationTest.java        |  16 +-
+ .../window/EnterpriseFunctionsProxyTestPlugin.java |  53 ----
+ .../window/NthValueFunctionIntegrationTest.java    |  14 +-
+ .../io/crate/window/NthValueFunctionsTest.java     |   7 +-
+ .../io/crate/window/OffsetValueFunctionsTest.java  |   5 -
+ .../crate/window/RankFunctionsIntegrationTest.java |  14 +-
+ .../java/io/crate/window/RankFunctionsTest.java    |   5 -
+ .../java/io/crate/window/WindowFunctionsITest.java |  11 -
+ server/pom.xml                                     |  14 +
+ ...ggregationImplModule.java => Aggregations.java} |  55 ++--
+ .../aggregation/impl/ArbitraryAggregation.java     |   7 +-
+ .../engine/aggregation/impl/ArrayAgg.java          |   5 +-
+ .../engine/aggregation/impl/CmpByAggregation.java  |   7 +-
+ .../aggregation/impl/CollectSetAggregation.java    |   5 +-
+ .../engine/aggregation/impl/CountAggregation.java  |   7 +-
+ .../aggregation/impl/GeometricMeanAggregation.java |   5 +-
+ .../aggregation/impl/IntervalSumAggregation.java   |   5 +-
+ .../aggregation/impl/MaximumAggregation.java       |   8 +-
+ .../aggregation/impl/MinimumAggregation.java       |   8 +-
+ .../aggregation/impl/NumericSumAggregation.java    |   5 +-
+ .../aggregation/impl/PercentileAggregation.java    |  21 +-
+ .../impl/StandardDeviationAggregation.java         |   5 +-
+ .../engine/aggregation/impl/StringAgg.java         |  27 +-
+ .../engine/aggregation/impl/SumAggregation.java    |   9 +-
+ .../aggregation/impl/VarianceAggregation.java      |   5 +-
+ .../i
+[IMPORTANT] The relevant code shown by `git_history` is not fully `+` lines.
+[IMPORTANT] This means that the code in question was not added or migrated in this commit.
+[IMPORTANT] Please think step by step and check the abstract below carefully. If error exists in abstract, please ignore the info below.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `locate_symbol` with `{'ref': '7af74117dd8cca8210519cbb2b9b27b57d3ad96c', 'symbol': 'register'}`
+
+
+[0m[33;1m[1;3mextensions/functions/src/main/java/io/crate/operation/aggregation/HyperLogLogDistinctAggregation.java:85
+extensions/functions/src/main/java/io/crate/window/NthValueFunctions.java:161
+extensions/functions/src/main/java/io/crate/window/OffsetValueFunctions.java:247
+extensions/functions/src/main/java/io/crate/window/RankFunctions.java:90
+libs/guice/src/main/java/org/elasticsearch/common/inject/EncounterImpl.java:61
+libs/guice/src/main/java/org/elasticsearch/common/inject/EncounterImpl.java:74
+libs/guice/src/main/java/org/elasticsearch/common/inject/spi/TypeEncounter.java:100
+libs/guice/src/main/java/org/elasticsearch/common/inject/spi/TypeEncounter.java:94
+server/src/main/java/io/crate/execution/engine/aggregation/impl/ArbitraryAggregation.java:74
+server/src/main/java/io/crate/execution/engine/aggregation/impl/ArrayAgg.java:52
+server/src/main/java/io/crate/execution/engine/aggregation/impl/CmpByAggregation.java:103
+server/src/main/java/io/crate/execution/engine/aggregation/impl/CollectSetAggregation.java:55
+server/src/main/java/io/crate/execution/engine/aggregation/impl/CountAggregation.java:87
+server/src/main/java/io/crate/execution/engine/aggregation/impl/GeometricMeanAggregation.java:74
+server/src/main/java/io/crate/execution/engine/aggregation/impl/IntervalSumAggregation.java:43
+server/src/main/java/io/crate/execution/engine/aggregation/impl/MaximumAggregation.java:65
+server/src/main/java/io/crate/execution/engine/aggregation/impl/MinimumAggregation.java:65
+server/src/main/java/io/crate/execution/engine/aggregation/impl/NumericSumAggregation.java:70
+server/src/main/java/io/crate/execution/engine/aggregation/impl/PercentileAggregation.java:49
+server/src/main/java/io/crate/execution/engine/aggregation/impl/StandardDeviationAggregation.java:71
+server/src/main/java/io/crate/execution/engine/aggregation/impl/StringAgg.java:67
+server/src/main/java/io/crate/execution/engine/aggregation/impl/SumAggregation.java:67
+server/src/main/java/io/crate/execution/engine/aggregation/impl/VarianceAggregation.java:71
+server/src/main/java/io/crate/execution/engine/aggregation/impl/average/AverageAggregation.java:77
+server/src/main/java/io/crate/execution/engine/aggregation/impl/average/IntervalAverageAggregation.java:68
+server/src/main/java/io/crate/execution/engine/aggregation/impl/average/numeric/NumericAverageAggregation.java:70
+server/src/main/java/io/crate/execution/engine/window/RowNumberWindowFunction.java:39
+server/src/main/java/io/crate/expression/AbstractFunctionModule.java:44
+server/src/main/java/io/crate/expression/operator/AllOperator.java:59
+server/src/main/java/io/crate/expression/operator/AndOperator.java:55
+server/src/main/java/io/crate/expression/operator/CIDROperator.java:50
+server/src/main/java/io/crate/expression/operator/EqOperator.java:82
+server/src/main/java/io/crate/expression/operator/ExistsOperator.java:38
+server/src/main/java/io/crate/expression/operator/GtOperator.java:32
+server/src/main/java/io/crate/expression/operator/GteOperator.java:32
+server/src/main/java/io/crate/expression/operator/LikeOperators.java:107
+server/src/main/java/io/crate/expression/operator/LtOperator.java:32
+server/src/main/java/io/crate/expression/operator/LteOperator.java:32
+server/src/main/java/io/crate/expression/operator/OrOperator.java:51
+server/src/main/java/io/crate/expression/operator/RegexpMatchCaseInsensitiveOperator.java:44
+server/src/main/java/io/crate/expression/operator/RegexpMatchOperator.java:51
+server/src/main/java/io/crate/expression/operator/any/AnyOperator.java:82
+server/src/main/java/io/crate/expression/predicate/IsNullPredicate.java:74
+server/src/main/java/io/crate/expression/predicate/MatchPredicate.java:106
+server/src/main/java/io/crate/expression/predicate/NotPredicate.java:61
+server/src/main/java/io/crate/expression/reference/doc/lucene/SourceParser.java:102
+server/src/main/java/io/crate/expression/reference/doc/lucene/SourceParser.java:88
+server/src/main/java/io/crate/expression/scalar/AgeFunction.java:48
+server/src/main/java/io/crate/expression/scalar/ArrayAppendFunction.java:43
+server/src/main/java/io/crate/expression/scalar/ArrayAvgFunction.java:94
+server/src/main/java/io/crate/expression/scalar/ArrayCatFunction.java:44
+server/src/main/java/io/crate/expression/scalar/ArrayDifferenceFunction.java:52
+server/src/main/java/io/crate/expression/scalar/ArrayLowerFunction.java:44
+server/src/main/java/io/crate/expression/scalar/ArrayMaxFunction.java:45
+server/src/main/java/io/crate/expression/scalar/ArrayMinFunction.java:45
+server/src/main/java/io/crate/expression/scalar/ArrayPositionFunction.java:48
+server/src/main/java/io/crate/expression/scalar/ArraySetFunction.java:43
+server/src/main/java/io/crate/expression/scalar/ArraySliceFunction.java:43
+server/src/main/java/io/crate/expression/scalar/ArraySumFunction.java:48
+server/src/main/java/io/crate/expression/scalar/ArrayToStringFunction.java:45
+server/src/main/java/io/crate/expression/scalar/ArrayUniqueFunction.java:47
+server/src/main/java/io/crate/expression/scalar/ArrayUnnestFunction.java:56
+server/src/main/java/io/crate/expression/scalar/ArrayUpperFunction.java:66
+server/src/main/java/io/crate/expression/scalar/CollectionAverageFunction.java:41
+server/src/main/java/io/crate/expression/scalar/CollectionCountFunction.java:41
+server/src/main/java/io/crate/expression/scalar/ConcatFunction.java:43
+server/src/main/java/io/crate/expression/scalar/ConcatWsFunction.java:35
+server/src/main/java/io/crate/expression/scalar/CurrentDatabaseFunction.java:39
+server/src/main/java/io/crate/expression/scalar/CurrentDateFunction.java:38
+server/src/main/java/io/crate/expression/scalar/DateBinFunction.java:43
+server/src/main/java/io/crate/expression/scalar/DateFormatFunction.java:43
+server/src/main/java/io/crate/expression/scalar/DateTruncFunction.java:64
+server/src/main/java/io/crate/expression/scalar/ExtractFunctions.java:61
+server/src/main/java/io/crate/expression/scalar/FormatFunction.java:53
+server/src/main/java/io/crate/expression/scalar/GenRandomTextUUIDFunction.java:40
+server/src/main/java/io/crate/expression/scalar/HasDatabasePrivilegeFunction.java:122
+server/src/main/java/io/crate/expression/scalar/HasSchemaPrivilegeFunction.java:99
+server/src/main/java/io/crate/expression/scalar/Ignore3vlFunction.java:59
+server/src/main/java/io/crate/expression/scalar/KnnMatch.java:48
+server/src/main/java/io/crate/expression/scalar/NullOrEmptyFunction.java:53
+server/src/main/java/io/crate/expression/scalar/PiFunction.java:36
+server/src/main/java/io/crate/expression/scalar/StringToArrayFunction.java:44
+server/src/main/java/io/crate/expression/scalar/SubscriptFunction.java:78
+server/src/main/java/io/crate/expression/scalar/SubscriptObjectFunction.java:58
+server/src/main/java/io/crate/expression/scalar/SubscriptRecordFunction.java:44
+server/src/main/java/io/crate/expression/scalar/SubstrFunction.java:47
+server/src/main/java/io/crate/expression/scalar/arithmetic/AbsFunction.java:36
+server/src/main/java/io/crate/expression/scalar/arithmetic/ArithmeticFunctions.java:129
+server/src/main/java/io/crate/expression/scalar/arithmetic/ArrayFunction.java:53
+server/src/main/java/io/crate/expression/scalar/arithmetic/CeilFunction.java:39
+server/src/main/java/io/crate/expression/scalar/arithmetic/ExpFunction.java:35
+server/src/main/java/io/crate/expression/scalar/arithmetic/FloorFunction.java:36
+server/src/main/java/io/crate/expression/scalar/arithmetic/IntervalArithmeticFunctions.java:41
+server/src/main/java/io/crate/expression/scalar/arithmetic/IntervalTimestampArithmeticScalar.java:44
+server/src/main/java/io/crate/expression/scalar/arithmetic/LogFunction.java:40
+server/src/main/java/io/crate/expression/scalar/arithmetic/MapFunction.java:67
+server/src/main/java/io/crate/expression/scalar/arithmetic/NegateFunctions.java:37
+server/src/main/java/io/crate/expression/scalar/arithmetic/RadiansDegreesFunctions.java:33
+server/src/main/java/io/crate/expression/scalar/arithmetic/RandomFunction.java:45
+server/src/main/java/io/crate/expression/scalar/arithmetic/RoundFunction.java:36
+server/src/main/java/io/crate/expression/scalar/arithmetic/SquareRootFunction.java:35
+server/src/main/java/io/crate/expression/scalar/arithmetic/SubtractTimestampScalar.java:40
+server/src/main/java/io/crate/expression/scalar/arithmetic/TrigonometricFunctions.java:36
+server/src/main/java/io/crate/expression/scalar/arithmetic/TrigonometricFunctions.java:63
+server/src/main/java/io/crate/expression/scalar/arithmetic/TruncFunction.java:46
+server/src/main/java/io/crate/expression/scalar/bitwise/BitwiseFunctions.java:49
+server/src/main/java/io/crate/expression/scalar/bitwise/BitwiseFunctions.java:65
+server/src/main/java/io/crate/expression/scalar/cast/ExplicitCastFunction.java:43
+server/src/main/java/io/crate/expression/scalar/cast/ImplicitCastFunction.java:49
+server/src/main/java/io/crate/expression/scalar/cast/TryCastFunction.java:42
+server/src/main/java/io/crate/expression/scalar/conditional/CaseFunction.java:66
+server/src/main/java/io/crate/expression/scalar/conditional/CoalesceFunction.java:39
+server/src/main/java/io/crate/expression/scalar/conditional/GreatestFunction.java:36
+server/src/main/java/io/crate/expression/scalar/conditional/IfFunction.java:55
+server/src/main/java/io/crate/expression/scalar/conditional/LeastFunction.java:36
+server/src/main/java/io/crate/expression/scalar/conditional/NullIfFunction.java:37
+server/src/main/java/io/crate/expression/scalar/formatting/ToCharFunction.java:50
+server/src/main/java/io/crate/expression/scalar/geo/AreaFunction.java:57
+server/src/main/java/io/crate/expression/scalar/geo/CoordinateFunction.java:33
+server/src/main/java/io/crate/expression/scalar/geo/DistanceFunction.java:62
+server/src/main/java/io/crate/expression/scalar/geo/GeoHashFunction.java:36
+server/src/main/java/io/crate/expression/scalar/geo/IntersectsFunction.java:45
+server/src/main/java/io/crate/expression/scalar/geo/WithinFunction.java:64
+server/src/main/java/io/crate/expression/scalar/object/ObjectKeysFunction.java:34
+server/src/main/java/io/crate/expression/scalar/postgres/CurrentSettingFunction.java:46
+server/src/main/java/io/crate/expression/scalar/postgres/PgBackendPidFunction.java:47
+server/src/main/java/io/crate/expression/scalar/postgres/PgEncodingToCharFunction.java:41
+server/src/main/java/io/crate/expression/scalar/postgres/PgGetUserByIdFunction.java:36
+server/src/main/java/io/crate/expression/scalar/postgres/PgPostmasterStartTime.java:43
+server/src/main/java/io/crate/expression/scalar/regex/RegexpReplaceFunction.java:49
+server/src/main/java/io/crate/expression/scalar/string/AsciiFunction.java:32
+server/src/main/java/io/crate/expression/scalar/string/ChrFunction.java:35
+server/src/main/java/io/crate/expression/scalar/string/EncodeDecodeFunction.java:40
+server/src/main/java/io/crate/expression/scalar/string/HashFunctions.java:41
+server/src/main/java/io/crate/expression/scalar/string/HashFunctions.java:46
+server/src/main/java/io/crate/expression/scalar/string/InitCapFunction.java:32
+server/src/main/java/io/crate/expression/scalar/string/LengthFunction.java:35
+server/src/main/java/io/crate/expression/scalar/string/LengthFunction.java:42
+server/src/main/java/io/crate/expression/scalar/string/ParseURIFunction.java:43
+server/src/main/java/io/crate/expression/scalar/string/ParseURLFunction.java:51
+server/src/main/java/io/crate/expression/scalar/string/QuoteIdentFunction.java:41
+server/src/main/java/io/crate/expression/scalar/string/ReplaceFunction.java:36
+server/src/main/java/io/crate/expression/scalar/string/StringCaseFunction.java:34
+server/src/main/java/io/crate/expression/scalar/string/StringLeftRightFunction.java:38
+server/src/main/java/io/crate/expression/scalar/string/StringPaddingFunction.java:43
+server/src/main/java/io/crate/expression/scalar/string/StringRepeatFunction.java:35
+server/src/main/java/io/crate/expression/scalar/string/StringSplitPartFunction.java:40
+server/src/main/java/io/crate/expression/scalar/string/TranslateFunction.java:43
+server/src/main/java/io/crate/expression/scalar/string/TrimFunctions.java:51
+server/src/main/java/io/crate/expression/scalar/systeminformation/ColDescriptionFunction.java:40
+server/src/main/java/io/crate/expression/scalar/systeminformation/CurrentSchemaFunction.java:49
+server/src/main/java/io/crate/expression/scalar/systeminformation/CurrentSchemasFunction.java:44
+server/src/main/java/io/crate/expression/scalar/systeminformation/FormatTypeFunction.java:42
+server/src/main/java/io/crate/expression/scalar/systeminformation/ObjDescriptionFunction.java:40
+server/src/main/java/io/crate/expression/scalar/systeminformation/PgFunctionIsVisibleFunction.java:37
+server/src/main/java/io/crate/expression/scalar/systeminformation/PgGetExpr.java:40
+server/src/main/java/io/crate/expression/scalar/systeminformation/PgGetFunctionResultFunction.java:37
+server/src/main/java/io/crate/expression/scalar/systeminformation/PgGetPartkeydefFunction.java:37
+server/src/main/java/io/crate/expression/scalar/systeminformation/PgGetSerialSequenceFunction.java:37
+server/src/main/java/io/crate/expression/scalar/systeminformation/PgTypeofFunction.java:42
+server/src/main/java/io/crate/expression/scalar/systeminformation/VersionFunction.java:47
+server/src/main/java/io/crate/expression/scalar/timestamp/CurrentTimeFunction.java:43
+server/src/main/java/io/crate/expression/scalar/timestamp/CurrentTimestampFunction.java:43
+server/src/main/java/io/crate/expression/scalar/timestamp/NowFunction.java:41
+server/src/main/java/io/crate/expression/scalar/timestamp/TimezoneFunction.java:46
+server/src/main/java/io/crate/expression/tablefunctions/EmptyRowTableFunction.java:43
+server/src/main/java/io/crate/expression/tablefunctions/GenerateSeries.java:63
+server/src/main/java/io/crate/expression/tablefunctions/GenerateSubscripts.java:49
+server/src/main/java/io/crate/expression/tablefunctions/MatchesFunction.java:61
+server/src/main/java/io/crate/expression/tablefunctions/PgExpandArray.java:49
+server/src/main/java/io/crate/expression/tablefunctions/PgGetKeywordsFunction.java:52
+server/src/main/java/io/crate/expression/tablefunctions/UnnestFunction.java:52
+server/src/main/java/io/crate/expression/tablefunctions/ValuesFunction.java:55
+server/src/main/java/io/crate/role/scalar/UserFunction.java:43
+server/src/main/java/io/crate/types/DataTypes.java:549
+server/src/main/java/org/elasticsearch/common/NamedRegistry.java:44
+server/src/test/java/io/crate/metadata/FunctionsTest.java:54[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `locate_symbol` with `{'ref': '7af74117dd8cca8210519cbb2b9b27b57d3ad96c', 'symbol': 'register'}`
+
+
+[0m[33;1m[1;3mextensions/functions/src/main/java/io/crate/operation/aggregation/HyperLogLogDistinctAggregation.java:85
+extensions/functions/src/main/java/io/crate/window/NthValueFunctions.java:161
+extensions/functions/src/main/java/io/crate/window/OffsetValueFunctions.java:247
+extensions/functions/src/main/java/io/crate/window/RankFunctions.java:90
+libs/guice/src/main/java/org/elasticsearch/common/inject/EncounterImpl.java:61
+libs/guice/src/main/java/org/elasticsearch/common/inject/EncounterImpl.java:74
+libs/guice/src/main/java/org/elasticsearch/common/inject/spi/TypeEncounter.java:100
+libs/guice/src/main/java/org/elasticsearch/common/inject/spi/TypeEncounter.java:94
+server/src/main/java/io/crate/execution/engine/aggregation/impl/ArbitraryAggregation.java:74
+server/src/main/java/io/crate/execution/engine/aggregation/impl/ArrayAgg.java:52
+server/src/main/java/io/crate/execution/engine/aggregation/impl/CmpByAggregation.java:103
+server/src/main/java/io/crate/execution/engine/aggregation/impl/CollectSetAggregation.java:55
+server/src/main/java/io/crate/execution/engine/aggregation/impl/CountAggregation.java:87
+server/src/main/java/io/crate/execution/engine/aggregation/impl/GeometricMeanAggregation.java:74
+server/src/main/java/io/crate/execution/engine/aggregation/impl/IntervalSumAggregation.java:43
+server/src/main/java/io/crate/execution/engine/aggregation/impl/MaximumAggregation.java:65
+server/src/main/java/io/crate/execution/engine/aggregation/impl/MinimumAggregation.java:65
+server/src/main/java/io/crate/execution/engine/aggregation/impl/NumericSumAggregation.java:70
+server/src/main/java/io/crate/execution/engine/aggregation/impl/PercentileAggregation.java:49
+server/src/main/java/io/crate/execution/engine/aggregation/impl/StandardDeviationAggregation.java:71
+server/src/main/java/io/crate/execution/engine/aggregation/impl/StringAgg.java:67
+server/src/main/java/io/crate/execution/engine/aggregation/impl/SumAggregation.java:67
+server/src/main/java/io/crate/execution/engine/aggregation/impl/VarianceAggregation.java:71
+server/src/main/java/io/crate/execution/engine/aggregation/impl/average/AverageAggregation.java:77
+server/src/main/java/io/crate/execution/engine/aggregation/impl/average/IntervalAverageAggregation.java:68
+server/src/main/java/io/crate/execution/engine/aggregation/impl/average/numeric/NumericAverageAggregation.java:70
+server/src/main/java/io/crate/execution/engine/window/RowNumberWindowFunction.java:39
+server/src/main/java/io/crate/expression/AbstractFunctionModule.java:44
+server/src/main/java/io/crate/expression/operator/AllOperator.java:59
+server/src/main/java/io/crate/expression/operator/AndOperator.java:55
+server/src/main/java/io/crate/expression/operator/CIDROperator.java:50
+server/src/main/java/io/crate/expression/operator/EqOperator.java:82
+server/src/main/java/io/crate/expression/operator/ExistsOperator.java:38
+server/src/main/java/io/crate/expression/operator/GtOperator.java:32
+server/src/main/java/io/crate/expression/operator/GteOperator.java:32
+server/src/main/java/io/crate/expression/operator/LikeOperators.java:107
+server/src/main/java/io/crate/expression/operator/LtOperator.java:32
+server/src/main/java/io/crate/expression/operator/LteOperator.java:32
+server/src/main/java/io/crate/expression/operator/OrOperator.java:51
+server/src/main/java/io/crate/expression/operator/RegexpMatchCaseInsensitiveOperator.java:44
+server/src/main/java/io/crate/expression/operator/RegexpMatchOperator.java:51
+server/src/main/java/io/crate/expression/operator/any/AnyOperator.java:82
+server/src/main/java/io/crate/expression/predicate/IsNullPredicate.java:74
+server/src/main/java/io/crate/expression/predicate/MatchPredicate.java:106
+server/src/main/java/io/crate/expression/predicate/NotPredicate.java:61
+server/src/main/java/io/crate/expression/reference/doc/lucene/SourceParser.java:102
+server/src/main/java/io/crate/expression/reference/doc/lucene/SourceParser.java:88
+server/src/main/java/io/crate/expression/scalar/AgeFunction.java:48
+server/src/main/java/io/crate/expression/scalar/ArrayAppendFunction.java:43
+server/src/main/java/io/crate/expression/scalar/ArrayAvgFunction.java:94
+server/src/main/java/io/crate/expression/scalar/ArrayCatFunction.java:44
+server/src/main/java/io/crate/expression/scalar/ArrayDifferenceFunction.java:52
+server/src/main/java/io/crate/expression/scalar/ArrayLowerFunction.java:44
+server/src/main/java/io/crate/expression/scalar/ArrayMaxFunction.java:45
+server/src/main/java/io/crate/expression/scalar/ArrayMinFunction.java:45
+server/src/main/java/io/crate/expression/scalar/ArrayPositionFunction.java:48
+server/src/main/java/io/crate/expression/scalar/ArraySetFunction.java:43
+server/src/main/java/io/crate/expression/scalar/ArraySliceFunction.java:43
+server/src/main/java/io/crate/expression/scalar/ArraySumFunction.java:48
+server/src/main/java/io/crate/expression/scalar/ArrayToStringFunction.java:45
+server/src/main/java/io/crate/expression/scalar/ArrayUniqueFunction.java:47
+server/src/main/java/io/crate/expression/scalar/ArrayUnnestFunction.java:56
+server/src/main/java/io/crate/expression/scalar/ArrayUpperFunction.java:66
+server/src/main/java/io/crate/expression/scalar/CollectionAverageFunction.java:41
+server/src/main/java/io/crate/expression/scalar/CollectionCountFunction.java:41
+server/src/main/java/io/crate/expression/scalar/ConcatFunction.java:43
+server/src/main/java/io/crate/expression/scalar/ConcatWsFunction.java:35
+server/src/main/java/io/crate/expression/scalar/CurrentDatabaseFunction.java:39
+server/src/main/java/io/crate/expression/scalar/CurrentDateFunction.java:38
+server/src/main/java/io/crate/expression/scalar/DateBinFunction.java:43
+server/src/main/java/io/crate/expression/scalar/DateFormatFunction.java:43
+server/src/main/java/io/crate/expression/scalar/DateTruncFunction.java:64
+server/src/main/java/io/crate/expression/scalar/ExtractFunctions.java:61
+server/src/main/java/io/crate/expression/scalar/FormatFunction.java:53
+server/src/main/java/io/crate/expression/scalar/GenRandomTextUUIDFunction.java:40
+server/src/main/java/io/crate/expression/scalar/HasDatabasePrivilegeFunction.java:122
+server/src/main/java/io/crate/expression/scalar/HasSchemaPrivilegeFunction.java:99
+server/src/main/java/io/crate/expression/scalar/Ignore3vlFunction.java:59
+server/src/main/java/io/crate/expression/scalar/KnnMatch.java:48
+server/src/main/java/io/crate/expression/scalar/NullOrEmptyFunction.java:53
+server/src/main/java/io/crate/expression/scalar/PiFunction.java:36
+server/src/main/java/io/crate/expression/scalar/StringToArrayFunction.java:44
+server/src/main/java/io/crate/expression/scalar/SubscriptFunction.java:78
+server/src/main/java/io/crate/expression/scalar/SubscriptObjectFunction.java:58
+server/src/main/java/io/crate/expression/scalar/SubscriptRecordFunction.java:44
+server/src/main/java/io/crate/expression/scalar/SubstrFunction.java:47
+server/src/main/java/io/crate/expression/scalar/arithmetic/AbsFunction.java:36
+server/src/main/java/io/crate/expression/scalar/arithmetic/ArithmeticFunctions.java:129
+server/src/main/java/io/crate/expression/scalar/arithmetic/ArrayFunction.java:53
+server/src/main/java/io/crate/expression/scalar/arithmetic/CeilFunction.java:39
+server/src/main/java/io/crate/expression/scalar/arithmetic/ExpFunction.java:35
+server/src/main/java/io/crate/expression/scalar/arithmetic/FloorFunction.java:36
+server/src/main/java/io/crate/expression/scalar/arithmetic/IntervalArithmeticFunctions.java:41
+server/src/main/java/io/crate/expression/scalar/arithmetic/IntervalTimestampArithmeticScalar.java:44
+server/src/main/java/io/crate/expression/scalar/arithmetic/LogFunction.java:40
+server/src/main/java/io/crate/expression/scalar/arithmetic/MapFunction.java:67
+server/src/main/java/io/crate/expression/scalar/arithmetic/NegateFunctions.java:37
+server/src/main/java/io/crate/expression/scalar/arithmetic/RadiansDegreesFunctions.java:33
+server/src/main/java/io/crate/expression/scalar/arithmetic/RandomFunction.java:45
+server/src/main/java/io/crate/expression/scalar/arithmetic/RoundFunction.java:36
+server/src/main/java/io/crate/expression/scalar/arithmetic/SquareRootFunction.java:35
+server/src/main/java/io/crate/expression/scalar/arithmetic/SubtractTimestampScalar.java:40
+server/src/main/java/io/crate/expression/scalar/arithmetic/TrigonometricFunctions.java:36
+server/src/main/java/io/crate/expression/scalar/arithmetic/TrigonometricFunctions.java:63
+server/src/main/java/io/crate/expression/scalar/arithmetic/TruncFunction.java:46
+server/src/main/java/io/crate/expression/scalar/bitwise/BitwiseFunctions.java:49
+server/src/main/java/io/crate/expression/scalar/bitwise/BitwiseFunctions.java:65
+server/src/main/java/io/crate/expression/scalar/cast/ExplicitCastFunction.java:43
+server/src/main/java/io/crate/expression/scalar/cast/ImplicitCastFunction.java:49
+server/src/main/java/io/crate/expression/scalar/cast/TryCastFunction.java:42
+server/src/main/java/io/crate/expression/scalar/conditional/CaseFunction.java:66
+server/src/main/java/io/crate/expression/scalar/conditional/CoalesceFunction.java:39
+server/src/main/java/io/crate/expression/scalar/conditional/GreatestFunction.java:36
+server/src/main/java/io/crate/expression/scalar/conditional/IfFunction.java:55
+server/src/main/java/io/crate/expression/scalar/conditional/LeastFunction.java:36
+server/src/main/java/io/crate/expression/scalar/conditional/NullIfFunction.java:37
+server/src/main/java/io/crate/expression/scalar/formatting/ToCharFunction.java:50
+server/src/main/java/io/crate/expression/scalar/geo/AreaFunction.java:57
+server/src/main/java/io/crate/expression/scalar/geo/CoordinateFunction.java:33
+server/src/main/java/io/crate/expression/scalar/geo/DistanceFunction.java:62
+server/src/main/java/io/crate/expression/scalar/geo/GeoHashFunction.java:36
+server/src/main/java/io/crate/expression/scalar/geo/IntersectsFunction.java:45
+server/src/main/java/io/crate/expression/scalar/geo/WithinFunction.java:64
+server/src/main/java/io/crate/expression/scalar/object/ObjectKeysFunction.java:34
+server/src/main/java/io/crate/expression/scalar/postgres/CurrentSettingFunction.java:46
+server/src/main/java/io/crate/expression/scalar/postgres/PgBackendPidFunction.java:47
+server/src/main/java/io/crate/expression/scalar/postgres/PgEncodingToCharFunction.java:41
+server/src/main/java/io/crate/expression/scalar/postgres/PgGetUserByIdFunction.java:36
+server/src/main/java/io/crate/expression/scalar/postgres/PgPostmasterStartTime.java:43
+server/src/main/java/io/crate/expression/scalar/regex/RegexpReplaceFunction.java:49
+server/src/main/java/io/crate/expression/scalar/string/AsciiFunction.java:32
+server/src/main/java/io/crate/expression/scalar/string/ChrFunction.java:35
+server/src/main/java/io/crate/expression/scalar/string/EncodeDecodeFunction.java:40
+server/src/main/java/io/crate/expression/scalar/string/HashFunctions.java:41
+server/src/main/java/io/crate/expression/scalar/string/HashFunctions.java:46
+server/src/main/java/io/crate/expression/scalar/string/InitCapFunction.java:32
+server/src/main/java/io/crate/expression/scalar/string/LengthFunction.java:35
+server/src/main/java/io/crate/expression/scalar/string/LengthFunction.java:42
+server/src/main/java/io/crate/expression/scalar/string/ParseURIFunction.java:43
+server/src/main/java/io/crate/expression/scalar/string/ParseURLFunction.java:51
+server/src/main/java/io/crate/expression/scalar/string/QuoteIdentFunction.java:41
+server/src/main/java/io/crate/expression/scalar/string/ReplaceFunction.java:36
+server/src/main/java/io/crate/expression/scalar/string/StringCaseFunction.java:34
+server/src/main/java/io/crate/expression/scalar/string/StringLeftRightFunction.java:38
+server/src/main/java/io/crate/expression/scalar/string/StringPaddingFunction.java:43
+server/src/main/java/io/crate/expression/scalar/string/StringRepeatFunction.java:35
+server/src/main/java/io/crate/expression/scalar/string/StringSplitPartFunction.java:40
+server/src/main/java/io/crate/expression/scalar/string/TranslateFunction.java:43
+server/src/main/java/io/crate/expression/scalar/string/TrimFunctions.java:51
+server/src/main/java/io/crate/expression/scalar/systeminformation/ColDescriptionFunction.java:40
+server/src/main/java/io/crate/expression/scalar/systeminformation/CurrentSchemaFunction.java:49
+server/src/main/java/io/crate/expression/scalar/systeminformation/CurrentSchemasFunction.java:44
+server/src/main/java/io/crate/expression/scalar/systeminformation/FormatTypeFunction.java:42
+server/src/main/java/io/crate/expression/scalar/systeminformation/ObjDescriptionFunction.java:40
+server/src/main/java/io/crate/expression/scalar/systeminformation/PgFunctionIsVisibleFunction.java:37
+server/src/main/java/io/crate/expression/scalar/systeminformation/PgGetExpr.java:40
+server/src/main/java/io/crate/expression/scalar/systeminformation/PgGetFunctionResultFunction.java:37
+server/src/main/java/io/crate/expression/scalar/systeminformation/PgGetPartkeydefFunction.java:37
+server/src/main/java/io/crate/expression/scalar/systeminformation/PgGetSerialSequenceFunction.java:37
+server/src/main/java/io/crate/expression/scalar/systeminformation/PgTypeofFunction.java:42
+server/src/main/java/io/crate/expression/scalar/systeminformation/VersionFunction.java:47
+server/src/main/java/io/crate/expression/scalar/timestamp/CurrentTimeFunction.java:43
+server/src/main/java/io/crate/expression/scalar/timestamp/CurrentTimestampFunction.java:43
+server/src/main/java/io/crate/expression/scalar/timestamp/NowFunction.java:41
+server/src/main/java/io/crate/expression/scalar/timestamp/TimezoneFunction.java:46
+server/src/main/java/io/crate/expression/tablefunctions/EmptyRowTableFunction.java:43
+server/src/main/java/io/crate/expression/tablefunctions/GenerateSeries.java:63
+server/src/main/java/io/crate/expression/tablefunctions/GenerateSubscripts.java:49
+server/src/main/java/io/crate/expression/tablefunctions/MatchesFunction.java:61
+server/src/main/java/io/crate/expression/tablefunctions/PgExpandArray.java:49
+server/src/main/java/io/crate/expression/tablefunctions/PgGetKeywordsFunction.java:52
+server/src/main/java/io/crate/expression/tablefunctions/UnnestFunction.java:52
+server/src/main/java/io/crate/expression/tablefunctions/ValuesFunction.java:55
+server/src/main/java/io/crate/role/scalar/UserFunction.java:43
+server/src/main/java/io/crate/types/DataTypes.java:549
+server/src/main/java/org/elasticsearch/common/NamedRegistry.java:44
+server/src/test/java/io/crate/metadata/FunctionsTest.java:54[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `locate_symbol` with `{'ref': '7af74117dd8cca8210519cbb2b9b27b57d3ad96c', 'symbol': 'register'}`
+
+
+[0m[33;1m[1;3mextensions/functions/src/main/java/io/crate/operation/aggregation/HyperLogLogDistinctAggregation.java:85
+extensions/functions/src/main/java/io/crate/window/NthValueFunctions.java:161
+extensions/functions/src/main/java/io/crate/window/OffsetValueFunctions.java:247
+extensions/functions/src/main/java/io/crate/window/RankFunctions.java:90
+libs/guice/src/main/java/org/elasticsearch/common/inject/EncounterImpl.java:61
+libs/guice/src/main/java/org/elasticsearch/common/inject/EncounterImpl.java:74
+libs/guice/src/main/java/org/elasticsearch/common/inject/spi/TypeEncounter.java:100
+libs/guice/src/main/java/org/elasticsearch/common/inject/spi/TypeEncounter.java:94
+server/src/main/java/io/crate/execution/engine/aggregation/impl/ArbitraryAggregation.java:74
+server/src/main/java/io/crate/execution/engine/aggregation/impl/ArrayAgg.java:52
+server/src/main/java/io/crate/execution/engine/aggregation/impl/CmpByAggregation.java:103
+server/src/main/java/io/crate/execution/engine/aggregation/impl/CollectSetAggregation.java:55
+server/src/main/java/io/crate/execution/engine/aggregation/impl/CountAggregation.java:87
+server/src/main/java/io/crate/execution/engine/aggregation/impl/GeometricMeanAggregation.java:74
+server/src/main/java/io/crate/execution/engine/aggregation/impl/IntervalSumAggregation.java:43
+server/src/main/java/io/crate/execution/engine/aggregation/impl/MaximumAggregation.java:65
+server/src/main/java/io/crate/execution/engine/aggregation/impl/MinimumAggregation.java:65
+server/src/main/java/io/crate/execution/engine/aggregation/impl/NumericSumAggregation.java:70
+server/src/main/java/io/crate/execution/engine/aggregation/impl/PercentileAggregation.java:49
+server/src/main/java/io/crate/execution/engine/aggregation/impl/StandardDeviationAggregation.java:71
+server/src/main/java/io/crate/execution/engine/aggregation/impl/StringAgg.java:67
+server/src/main/java/io/crate/execution/engine/aggregation/impl/SumAggregation.java:67
+server/src/main/java/io/crate/execution/engine/aggregation/impl/VarianceAggregation.java:71
+server/src/main/java/io/crate/execution/engine/aggregation/impl/average/AverageAggregation.java:77
+server/src/main/java/io/crate/execution/engine/aggregation/impl/average/IntervalAverageAggregation.java:68
+server/src/main/java/io/crate/execution/engine/aggregation/impl/average/numeric/NumericAverageAggregation.java:70
+server/src/main/java/io/crate/execution/engine/window/RowNumberWindowFunction.java:39
+server/src/main/java/io/crate/expression/AbstractFunctionModule.java:44
+server/src/main/java/io/crate/expression/operator/AllOperator.java:59
+server/src/main/java/io/crate/expression/operator/AndOperator.java:55
+server/src/main/java/io/crate/expression/operator/CIDROperator.java:50
+server/src/main/java/io/crate/expression/operator/EqOperator.java:82
+server/src/main/java/io/crate/expression/operator/ExistsOperator.java:38
+server/src/main/java/io/crate/expression/operator/GtOperator.java:32
+server/src/main/java/io/crate/expression/operator/GteOperator.java:32
+server/src/main/java/io/crate/expression/operator/LikeOperators.java:107
+server/src/main/java/io/crate/expression/operator/LtOperator.java:32
+server/src/main/java/io/crate/expression/operator/LteOperator.java:32
+server/src/main/java/io/crate/expression/operator/OrOperator.java:51
+server/src/main/java/io/crate/expression/operator/RegexpMatchCaseInsensitiveOperator.java:44
+server/src/main/java/io/crate/expression/operator/RegexpMatchOperator.java:51
+server/src/main/java/io/crate/expression/operator/any/AnyOperator.java:82
+server/src/main/java/io/crate/expression/predicate/IsNullPredicate.java:74
+server/src/main/java/io/crate/expression/predicate/MatchPredicate.java:106
+server/src/main/java/io/crate/expression/predicate/NotPredicate.java:61
+server/src/main/java/io/crate/expression/reference/doc/lucene/SourceParser.java:102
+server/src/main/java/io/crate/expression/reference/doc/lucene/SourceParser.java:88
+server/src/main/java/io/crate/expression/scalar/AgeFunction.java:48
+server/src/main/java/io/crate/expression/scalar/ArrayAppendFunction.java:43
+server/src/main/java/io/crate/expression/scalar/ArrayAvgFunction.java:94
+server/src/main/java/io/crate/expression/scalar/ArrayCatFunction.java:44
+server/src/main/java/io/crate/expression/scalar/ArrayDifferenceFunction.java:52
+server/src/main/java/io/crate/expression/scalar/ArrayLowerFunction.java:44
+server/src/main/java/io/crate/expression/scalar/ArrayMaxFunction.java:45
+server/src/main/java/io/crate/expression/scalar/ArrayMinFunction.java:45
+server/src/main/java/io/crate/expression/scalar/ArrayPositionFunction.java:48
+server/src/main/java/io/crate/expression/scalar/ArraySetFunction.java:43
+server/src/main/java/io/crate/expression/scalar/ArraySliceFunction.java:43
+server/src/main/java/io/crate/expression/scalar/ArraySumFunction.java:48
+server/src/main/java/io/crate/expression/scalar/ArrayToStringFunction.java:45
+server/src/main/java/io/crate/expression/scalar/ArrayUniqueFunction.java:47
+server/src/main/java/io/crate/expression/scalar/ArrayUnnestFunction.java:56
+server/src/main/java/io/crate/expression/scalar/ArrayUpperFunction.java:66
+server/src/main/java/io/crate/expression/scalar/CollectionAverageFunction.java:41
+server/src/main/java/io/crate/expression/scalar/CollectionCountFunction.java:41
+server/src/main/java/io/crate/expression/scalar/ConcatFunction.java:43
+server/src/main/java/io/crate/expression/scalar/ConcatWsFunction.java:35
+server/src/main/java/io/crate/expression/scalar/CurrentDatabaseFunction.java:39
+server/src/main/java/io/crate/expression/scalar/CurrentDateFunction.java:38
+server/src/main/java/io/crate/expression/scalar/DateBinFunction.java:43
+server/src/main/java/io/crate/expression/scalar/DateFormatFunction.java:43
+server/src/main/java/io/crate/expression/scalar/DateTruncFunction.java:64
+server/src/main/java/io/crate/expression/scalar/ExtractFunctions.java:61
+server/src/main/java/io/crate/expression/scalar/FormatFunction.java:53
+server/src/main/java/io/crate/expression/scalar/GenRandomTextUUIDFunction.java:40
+server/src/main/java/io/crate/expression/scalar/HasDatabasePrivilegeFunction.java:122
+server/src/main/java/io/crate/expression/scalar/HasSchemaPrivilegeFunction.java:99
+server/src/main/java/io/crate/expression/scalar/Ignore3vlFunction.java:59
+server/src/main/java/io/crate/expression/scalar/KnnMatch.java:48
+server/src/main/java/io/crate/expression/scalar/NullOrEmptyFunction.java:53
+server/src/main/java/io/crate/expression/scalar/PiFunction.java:36
+server/src/main/java/io/crate/expression/scalar/StringToArrayFunction.java:44
+server/src/main/java/io/crate/expression/scalar/SubscriptFunction.java:78
+server/src/main/java/io/crate/expression/scalar/SubscriptObjectFunction.java:58
+server/src/main/java/io/crate/expression/scalar/SubscriptRecordFunction.java:44
+server/src/main/java/io/crate/expression/scalar/SubstrFunction.java:47
+server/src/main/java/io/crate/expression/scalar/arithmetic/AbsFunction.java:36
+server/src/main/java/io/crate/expression/scalar/arithmetic/ArithmeticFunctions.java:129
+server/src/main/java/io/crate/expression/scalar/arithmetic/ArrayFunction.java:53
+server/src/main/java/io/crate/expression/scalar/arithmetic/CeilFunction.java:39
+server/src/main/java/io/crate/expression/scalar/arithmetic/ExpFunction.java:35
+server/src/main/java/io/crate/expression/scalar/arithmetic/FloorFunction.java:36
+server/src/main/java/io/crate/expression/scalar/arithmetic/IntervalArithmeticFunctions.java:41
+server/src/main/java/io/crate/expression/scalar/arithmetic/IntervalTimestampArithmeticScalar.java:44
+server/src/main/java/io/crate/expression/scalar/arithmetic/LogFunction.java:40
+server/src/main/java/io/crate/expression/scalar/arithmetic/MapFunction.java:67
+server/src/main/java/io/crate/expression/scalar/arithmetic/NegateFunctions.java:37
+server/src/main/java/io/crate/expression/scalar/arithmetic/RadiansDegreesFunctions.java:33
+server/src/main/java/io/crate/expression/scalar/arithmetic/RandomFunction.java:45
+server/src/main/java/io/crate/expression/scalar/arithmetic/RoundFunction.java:36
+server/src/main/java/io/crate/expression/scalar/arithmetic/SquareRootFunction.java:35
+server/src/main/java/io/crate/expression/scalar/arithmetic/SubtractTimestampScalar.java:40
+server/src/main/java/io/crate/expression/scalar/arithmetic/TrigonometricFunctions.java:36
+server/src/main/java/io/crate/expression/scalar/arithmetic/TrigonometricFunctions.java:63
+server/src/main/java/io/crate/expression/scalar/arithmetic/TruncFunction.java:46
+server/src/main/java/io/crate/expression/scalar/bitwise/BitwiseFunctions.java:49
+server/src/main/java/io/crate/expression/scalar/bitwise/BitwiseFunctions.java:65
+server/src/main/java/io/crate/expression/scalar/cast/ExplicitCastFunction.java:43
+server/src/main/java/io/crate/expression/scalar/cast/ImplicitCastFunction.java:49
+server/src/main/java/io/crate/expression/scalar/cast/TryCastFunction.java:42
+server/src/main/java/io/crate/expression/scalar/conditional/CaseFunction.java:66
+server/src/main/java/io/crate/expression/scalar/conditional/CoalesceFunction.java:39
+server/src/main/java/io/crate/expression/scalar/conditional/GreatestFunction.java:36
+server/src/main/java/io/crate/expression/scalar/conditional/IfFunction.java:55
+server/src/main/java/io/crate/expression/scalar/conditional/LeastFunction.java:36
+server/src/main/java/io/crate/expression/scalar/conditional/NullIfFunction.java:37
+server/src/main/java/io/crate/expression/scalar/formatting/ToCharFunction.java:50
+server/src/main/java/io/crate/expression/scalar/geo/AreaFunction.java:57
+server/src/main/java/io/crate/expression/scalar/geo/CoordinateFunction.java:33
+server/src/main/java/io/crate/expression/scalar/geo/DistanceFunction.java:62
+server/src/main/java/io/crate/expression/scalar/geo/GeoHashFunction.java:36
+server/src/main/java/io/crate/expression/scalar/geo/IntersectsFunction.java:45
+server/src/main/java/io/crate/expression/scalar/geo/WithinFunction.java:64
+server/src/main/java/io/crate/expression/scalar/object/ObjectKeysFunction.java:34
+server/src/main/java/io/crate/expression/scalar/postgres/CurrentSettingFunction.java:46
+server/src/main/java/io/crate/expression/scalar/postgres/PgBackendPidFunction.java:47
+server/src/main/java/io/crate/expression/scalar/postgres/PgEncodingToCharFunction.java:41
+server/src/main/java/io/crate/expression/scalar/postgres/PgGetUserByIdFunction.java:36
+server/src/main/java/io/crate/expression/scalar/postgres/PgPostmasterStartTime.java:43
+server/src/main/java/io/crate/expression/scalar/regex/RegexpReplaceFunction.java:49
+server/src/main/java/io/crate/expression/scalar/string/AsciiFunction.java:32
+server/src/main/java/io/crate/expression/scalar/string/ChrFunction.java:35
+server/src/main/java/io/crate/expression/scalar/string/EncodeDecodeFunction.java:40
+server/src/main/java/io/crate/expression/scalar/string/HashFunctions.java:41
+server/src/main/java/io/crate/expression/scalar/string/HashFunctions.java:46
+server/src/main/java/io/crate/expression/scalar/string/InitCapFunction.java:32
+server/src/main/java/io/crate/expression/scalar/string/LengthFunction.java:35
+server/src/main/java/io/crate/expression/scalar/string/LengthFunction.java:42
+server/src/main/java/io/crate/expression/scalar/string/ParseURIFunction.java:43
+server/src/main/java/io/crate/expression/scalar/string/ParseURLFunction.java:51
+server/src/main/java/io/crate/expression/scalar/string/QuoteIdentFunction.java:41
+server/src/main/java/io/crate/expression/scalar/string/ReplaceFunction.java:36
+server/src/main/java/io/crate/expression/scalar/string/StringCaseFunction.java:34
+server/src/main/java/io/crate/expression/scalar/string/StringLeftRightFunction.java:38
+server/src/main/java/io/crate/expression/scalar/string/StringPaddingFunction.java:43
+server/src/main/java/io/crate/expression/scalar/string/StringRepeatFunction.java:35
+server/src/main/java/io/crate/expression/scalar/string/StringSplitPartFunction.java:40
+server/src/main/java/io/crate/expression/scalar/string/TranslateFunction.java:43
+server/src/main/java/io/crate/expression/scalar/string/TrimFunctions.java:51
+server/src/main/java/io/crate/expression/scalar/systeminformation/ColDescriptionFunction.java:40
+server/src/main/java/io/crate/expression/scalar/systeminformation/CurrentSchemaFunction.java:49
+server/src/main/java/io/crate/expression/scalar/systeminformation/CurrentSchemasFunction.java:44
+server/src/main/java/io/crate/expression/scalar/systeminformation/FormatTypeFunction.java:42
+server/src/main/java/io/crate/expression/scalar/systeminformation/ObjDescriptionFunction.java:40
+server/src/main/java/io/crate/expression/scalar/systeminformation/PgFunctionIsVisibleFunction.java:37
+server/src/main/java/io/crate/expression/scalar/systeminformation/PgGetExpr.java:40
+server/src/main/java/io/crate/expression/scalar/systeminformation/PgGetFunctionResultFunction.java:37
+server/src/main/java/io/crate/expression/scalar/systeminformation/PgGetPartkeydefFunction.java:37
+server/src/main/java/io/crate/expression/scalar/systeminformation/PgGetSerialSequenceFunction.java:37
+server/src/main/java/io/crate/expression/scalar/systeminformation/PgTypeofFunction.java:42
+server/src/main/java/io/crate/expression/scalar/systeminformation/VersionFunction.java:47
+server/src/main/java/io/crate/expression/scalar/timestamp/CurrentTimeFunction.java:43
+server/src/main/java/io/crate/expression/scalar/timestamp/CurrentTimestampFunction.java:43
+server/src/main/java/io/crate/expression/scalar/timestamp/NowFunction.java:41
+server/src/main/java/io/crate/expression/scalar/timestamp/TimezoneFunction.java:46
+server/src/main/java/io/crate/expression/tablefunctions/EmptyRowTableFunction.java:43
+server/src/main/java/io/crate/expression/tablefunctions/GenerateSeries.java:63
+server/src/main/java/io/crate/expression/tablefunctions/GenerateSubscripts.java:49
+server/src/main/java/io/crate/expression/tablefunctions/MatchesFunction.java:61
+server/src/main/java/io/crate/expression/tablefunctions/PgExpandArray.java:49
+server/src/main/java/io/crate/expression/tablefunctions/PgGetKeywordsFunction.java:52
+server/src/main/java/io/crate/expression/tablefunctions/UnnestFunction.java:52
+server/src/main/java/io/crate/expression/tablefunctions/ValuesFunction.java:55
+server/src/main/java/io/crate/role/scalar/UserFunction.java:43
+server/src/main/java/io/crate/types/DataTypes.java:549
+server/src/main/java/org/elasticsearch/common/NamedRegistry.java:44
+server/src/test/java/io/crate/metadata/FunctionsTest.java:54[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `locate_symbol` with `{'ref': '7af74117dd8cca8210519cbb2b9b27b57d3ad96c', 'symbol': 'registerPgCatalogFunctions'}`
+
+
+[0m[33;1m[1;3mThe symbol registerPgCatalogFunctions you are looking for does not exist in the current ref.
+But here is a symbol similar to it. It's `registerLogBaseFunctions`.
+The file where this symbol is located is: 
+server/src/main/java/io/crate/expression/scalar/arithmetic/LogFunction.java:67
+Please be careful to check that this symbol indicates the same thing as the previous symbol.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `locate_symbol` with `{'ref': '7af74117dd8cca8210519cbb2b9b27b57d3ad96c', 'symbol': 'register'}`
+
+
+[0m[33;1m[1;3mextensions/functions/src/main/java/io/crate/operation/aggregation/HyperLogLogDistinctAggregation.java:85
+extensions/functions/src/main/java/io/crate/window/NthValueFunctions.java:161
+extensions/functions/src/main/java/io/crate/window/OffsetValueFunctions.java:247
+extensions/functions/src/main/java/io/crate/window/RankFunctions.java:90
+libs/guice/src/main/java/org/elasticsearch/common/inject/EncounterImpl.java:61
+libs/guice/src/main/java/org/elasticsearch/common/inject/EncounterImpl.java:74
+libs/guice/src/main/java/org/elasticsearch/common/inject/spi/TypeEncounter.java:100
+libs/guice/src/main/java/org/elasticsearch/common/inject/spi/TypeEncounter.java:94
+server/src/main/java/io/crate/execution/engine/aggregation/impl/ArbitraryAggregation.java:74
+server/src/main/java/io/crate/execution/engine/aggregation/impl/ArrayAgg.java:52
+server/src/main/java/io/crate/execution/engine/aggregation/impl/CmpByAggregation.java:103
+server/src/main/java/io/crate/execution/engine/aggregation/impl/CollectSetAggregation.java:55
+server/src/main/java/io/crate/execution/engine/aggregation/impl/CountAggregation.java:87
+server/src/main/java/io/crate/execution/engine/aggregation/impl/GeometricMeanAggregation.java:74
+server/src/main/java/io/crate/execution/engine/aggregation/impl/IntervalSumAggregation.java:43
+server/src/main/java/io/crate/execution/engine/aggregation/impl/MaximumAggregation.java:65
+server/src/main/java/io/crate/execution/engine/aggregation/impl/MinimumAggregation.java:65
+server/src/main/java/io/crate/execution/engine/aggregation/impl/NumericSumAggregation.java:70
+server/src/main/java/io/crate/execution/engine/aggregation/impl/PercentileAggregation.java:49
+server/src/main/java/io/crate/execution/engine/aggregation/impl/StandardDeviationAggregation.java:71
+server/src/main/java/io/crate/execution/engine/aggregation/impl/StringAgg.java:67
+server/src/main/java/io/crate/execution/engine/aggregation/impl/SumAggregation.java:67
+server/src/main/java/io/crate/execution/engine/aggregation/impl/VarianceAggregation.java:71
+server/src/main/java/io/crate/execution/engine/aggregation/impl/average/AverageAggregation.java:77
+server/src/main/java/io/crate/execution/engine/aggregation/impl/average/IntervalAverageAggregation.java:68
+server/src/main/java/io/crate/execution/engine/aggregation/impl/average/numeric/NumericAverageAggregation.java:70
+server/src/main/java/io/crate/execution/engine/window/RowNumberWindowFunction.java:39
+server/src/main/java/io/crate/expression/AbstractFunctionModule.java:44
+server/src/main/java/io/crate/expression/operator/AllOperator.java:59
+server/src/main/java/io/crate/expression/operator/AndOperator.java:55
+server/src/main/java/io/crate/expression/operator/CIDROperator.java:50
+server/src/main/java/io/crate/expression/operator/EqOperator.java:82
+server/src/main/java/io/crate/expression/operator/ExistsOperator.java:38
+server/src/main/java/io/crate/expression/operator/GtOperator.java:32
+server/src/main/java/io/crate/expression/operator/GteOperator.java:32
+server/src/main/java/io/crate/expression/operator/LikeOperators.java:107
+server/src/main/java/io/crate/expression/operator/LtOperator.java:32
+server/src/main/java/io/crate/expression/operator/LteOperator.java:32
+server/src/main/java/io/crate/expression/operator/OrOperator.java:51
+server/src/main/java/io/crate/expression/operator/RegexpMatchCaseInsensitiveOperator.java:44
+server/src/main/java/io/crate/expression/operator/RegexpMatchOperator.java:51
+server/src/main/java/io/crate/expression/operator/any/AnyOperator.java:82
+server/src/main/java/io/crate/expression/predicate/IsNullPredicate.java:74
+server/src/main/java/io/crate/expression/predicate/MatchPredicate.java:106
+server/src/main/java/io/crate/expression/predicate/NotPredicate.java:61
+server/src/main/java/io/crate/expression/reference/doc/lucene/SourceParser.java:102
+server/src/main/java/io/crate/expression/reference/doc/lucene/SourceParser.java:88
+server/src/main/java/io/crate/expression/scalar/AgeFunction.java:48
+server/src/main/java/io/crate/expression/scalar/ArrayAppendFunction.java:43
+server/src/main/java/io/crate/expression/scalar/ArrayAvgFunction.java:94
+server/src/main/java/io/crate/expression/scalar/ArrayCatFunction.java:44
+server/src/main/java/io/crate/expression/scalar/ArrayDifferenceFunction.java:52
+server/src/main/java/io/crate/expression/scalar/ArrayLowerFunction.java:44
+server/src/main/java/io/crate/expression/scalar/ArrayMaxFunction.java:45
+server/src/main/java/io/crate/expression/scalar/ArrayMinFunction.java:45
+server/src/main/java/io/crate/expression/scalar/ArrayPositionFunction.java:48
+server/src/main/java/io/crate/expression/scalar/ArraySetFunction.java:43
+server/src/main/java/io/crate/expression/scalar/ArraySliceFunction.java:43
+server/src/main/java/io/crate/expression/scalar/ArraySumFunction.java:48
+server/src/main/java/io/crate/expression/scalar/ArrayToStringFunction.java:45
+server/src/main/java/io/crate/expression/scalar/ArrayUniqueFunction.java:47
+server/src/main/java/io/crate/expression/scalar/ArrayUnnestFunction.java:56
+server/src/main/java/io/crate/expression/scalar/ArrayUpperFunction.java:66
+server/src/main/java/io/crate/expression/scalar/CollectionAverageFunction.java:41
+server/src/main/java/io/crate/expression/scalar/CollectionCountFunction.java:41
+server/src/main/java/io/crate/expression/scalar/ConcatFunction.java:43
+server/src/main/java/io/crate/expression/scalar/ConcatWsFunction.java:35
+server/src/main/java/io/crate/expression/scalar/CurrentDatabaseFunction.java:39
+server/src/main/java/io/crate/expression/scalar/CurrentDateFunction.java:38
+server/src/main/java/io/crate/expression/scalar/DateBinFunction.java:43
+server/src/main/java/io/crate/expression/scalar/DateFormatFunction.java:43
+server/src/main/java/io/crate/expression/scalar/DateTruncFunction.java:64
+server/src/main/java/io/crate/expression/scalar/ExtractFunctions.java:61
+server/src/main/java/io/crate/expression/scalar/FormatFunction.java:53
+server/src/main/java/io/crate/expression/scalar/GenRandomTextUUIDFunction.java:40
+server/src/main/java/io/crate/expression/scalar/HasDatabasePrivilegeFunction.java:122
+server/src/main/java/io/crate/expression/scalar/HasSchemaPrivilegeFunction.java:99
+server/src/main/java/io/crate/expression/scalar/Ignore3vlFunction.java:59
+server/src/main/java/io/crate/expression/scalar/KnnMatch.java:48
+server/src/main/java/io/crate/expression/scalar/NullOrEmptyFunction.java:53
+server/src/main/java/io/crate/expression/scalar/PiFunction.java:36
+server/src/main/java/io/crate/expression/scalar/StringToArrayFunction.java:44
+server/src/main/java/io/crate/expression/scalar/SubscriptFunction.java:78
+server/src/main/java/io/crate/expression/scalar/SubscriptObjectFunction.java:58
+server/src/main/java/io/crate/expression/scalar/SubscriptRecordFunction.java:44
+server/src/main/java/io/crate/expression/scalar/SubstrFunction.java:47
+server/src/main/java/io/crate/expression/scalar/arithmetic/AbsFunction.java:36
+server/src/main/java/io/crate/expression/scalar/arithmetic/ArithmeticFunctions.java:129
+server/src/main/java/io/crate/expression/scalar/arithmetic/ArrayFunction.java:53
+server/src/main/java/io/crate/expression/scalar/arithmetic/CeilFunction.java:39
+server/src/main/java/io/crate/expression/scalar/arithmetic/ExpFunction.java:35
+server/src/main/java/io/crate/expression/scalar/arithmetic/FloorFunction.java:36
+server/src/main/java/io/crate/expression/scalar/arithmetic/IntervalArithmeticFunctions.java:41
+server/src/main/java/io/crate/expression/scalar/arithmetic/IntervalTimestampArithmeticScalar.java:44
+server/src/main/java/io/crate/expression/scalar/arithmetic/LogFunction.java:40
+server/src/main/java/io/crate/expression/scalar/arithmetic/MapFunction.java:67
+server/src/main/java/io/crate/expression/scalar/arithmetic/NegateFunctions.java:37
+server/src/main/java/io/crate/expression/scalar/arithmetic/RadiansDegreesFunctions.java:33
+server/src/main/java/io/crate/expression/scalar/arithmetic/RandomFunction.java:45
+server/src/main/java/io/crate/expression/scalar/arithmetic/RoundFunction.java:36
+server/src/main/java/io/crate/expression/scalar/arithmetic/SquareRootFunction.java:35
+server/src/main/java/io/crate/expression/scalar/arithmetic/SubtractTimestampScalar.java:40
+server/src/main/java/io/crate/expression/scalar/arithmetic/TrigonometricFunctions.java:36
+server/src/main/java/io/crate/expression/scalar/arithmetic/TrigonometricFunctions.java:63
+server/src/main/java/io/crate/expression/scalar/arithmetic/TruncFunction.java:46
+server/src/main/java/io/crate/expression/scalar/bitwise/BitwiseFunctions.java:49
+server/src/main/java/io/crate/expression/scalar/bitwise/BitwiseFunctions.java:65
+server/src/main/java/io/crate/expression/scalar/cast/ExplicitCastFunction.java:43
+server/src/main/java/io/crate/expression/scalar/cast/ImplicitCastFunction.java:49
+server/src/main/java/io/crate/expression/scalar/cast/TryCastFunction.java:42
+server/src/main/java/io/crate/expression/scalar/conditional/CaseFunction.java:66
+server/src/main/java/io/crate/expression/scalar/conditional/CoalesceFunction.java:39
+server/src/main/java/io/crate/expression/scalar/conditional/GreatestFunction.java:36
+server/src/main/java/io/crate/expression/scalar/conditional/IfFunction.java:55
+server/src/main/java/io/crate/expression/scalar/conditional/LeastFunction.java:36
+server/src/main/java/io/crate/expression/scalar/conditional/NullIfFunction.java:37
+server/src/main/java/io/crate/expression/scalar/formatting/ToCharFunction.java:50
+server/src/main/java/io/crate/expression/scalar/geo/AreaFunction.java:57
+server/src/main/java/io/crate/expression/scalar/geo/CoordinateFunction.java:33
+server/src/main/java/io/crate/expression/scalar/geo/DistanceFunction.java:62
+server/src/main/java/io/crate/expression/scalar/geo/GeoHashFunction.java:36
+server/src/main/java/io/crate/expression/scalar/geo/IntersectsFunction.java:45
+server/src/main/java/io/crate/expression/scalar/geo/WithinFunction.java:64
+server/src/main/java/io/crate/expression/scalar/object/ObjectKeysFunction.java:34
+server/src/main/java/io/crate/expression/scalar/postgres/CurrentSettingFunction.java:46
+server/src/main/java/io/crate/expression/scalar/postgres/PgBackendPidFunction.java:47
+server/src/main/java/io/crate/expression/scalar/postgres/PgEncodingToCharFunction.java:41
+server/src/main/java/io/crate/expression/scalar/postgres/PgGetUserByIdFunction.java:36
+server/src/main/java/io/crate/expression/scalar/postgres/PgPostmasterStartTime.java:43
+server/src/main/java/io/crate/expression/scalar/regex/RegexpReplaceFunction.java:49
+server/src/main/java/io/crate/expression/scalar/string/AsciiFunction.java:32
+server/src/main/java/io/crate/expression/scalar/string/ChrFunction.java:35
+server/src/main/java/io/crate/expression/scalar/string/EncodeDecodeFunction.java:40
+server/src/main/java/io/crate/expression/scalar/string/HashFunctions.java:41
+server/src/main/java/io/crate/expression/scalar/string/HashFunctions.java:46
+server/src/main/java/io/crate/expression/scalar/string/InitCapFunction.java:32
+server/src/main/java/io/crate/expression/scalar/string/LengthFunction.java:35
+server/src/main/java/io/crate/expression/scalar/string/LengthFunction.java:42
+server/src/main/java/io/crate/expression/scalar/string/ParseURIFunction.java:43
+server/src/main/java/io/crate/expression/scalar/string/ParseURLFunction.java:51
+server/src/main/java/io/crate/expression/scalar/string/QuoteIdentFunction.java:41
+server/src/main/java/io/crate/expression/scalar/string/ReplaceFunction.java:36
+server/src/main/java/io/crate/expression/scalar/string/StringCaseFunction.java:34
+server/src/main/java/io/crate/expression/scalar/string/StringLeftRightFunction.java:38
+server/src/main/java/io/crate/expression/scalar/string/StringPaddingFunction.java:43
+server/src/main/java/io/crate/expression/scalar/string/StringRepeatFunction.java:35
+server/src/main/java/io/crate/expression/scalar/string/StringSplitPartFunction.java:40
+server/src/main/java/io/crate/expression/scalar/string/TranslateFunction.java:43
+server/src/main/java/io/crate/expression/scalar/string/TrimFunctions.java:51
+server/src/main/java/io/crate/expression/scalar/systeminformation/ColDescriptionFunction.java:40
+server/src/main/java/io/crate/expression/scalar/systeminformation/CurrentSchemaFunction.java:49
+server/src/main/java/io/crate/expression/scalar/systeminformation/CurrentSchemasFunction.java:44
+server/src/main/java/io/crate/expression/scalar/systeminformation/FormatTypeFunction.java:42
+server/src/main/java/io/crate/expression/scalar/systeminformation/ObjDescriptionFunction.java:40
+server/src/main/java/io/crate/expression/scalar/systeminformation/PgFunctionIsVisibleFunction.java:37
+server/src/main/java/io/crate/expression/scalar/systeminformation/PgGetExpr.java:40
+server/src/main/java/io/crate/expression/scalar/systeminformation/PgGetFunctionResultFunction.java:37
+server/src/main/java/io/crate/expression/scalar/systeminformation/PgGetPartkeydefFunction.java:37
+server/src/main/java/io/crate/expression/scalar/systeminformation/PgGetSerialSequenceFunction.java:37
+server/src/main/java/io/crate/expression/scalar/systeminformation/PgTypeofFunction.java:42
+server/src/main/java/io/crate/expression/scalar/systeminformation/VersionFunction.java:47
+server/src/main/java/io/crate/expression/scalar/timestamp/CurrentTimeFunction.java:43
+server/src/main/java/io/crate/expression/scalar/timestamp/CurrentTimestampFunction.java:43
+server/src/main/java/io/crate/expression/scalar/timestamp/NowFunction.java:41
+server/src/main/java/io/crate/expression/scalar/timestamp/TimezoneFunction.java:46
+server/src/main/java/io/crate/expression/tablefunctions/EmptyRowTableFunction.java:43
+server/src/main/java/io/crate/expression/tablefunctions/GenerateSeries.java:63
+server/src/main/java/io/crate/expression/tablefunctions/GenerateSubscripts.java:49
+server/src/main/java/io/crate/expression/tablefunctions/MatchesFunction.java:61
+server/src/main/java/io/crate/expression/tablefunctions/PgExpandArray.java:49
+server/src/main/java/io/crate/expression/tablefunctions/PgGetKeywordsFunction.java:52
+server/src/main/java/io/crate/expression/tablefunctions/UnnestFunction.java:52
+server/src/main/java/io/crate/expression/tablefunctions/ValuesFunction.java:55
+server/src/main/java/io/crate/role/scalar/UserFunction.java:43
+server/src/main/java/io/crate/types/DataTypes.java:549
+server/src/main/java/org/elasticsearch/common/NamedRegistry.java:44
+server/src/test/java/io/crate/metadata/FunctionsTest.java:54[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': '7af74117dd8cca8210519cbb2b9b27b57d3ad96c', 'path': 'server/src/main/java/io/crate/expression/AbstractFunctionModule.java', 'startline': 40, 'endline': 50}`
+
+
+[0m[36;1m[1;3mHere are lines 40 through 50.
+
+
+    private HashMap<FunctionName, List<FunctionProvider>> functionImplementations = new HashMap<>();
+    private MapBinder<FunctionName, List<FunctionProvider>> implementationsBinder;
+
+    public void register(Signature signature, FunctionFactory factory) {
+        List<FunctionProvider> functions = functionImplementations.computeIfAbsent(
+            signature.getName(),
+            k -> new ArrayList<>());
+        var duplicate = functions.stream().filter(fr -> fr.getSignature().equals(signature)).findFirst();
+        if (duplicate.isPresent()) {
+            throw new IllegalStateException(
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': '7af74117dd8cca8210519cbb2b9b27b57d3ad96c', 'path': 'server/src/main/java/io/crate/expression/AbstractFunctionModule.java', 'startline': 30, 'endline': 60}`
+
+
+[0m[36;1m[1;3mHere are lines 30 through 60.
+
+import org.elasticsearch.common.inject.TypeLiteral;
+import org.elasticsearch.common.inject.multibindings.MapBinder;
+
+import io.crate.metadata.FunctionImplementation;
+import io.crate.metadata.FunctionName;
+import io.crate.metadata.FunctionProvider;
+import io.crate.metadata.FunctionProvider.FunctionFactory;
+import io.crate.metadata.functions.Signature;
+
+public abstract class AbstractFunctionModule<T extends FunctionImplementation> extends AbstractModule {
+
+    private HashMap<FunctionName, List<FunctionProvider>> functionImplementations = new HashMap<>();
+    private MapBinder<FunctionName, List<FunctionProvider>> implementationsBinder;
+
+    public void register(Signature signature, FunctionFactory factory) {
+        List<FunctionProvider> functions = functionImplementations.computeIfAbsent(
+            signature.getName(),
+            k -> new ArrayList<>());
+        var duplicate = functions.stream().filter(fr -> fr.getSignature().equals(signature)).findFirst();
+        if (duplicate.isPresent()) {
+            throw new IllegalStateException(
+                "A function already exists for signature = " + signature);
+        }
+        functions.add(new FunctionProvider(signature, factory));
+    }
+
+    public abstract void configureFunctions();
+
+    @Override
+    protected void configure() {
+        configureFunctions();
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `locate_symbol` with `{'ref': '7af74117dd8cca8210519cbb2b9b27b57d3ad96c', 'symbol': 'HasSchemaPrivilegeFunction'}`
+
+
+[0m[33;1m[1;3mserver/src/main/java/io/crate/expression/scalar/HasSchemaPrivilegeFunction.java:167
+server/src/main/java/io/crate/expression/scalar/HasSchemaPrivilegeFunction.java:41[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': '7af74117dd8cca8210519cbb2b9b27b57d3ad96c', 'path': 'server/src/main/java/io/crate/expression/scalar/HasSchemaPrivilegeFunction.java', 'startline': 20, 'endline': 40}`
+
+
+[0m[36;1m[1;3mHere are lines 20 through 40.
+
+ */
+
+package io.crate.expression.scalar;
+
+import java.util.Collection;
+import java.util.HashSet;
+import java.util.Locale;
+import java.util.function.BiFunction;
+
+import org.jetbrains.annotations.Nullable;
+
+import io.crate.common.FourFunction;
+import io.crate.metadata.functions.BoundSignature;
+import io.crate.metadata.functions.Signature;
+import io.crate.metadata.pgcatalog.PgCatalogTableDefinitions;
+import io.crate.role.Permission;
+import io.crate.role.Role;
+import io.crate.role.Roles;
+import io.crate.role.Securable;
+import io.crate.types.DataTypes;
+
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': '7af74117dd8cca8210519cbb2b9b27b57d3ad96c', 'path': 'server/src/main/java/io/crate/expression/scalar/HasSchemaPrivilegeFunction.java', 'startline': 80, 'endline': 100}`
+
+
+[0m[36;1m[1;3mHere are lines 80 through 100.
+
+     */
+    @Nullable
+    protected Collection<Permission> parsePermissions(String permissionNames) {
+        Collection<Permission> toCheck = new HashSet<>();
+        String[] permissions = permissionNames.toLowerCase(Locale.ENGLISH).split(",");
+        for (String p : permissions) {
+            p = p.trim();
+            if (p.equals("create")) {
+                toCheck.add(Permission.DDL);
+            } else if (p.equals("usage")) {
+                toCheck.add(Permission.DQL);
+            } else {
+                // Same error as PG
+                throw new IllegalArgumentException(String.format(Locale.ENGLISH, "Unrecognized permission: %s", p));
+            }
+        }
+        return toCheck;
+    }
+
+    public static void register(ScalarFunctionModule module) {
+        // Signature without user, takes user from session.
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': '7af74117dd8cca8210519cbb2b9b27b57d3ad96c', 'path': 'server/src/main/java/io/crate/expression/scalar/HasSchemaPrivilegeFunction.java', 'startline': 90, 'endline': 110}`
+
+
+[0m[36;1m[1;3mHere are lines 90 through 110.
+
+                toCheck.add(Permission.DQL);
+            } else {
+                // Same error as PG
+                throw new IllegalArgumentException(String.format(Locale.ENGLISH, "Unrecognized permission: %s", p));
+            }
+        }
+        return toCheck;
+    }
+
+    public static void register(ScalarFunctionModule module) {
+        // Signature without user, takes user from session.
+        module.register(
+            Signature.scalar(
+                NAME,
+                DataTypes.STRING.getTypeSignature(), // Schema
+                DataTypes.STRING.getTypeSignature(), // Privilege
+                DataTypes.BOOLEAN.getTypeSignature()
+            ).withFeatures(DETERMINISTIC_ONLY),
+            (signature, boundSignature) -> new HasSchemaPrivilegeFunction(signature, boundSignature, USER_BY_NAME, CHECK_BY_SCHEMA_NAME)
+        );
+
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': '7af74117dd8cca8210519cbb2b9b27b57d3ad96c', 'path': 'server/src/main/java/io/crate/expression/scalar/HasSchemaPrivilegeFunction.java', 'startline': 110, 'endline': 130}`
+
+
+[0m[36;1m[1;3mHere are lines 110 through 130.
+
+
+        // Signature without user, takes user from session.
+        module.register(
+            Signature.scalar(
+                NAME,
+                DataTypes.INTEGER.getTypeSignature(), // Schema
+                DataTypes.STRING.getTypeSignature(),  // Privilege
+                DataTypes.BOOLEAN.getTypeSignature()
+            ).withFeatures(DETERMINISTIC_ONLY),
+            (signature, boundSignature) -> new HasSchemaPrivilegeFunction(signature, boundSignature, USER_BY_NAME, CHECK_BY_SCHEMA_OID)
+        );
+
+        module.register(
+            Signature.scalar(
+                NAME,
+                DataTypes.STRING.getTypeSignature(), // User
+                DataTypes.STRING.getTypeSignature(), // Schema
+                DataTypes.STRING.getTypeSignature(), // Privilege
+                DataTypes.BOOLEAN.getTypeSignature()
+            ).withFeatures(DETERMINISTIC_ONLY),
+            (signature, boundSignature) -> new HasSchemaPrivilegeFunction(signature, boundSignature, USER_BY_NAME, CHECK_BY_SCHEMA_NAME)
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': '7af74117dd8cca8210519cbb2b9b27b57d3ad96c', 'path': 'server/src/main/java/io/crate/expression/scalar/HasSchemaPrivilegeFunction.java', 'startline': 130, 'endline': 150}`
+
+
+[0m[36;1m[1;3mHere are lines 130 through 150.
+
+            (signature, boundSignature) -> new HasSchemaPrivilegeFunction(signature, boundSignature, USER_BY_NAME, CHECK_BY_SCHEMA_NAME)
+        );
+
+        module.register(
+            Signature.scalar(
+                NAME,
+                DataTypes.STRING.getTypeSignature(),  // User
+                DataTypes.INTEGER.getTypeSignature(), // Schema
+                DataTypes.STRING.getTypeSignature(),  // Privilege
+                DataTypes.BOOLEAN.getTypeSignature()
+            ).withFeatures(DETERMINISTIC_ONLY),
+            (signature, boundSignature) -> new HasSchemaPrivilegeFunction(signature, boundSignature, USER_BY_NAME, CHECK_BY_SCHEMA_OID)
+        );
+
+        module.register(
+            Signature.scalar(
+                NAME,
+                DataTypes.INTEGER.getTypeSignature(), // User
+                DataTypes.STRING.getTypeSignature(),  // Schema
+                DataTypes.STRING.getTypeSignature(),  // Privilege
+                DataTypes.BOOLEAN.getTypeSignature()
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': '7af74117dd8cca8210519cbb2b9b27b57d3ad96c', 'path': 'server/src/main/java/io/crate/expression/scalar/HasSchemaPrivilegeFunction.java', 'startline': 150, 'endline': 170}`
+
+
+[0m[36;1m[1;3mHere are lines 150 through 170.
+
+                DataTypes.BOOLEAN.getTypeSignature()
+            ).withFeatures(DETERMINISTIC_ONLY),
+            (signature, boundSignature) -> new HasSchemaPrivilegeFunction(signature, boundSignature, USER_BY_OID, CHECK_BY_SCHEMA_NAME)
+        );
+
+        module.register(
+            Signature.scalar(
+                NAME,
+                DataTypes.INTEGER.getTypeSignature(), // User
+                DataTypes.INTEGER.getTypeSignature(), // Schema
+                DataTypes.STRING.getTypeSignature(),  // Privilege
+                DataTypes.BOOLEAN.getTypeSignature()
+            ).withFeatures(DETERMINISTIC_ONLY),
+            (signature, boundSignature) -> new HasSchemaPrivilegeFunction(signature, boundSignature, USER_BY_OID, CHECK_BY_SCHEMA_OID)
+        );
+    }
+
+    protected HasSchemaPrivilegeFunction(Signature signature,
+                                         BoundSignature boundSignature,
+                                         BiFunction<Roles, Object, Role> getUser,
+                                         FourFunction<Roles, Role, Object, Collection<Permission>, Boolean> checkPrivilege) {
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': '7af74117dd8cca8210519cbb2b9b27b57d3ad96c', 'path': 'server/src/main/java/io/crate/expression/scalar/HasDatabasePrivilegeFunction.java', 'startline': 190, 'endline': 210}`
+
+
+[0m[36;1m[1;3mThis file only has 202 lines. Here are lines 190 through 202.
+
+            (signature, boundSignature) -> new HasDatabasePrivilegeFunction(signature, boundSignature,
+                                                                            USER_BY_OID, CHECK_BY_DB_OID)
+        );
+    }
+
+    protected HasDatabasePrivilegeFunction(Signature signature,
+                                           BoundSignature boundSignature,
+                                           BiFunction<Roles, Object, Role> getUser,
+                                           FourFunction<Roles, Role, Object, Collection<Permission>, Boolean> checkPrivilege) {
+        super(signature, boundSignature, getUser, checkPrivilege);
+    }
+}
+
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': '7af74117dd8cca8210519cbb2b9b27b57d3ad96c', 'path': 'server/src/main/java/io/crate/expression/scalar/HasDatabasePrivilegeFunction.java', 'startline': 10, 'endline': 39}`
+
+
+[0m[36;1m[1;3mHere are lines 10 through 39.
+
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.  See the
+ * License for the specific language governing permissions and limitations
+ * under the License.
+ *
+ * However, if you have executed another commercial license agreement
+ * with Crate these terms will supersede the license and you may use the
+ * software solely pursuant to the terms of the relevant commercial agreement.
+ */
+
+package io.crate.expression.scalar;
+
+import java.util.Collection;
+import java.util.HashSet;
+import java.util.Locale;
+import java.util.function.BiFunction;
+
+import org.jetbrains.annotations.Nullable;
+
+import io.crate.Constants;
+import io.crate.common.FourFunction;
+import io.crate.metadata.functions.BoundSignature;
+import io.crate.metadata.functions.Signature;
+import io.crate.role.Permission;
+import io.crate.role.Privilege;
+import io.crate.role.Role;
+import io.crate.role.Roles;
+import io.crate.role.Securable;
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': '7af74117dd8cca8210519cbb2b9b27b57d3ad96c', 'path': 'server/src/main/java/io/crate/expression/scalar/HasDatabasePrivilegeFunction.java', 'startline': 40, 'endline': 80}`
+
+
+[0m[36;1m[1;3mHere are lines 40 through 80.
+
+import io.crate.types.DataTypes;
+
+public class HasDatabasePrivilegeFunction extends HasPrivilegeFunction {
+
+    public static final String NAME = "has_database_privilege";
+
+    private static final FourFunction<Roles, Role, Object, Collection<Permission>, Boolean> CHECK_BY_DB_NAME =
+        (roles, user, db, permissions) -> {
+            if (Constants.DB_NAME.equals(db) == false) {
+                throw new IllegalArgumentException(String.format(Locale.ENGLISH,
+                                                                 "database \"%s\" does not exist",
+                                                                 db));
+            }
+            return checkPrivileges(user, permissions);
+        };
+
+    private static final FourFunction<Roles, Role, Object, Collection<Permission>, Boolean> CHECK_BY_DB_OID =
+        (roles, user, db, privileges) -> {
+            if (Constants.DB_OID != (Integer) db) {
+                throw new IllegalArgumentException(String.format(Locale.ENGLISH,
+                                                                 "database with OID \"%s\" does not exist",
+                                                                 db));
+            }
+            return checkPrivileges(user, privileges);
+        };
+
+    private static boolean checkPrivileges(Role user, Collection<Permission> permissions) {
+        if (permissions.contains(Permission.DQL)) { // CONNECT
+            return true;
+        }
+
+        boolean result = true;
+        if (permissions.contains(Permission.DML)) { // TEMP privilege
+            result = false;
+        }
+        if (permissions.contains(Permission.DDL)) { // CREATE privilege
+            result = hasCreatePrivilege(user);
+        }
+        return result;
+    }
+
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': '7af74117dd8cca8210519cbb2b9b27b57d3ad96c', 'path': 'server/src/main/java/io/crate/expression/scalar/HasDatabasePrivilegeFunction.java', 'startline': 81, 'endline': 120}`
+
+
+[0m[36;1m[1;3mHere are lines 81 through 120.
+
+    private static boolean hasCreatePrivilege(Role user) {
+        if (user.isSuperUser()) {
+            return true;
+        }
+        for (Privilege p : user.privileges()) {
+            if (p.subject().permission() == Permission.DDL &&
+                (p.subject().securable() == Securable.SCHEMA || p.subject().securable() == Securable.CLUSTER)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * @param permissionNames is a comma separated list.
+     * Valid permissionNames are 'CONNECT', 'CREATE' and 'TEMP' or `TEMPORARY` which map to DQL, DDL and DML respectively.
+     * Extra whitespaces between privilege names and repetition of the valid argument are allowed.
+     *
+     * @see HasPrivilegeFunction#parsePermissions(String)
+     */
+    @Nullable
+    protected Collection<Permission> parsePermissions(String permissionNames) {
+        Collection<Permission> toCheck = new HashSet<>();
+        String[] permissions = permissionNames.toLowerCase(Locale.ENGLISH).split(",");
+        for (String p : permissions) {
+            p = p.trim();
+            switch (p) {
+                case "connect" -> toCheck.add(Permission.DQL);
+                case "create" -> toCheck.add(Permission.DDL);
+                case "temp" -> toCheck.add(Permission.DML);
+                case "temporary" -> toCheck.add(Permission.DML);
+                default ->
+                    // Same error as PG
+                    throw new IllegalArgumentException(String.format(Locale.ENGLISH,
+                                                                     "Unrecognized permission: %s",
+                                                                     p));
+            }
+        }
+        return toCheck;
+    }
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': '7af74117dd8cca8210519cbb2b9b27b57d3ad96c', 'path': 'server/src/main/java/io/crate/expression/scalar/HasDatabasePrivilegeFunction.java', 'startline': 121, 'endline': 160}`
+
+
+[0m[36;1m[1;3mHere are lines 121 through 160.
+
+
+    public static void register(ScalarFunctionModule module) {
+        // Signature without user, takes user from session.
+        module.register(
+            Signature.scalar(
+                NAME,
+                DataTypes.STRING.getTypeSignature(), // Database
+                DataTypes.STRING.getTypeSignature(), // Privilege
+                DataTypes.BOOLEAN.getTypeSignature()
+            ).withFeatures(DETERMINISTIC_ONLY),
+            (signature, boundSignature) -> new HasDatabasePrivilegeFunction(signature, boundSignature, USER_BY_NAME, CHECK_BY_DB_NAME)
+        );
+
+        // Signature without user, takes user from session.
+        module.register(
+            Signature.scalar(
+                NAME,
+                DataTypes.INTEGER.getTypeSignature(), // Database
+                DataTypes.STRING.getTypeSignature(),  // Privilege
+                DataTypes.BOOLEAN.getTypeSignature()
+            ).withFeatures(DETERMINISTIC_ONLY),
+            (signature, boundSignature) -> new HasDatabasePrivilegeFunction(signature, boundSignature,
+                                                                            USER_BY_NAME, CHECK_BY_DB_OID)
+        );
+
+        module.register(
+            Signature.scalar(
+                NAME,
+                DataTypes.STRING.getTypeSignature(), // User
+                DataTypes.STRING.getTypeSignature(), // Database
+                DataTypes.STRING.getTypeSignature(), // Privilege
+                DataTypes.BOOLEAN.getTypeSignature()
+            ).withFeatures(DETERMINISTIC_ONLY),
+            (signature, boundSignature) -> new HasDatabasePrivilegeFunction(signature, boundSignature,
+                                                                            USER_BY_NAME, CHECK_BY_DB_NAME)
+        );
+
+        module.register(
+            Signature.scalar(
+                NAME,
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': '7af74117dd8cca8210519cbb2b9b27b57d3ad96c', 'path': 'server/src/main/java/io/crate/expression/scalar/HasDatabasePrivilegeFunction.java', 'startline': 161, 'endline': 190}`
+
+
+[0m[36;1m[1;3mHere are lines 161 through 190.
+
+                DataTypes.STRING.getTypeSignature(),  // User
+                DataTypes.INTEGER.getTypeSignature(), // Database
+                DataTypes.STRING.getTypeSignature(),  // Privilege
+                DataTypes.BOOLEAN.getTypeSignature()
+            ).withFeatures(DETERMINISTIC_ONLY),
+            (signature, boundSignature) -> new HasDatabasePrivilegeFunction(signature, boundSignature,
+                                                                            USER_BY_NAME, CHECK_BY_DB_OID)
+        );
+
+        module.register(
+            Signature.scalar(
+                NAME,
+                DataTypes.INTEGER.getTypeSignature(), // User
+                DataTypes.STRING.getTypeSignature(),  // Database
+                DataTypes.STRING.getTypeSignature(),  // Privilege
+                DataTypes.BOOLEAN.getTypeSignature()
+            ).withFeatures(DETERMINISTIC_ONLY),
+            (signature, boundSignature) -> new HasDatabasePrivilegeFunction(signature, boundSignature,
+                                                                            USER_BY_OID, CHECK_BY_DB_NAME)
+        );
+
+        module.register(
+            Signature.scalar(
+                NAME,
+                DataTypes.INTEGER.getTypeSignature(), // User
+                DataTypes.INTEGER.getTypeSignature(), // Database
+                DataTypes.STRING.getTypeSignature(),  // Privilege
+                DataTypes.BOOLEAN.getTypeSignature()
+            ).withFeatures(DETERMINISTIC_ONLY),
+            (signature, boundSignature) -> new HasDatabasePrivilegeFunction(signature, boundSignature,
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': '7af74117dd8cca8210519cbb2b9b27b57d3ad96c', 'path': 'server/src/main/java/io/crate/expression/scalar/HasDatabasePrivilegeFunction.java', 'startline': 191, 'endline': 210}`
+
+
+[0m[36;1m[1;3mThis file only has 202 lines. Here are lines 191 through 202.
+
+                                                                            USER_BY_OID, CHECK_BY_DB_OID)
+        );
+    }
+
+    protected HasDatabasePrivilegeFunction(Signature signature,
+                                           BoundSignature boundSignature,
+                                           BiFunction<Roles, Object, Role> getUser,
+                                           FourFunction<Roles, Role, Object, Collection<Permission>, Boolean> checkPrivilege) {
+        super(signature, boundSignature, getUser, checkPrivilege);
+    }
+}
+
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': '7af74117dd8cca8210519cbb2b9b27b57d3ad96c', 'path': 'server/src/main/java/io/crate/expression/scalar/HasDatabasePrivilegeFunction.java', 'startline': 1, 'endline': 20}`
+
+
+[0m[36;1m[1;3mHere are lines 1 through 20.
+
+/*
+ * Licensed to Crate.io GmbH ("Crate") under one or more contributor
+ * license agreements.  See the NOTICE file distributed with this work for
+ * additional information regarding copyright ownership.  Crate licenses
+ * this file to you under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.  You may
+ * obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.  See the
+ * License for the specific language governing permissions and limitations
+ * under the License.
+ *
+ * However, if you have executed another commercial license agreement
+ * with Crate these terms will supersede the license and you may use the
+ * software solely pursuant to the terms of the relevant commercial agreement.
+ */
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m[32;1m[1;3m[0m
+
+[1m> Finished chain.[0m
+2026-04-25 21:07:47,427 - backport - ERROR - Reach max_iterations for hunk 0

@@ -1,0 +1,138 @@
+2026-04-25 17:42:45,405 - backport - INFO - Using openrouter API: https://openrouter.ai/api/v1 (model: openai/gpt-4.1-mini)
+2026-04-25 17:42:47,262 - backport - INFO - Aplly all hunks in the patch      PASS
+2026-04-25 17:42:47,441 - backport - INFO - Successfully backport the patch to the target release 4bd98889503d309508b2370b41f0a61a3aed8b95
+2026-04-25 17:42:47,442 - backport - INFO - --- a/server/src/main/java/io/crate/analyze/DropAnalyzerStatementAnalyzer.java
++++ b/server/src/main/java/io/crate/analyze/DropAnalyzerStatementAnalyzer.java
+@@ -21,7 +21,6 @@
+ 
+ package io.crate.analyze;
+ 
+-import io.crate.exceptions.AnalyzerUnknownException;
+ import io.crate.metadata.FulltextAnalyzerResolver;
+ 
+ public class DropAnalyzerStatementAnalyzer {
+
+--- a/server/src/main/java/io/crate/analyze/DropAnalyzerStatementAnalyzer.java
++++ b/server/src/main/java/io/crate/analyze/DropAnalyzerStatementAnalyzer.java
+@@ -36,9 +35,6 @@ public class DropAnalyzerStatementAnalyzer {
+         if (ftResolver.hasBuiltInAnalyzer(analyzerName)) {
+             throw new IllegalArgumentException("Cannot drop a built-in analyzer");
+         }
+-        if (ftResolver.hasCustomAnalyzer(analyzerName) == false) {
+-            throw new AnalyzerUnknownException(analyzerName);
+-        }
+         return new AnalyzedDropAnalyzer(analyzerName);
+     }
+ }
+
+--- a/server/src/main/java/io/crate/auth/AccessControlImpl.java
++++ b/server/src/main/java/io/crate/auth/AccessControlImpl.java
+@@ -55,6 +55,7 @@ import io.crate.analyze.AnalyzedDeallocate;
+ import io.crate.analyze.AnalyzedDeclare;
+ import io.crate.analyze.AnalyzedDeleteStatement;
+ import io.crate.analyze.AnalyzedDiscard;
++import io.crate.analyze.AnalyzedDropAnalyzer;
+ import io.crate.analyze.AnalyzedDropForeignTable;
+ import io.crate.analyze.AnalyzedDropFunction;
+ import io.crate.analyze.AnalyzedDropRepository;
+
+--- a/server/src/main/java/io/crate/auth/AccessControlImpl.java
++++ b/server/src/main/java/io/crate/auth/AccessControlImpl.java
+@@ -495,6 +496,18 @@ public final class AccessControlImpl implements AccessControl {
+             return null;
+         }
+ 
++        @Override
++        protected Void visitDropAnalyzerStatement(AnalyzedDropAnalyzer analysis, Role user) {
++            Privileges.ensureUserHasPrivilege(
++                relationVisitor.roles,
++                user,
++                Permission.DDL,
++                Securable.CLUSTER,
++                null
++            );
++            return null;
++        }
++
+         @Override
+         public Void visitAnalyzedCreateBlobTable(AnalyzedCreateBlobTable analysis, Role user) {
+             Privileges.ensureUserHasPrivilege(
+
+--- a/server/src/main/java/io/crate/planner/node/ddl/DropAnalyzerPlan.java
++++ b/server/src/main/java/io/crate/planner/node/ddl/DropAnalyzerPlan.java
+@@ -35,6 +35,7 @@ import io.crate.analyze.AnalyzedDropAnalyzer;
+ import io.crate.data.Row;
+ import io.crate.data.Row1;
+ import io.crate.data.RowConsumer;
++import io.crate.exceptions.AnalyzerUnknownException;
+ import io.crate.execution.support.OneRowActionListener;
+ import io.crate.metadata.FulltextAnalyzerResolver;
+ import io.crate.planner.DependencyCarrier;
+
+--- a/server/src/main/java/io/crate/planner/node/ddl/DropAnalyzerPlan.java
++++ b/server/src/main/java/io/crate/planner/node/ddl/DropAnalyzerPlan.java
+@@ -72,6 +73,10 @@ public class DropAnalyzerPlan implements Plan {
+     @VisibleForTesting
+     public static ClusterUpdateSettingsRequest createRequest(String analyzerName,
+                                                              FulltextAnalyzerResolver ftResolver) {
++        if (ftResolver.hasCustomAnalyzer(analyzerName) == false) {
++            throw new AnalyzerUnknownException(analyzerName);
++        }
++
+         Settings.Builder builder = Settings.builder();
+         builder.putNull(ANALYZER.buildSettingName(analyzerName));
+ 
+
+--- a/server/src/test/java/io/crate/analyze/DropAnalyzerTest.java
++++ b/server/src/test/java/io/crate/analyze/DropAnalyzerTest.java
+@@ -26,6 +26,7 @@ import static io.crate.metadata.FulltextAnalyzerResolver.CustomType.CHAR_FILTER;
+ import static io.crate.metadata.FulltextAnalyzerResolver.CustomType.TOKENIZER;
+ import static io.crate.metadata.FulltextAnalyzerResolver.CustomType.TOKEN_FILTER;
+ import static org.assertj.core.api.Assertions.assertThat;
++import static org.assertj.core.api.Assertions.assertThatThrownBy;
+ 
+ import org.elasticsearch.action.admin.cluster.settings.ClusterUpdateSettingsRequest;
+ import org.elasticsearch.cluster.ClusterState;
+
+--- a/server/src/test/java/io/crate/analyze/DropAnalyzerTest.java
++++ b/server/src/test/java/io/crate/analyze/DropAnalyzerTest.java
+@@ -35,6 +36,7 @@ import org.elasticsearch.test.ClusterServiceUtils;
+ import org.junit.Before;
+ import org.junit.Test;
+ 
++import io.crate.exceptions.AnalyzerUnknownException;
+ import io.crate.planner.node.ddl.DropAnalyzerPlan;
+ import io.crate.test.integration.CrateDummyClusterServiceUnitTest;
+ import io.crate.testing.SQLExecutor;
+
+--- a/server/src/test/java/io/crate/analyze/DropAnalyzerTest.java
++++ b/server/src/test/java/io/crate/analyze/DropAnalyzerTest.java
+@@ -133,4 +135,11 @@ public class DropAnalyzerTest extends CrateDummyClusterServiceUnitTest {
+         assertIsMarkedToBeRemove(request.persistentSettings(), ANALYZER.buildSettingName("a4"));
+         assertIsMarkedToBeRemove(request.persistentSettings(), CHAR_FILTER.buildSettingName("a4_mymapping"));
+     }
++
++    @Test
++    public void test_non_existing_custom_analyzer() {
++        assertThatThrownBy(() -> analyze("DROP ANALYZER invalid"))
++            .isExactlyInstanceOf(AnalyzerUnknownException.class)
++            .hasMessage("Analyzer 'invalid' unknown");
++    }
+ }
+
+--- a/server/src/test/java/io/crate/auth/AccessControlMayExecuteTest.java
++++ b/server/src/test/java/io/crate/auth/AccessControlMayExecuteTest.java
+@@ -421,6 +421,12 @@ public class AccessControlMayExecuteTest extends CrateDummyClusterServiceUnitTes
+         assertAskedForCluster(Permission.DDL);
+     }
+ 
++    @Test
++    public void testDropAnalyzer() {
++        analyze("drop analyzer a1");
++        assertAskedForCluster(Permission.DDL);
++    }
++
+     @Test
+     public void testRefresh() throws Exception {
+         analyze("refresh table users, parted partition (date = 1395874800000)");
+

@@ -1,0 +1,342 @@
+2026-04-25 15:01:52,653 - backport - INFO - Using openrouter API: https://openrouter.ai/api/v1 (model: openai/gpt-4.1-mini)
+
+
+[1m> Entering new AgentExecutor chain...[0m
+
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `git_history` with `{}`
+
+
+[0m[36;1m[1;3m   o.put("y", null);
+         ParsedDocument doc = indexer.index(item(null, o));
+         assertThat(source(doc, table)).isEqualTo(
+             "{\"o\":{}}"
+         );
+     }
+ 
+     @Test
+     public void test_indexing_float_results_in_float_field() throws Exception {
+         SQLExecutor e = SQLExecutor.of(clusterService
+You need to do the following analysis based on the information in the last commit:
+Analyze the code logic of the context of the patch to be ported in this commit step by step.
+If code logic already existed before this commit, the patch context can be assumed to remain in a similar location. Use `locate` and `viewcode` to check your results.
+If code logic were added in this commit, then you need to `git_show` for further details.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `git_show` with `{}`
+
+
+[0m[33;1m[1;3mcommit b50eba22735bbfab7a510a55979e7f367fd3e752
+Author: Sebastian Utz <su@rtme.net>
+Date:   Fri Jun 6 13:52:01 2025 +0200
+
+    Use indexUUID as an index identifier instead of the indexName
+    
+    In order to support metadata only modifications like table name
+    renames, indices must be purly addressed by their indexUUID,
+    especially at the shard routing to avoid any shard allocation
+    re-processing.
+    Relation name handling should be only based on the recently added
+    RelationMetadata entities.
+    
+    The `indexName` property is still written to the IndexMetadata
+    for backward compatibility, mainly to read and upgrade older indices.
+    It's marked as deprecated and should be fully removed in future.
+    
+    Relates to #17518, #17075.
+
+ .../io/crate/execution/dml/IndexerBenchmark.java   |   4 +-
+ .../src/main/java/io/crate/blob/BlobService.java   |  27 +-
+ .../java/io/crate/blob/BlobTransferStatus.java     |   6 +-
+ .../src/main/java/io/crate/blob/v2/BlobIndex.java  |   4 +-
+ .../java/io/crate/blob/v2/BlobIndicesService.java  |  25 +-
+ .../commands/FixCorruptedMetadataCommand.java      |  12 +-
+ .../execution/ddl/SwapRelationsOperation.java      |  25 +-
+ .../execution/ddl/TransportSwapRelations.java      |   8 +-
+ .../execution/ddl/tables/AlterTableClient.java     |  26 +-
+ .../execution/ddl/tables/TransportCloseTable.java  |  20 +-
+ .../execution/ddl/tables/TransportCreateTable.java |  15 +-
+ .../ddl/tables/TransportDropPartitionsAction.java  |   6 +
+ .../execution/ddl/tables/TransportDropTable.java   |   6 +-
+ .../execution/ddl/tables/TransportRenameTable.java |   8 +-
+ .../main/java/io/crate/execution/dml/Indexer.java  |  11 +-
+ .../java/io/crate/execution/dml/RawIndexer.java    |   9 +-
+ .../crate/execution/dml/ShardRequestExecutor.java  |  18 +-
+ .../dml/upsert/TransportShardUpsertAction.java     |  46 +-
+ .../io/crate/execution/dsl/phases/CountPhase.java  |  23 +-
+ .../execution/dsl/phases/RoutedCollectPhase.java   |  24 +-
+ .../engine/collect/RemoteCollectorFactory.java     |   3 +-
+ .../engine/collect/count/CountOperation.java       |  29 +-
+ .../engine/collect/sources/ShardCollectSource.java |  28 +-
+ .../indexing/ColumnIndexWriterProjector.java       |   2 +
+ .../engine/indexing/GroupRowsByShard.java          |  41 +-
+ .../engine/indexing/IndexWriterProjector.java      |   2 +
+ .../engine/indexing/ShardingUpsertExecutor.java    |   2 +
+ .../pipeline/ProjectionToProjectorVisitor.java     |  12 +-
+ .../java/io/crate/execution/jobs/CountTask.java    |   2 +-
+ .../reference/sys/snapshot/SysSnapshots.java       |   6 +-
+ .../src/main/java/io/crate/metadata/IndexUUID.java |  67 +++
+ .../main/java/io/crate/metadata/PartitionName.java |   2 +-
+ .../java/io/crate/metadata/RoutingProvider.java    |  26 +-
+ .../io/crate/metadata/blob/BlobSchemaInfo.java     |  12 +-
+ .../java/io/crate/metadata/blob/BlobTableInfo.java |   8 +-
+ .../crate/metadata/blob/BlobTableInfoFactory.java  |   2 +-
+ .../cluster/OpenTableClusterStateTaskExec
+[IMPORTANT] The relevant code shown by `git_history` is not fully `+` lines.
+[IMPORTANT] This means that the code in question was not added or migrated in this commit.
+[IMPORTANT] Please think step by step and check the abstract below carefully. If error exists in abstract, please ignore the info below.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `locate_symbol` with `{'ref': 'cb5e3f4d7ac6fc865b1af362c777d685fb724f05', 'symbol': 'IndexerTest'}`
+responded: The git_history and git_show results indicate that the code block containing the test method `test_fields_are_omitted_in_source_for_null_values` was already present before the commit that changed the index identifier to use indexUUID. The code snippet provided from the older commit cb5e3f4d7ac6fc865b1af362c777d685fb724f05 shows the test method `test_fields_are_omitted_in_source_for_null_values` with a slightly different constructor call for the `Indexer` object:
+
+- In the newer version (patch to be backported), `Indexer` is constructed with `List.of()` as the first argument.
+- In the older version, `Indexer` is constructed with `table.ident().indexNameOrAlias()` as the first argument.
+
+Other than that, the test method content appears the same.
+
+Since the patch only deletes this test method from the newer version, the backport would mean adding this test method back to the older version, but with the older constructor call for `Indexer`.
+
+To confirm the exact location and context in the older version, I will locate the `IndexerTest` class in the older version ref cb5e3f4d7ac6fc865b1af362c777d685fb724f05 and view lines around the test method to ensure the patch context is correct.
+
+I will locate the `IndexerTest` class in the older version and view lines around 647-681 (similar to the snippet provided) to confirm.
+
+[0m[33;1m[1;3mserver/src/test/java/io/crate/execution/dml/IndexerTest.java:103[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': 'cb5e3f4d7ac6fc865b1af362c777d685fb724f05', 'path': 'server/src/test/java/io/crate/execution/dml/IndexerTest.java', 'startline': 640, 'endline': 680}`
+
+
+[0m[36;1m[1;3mHere are lines 640 through 680.
+
+            null, new Symbol[] {
+                table.getReference(ColumnIdent.of("_id")),
+                table.getReference(ColumnIdent.of("x")),
+                table.getReference(ColumnIdent.of("y")),
+            }
+        );
+
+        Object[] returnValues = indexer.returnValues(item(10));
+        assertThat(returnValues).containsExactly("dummy-id-1", 10, 20);
+    }
+
+    @Test
+    public void test_fields_are_omitted_in_source_for_null_values() throws Exception {
+        SQLExecutor e = SQLExecutor.of(clusterService)
+            .addTable("create table tbl (x int, o object as (y int))");
+
+        DocTableInfo table = e.resolveTableInfo("tbl");
+        Indexer indexer = new Indexer(
+            table.ident().indexNameOrAlias(),
+            table,
+            Version.CURRENT,
+            new CoordinatorTxnCtx(e.getSessionSettings()),
+            e.nodeCtx,
+            List.of(
+                table.getReference(ColumnIdent.of("x")),
+                table.getReference(ColumnIdent.of("o"))
+            ),
+            null, null
+        );
+
+        HashMap<String, Object> o = new HashMap<>();
+        o.put("y", null);
+        ParsedDocument doc = indexer.index(item(null, o));
+        assertThat(source(doc, table)).isEqualTo(
+            "{\"o\":{}}"
+        );
+    }
+
+    @Test
+    public void test_indexing_float_results_in_float_field() throws Exception {
+        SQLExecutor e = SQLExecutor.of(clusterService)
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3mI have found the exact target test method `test_fields_are_omitted_in_source_for_null_values` in the older version ref cb5e3f4d7ac6fc865b1af362c777d685fb724f05. The code structure is very similar to the patch context from the newer version, except the constructor call of `Indexer` is different:
+
+- In the newer version, the constructor call is:
+  ```java
+  new Indexer(
+      List.of(),
+      table,
+      Version.CURRENT,
+      new CoordinatorTxnCtx(e.getSessionSettings()),
+      e.nodeCtx,
+      List.of(
+          table.getReference(ColumnIdent.of("x")),
+          table.getReference(ColumnIdent.of("o"))
+      ),
+      null, null
+  );
+  ```
+
+- In the older version, it is:
+  ```java
+  new Indexer(
+      table.ident().indexNameOrAlias(),
+      table,
+      Version.CURRENT,
+      new CoordinatorTxnCtx(e.getSessionSettings()),
+      e.nodeCtx,
+      List.of(
+          table.getReference(ColumnIdent.of("x")),
+          table.getReference(ColumnIdent.of("o"))
+      ),
+      null, null
+  );
+  ```
+
+The rest of the test method is the same.
+
+Since the patch in the newer version just removed this test method, the backport patch for the older version should remove this test method accordingly, adapting to the older constructor call context.
+
+Now I will prepare the patch to remove this test method from the older version file `server/src/test/java/io/crate/execution/dml/IndexerTest.java` starting at line 649 (approximate position).
+
+Next step: generate the patch for the older version.[0m
+
+[1m> Finished chain.[0m
+2026-04-25 15:02:18,626 - backport - ERROR - Reach max_iterations for hunk 4

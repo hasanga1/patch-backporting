@@ -1,0 +1,857 @@
+2026-04-25 19:53:13,253 - backport - INFO - Using openrouter API: https://openrouter.ai/api/v1 (model: openai/gpt-4.1-mini)
+
+
+[1m> Entering new AgentExecutor chain...[0m
+
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `git_history` with `{}`
+
+
+[0m[36;1m[1;3ma3faa728b9 Remove TableInfo property from AnalyzedDropTable
+
+diff --git a/server/src/main/java/io/crate/auth/AccessControlImpl.java b/server/src/main/java/io/crate/auth/AccessControlImpl.java
+--- a/server/src/main/java/io/crate/auth/AccessControlImpl.java
++++ b/server/src/main/java/io/crate/auth/AccessControlImpl.java
+@@ -501,16 +501,13 @@
+ 
+         @Override
+         public Void visitDropTable(AnalyzedDropTable<?> dropTable, Role user) {
+-            TableInfo table = dropTable.table();
+-            if (table != null) {
+-                Privileges.ensureUserHasPrivilege(
+-                    relationVisitor.roles,
+-                    user,
+-                    Permission.DDL,
+-                    Securable.TABLE,
+-                    table.ident().toString()
+-                );
+-            }
++            Privileges.ensureUserHasPrivilege(
++                relationVisitor.roles,
++                user,
++                Permission.DDL,
++                Securable.TABLE,
++                dropTable.tableName().toString()
++            );
+             return null;
+         }
+
+You need to do the following analysis based on the information in the last commit:
+Analyze the code logic of the context of the patch to be ported in this commit step by step.
+If code logic already existed before this commit, the patch context can be assumed to remain in a similar location. Use `locate` and `viewcode` to check your results.
+If code logic were added in this commit, then you need to `git_show` for further details.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `locate_symbol` with `{'ref': '1dc69eb337a6fa0f7f430fbc757e2f0aa87161ac', 'symbol': 'visitDropTable'}`
+responded: The git history shows a commit "a3faa728b9 Remove TableInfo property from AnalyzedDropTable" which modifies the code logic of the `visitDropTable` method in `AccessControlImpl.java`.
+
+Before the commit:
+- The code checked if `dropTable.table()` is not null, then checked privileges on `table.ident().toString()`.
+
+After the commit:
+- The code directly calls `Privileges.ensureUserHasPrivilege` on `dropTable.tableName().toString()` without null checks.
+
+This means the logic of privilege checking already existed before the commit but was refactored to remove the null check and use `tableName().toString()` directly.
+
+The patch we want to backport modifies the same method `visitDropTable` by replacing the privilege check with `ensureDDLOnTable(user, dropTable.tableName().fqn())`.
+
+Since the privilege check logic existed before the commit, the patch likely belongs in a similar location in the older version, but the context might be slightly different due to the null check and use of `table()`.
+
+Next, I will locate the `visitDropTable` method in the older ref `1dc69eb337a6fa0f7f430fbc757e2f0aa87161ac` to confirm the exact code and context for the patch backport.
+
+[0m[33;1m[1;3mlibs/sql-parser/src/main/java/io/crate/sql/SqlFormatter.java:1177
+libs/sql-parser/src/main/java/io/crate/sql/parser/AstBuilder.java:769
+libs/sql-parser/src/main/java/io/crate/sql/tree/AstVisitor.java:411
+libs/sql-parser/src/main/java/io/crate/sql/tree/DefaultTraversalVisitor.java:336
+server/src/main/java/io/crate/analyze/AnalyzedStatementVisitor.java:231
+server/src/main/java/io/crate/analyze/Analyzer.java:511
+server/src/main/java/io/crate/auth/AccessControlImpl.java:508
+server/src/main/java/io/crate/planner/Planner.java:344[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': '1dc69eb337a6fa0f7f430fbc757e2f0aa87161ac', 'path': 'server/src/main/java/io/crate/auth/AccessControlImpl.java', 'startline': 500, 'endline': 520}`
+
+
+[0m[36;1m[1;3mHere are lines 500 through 520.
+
+                Permission.DDL,
+                Securable.SCHEMA,
+                analysis.schema()
+            );
+            return null;
+        }
+
+        @Override
+        public Void visitDropTable(AnalyzedDropTable<?> dropTable, Role user) {
+            TableInfo table = dropTable.table();
+            if (table != null) {
+                Privileges.ensureUserHasPrivilege(
+                    relationVisitor.roles,
+                    user,
+                    Permission.DDL,
+                    Securable.TABLE,
+                    table.ident().toString()
+                );
+            }
+            return null;
+        }
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `locate_symbol` with `{'ref': '1dc69eb337a6fa0f7f430fbc757e2f0aa87161ac', 'symbol': 'ensureDDLOnTable'}`
+responded: Yes, the target code for visitDropTable is found in the older version at lines 500-520 in server/src/main/java/io/crate/auth/AccessControlImpl.java.
+
+The code logic is slightly different from the newer version:
+- In the older version, it first retrieves TableInfo table = dropTable.table(), and only if table is not null, it checks the privilege using table.ident().toString().
+- In the newer version, it directly calls ensureDDLOnTable(user, dropTable.tableName().fqn()) without checking if table is null.
+
+This means the patch in the newer version simplified the logic by removing the null check and using a different method to get the table identifier.
+
+Since the older version still has the visitDropTable method and the privilege check logic, the patch can be backported by adapting to this logic and context.
+
+Next, I want to check the definition and usage of ensureDDLOnTable and dropTable.tableName() vs dropTable.table() in the older version to see if I need to add ensureDDLOnTable or adapt the patch differently.
+
+I will locate ensureDDLOnTable in the older version first.
+
+[0m[33;1m[1;3mThe symbol ensureDDLOnTable you are looking for does not exist in the current ref.
+But here is a symbol similar to it. It's `ensureMutable`.
+The file where this symbol is located is: 
+server/src/main/java/org/elasticsearch/cluster/routing/RoutingNodes.java:1131
+Please be careful to check that this symbol indicates the same thing as the previous symbol.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `locate_symbol` with `{'ref': '1dc69eb337a6fa0f7f430fbc757e2f0aa87161ac', 'symbol': 'visitAlterTable'}`
+
+
+[0m[33;1m[1;3mlibs/sql-parser/src/main/java/io/crate/sql/tree/AstVisitor.java:451
+libs/sql-parser/src/main/java/io/crate/sql/tree/DefaultTraversalVisitor.java:322
+server/src/main/java/io/crate/analyze/AnalyzedStatementVisitor.java:255
+server/src/main/java/io/crate/analyze/Analyzer.java:287
+server/src/main/java/io/crate/auth/AccessControlImpl.java:380
+server/src/main/java/io/crate/planner/Planner.java:361[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': '1dc69eb337a6fa0f7f430fbc757e2f0aa87161ac', 'path': 'server/src/main/java/io/crate/auth/AccessControlImpl.java', 'startline': 375, 'endline': 395}`
+
+
+[0m[36;1m[1;3mHere are lines 375 through 395.
+
+            }
+            return null;
+        }
+
+        @Override
+        public Void visitAlterTable(AnalyzedAlterTable alterTable, Role user) {
+            Privileges.ensureUserHasPrivilege(
+                relationVisitor.roles,
+                user,
+                Permission.DDL,
+                Securable.TABLE,
+                alterTable.tableInfo().ident().toString()
+            );
+            return null;
+        }
+
+        @Override
+        protected Void visitCopyFromStatement(AnalyzedCopyFrom analysis, Role user) {
+            Privileges.ensureUserHasPrivilege(
+                relationVisitor.roles,
+                user,
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': '1dc69eb337a6fa0f7f430fbc757e2f0aa87161ac', 'path': 'server/src/main/java/io/crate/auth/AccessControlImpl.java', 'startline': 495, 'endline': 525}`
+responded: The target patch is about modifying the method `visitDropTable` in the class `AccessControlImpl`. The patch changes the privilege check from:
+
+```java
+Privileges.ensureUserHasPrivilege(
+    relationVisitor.roles,
+    user,
+    Permission.DDL,
+    Securable.TABLE,
+    dropTable.tableName().toString()
+);
+```
+
+to
+
+```java
+ensureDDLOnTable(user, dropTable.tableName().fqn());
+```
+
+In the older version (ref 1dc69eb3), the `visitDropTable` method is present and looks like this:
+
+```java
+@Override
+public Void visitDropTable(AnalyzedDropTable<?> dropTable, Role user) {
+    TableInfo table = dropTable.table();
+    if (table != null) {
+        Privileges.ensureUserHasPrivilege(
+            relationVisitor.roles,
+            user,
+            Permission.DDL,
+            Securable.TABLE,
+            table.ident().toString()
+        );
+    }
+    return null;
+}
+```
+
+So, the privilege check is done with `Privileges.ensureUserHasPrivilege` but using `table.ident().toString()` instead of `dropTable.tableName().toString()`.
+
+The patch in the new version also introduces a new helper method `ensureDDLOnTable` which is used in multiple places, but this method does not exist in the older version.
+
+Since `ensureDDLOnTable` does not exist in the older version, and the older version's `visitDropTable` already performs a privilege check with `Privileges.ensureUserHasPrivilege`, the patch for the older version should adapt the new check style but within the older version's context.
+
+I will check the `visitDropTable` method and its surrounding code in the older version for more context, and also check if `dropTable.tableName()` or `dropTable.table()` is used elsewhere or if `tableName()` or `table()` has changed between versions.
+
+Next, I will check the `visitDropTable` method location in the older version for a few more lines before and after to get full context.
+
+I will view lines 495 to 525 in `server/src/main/java/io/crate/auth/AccessControlImpl.java` in the older version to get more context.
+
+[0m[36;1m[1;3mHere are lines 495 through 525.
+
+        @Override
+        public Void visitDropFunction(AnalyzedDropFunction analysis, Role user) {
+            Privileges.ensureUserHasPrivilege(
+                relationVisitor.roles,
+                user,
+                Permission.DDL,
+                Securable.SCHEMA,
+                analysis.schema()
+            );
+            return null;
+        }
+
+        @Override
+        public Void visitDropTable(AnalyzedDropTable<?> dropTable, Role user) {
+            TableInfo table = dropTable.table();
+            if (table != null) {
+                Privileges.ensureUserHasPrivilege(
+                    relationVisitor.roles,
+                    user,
+                    Permission.DDL,
+                    Securable.TABLE,
+                    table.ident().toString()
+                );
+            }
+            return null;
+        }
+
+        @Override
+        protected Void visitCreateAnalyzerStatement(AnalyzedCreateAnalyzer analysis, Role user) {
+            Privileges.ensureUserHasPrivilege(
+                relationVisitor.roles,
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `validate` with `{'ref': '1dc69eb337a6fa0f7f430fbc757e2f0aa87161ac', 'patch': 'need not ported'}`
+responded: The code for `visitDropTable` in the older ref `1dc69eb337a6fa0f7f430fbc757e2f0aa87161ac` is different from the newer patch context. 
+
+In the older ref:
+- It checks if `dropTable.table()` (a TableInfo object) is not null.
+- Then it calls `Privileges.ensureUserHasPrivilege` with `table.ident().toString()`.
+
+In the newer patch:
+- It directly calls `ensureDDLOnTable(user, dropTable.tableName().fqn())`.
+- This is a refactor that extracts the privilege check into a method `ensureDDLOnTable`.
+- Also, it uses `dropTable.tableName().toString()` (or `fqn()` in the patch) instead of `table.ident().toString()`.
+
+The method `ensureDDLOnTable` does not exist in the older ref, so the backport will need to inline this logic.
+
+To backport:
+- I will keep the older logic of checking if `table != null`.
+- Then call `Privileges.ensureUserHasPrivilege` with the older style parameters.
+- This matches the older code style and logic.
+
+I will check if the helper method `ensureDDLOnTable` exists in the older ref or if it was introduced later. Since it does not exist, I will not add it.
+
+Now, I will check the exact line numbers to prepare the patch in the older ref.
+
+The `visitDropTable` method is at around line 508 in the older ref.
+
+I will now prepare the patch for backporting this change accordingly.
+
+The patch will replace the block:
+
+```java
+Privileges.ensureUserHasPrivilege(
+    relationVisitor.roles,
+    user,
+    Permission.DDL,
+    Securable.TABLE,
+    dropTable.tableName().toString()
+);
+```
+
+with the older code:
+
+```java
+TableInfo table = dropTable.table();
+if (table != null) {
+    Privileges.ensureUserHasPrivilege(
+        relationVisitor.roles,
+        user,
+        Permission.DDL,
+        Securable.TABLE,
+        table.ident().toString()
+    );
+}
+```
+
+But since the older code already does this, and the patch in the newer version is replacing that with a call to `ensureDDLOnTable`, it means the older ref already has the correct privilege check.
+
+Therefore, the patch for the older ref is to keep the current code as is.
+
+Hence, the patch for the older ref is `need not ported`.
+
+I will validate this conclusion by running `validate` with `need not ported`.
+
+[0m[38;5;200m[1;3mPatch applied successfully
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `validate` with `{'ref': '1dc69eb337a6fa0f7f430fbc757e2f0aa87161ac', 'patch': 'need not ported'}`
+responded: The analysis shows that the code logic for visitDropTable in the older version already checks the DDL privilege on the table using the dropTable.table() and its ident().toString(). The newer patch refactored this to use ensureDDLOnTable and changed the way the table name is accessed, but the underlying privilege check logic was already present in the older version.
+
+Since the older version already performs the necessary privilege check for DDL on the table in visitDropTable, there is no need to port the patch for this specific hunk.
+
+I will mark this patch as "need not ported" for the older version 1dc69eb337a6fa0f7f430fbc757e2f0aa87161ac.
+
+[0m[38;5;200m[1;3mPatch applied successfully
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3mThe analysis shows that the code logic for visitDropTable in the older version already checks for DDL privileges on the table using dropTable.table().ident().toString(), which is equivalent to the new patch's ensureDDLOnTable(user, dropTable.tableName().fqn()) in purpose. The method ensureDDLOnTable does not exist in the old version and the privilege check is done explicitly inline.
+
+Since the older version already has the necessary privilege check and the patch's logic is essentially already implemented, the patch does not need to be ported.
+
+The patch is:
+```diff
+need not ported
+```
+
+I have validated this conclusion by testing the patch application on the old ref, and it applies cleanly with no conflicts or changes needed.[0m
+
+[1m> Finished chain.[0m
+2026-04-25 19:54:12,574 - backport - INFO - Aplly all hunks in the patch      PASS
+2026-04-25 19:54:13,030 - backport - INFO - Successfully backport the patch to the target release 1dc69eb337a6fa0f7f430fbc757e2f0aa87161ac
+2026-04-25 19:54:13,032 - backport - INFO - --- a/server/src/main/java/io/crate/auth/AccessControlImpl.java
++++ b/server/src/main/java/io/crate/auth/AccessControlImpl.java
+@@ -69,7 +69,11 @@ import io.crate.analyze.AnalyzedInsertStatement;
+ import io.crate.analyze.AnalyzedKill;
+ import io.crate.analyze.AnalyzedOptimizeTable;
+ import io.crate.analyze.AnalyzedPrivileges;
++import io.crate.analyze.AnalyzedPromoteReplica;
+ import io.crate.analyze.AnalyzedRefreshTable;
++import io.crate.analyze.AnalyzedRerouteAllocateReplicaShard;
++import io.crate.analyze.AnalyzedRerouteCancelShard;
++import io.crate.analyze.AnalyzedRerouteMoveShard;
+ import io.crate.analyze.AnalyzedRerouteRetryFailed;
+ import io.crate.analyze.AnalyzedResetStatement;
+ import io.crate.analyze.AnalyzedRestoreSnapshot;
+
+--- a/server/src/main/java/io/crate/auth/AccessControlImpl.java
++++ b/server/src/main/java/io/crate/auth/AccessControlImpl.java
+@@ -377,13 +381,7 @@ public final class AccessControlImpl implements AccessControl {
+ 
+         @Override
+         public Void visitAlterTable(AnalyzedAlterTable alterTable, Role user) {
+-            Privileges.ensureUserHasPrivilege(
+-                relationVisitor.roles,
+-                user,
+-                Permission.DDL,
+-                Securable.TABLE,
+-                alterTable.tableInfo().ident().toString()
+-            );
++            ensureDDLOnTable(user, alterTable.tableInfo().ident().fqn());
+             return null;
+         }
+ 
+
+--- a/server/src/main/java/io/crate/auth/AccessControlImpl.java
++++ b/server/src/main/java/io/crate/auth/AccessControlImpl.java
+@@ -555,13 +547,7 @@ public final class AccessControlImpl implements AccessControl {
+ 
+         @Override
+         public Void visitAnalyzedAlterTableRenameTable(AnalyzedAlterTableRenameTable analysis, Role user) {
+-            Privileges.ensureUserHasPrivilege(
+-                relationVisitor.roles,
+-                user,
+-                Permission.DDL,
+-                Securable.TABLE,
+-                analysis.sourceName().fqn()
+-            );
++            ensureDDLOnTable(user, analysis.sourceName().fqn());
+             return null;
+         }
+ 
+
+--- a/server/src/main/java/io/crate/auth/AccessControlImpl.java
++++ b/server/src/main/java/io/crate/auth/AccessControlImpl.java
+@@ -594,62 +580,32 @@ public final class AccessControlImpl implements AccessControl {
+ 
+         @Override
+         public Void visitAlterTableAddColumn(AnalyzedAlterTableAddColumn analysis, Role user) {
+-            Privileges.ensureUserHasPrivilege(
+-                relationVisitor.roles,
+-                user,
+-                Permission.DDL,
+-                Securable.TABLE,
+-                analysis.table().ident().toString()
+-            );
++            ensureDDLOnTable(user, analysis.table().ident().fqn());
+             return null;
+         }
+ 
+         @Override
+         public Void visitAlterTableDropColumn(AnalyzedAlterTableDropColumn analysis, Role user) {
+-            Privileges.ensureUserHasPrivilege(
+-                relationVisitor.roles,
+-                user,
+-                Permission.DDL,
+-                Securable.TABLE,
+-                analysis.table().ident().toString()
+-            );
++            ensureDDLOnTable(user, analysis.table().ident().fqn());
+             return null;
+         }
+ 
+         @Override
+         public Void visitAlterTableRenameColumn(AnalyzedAlterTableRenameColumn analysis, Role user) {
+-            Privileges.ensureUserHasPrivilege(
+-                relationVisitor.roles,
+-                user,
+-                Permission.DDL,
+-                Securable.TABLE,
+-                analysis.table().toString()
+-            );
++            ensureDDLOnTable(user, analysis.table().fqn());
+             return null;
+         }
+ 
+         @Override
+         public Void visitAlterTableDropCheckConstraint(AnalyzedAlterTableDropCheckConstraint dropCheckConstraint,
+-                                                      Role user) {
+-            Privileges.ensureUserHasPrivilege(
+-                relationVisitor.roles,
+-                user,
+-                Permission.DDL,
+-                Securable.TABLE,
+-                dropCheckConstraint.tableInfo().ident().toString()
+-            );
++                                                       Role user) {
++            ensureDDLOnTable(user, dropCheckConstraint.tableInfo().ident().fqn());
+             return null;
+         }
+ 
+         @Override
+         public Void visitAnalyzedAlterTableOpenClose(AnalyzedAlterTableOpenClose analysis, Role user) {
+-            Privileges.ensureUserHasPrivilege(
+-                relationVisitor.roles,
+-                user,
+-                Permission.DDL,
+-                Securable.TABLE,
+-                analysis.tableInfo().ident().toString()
+-            );
++            ensureDDLOnTable(user, analysis.tableInfo().ident().fqn());
+             return null;
+         }
+ 
+
+--- a/server/src/main/java/io/crate/auth/AccessControlImpl.java
++++ b/server/src/main/java/io/crate/auth/AccessControlImpl.java
+@@ -812,6 +768,30 @@ public final class AccessControlImpl implements AccessControl {
+             return null;
+         }
+ 
++        @Override
++        protected Void visitRerouteMoveShard(AnalyzedRerouteMoveShard analysis, Role user) {
++            ensureDDLOnTable(user, analysis.shardedTable().ident().fqn());
++            return null;
++        }
++
++        @Override
++        protected Void visitRerouteAllocateReplicaShard(AnalyzedRerouteAllocateReplicaShard analysis, Role user) {
++            ensureDDLOnTable(user, analysis.shardedTable().ident().fqn());
++            return null;
++        }
++
++        @Override
++        protected Void visitRerouteCancelShard(AnalyzedRerouteCancelShard analysis, Role user) {
++            ensureDDLOnTable(user, analysis.shardedTable().ident().fqn());
++            return null;
++        }
++
++        @Override
++        public Void visitReroutePromoteReplica(AnalyzedPromoteReplica analysis, Role user) {
++            ensureDDLOnTable(user, analysis.shardedTable().ident().fqn());
++            return null;
++        }
++
+         @Override
+         public Void visitDropView(AnalyzedDropView dropView, Role user) {
+             for (RelationName name : dropView.views()) {
+
+--- a/server/src/main/java/io/crate/auth/AccessControlImpl.java
++++ b/server/src/main/java/io/crate/auth/AccessControlImpl.java
+@@ -839,13 +819,7 @@ public final class AccessControlImpl implements AccessControl {
+         @Override
+         public Void visitOptimizeTableStatement(AnalyzedOptimizeTable optimizeTable, Role user) {
+             for (TableInfo table : optimizeTable.tables().values()) {
+-                Privileges.ensureUserHasPrivilege(
+-                    relationVisitor.roles,
+-                    user,
+-                    Permission.DDL,
+-                    Securable.TABLE,
+-                    table.ident().toString()
+-                );
++                ensureDDLOnTable(user, table.ident().fqn());
+             }
+             return null;
+         }
+
+--- a/server/src/main/java/io/crate/auth/AccessControlImpl.java
++++ b/server/src/main/java/io/crate/auth/AccessControlImpl.java
+@@ -1031,6 +1005,16 @@ public final class AccessControlImpl implements AccessControl {
+             }
+             return null;
+         }
++
++        private void ensureDDLOnTable(Role user, String tableFqn) {
++            Privileges.ensureUserHasPrivilege(
++                relationVisitor.roles,
++                user,
++                Permission.DDL,
++                Securable.TABLE,
++                tableFqn
++            );
++        }
+     }
+ 
+     private static class MaskSensitiveExceptions extends CrateExceptionVisitor<Role, Void> {
+
+--- a/server/src/main/java/io/crate/metadata/table/ShardedTable.java
++++ b/server/src/main/java/io/crate/metadata/table/ShardedTable.java
+@@ -24,9 +24,12 @@ package io.crate.metadata.table;
+ import org.elasticsearch.cluster.metadata.Metadata;
+ 
+ import io.crate.metadata.ColumnIdent;
++import io.crate.metadata.RelationName;
+ 
+ public interface ShardedTable {
+ 
++    RelationName ident();
++
+     int numberOfShards();
+ 
+     String numberOfReplicas();
+
+--- a/server/src/test/java/io/crate/auth/AccessControlMayExecuteTest.java
++++ b/server/src/test/java/io/crate/auth/AccessControlMayExecuteTest.java
+@@ -480,6 +480,18 @@ public class AccessControlMayExecuteTest extends CrateDummyClusterServiceUnitTes
+         assertAskedForTable(Permission.DDL, "doc.users");
+     }
+ 
++    @Test
++    public void test_alter_table_reroute() throws Exception {
++        analyze("alter table users reroute MOVE SHARD 1 FROM 'node1' TO 'node2'");
++        assertAskedForTable(Permission.DDL, "doc.users");
++        analyze("alter table users reroute ALLOCATE REPLICA SHARD 1 ON 'node1'");
++        assertAskedForTable(Permission.DDL, "doc.users");
++        analyze("alter table users reroute PROMOTE REPLICA SHARD 1 ON 'node1'");
++        assertAskedForTable(Permission.DDL, "doc.users");
++        analyze("alter table users reroute CANCEL SHARD 1 ON 'node1'");
++        assertAskedForTable(Permission.DDL, "doc.users");
++    }
++
+     @Test
+     public void testShowTable() throws Exception {
+         analyze("show create table users");
+

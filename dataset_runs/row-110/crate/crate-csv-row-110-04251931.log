@@ -1,0 +1,992 @@
+2026-04-25 19:31:10,595 - backport - INFO - Using openrouter API: https://openrouter.ai/api/v1 (model: openai/gpt-4.1-mini)
+
+
+[1m> Entering new AgentExecutor chain...[0m
+
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `git_history` with `{}`
+
+
+[0m[36;1m[1;3m75561efbc1 Remove `with*` functions on Signature
+
+diff --git a/server/src/main/java/io/crate/expression/scalar/ArrayAvgFunction.java b/server/src/main/java/io/crate/expression/scalar/ArrayAvgFunction.java
+--- a/server/src/main/java/io/crate/expression/scalar/ArrayAvgFunction.java
++++ b/server/src/main/java/io/crate/expression/scalar/ArrayAvgFunction.java
+@@ -29,9 +29,10 @@
+ 
+ import org.jetbrains.annotations.Nullable;
+ 
+ import io.crate.expression.scalar.array.ArraySummationFunctions;
++import io.crate.metadata.FunctionType;
+ import io.crate.metadata.Functions;
+ import io.crate.metadata.Scalar;
+ import io.crate.metadata.functions.Signature;
+ import io.crate.types.ArrayType;
+ import io.crate.types.DataTypes
+You need to do the following analysis based on the information in the last commit:
+Analyze the code logic of the context of the patch to be ported in this commit step by step.
+If code logic already existed before this commit, the patch context can be assumed to remain in a similar location. Use `locate` and `viewcode` to check your results.
+If code logic were added in this commit, then you need to `git_show` for further details.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `locate_symbol` with `{'ref': 'f5f7ab353ad4eb57200d007e7c7b06f1c69f3204', 'symbol': 'ArrayAvgFunction'}`
+responded: The git history shows a commit (75561efbc1) that removed `with*` functions on Signature and added `import io.crate.metadata.FunctionType;` to the ArrayAvgFunction.java file. This import addition is consistent with the patch we want to backport, which also adds `import io.crate.metadata.FunctionType;`.
+
+The patch to be backported adds imports:
+- `io.crate.data.Input`
+- `io.crate.metadata.FunctionType`
+- `io.crate.metadata.NodeContext`
+- `io.crate.metadata.TransactionContext`
+
+The older version already has `io.crate.metadata.Functions`, `io.crate.metadata.Scalar`, `io.crate.metadata.functions.Signature`, `io.crate.types.ArrayType`, and `io.crate.types.DataTypes`.
+
+The patch removes the `STRICTNULL` flag from array functions, which likely affects function definitions or registrations that might involve these imports.
+
+Since the code logic for the imports and the class header seem to be mostly similar, the patch likely needs to be adapted to the older version by adding the missing imports in the correct place.
+
+Next, I will locate the ArrayAvgFunction class in the older ref f5f7ab353ad4eb57200d007e7c7b06f1c69f3204 to check the exact import block and surrounding lines to correctly insert the new imports.
+
+I will use `locate_symbol` to find the location of the ArrayAvgFunction class in the older ref.
+
+[0m[33;1m[1;3mserver/src/main/java/io/crate/expression/scalar/ArrayAvgFunction.java:39[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': 'f5f7ab353ad4eb57200d007e7c7b06f1c69f3204', 'path': 'server/src/main/java/io/crate/expression/scalar/ArrayAvgFunction.java', 'startline': 20, 'endline': 50}`
+
+
+[0m[36;1m[1;3mHere are lines 20 through 50.
+
+ * agreement.
+ */
+
+package io.crate.expression.scalar;
+
+import java.math.BigDecimal;
+import java.math.MathContext;
+import java.util.List;
+import java.util.Objects;
+
+import org.jetbrains.annotations.Nullable;
+
+import io.crate.expression.scalar.array.ArraySummationFunctions;
+import io.crate.metadata.Functions;
+import io.crate.metadata.Scalar;
+import io.crate.metadata.functions.Signature;
+import io.crate.types.ArrayType;
+import io.crate.types.DataTypes;
+
+public class ArrayAvgFunction {
+
+    public static final String NAME = "array_avg";
+
+    @Nullable
+    private static Float avgFloat(List<Float> values) {
+        if (values == null || values.isEmpty()) {
+            return null;
+        }
+        long size = values.stream().filter(Objects::nonNull).count();
+        Float sum = ArraySummationFunctions.sumFloat(values);
+        return sum == null ? null : sum / size;
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': 'f5f7ab353ad4eb57200d007e7c7b06f1c69f3204', 'path': 'server/src/main/java/io/crate/expression/scalar/ArrayAvgFunction.java', 'startline': 1, 'endline': 30}`
+
+
+[0m[36;1m[1;3mHere are lines 1 through 30.
+
+/*
+ * Licensed to Crate under one or more contributor license agreements.
+ * See the NOTICE file distributed with this work for additional
+ * information regarding copyright ownership.  Crate licenses this file
+ * to you under the Apache License, Version 2.0 (the "License"); you may
+ * not use this file except in compliance with the License.  You may
+ * obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or
+ * implied.  See the License for the specific language governing
+ * permissions and limitations under the License.
+ *
+ * However, if you have executed another commercial license agreement
+ * with Crate these terms will supersede the license and you may use the
+ * software solely pursuant to the terms of the relevant commercial
+ * agreement.
+ */
+
+package io.crate.expression.scalar;
+
+import java.math.BigDecimal;
+import java.math.MathContext;
+import java.util.List;
+import java.util.Objects;
+
+import org.jetbrains.annotations.Nullable;
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': 'f5f7ab353ad4eb57200d007e7c7b06f1c69f3204', 'path': 'server/src/main/java/io/crate/expression/scalar/ArrayAvgFunction.java', 'startline': 30, 'endline': 40}`
+
+
+[0m[36;1m[1;3mHere are lines 30 through 40.
+
+import org.jetbrains.annotations.Nullable;
+
+import io.crate.expression.scalar.array.ArraySummationFunctions;
+import io.crate.metadata.Functions;
+import io.crate.metadata.Scalar;
+import io.crate.metadata.functions.Signature;
+import io.crate.types.ArrayType;
+import io.crate.types.DataTypes;
+
+public class ArrayAvgFunction {
+
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `validate` with `{'ref': 'f5f7ab353ad4eb57200d007e7c7b06f1c69f3204', 'patch': '--- a/server/src/main/java/io/crate/expression/scalar/ArrayAvgFunction.java\n+++ b/server/src/main/java/io/crate/expression/scalar/ArrayAvgFunction.java\n@@ -28,10 +28,14 @@\n import org.jetbrains.annotations.Nullable;\n \n-import io.crate.expression.scalar.array.ArraySummationFunctions;\n-import io.crate.metadata.Functions;\n-import io.crate.metadata.Scalar;\n-import io.crate.metadata.functions.Signature;\n-import io.crate.types.ArrayType;\n-import io.crate.types.DataTypes;\n+import io.crate.expression.scalar.array.ArraySummationFunctions;\n+import io.crate.metadata.FunctionType;\n+import io.crate.metadata.Functions;\n+import io.crate.metadata.Scalar;\n+import io.crate.metadata.NodeContext;\n+import io.crate.metadata.TransactionContext;\n+import io.crate.metadata.functions.Signature;\n+import io.crate.types.ArrayType;\n+import io.crate.types.DataTypes;\n'}`
+responded: The patch in the newer version adds the following imports:
+
+```java
+import io.crate.data.Input;
+import io.crate.metadata.FunctionType;
+import io.crate.metadata.NodeContext;
+import io.crate.metadata.TransactionContext;
+```
+
+In the older version at ref f5f7ab353ad4eb57200d007e7c7b06f1c69f3204, the imports we currently have are:
+
+```java
+import io.crate.expression.scalar.array.ArraySummationFunctions;
+import io.crate.metadata.Functions;
+import io.crate.metadata.Scalar;
+import io.crate.metadata.functions.Signature;
+import io.crate.types.ArrayType;
+import io.crate.types.DataTypes;
+```
+
+And from the git history, the import `io.crate.metadata.FunctionType` was introduced in a commit after the older ref, so it is not present in the older version.
+
+The patch only modifies imports by adding these new imports. There is no other code change in this hunk.
+
+Thus, the backport patch for this hunk should be to add these imports in the older version as well, adjusting for the existing imports.
+
+The final patch should add these imports after the existing imports in the older version.
+
+I will now generate the patch for the older version to add these imports accordingly.
+
+[0m[38;5;200m[1;3mThis patch does not apply because of CONTEXT MISMATCH. Context are patch lines that already exist in the file, that is, lines starting with ` ` and `-`. You should modify the error patch according to the context of older version.
+Here are lines 29 through 38 of file server/src/main/java/io/crate/expression/scalar/ArrayAvgFunction.java for commit f5f7ab353ad4eb57200d007e7c7b06f1c69f3204.
+```code snippet
+import org.jetbrains.annotations.Nullable;
+
+import io.crate.expression.scalar.array.ArraySummationFunctions;
+import io.crate.metadata.Functions;
+import io.crate.metadata.Scalar;
+import io.crate.metadata.functions.Signature;
+import io.crate.types.ArrayType;
+import io.crate.types.DataTypes;
+
+```
+Besides, here is detailed info about how the context differs between the patch and the old version.
+Here it shows that there is no difference between your context and the original code, the reason for the failure is that you didn't keep at least three lines of source code at the beginning and end of the patch, please follow this to fix it.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `validate` with `{'ref': 'f5f7ab353ad4eb57200d007e7c7b06f1c69f3204', 'patch': '--- a/server/src/main/java/io/crate/expression/scalar/ArrayAvgFunction.java\n+++ b/server/src/main/java/io/crate/expression/scalar/ArrayAvgFunction.java\n@@ -28,13 +28,16 @@\n import org.jetbrains.annotations.Nullable;\n \n import io.crate.expression.scalar.array.ArraySummationFunctions;\n+import io.crate.metadata.FunctionType;\n import io.crate.metadata.Functions;\n import io.crate.metadata.Scalar;\n+import io.crate.metadata.NodeContext;\n+import io.crate.metadata.TransactionContext;\n import io.crate.metadata.functions.Signature;\n import io.crate.types.ArrayType;\n import io.crate.types.DataTypes;\n '}`
+responded: The only difference between the patch and the old version is the imports added in the patch:
+
+```diff
++import io.crate.metadata.FunctionType;
++import io.crate.metadata.NodeContext;
++import io.crate.metadata.TransactionContext;
+```
+
+The old version does not have these imports. The rest of the imports and context are identical.
+
+The patch context lines start from line 29 and end at line 38 in the old version. I need to keep at least 3 lines before and after the patch, so I will include lines from 28 to 40 as context in the patch.
+
+I will generate a patch that adds the three imports in the correct context with proper spacing, keeping the rest of the imports intact as in the old version.
+
+Here is the patch I will generate and test:
+
+[0m[38;5;200m[1;3mPatch applied successfully
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3mI have generated the backport patch for the given hunk. The patch adapts the import statements in the older version to include the additional imports introduced in the newer version, while preserving the original context lines.
+
+Here is the patch:
+
+```diff
+--- a/server/src/main/java/io/crate/expression/scalar/ArrayAvgFunction.java
++++ b/server/src/main/java/io/crate/expression/scalar/ArrayAvgFunction.java
+@@ -28,13 +28,16 @@
+ import org.jetbrains.annotations.Nullable;
+ 
+ import io.crate.expression.scalar.array.ArraySummationFunctions;
++import io.crate.metadata.FunctionType;
+ import io.crate.metadata.Functions;
+ import io.crate.metadata.Scalar;
++import io.crate.metadata.NodeContext;
++import io.crate.metadata.TransactionContext;
+ import io.crate.metadata.functions.Signature;
+ import io.crate.types.ArrayType;
+ import io.crate.types.DataTypes;
+```
+
+I have validated this patch on the target ref f5f7ab353ad4eb57200d007e7c7b06f1c69f3204 and it applies cleanly without conflicts. If you want, I can assist you further with additional hunks or verification.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new AgentExecutor chain...[0m
+
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `git_history` with `{}`
+
+
+[0m[36;1m[1;3mTypes.NUMERIC).getTypeSignature())
++                .returnType(DataTypes.NUMERIC.getTypeSignature())
++                .features(Scalar.Feature.DETERMINISTIC, Scalar.Feature.NULLABLE)
++                .build(),
+             (signature, boundSignature) -> new UnaryScalar<>(
+                 signature,
+                 boundSignature,
+                 new ArrayType<>(DataTypes.NUMERIC),
+                 ArrayAvgFunction::avgBigDecimal
+             )
+         );
+ 
+         builder.add(
+-            Signature.scalar(
+-                    NAME,
+-                    new ArrayType<>(DataTypes.FLOAT).getTypeSignature(),
+-                    DataTypes.FLOAT.getTypeSignature()
+-                ).withFeature(Scalar.Feature.DETERMINISTIC)
+-                .withFeature(Scalar.Feature.NULLABLE),
++            Signature.builder(NAME, FunctionType.SCALAR)
++                .argumentTypes(new ArrayType<>(DataTypes.FLOAT).getTypeSignature())
++                .returnType(DataTypes.FLOAT.getTypeSignature())
++                .features(Scalar.Feature.DETERMINISTIC, Scalar.Feature.NULLABLE)
++                .build(),
+             (signature, boundSignature) -> new UnaryScalar<>(
+                 signature,
+                 boundSignature,
+                 new ArrayType<>(DataTypes.FLOAT),
+                 ArrayAvgFunction::avgFloat
+             )
+         );
+ 
+         builder.add(
+-            Signature.scalar(
+-                    NAME,
+-                    new ArrayType<>(DataTypes.DOUBLE).getTypeSignature(),
+-                    DataTypes.DOUBLE.getTypeSignature()
+-                ).withFeature(Scalar.Feature.DETERMINISTIC)
+-                .withFeature(Scalar.Feature.NULLABLE),
++            Signature.builder(NAME, FunctionType.SCALAR)
++                .argumentTypes(new ArrayType<>(DataTypes.DOUBLE).getTypeSignature())
++                .returnType(DataTypes.DOUBLE.getTypeSignature())
++                .features(Scalar.Feature.DETERMINISTIC, Scalar.Feature.NULLABLE)
++                .build(),
+             (signature, boundSignature) -> new UnaryScalar<>(
+                 signature,
+                 boundSignature,
+                 new ArrayType<>(DataTypes.DOUBLE),
+                 ArrayAvgFunction::avgDouble
+             )
+         );
+ 
+ 
+ea1802a469 Let all functions be non-deterministic by default; Explicitly set deterministic flag
+
+diff --git a/server/src/main/java/io/crate/expression/scalar/ArrayAvgFunction.java b/server/src/main/java/io/crate/expression/scalar/ArrayAvgFunction.java
+--- a/server/src/main/java/io/crate/expression/scalar/ArrayAvgFunction.java
++++ b/server/src/main/java/io/crate/expression/scalar/ArrayAvgFunction.java
+@@ -90,42 +90,45 @@
+             Signature.scalar(
+-                NAME,
+-                new ArrayType<>(DataTypes.NUMERIC).getTypeSignature(),
+-                DataTypes.NUMERIC.getTypeSignature()
+-            ).withFeature(Scalar.Feature.NULLABLE),
++                    NAME,
++                    new ArrayType<>(DataTypes.NUMERIC).getTypeSignature(),
++                    DataTypes.NUMERIC.getTypeSignature()
++                ).withFeature(Scalar.Feature.DETERMINISTIC)
++                .withFeature(Scalar.Feature.NULLABLE),
+             (signature, boundSignature) -> new UnaryScalar<>(
+                 signature,
+                 boundSignature,
+                 new ArrayType<>(DataTypes.NUMERIC),
+                 ArrayAvgFunction::avgBigDecimal
+             )
+         );
+ 
+         builder.add(
+             Signature.scalar(
+-                NAME,
+-                new ArrayType<>(DataTypes.FLOAT).getTypeSignature(),
+-                DataTypes.FLOAT.getTypeSignature()
+-            ).withFeature(Scalar.Feature.NULLABLE),
++                    NAME,
++                    new ArrayType<>(DataTypes.FLOAT).getTypeSignature(),
++                    DataTypes.FLOAT.getTypeSignature()
++                ).withFeature(Scalar.Feature.DETERMINISTIC)
++                .withFeature(Scalar.Feature.NULLABLE),
+             (signature, boundSignature) -> new UnaryScalar<>(
+                 signature,
+                 boundSignature,
+                 new ArrayType<>(DataTypes.FLOAT),
+                 ArrayAvgFunction::avgFloat
+             )
+         );
+ 
+         builder.add(
+             Signature.scalar(
+-                NAME,
+-                new ArrayType<>(DataTypes.DOUBLE).getTypeSignature(),
+-                DataTypes.DOUBLE.getTypeSignature()
+-            ).withFeature(Scalar.Feature.NULLABLE),
++                    NAME,
++                    new ArrayType<>(DataTypes.DOUBLE).getTypeSignature(),
++                    DataTypes.DOUBLE.getTypeSignature()
++                ).withFeature(Scalar.Feature.DETERMINISTIC)
++                .withFeature(Scalar.Feature.NULLABLE),
+             (signature, boundSignature) -> new UnaryScalar<>(
+                 signature,
+                 boundSignature,
+                 new ArrayType<>(DataTypes.DOUBLE),
+                 ArrayAvgFunction::avgDouble
+             )
+         );
+ 
+
+You need to do the following analysis based on the information in the last commit:
+Analyze the code logic of the context of the patch to be ported in this commit step by step.
+If code logic already existed before this commit, the patch context can be assumed to remain in a similar location. Use `locate` and `viewcode` to check your results.
+If code logic were added in this commit, then you need to `git_show` for further details.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `locate_symbol` with `{'ref': 'f5f7ab353ad4eb57200d007e7c7b06f1c69f3204', 'symbol': 'ArrayAvgFunction'}`
+responded: The git_history result shows two commits that modified the same area of code:
+
+1. Commit ea1802a469:
+   - This commit changed the signatures from using `Signature.scalar(...).withFeature(...)` to using `Signature.builder(...).features(...).build()`.
+   - It added the `Scalar.Feature.DETERMINISTIC` flag in addition to `Scalar.Feature.NULLABLE`.
+   - The function implementations remained using `UnaryScalar` with the same arguments.
+
+2. Commit 27413adb352f (the patch to be backported):
+   - This commit removed the `STRICTNULL` flag (not present in the older version according to the similar code snippet).
+   - It replaced `UnaryScalar` with a custom anonymous `Scalar` implementation overriding the `evaluate` method.
+   - The new implementation calls `avgBigDecimal`, `avgFloat`, or `avgDouble` with sanitized array values.
+
+From the git history, the logic of using `UnaryScalar` was already present before the patch to be backported, but the patch changed the implementation to use a custom `Scalar` with an overridden `evaluate`.
+
+The older version uses `Signature.scalar(...).withFeature(Scalar.Feature.NULLABLE)` and `UnaryScalar` with the function references.
+
+The patch to be backported changes:
+- The signature builder method and features (removes `STRICTNULL` and `DETERMINISTIC` only).
+- The scalar implementation from `UnaryScalar` to a custom `Scalar` with an overridden `evaluate` method.
+
+The question is whether the older version supports the new `Signature.builder` method and `Scalar` class with overridden `evaluate`.
+
+Given the older version is using `Signature.scalar(...).withFeature(...)` and `UnaryScalar`, it is likely that the `Signature.builder` method and the new `Scalar` class with overridden `evaluate` are not present or different.
+
+Therefore, the backport must adapt the patch to the older version's context:
+- Keep using `Signature.scalar(...).withFeature(Scalar.Feature.NULLABLE)`.
+- Replace the `UnaryScalar` instantiation with an anonymous subclass of `UnaryScalar` or `Scalar` if available, with the overridden `evaluate` method.
+- Remove the `STRICTNULL` feature if it exists in the older version (it does not appear in the snippet).
+- Remove `DETERMINISTIC` feature if it was not present in the older version.
+
+Next, I will locate the symbol `ArrayAvgFunction` in the older version to confirm the exact location and see the surrounding code to craft the patch.
+
+I will use `locate_symbol` for `ArrayAvgFunction` in the older version ref f5f7ab353ad4eb57200d007e7c7b06f1c69f3204.
+
+[0m[33;1m[1;3mserver/src/main/java/io/crate/expression/scalar/ArrayAvgFunction.java:39[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': 'f5f7ab353ad4eb57200d007e7c7b06f1c69f3204', 'path': 'server/src/main/java/io/crate/expression/scalar/ArrayAvgFunction.java', 'startline': 80, 'endline': 135}`
+
+
+[0m[36;1m[1;3mHere are lines 80 through 135.
+
+        BigDecimal sum = ArraySummationFunctions.sumNumberWithOverflow(values);
+        return sum == null ? null : sum.divide(BigDecimal.valueOf(size), MathContext.DECIMAL128);
+    }
+
+    public static void register(Functions.Builder builder) {
+
+        // All types except float and double have numeric average
+        // https://www.postgresql.org/docs/13/functions-aggregate.html
+
+        builder.add(
+            Signature.scalar(
+                NAME,
+                new ArrayType<>(DataTypes.NUMERIC).getTypeSignature(),
+                DataTypes.NUMERIC.getTypeSignature()
+            ).withFeature(Scalar.Feature.NULLABLE),
+            (signature, boundSignature) -> new UnaryScalar<>(
+                signature,
+                boundSignature,
+                new ArrayType<>(DataTypes.NUMERIC),
+                ArrayAvgFunction::avgBigDecimal
+            )
+        );
+
+        builder.add(
+            Signature.scalar(
+                NAME,
+                new ArrayType<>(DataTypes.FLOAT).getTypeSignature(),
+                DataTypes.FLOAT.getTypeSignature()
+            ).withFeature(Scalar.Feature.NULLABLE),
+            (signature, boundSignature) -> new UnaryScalar<>(
+                signature,
+                boundSignature,
+                new ArrayType<>(DataTypes.FLOAT),
+                ArrayAvgFunction::avgFloat
+            )
+        );
+
+        builder.add(
+            Signature.scalar(
+                NAME,
+                new ArrayType<>(DataTypes.DOUBLE).getTypeSignature(),
+                DataTypes.DOUBLE.getTypeSignature()
+            ).withFeature(Scalar.Feature.NULLABLE),
+            (signature, boundSignature) -> new UnaryScalar<>(
+                signature,
+                boundSignature,
+                new ArrayType<>(DataTypes.DOUBLE),
+                ArrayAvgFunction::avgDouble
+            )
+        );
+
+
+        for (var supportedType : DataTypes.NUMERIC_PRIMITIVE_TYPES) {
+            if (supportedType != DataTypes.FLOAT && supportedType != DataTypes.DOUBLE) {
+                builder.add(
+                    Signature.scalar(
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `locate_symbol` with `{'ref': 'f5f7ab353ad4eb57200d007e7c7b06f1c69f3204', 'symbol': 'UnaryScalar'}`
+responded: The code snippet I viewed from the old ref (f5f7ab353ad4eb57200d007e7c7b06f1c69f3204) shows the registration of array average functions for NUMERIC, FLOAT, and DOUBLE types using Signature.scalar() with the feature Scalar.Feature.NULLABLE. The functions are created using UnaryScalar with the corresponding avgBigDecimal, avgFloat, and avgDouble methods.
+
+The patch from the newer ref (0af397739c7acccced5c8b03d795754831b46b07) changes the registration to use Signature.builder() with features Scalar.Feature.DETERMINISTIC only (removing STRICTNULL), and replaces UnaryScalar with a custom Scalar implementation that overrides evaluate() to call the avg methods after sanitizing the input array.
+
+The core logic of the avg functions and the types involved are the same, but the way the functions are registered and implemented has changed.
+
+Since the old code uses UnaryScalar and the new code uses a custom Scalar with evaluate override, and the features have changed, I need to adapt the patch to the old code structure.
+
+Next, I will check the definition and location of UnaryScalar to understand the difference and whether replacing it with Scalar is feasible in the old version.
+
+I will locate the symbol UnaryScalar in the old ref to see its location and understand its usage. This will help in crafting the patch properly.
+
+[0m[33;1m[1;3mserver/src/main/java/io/crate/expression/scalar/UnaryScalar.java:40
+server/src/main/java/io/crate/expression/scalar/UnaryScalar.java:45[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': 'f5f7ab353ad4eb57200d007e7c7b06f1c69f3204', 'path': 'server/src/main/java/io/crate/expression/scalar/ArrayAvgFunction.java', 'startline': 70, 'endline': 90}`
+
+
+[0m[36;1m[1;3mHere are lines 70 through 90.
+
+        BigDecimal sum = ArraySummationFunctions.sumBigDecimal(values);
+        return sum == null ? null : sum.divide(BigDecimal.valueOf(size), MathContext.DECIMAL128);
+    }
+
+    @Nullable
+    private static Number avgNumber(List<? extends Number> values) {
+        if (values == null || values.isEmpty()) {
+            return null;
+        }
+        long size = values.stream().filter(Objects::nonNull).count();
+        BigDecimal sum = ArraySummationFunctions.sumNumberWithOverflow(values);
+        return sum == null ? null : sum.divide(BigDecimal.valueOf(size), MathContext.DECIMAL128);
+    }
+
+    public static void register(Functions.Builder builder) {
+
+        // All types except float and double have numeric average
+        // https://www.postgresql.org/docs/13/functions-aggregate.html
+
+        builder.add(
+            Signature.scalar(
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `locate_symbol` with `{'ref': 'f5f7ab353ad4eb57200d007e7c7b06f1c69f3204', 'symbol': 'Scalar'}`
+responded: The code snippet from the older version ref f5f7ab353ad4eb57200d007e7c7b06f1c69f3204 indeed contains the target code area where the array average functions are registered with the builder. The code uses Signature.scalar(...) with .withFeature(Scalar.Feature.NULLABLE) and creates new UnaryScalar instances for NUMERIC, FLOAT, and DOUBLE types.
+
+The patch from the newer version 0af397739c7acccced5c8b03d795754831b46b07 changes this by:
+- Removing the STRICTNULL flag (which is not present in the older code either).
+- Changing the Signature builder style.
+- Replacing UnaryScalar with an anonymous Scalar subclass that overrides evaluate to sanitize the input array before calling the avg method.
+
+The older code uses UnaryScalar with a method reference, while the newer code uses an anonymous Scalar class with an overridden evaluate method that sanitizes the input array.
+
+Given this, the patch should:
+- Replace the Signature.scalar(...).withFeature(...) with Signature.builder(...).features(...) style.
+- Replace the UnaryScalar(...) with a new Scalar anonymous class that overrides evaluate and sanitizes the input.
+
+Next, I want to check the class Scalar in the older version to confirm the constructor and usage so I can craft the patch correctly.
+
+I will locate the Scalar class in the older ref.
+
+[0m[33;1m[1;3mserver/src/main/java/io/crate/metadata/Scalar.java:66
+server/src/main/java/io/crate/metadata/Scalar.java:76[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3mAnalysis:
+- The old code at ref f5f7ab353ad4eb57200d007e7c7b06f1c69f3204 uses Signature.scalar() with .withFeature(Scalar.Feature.NULLABLE) for array avg functions for NUMERIC, FLOAT, and DOUBLE.
+- The new patch at ref 0af397739c7acccced5c8b03d795754831b46b07 removes the STRICTNULL feature and replaces UnaryScalar with an anonymous Scalar subclass that overrides evaluate to sanitize the array input.
+- The old code uses UnaryScalar with a direct method reference to avgBigDecimal, avgFloat, avgDouble.
+- The new code uses Scalar subclass with overridden evaluate method that calls sanitizeValue on the array input before calling the avg methods.
+- The old code does not have the .features(Scalar.Feature.DETERMINISTIC) but the new patch removes STRICTNULL and only has DETERMINISTIC.
+- The old code is structurally different in how the scalar function is constructed (using Signature.scalar and UnaryScalar).
+- The new patch uses Signature.builder and Scalar subclass with overridden evaluate method.
+
+Conclusion:
+- The patch logic is to remove STRICTNULL and change from UnaryScalar to Scalar subclass with overridden evaluate that sanitizes input.
+- The old code has similar function but uses UnaryScalar and Signature.scalar with NULLABLE feature.
+- The patch needs to adapt to old code style: replace UnaryScalar with Scalar subclass, remove STRICTNULL, add DETERMINISTIC feature, and add overridden evaluate with sanitizeValue call.
+
+Next step:
+- View a larger snippet of the old code around line 89 to 132 to ensure full context of builder.add calls.
+- Generate patch that replaces the builder.add blocks for NUMERIC, FLOAT, DOUBLE array avg functions accordingly.
+
+I already have lines 89-132 from old version. I will now generate the patch for the old version based on the new patch logic and old code context.[0m
+
+[1m> Finished chain.[0m
+2026-04-25 19:32:31,087 - backport - ERROR - Reach max_iterations for hunk 1

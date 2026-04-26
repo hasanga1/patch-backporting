@@ -1,0 +1,280 @@
+2026-04-25 19:17:50,282 - backport - INFO - Using openrouter API: https://openrouter.ai/api/v1 (model: openai/gpt-4.1-mini)
+2026-04-25 19:17:52,279 - backport - INFO - Aplly all hunks in the patch      PASS
+2026-04-25 19:17:52,495 - backport - INFO - Successfully backport the patch to the target release 6c771f9afe2f1b60bbd8dd7385f40ac8bdff7de7
+2026-04-25 19:17:52,496 - backport - INFO - --- a/server/src/main/java/io/crate/expression/operator/any/AnyEqOperator.java
++++ b/server/src/main/java/io/crate/expression/operator/any/AnyEqOperator.java
+@@ -29,6 +29,7 @@ import java.util.function.Consumer;
+ import org.apache.lucene.search.BooleanClause.Occur;
+ import org.apache.lucene.search.BooleanQuery;
+ import org.apache.lucene.search.Query;
++import org.jetbrains.annotations.NotNull;
+ 
+ import io.crate.expression.operator.EqOperator;
+ import io.crate.expression.symbol.Function;
+
+--- a/server/src/main/java/io/crate/expression/operator/any/AnyEqOperator.java
++++ b/server/src/main/java/io/crate/expression/operator/any/AnyEqOperator.java
+@@ -57,11 +58,10 @@ public final class AnyEqOperator extends AnyOperator<Object> {
+     }
+ 
+     @Override
+-    protected Query refMatchesAnyArrayLiteral(Function any, Reference probe, Literal<?> candidates, Context context) {
++    protected Query refMatchesAnyArrayLiteral(Function any, Reference probe, @NotNull List<?> nonNullValues, Context context) {
+         String columnName = probe.storageIdent();
+-        List<?> values = (List<?>) candidates.value();
+         DataType<?> innerType = ArrayType.unnest(probe.valueType());
+-        return EqOperator.termsQuery(columnName, innerType, values, probe.hasDocValues(), probe.indexType());
++        return EqOperator.termsQuery(columnName, innerType, nonNullValues, probe.hasDocValues(), probe.indexType());
+     }
+ 
+     @Override
+
+--- a/server/src/main/java/io/crate/expression/operator/any/AnyLikeOperator.java
++++ b/server/src/main/java/io/crate/expression/operator/any/AnyLikeOperator.java
+@@ -22,9 +22,12 @@
+ package io.crate.expression.operator.any;
+ 
+ 
++import java.util.List;
++
+ import org.apache.lucene.search.BooleanClause;
+ import org.apache.lucene.search.BooleanQuery;
+ import org.apache.lucene.search.Query;
++import org.jetbrains.annotations.NotNull;
+ 
+ import io.crate.expression.operator.LikeOperators;
+ import io.crate.expression.operator.LikeOperators.CaseSensitivity;
+
+--- a/server/src/main/java/io/crate/expression/operator/any/AnyLikeOperator.java
++++ b/server/src/main/java/io/crate/expression/operator/any/AnyLikeOperator.java
+@@ -63,16 +66,12 @@ public final class AnyLikeOperator extends AnyOperator<String> {
+     }
+ 
+     @Override
+-    protected Query refMatchesAnyArrayLiteral(Function any, Reference probe, Literal<?> candidates, Context context) {
++    protected Query refMatchesAnyArrayLiteral(Function any, Reference probe, @NotNull List<?> nonNullValues, Context context) {
+         // col like ANY (['a', 'b']) --> or(like(col, 'a'), like(col, 'b'))
+         String fqn = probe.storageIdent();
+         BooleanQuery.Builder booleanQuery = new BooleanQuery.Builder();
+         booleanQuery.setMinimumNumberShouldMatch(1);
+-        Iterable<?> values = (Iterable<?>) candidates.value();
+-        for (Object value : values) {
+-            if (value == null) {
+-                continue;
+-            }
++        for (Object value : nonNullValues) {
+             var likeQuery = caseSensitivity.likeQuery(fqn, (String) value, LikeOperators.DEFAULT_ESCAPE, probe.indexType() != IndexType.NONE);
+             if (likeQuery == null) {
+                 return null;
+
+--- a/server/src/main/java/io/crate/expression/operator/any/AnyNeqOperator.java
++++ b/server/src/main/java/io/crate/expression/operator/any/AnyNeqOperator.java
+@@ -21,11 +21,14 @@
+ 
+ package io.crate.expression.operator.any;
+ 
++import java.util.List;
++
+ import org.apache.lucene.search.BooleanClause;
+ import org.apache.lucene.search.BooleanClause.Occur;
+ import org.apache.lucene.search.BooleanQuery;
+ import org.apache.lucene.search.Query;
+ import org.elasticsearch.common.lucene.search.Queries;
++import org.jetbrains.annotations.NotNull;
+ 
+ import io.crate.expression.operator.EqOperator;
+ import io.crate.expression.predicate.IsNullPredicate;
+
+--- a/server/src/main/java/io/crate/expression/operator/any/AnyNeqOperator.java
++++ b/server/src/main/java/io/crate/expression/operator/any/AnyNeqOperator.java
+@@ -54,14 +57,11 @@ public final class AnyNeqOperator extends AnyOperator<Object> {
+     }
+ 
+     @Override
+-    protected Query refMatchesAnyArrayLiteral(Function any, Reference probe, Literal<?> candidates, Context context) {
++    protected Query refMatchesAnyArrayLiteral(Function any, Reference probe, @NotNull List<?> nonNullValues, Context context) {
+         //  col != ANY ([1,2,3]) --> not(col=1 and col=2 and col=3)
+         String columnName = probe.storageIdent();
+         BooleanQuery.Builder andBuilder = new BooleanQuery.Builder();
+-        for (Object value : (Iterable<?>) candidates.value()) {
+-            if (value == null) {
+-                continue;
+-            }
++        for (Object value : nonNullValues) {
+             var fromPrimitive = EqOperator.fromPrimitive(
+                 probe.valueType(),
+                 columnName,
+
+--- a/server/src/main/java/io/crate/expression/operator/any/AnyNotLikeOperator.java
++++ b/server/src/main/java/io/crate/expression/operator/any/AnyNotLikeOperator.java
+@@ -21,6 +21,8 @@
+ 
+ package io.crate.expression.operator.any;
+ 
++import java.util.List;
++
+ import org.apache.lucene.index.Term;
+ import org.apache.lucene.search.BooleanClause;
+ import org.apache.lucene.search.BooleanQuery;
+
+--- a/server/src/main/java/io/crate/expression/operator/any/AnyNotLikeOperator.java
++++ b/server/src/main/java/io/crate/expression/operator/any/AnyNotLikeOperator.java
+@@ -28,6 +30,7 @@ import org.apache.lucene.search.Query;
+ import org.apache.lucene.search.RegexpQuery;
+ import org.elasticsearch.common.lucene.search.Queries;
+ import org.elasticsearch.index.query.RegexpFlag;
++import org.jetbrains.annotations.NotNull;
+ 
+ import io.crate.expression.operator.LikeOperators;
+ import io.crate.expression.operator.LikeOperators.CaseSensitivity;
+
+--- a/server/src/main/java/io/crate/expression/operator/any/AnyNotLikeOperator.java
++++ b/server/src/main/java/io/crate/expression/operator/any/AnyNotLikeOperator.java
+@@ -62,15 +65,11 @@ public final class AnyNotLikeOperator extends AnyOperator<String> {
+     }
+ 
+     @Override
+-    protected Query refMatchesAnyArrayLiteral(Function any, Reference probe, Literal<?> candidates, Context context) {
++    protected Query refMatchesAnyArrayLiteral(Function any, Reference probe, @NotNull List<?> nonNullValues, Context context) {
+         // col not like ANY (['a', 'b']) --> not(and(like(col, 'a'), like(col, 'b')))
+         String columnName = probe.storageIdent();
+         BooleanQuery.Builder andLikeQueries = new BooleanQuery.Builder();
+-        Iterable<?> values = (Iterable<?>) candidates.value();
+-        for (Object value : values) {
+-            if (value == null) {
+-                continue;
+-            }
++        for (Object value : nonNullValues) {
+             var likeQuery = caseSensitivity.likeQuery(columnName,
+                 (String) value,
+                 LikeOperators.DEFAULT_ESCAPE,
+
+--- a/server/src/main/java/io/crate/expression/operator/any/AnyOperator.java
++++ b/server/src/main/java/io/crate/expression/operator/any/AnyOperator.java
+@@ -22,9 +22,13 @@
+ package io.crate.expression.operator.any;
+ 
+ import java.util.List;
++import java.util.Objects;
+ import java.util.Set;
++import java.util.stream.StreamSupport;
+ 
++import org.apache.lucene.search.MatchNoDocsQuery;
+ import org.apache.lucene.search.Query;
++import org.jetbrains.annotations.NotNull;
+ 
+ import io.crate.data.Input;
+ import io.crate.expression.operator.LikeOperators;
+
+--- a/server/src/main/java/io/crate/expression/operator/any/AnyOperator.java
++++ b/server/src/main/java/io/crate/expression/operator/any/AnyOperator.java
+@@ -114,7 +118,7 @@ public abstract sealed class AnyOperator<T> extends Operator<T>
+ 
+     abstract boolean matches(T probe, T candidate);
+ 
+-    protected abstract Query refMatchesAnyArrayLiteral(Function any, Reference probe, Literal<?> candidates, Context context);
++    protected abstract Query refMatchesAnyArrayLiteral(Function any, Reference probe, @NotNull List<?> nonNullValues, Context context);
+ 
+     protected abstract Query literalMatchesAnyArrayRef(Function any, Literal<?> probe, Reference candidates, Context context);
+ 
+
+--- a/server/src/main/java/io/crate/expression/operator/any/AnyOperator.java
++++ b/server/src/main/java/io/crate/expression/operator/any/AnyOperator.java
+@@ -159,7 +163,13 @@ public abstract sealed class AnyOperator<T> extends Operator<T>
+         if (probe instanceof Literal<?> literal && candidates instanceof Reference ref) {
+             return literalMatchesAnyArrayRef(function, (Literal<T>) literal, ref, context);
+         } else if (probe instanceof Reference ref && candidates instanceof Literal<?> literal) {
+-            return refMatchesAnyArrayLiteral(function, ref, (Literal<T>) literal, context);
++            var nonNullValues = StreamSupport
++                .stream(((Iterable<?>) literal.value()).spliterator(), false)
++                .filter(Objects::nonNull).toList();
++            if (nonNullValues.isEmpty()) {
++                return new MatchNoDocsQuery("Cannot match unless there is at least one non-null candidate");
++            }
++            return refMatchesAnyArrayLiteral(function, ref, nonNullValues, context);
+         } else {
+             return null;
+         }
+
+--- a/server/src/main/java/io/crate/expression/operator/any/AnyRangeOperator.java
++++ b/server/src/main/java/io/crate/expression/operator/any/AnyRangeOperator.java
+@@ -22,9 +22,12 @@
+ package io.crate.expression.operator.any;
+ 
+ 
++import java.util.List;
++
+ import org.apache.lucene.search.BooleanClause;
+ import org.apache.lucene.search.BooleanQuery;
+ import org.apache.lucene.search.Query;
++import org.jetbrains.annotations.NotNull;
+ 
+ import io.crate.exceptions.UnsupportedFeatureException;
+ import io.crate.expression.operator.CmpOperator;
+
+--- a/server/src/main/java/io/crate/expression/operator/any/AnyRangeOperator.java
++++ b/server/src/main/java/io/crate/expression/operator/any/AnyRangeOperator.java
+@@ -101,14 +104,11 @@ public final class AnyRangeOperator extends AnyOperator<Object> {
+     }
+ 
+     @Override
+-    protected Query refMatchesAnyArrayLiteral(Function any, Reference probe, Literal<?> candidates, Context context) {
++    protected Query refMatchesAnyArrayLiteral(Function any, Reference probe, @NotNull List<?> nonNullValues, Context context) {
+         // col < ANY ([1,2,3]) --> or(col<1, col<2, col<3)
+         BooleanQuery.Builder booleanQuery = new BooleanQuery.Builder();
+         booleanQuery.setMinimumNumberShouldMatch(1);
+-        for (Object value : (Iterable<?>) candidates.value()) {
+-            if (value == null) {
+-                continue;
+-            }
++        for (Object value : nonNullValues) {
+             booleanQuery.add(
+                 CmpOperator.toQuery(comparison.innerOpName, probe, value),
+                 BooleanClause.Occur.SHOULD);
+
+--- a/server/src/test/java/io/crate/lucene/CommonQueryBuilderTest.java
++++ b/server/src/test/java/io/crate/lucene/CommonQueryBuilderTest.java
+@@ -675,6 +675,42 @@ public class CommonQueryBuilderTest extends LuceneQueryBuilderTest {
+         assertThat(query).hasToString("+*:* -(+name:^bar$,flags:66 +name:^foo$,flags:66)");
+     }
+ 
++    @Test
++    public void test_any_operators_with_empty_array_literal() {
++        Query query = convert("x != any([])");
++        assertThat(query).hasToString("MatchNoDocsQuery(\"Cannot match unless there is at least one non-null candidate\")");
++
++        query = convert("x = any([])");
++        assertThat(query).hasToString("MatchNoDocsQuery(\"Cannot match unless there is at least one non-null candidate\")");
++
++        query = convert("x < any([])");
++        assertThat(query).hasToString("MatchNoDocsQuery(\"Cannot match unless there is at least one non-null candidate\")");
++
++        query = convert("name like any([])");
++        assertThat(query).hasToString("MatchNoDocsQuery(\"Cannot match unless there is at least one non-null candidate\")");
++
++        query = convert("name not ilike any([])");
++        assertThat(query).hasToString("MatchNoDocsQuery(\"Cannot match unless there is at least one non-null candidate\")");
++    }
++
++    @Test
++    public void test_any_operators_with_null_array_literal() {
++        Query query = convert("x != any([null])");
++        assertThat(query).hasToString("MatchNoDocsQuery(\"Cannot match unless there is at least one non-null candidate\")");
++
++        query = convert("x = any([null])");
++        assertThat(query).hasToString("MatchNoDocsQuery(\"Cannot match unless there is at least one non-null candidate\")");
++
++        query = convert("x < any([null])");
++        assertThat(query).hasToString("MatchNoDocsQuery(\"Cannot match unless there is at least one non-null candidate\")");
++
++        query = convert("name like any([null])");
++        assertThat(query).hasToString("MatchNoDocsQuery(\"Cannot match unless there is at least one non-null candidate\")");
++
++        query = convert("name not ilike any([null])");
++        assertThat(query).hasToString("MatchNoDocsQuery(\"Cannot match unless there is at least one non-null candidate\")");
++    }
++
+     @Test
+     public void test_any_neq_operator_maps_column_names_to_oids() throws Exception {
+         final long oid = 123;
+

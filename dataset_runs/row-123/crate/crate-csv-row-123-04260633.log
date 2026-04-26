@@ -1,0 +1,83 @@
+2026-04-26 06:33:22,644 - backport - INFO - Using openrouter API: https://openrouter.ai/api/v1 (model: openai/gpt-4.1-mini)
+2026-04-26 06:33:23,437 - backport - INFO - Aplly all hunks in the patch      PASS
+2026-04-26 06:33:23,597 - backport - INFO - Successfully backport the patch to the target release b61b98b028e17a1aac8cd88e2fc5b1a18358beaf
+2026-04-26 06:33:23,599 - backport - INFO - --- a/server/src/main/java/io/crate/analyze/relations/RelationAnalyzer.java
++++ b/server/src/main/java/io/crate/analyze/relations/RelationAnalyzer.java
+@@ -315,9 +315,11 @@ public class RelationAnalyzer extends DefaultTraversalVisitor<AnalyzedRelation,
+ 
+         for (var joinColumn : joinUsing.getColumns()) {
+ 
++            boolean joinColumnExistsInLeft = false;
+             for (var leftOutput : leftOutputs) {
+                 var columnIdent = Symbols.pathFromSymbol(leftOutput);
+                 if (columnIdent.name().equals(joinColumn)) {
++                    joinColumnExistsInLeft = true;
+                     if (lhsOutputs.put(joinColumn, leftOutput) != null) {
+                         throw new IllegalArgumentException(String.format(Locale.ENGLISH,
+                                                                          "common column name %s appears more than once in left table", joinColumn));
+
+--- a/server/src/main/java/io/crate/analyze/relations/RelationAnalyzer.java
++++ b/server/src/main/java/io/crate/analyze/relations/RelationAnalyzer.java
+@@ -325,14 +327,16 @@ public class RelationAnalyzer extends DefaultTraversalVisitor<AnalyzedRelation,
+                 }
+             }
+ 
+-            if (lhsOutputs.isEmpty()) {
++            if (!joinColumnExistsInLeft) {
+                 throw new IllegalArgumentException(String.format(Locale.ENGLISH,
+                                                                  "column %s specified in USING clause does not exist in left table", joinColumn));
+             }
+ 
++            boolean joinColumnExistsInRight = false;
+             for (Symbol rightOutput : rightOutputs) {
+                 var columnIdent = Symbols.pathFromSymbol(rightOutput);
+                 if (columnIdent.name().equals(joinColumn)) {
++                    joinColumnExistsInRight = true;
+                     if (rhsOutputs.put(joinColumn, rightOutput) != null) {
+                         throw new IllegalArgumentException(String.format(Locale.ENGLISH,
+                                                                          "common column name %s appears more than once in right table", joinColumn));
+
+--- a/server/src/main/java/io/crate/analyze/relations/RelationAnalyzer.java
++++ b/server/src/main/java/io/crate/analyze/relations/RelationAnalyzer.java
+@@ -348,7 +352,7 @@ public class RelationAnalyzer extends DefaultTraversalVisitor<AnalyzedRelation,
+                 }
+             }
+ 
+-            if (rhsOutputs.isEmpty()) {
++            if (!joinColumnExistsInRight) {
+                 throw new IllegalArgumentException(String.format(Locale.ENGLISH,
+                                                                  "column %s specified in USING clause does not exist in right table", joinColumn));
+             }
+
+--- a/server/src/test/java/io/crate/planner/operators/JoinTest.java
++++ b/server/src/test/java/io/crate/planner/operators/JoinTest.java
+@@ -986,6 +986,28 @@ public class JoinTest extends CrateDummyClusterServiceUnitTest {
+ 
+     }
+ 
++    @Test
++    public void test_using_clause_specifying_multiple_columns_with_a_non_existing_column_raises_error() throws IOException {
++        var executor = SQLExecutor.builder(clusterService, 2, Randomness.get(), List.of())
++            .addTable("CREATE TABLE j1 (x INT, y INT)")
++            .addTable("CREATE TABLE j2 (x INT)")
++            .build();
++
++        assertThatThrownBy(() -> executor.analyze("SELECT * FROM j1 JOIN j2 USING(x, y)"))
++            .isExactlyInstanceOf(IllegalArgumentException.class)
++            .hasMessageContaining("column y specified in USING clause does not exist in right table");
++
++        // left and right sides swapped
++        assertThatThrownBy(() -> executor.analyze("SELECT * FROM j2 JOIN j1 USING(x, y)"))
++            .isExactlyInstanceOf(IllegalArgumentException.class)
++            .hasMessageContaining("column y specified in USING clause does not exist in left table");
++
++        // column unknown from both sides
++        assertThatThrownBy(() -> executor.analyze("SELECT * FROM j2 JOIN j1 USING(x, z)"))
++            .isExactlyInstanceOf(IllegalArgumentException.class)
++            .hasMessageContaining("column z specified in USING clause does not exist in left table");
++    }
++
+     /**
+      * Verifies a bug fix (and regression that was introduced with 5.2.4)
+      * See https://github.com/crate/crate/issues/13808
+

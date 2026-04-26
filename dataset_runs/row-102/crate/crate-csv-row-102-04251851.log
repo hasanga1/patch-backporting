@@ -1,0 +1,891 @@
+2026-04-25 18:51:30,519 - backport - INFO - Using openrouter API: https://openrouter.ai/api/v1 (model: openai/gpt-4.1-mini)
+
+
+[1m> Entering new AgentExecutor chain...[0m
+
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `git_history` with `{}`
+
+
+[0m[36;1m[1;3m818165ea8c Implement USER session settings
+
+diff --git a/server/src/test/java/io/crate/role/TransportRoleActionTest.java b/server/src/test/java/io/crate/role/TransportRoleActionTest.java
+--- a/server/src/test/java/io/crate/role/TransportRoleActionTest.java
++++ b/server/src/test/java/io/crate/role/TransportRoleActionTest.java
+@@ -411,5 +598,6 @@
++    }
+ 
+     private static Map<String, Role> roles(Metadata.Builder mdBuilder) {
+         return ((RolesMetadata) mdBuilder.build().custom(RolesMetadata.TYPE)).roles();
+     }
+ 
+You need to do the following analysis based on the information in the last commit:
+Analyze the code logic of the context of the patch to be ported in this commit step by step.
+If code logic already existed before this commit, the patch context can be assumed to remain in a similar location. Use `locate` and `viewcode` to check your results.
+If code logic were added in this commit, then you need to `git_show` for further details.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `locate_symbol` with `{'ref': 'f33d6fc11abb01cdde8821479b1cb13dbc3cd20c', 'symbol': 'roles'}`
+responded: The last commit in the history for the code snippet is 818165ea8c, which added the method roles(Metadata.Builder mdBuilder) with the line:
+```java
+return ((RolesMetadata) mdBuilder.build().custom(RolesMetadata.TYPE)).roles();
+```
+This matches exactly the code snippet in the older version ref f33d6fc11abb01cdde8821479b1cb13dbc3cd20c.
+
+The patch changes this line to:
+```java
+return ((RolesMetadata) mdBuilder.getCustom(RolesMetadata.TYPE)).roles();
+```
+This means the method getCustom replaced build().custom in the newer version.
+
+Since the roles method existed before the patch and the patch only changes the method call inside it, it is likely that in the old version the method getCustom may or may not exist or the method build().custom is the way to get the RolesMetadata.
+
+I will locate the symbol roles in the old ref to confirm the location of the method and then view the method code in the old ref to check the exact code context and if getCustom exists or not. This will help me create the correct backport patch.
+
+[0m[33;1m[1;3mserver/src/main/java/io/crate/analyze/Analyzer.java:144
+server/src/main/java/io/crate/auth/AccessControlImpl.java:1014
+server/src/main/java/io/crate/auth/AccessControlImpl.java:134
+server/src/main/java/io/crate/auth/AccessControlImpl.java:193
+server/src/main/java/io/crate/auth/AlwaysOKAuthentication.java:35
+server/src/main/java/io/crate/auth/ClientCertAuth.java:41
+server/src/main/java/io/crate/auth/HostBasedAuthentication.java:119
+server/src/main/java/io/crate/auth/HttpAuthUpstreamHandler.java:76
+server/src/main/java/io/crate/auth/JWTAuthenticationMethod.java:55
+server/src/main/java/io/crate/auth/PasswordAuthenticationMethod.java:34
+server/src/main/java/io/crate/auth/TrustAuthenticationMethod.java:32
+server/src/main/java/io/crate/execution/engine/collect/sources/FileCollectSource.java:72
+server/src/main/java/io/crate/execution/engine/collect/sources/SystemCollectSource.java:75
+server/src/main/java/io/crate/expression/scalar/HasPrivilegeFunction.java:163
+server/src/main/java/io/crate/fdw/ForeignDataWrappers.java:65
+server/src/main/java/io/crate/metadata/NodeContext.java:47
+server/src/main/java/io/crate/metadata/NodeContext.java:94
+server/src/main/java/io/crate/metadata/Schemas.java:102
+server/src/main/java/io/crate/planner/statement/SetSessionAuthorizationPlan.java:40
+server/src/main/java/io/crate/protocols/postgres/PostgresNetty.java:103
+server/src/main/java/io/crate/replication/logical/action/PublicationsStateAction.java:79
+server/src/main/java/io/crate/replication/logical/action/TransportCreatePublicationAction.java:50
+server/src/main/java/io/crate/replication/logical/action/TransportCreateSubscriptionAction.java:62
+server/src/main/java/io/crate/rest/action/SqlHttpHandler.java:90
+server/src/main/java/io/crate/role/RoleManagerService.java:142
+server/src/main/java/io/crate/role/RoleManagerService.java:60
+server/src/main/java/io/crate/role/Roles.java:149
+server/src/main/java/io/crate/role/RolesService.java:42
+server/src/main/java/io/crate/role/RolesService.java:49
+server/src/main/java/io/crate/role/TransportPrivilegesAction.java:67
+server/src/main/java/io/crate/role/metadata/RolesMetadata.java:121
+server/src/main/java/io/crate/role/metadata/RolesMetadata.java:57
+server/src/main/java/org/elasticsearch/cluster/node/DiscoveryNode.java:80
+server/src/main/java/org/elasticsearch/http/netty4/Netty4HttpServerTransport.java:246
+server/src/main/java/org/elasticsearch/http/netty4/Netty4HttpServerTransport.java:562
+server/src/test/java/io/crate/auth/UserAuthenticationMethodTest.java:75
+server/src/test/java/io/crate/integrationtests/PrivilegesIntegrationTest.java:52
+server/src/test/java/io/crate/replication/logical/action/TransportCreateSubscriptionActionTest.java:64
+server/src/test/java/io/crate/role/TransportRoleActionTest.java:412
+server/src/testFixtures/java/io/crate/role/StubRoleManager.java:37
+server/src/testFixtures/java/io/crate/role/StubRoleManager.java:81[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': 'f33d6fc11abb01cdde8821479b1cb13dbc3cd20c', 'path': 'server/src/test/java/io/crate/role/TransportRoleActionTest.java', 'startline': 406, 'endline': 416}`
+
+
+[0m[36;1m[1;3mHere are lines 406 through 416.
+
+            false))
+            .isExactlyInstanceOf(RoleAlreadyExistsException.class)
+            .hasMessage("Another role with the same combination of iss/username jwt properties already exists");
+    }
+
+
+    private static Map<String, Role> roles(Metadata.Builder mdBuilder) {
+        return ((RolesMetadata) mdBuilder.build().custom(RolesMetadata.TYPE)).roles();
+    }
+}
+
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `locate_symbol` with `{'ref': 'f33d6fc11abb01cdde8821479b1cb13dbc3cd20c', 'symbol': 'Metadata.Builder'}`
+responded: The target code for the patch is present in the old version at the same location as the new version. The method:
+
+```java
+private static Map<String, Role> roles(Metadata.Builder mdBuilder) {
+    return ((RolesMetadata) mdBuilder.build().custom(RolesMetadata.TYPE)).roles();
+}
+```
+
+is present in the old version. The patch changes the call from `mdBuilder.build().custom(RolesMetadata.TYPE)` to `mdBuilder.getCustom(RolesMetadata.TYPE)`.
+
+This is a simple API change in the method call on the `mdBuilder` object.
+
+Next, I will check the `Metadata.Builder` class in the old ref to verify if the method `getCustom` exists or if `custom` is the correct method to call. This will help me confirm how to adapt the patch for the older version.
+
+I will locate the `Metadata.Builder` class in the older ref `f33d6fc11abb01cdde8821479b1cb13dbc3cd20c` and view the relevant methods.
+
+[0m[33;1m[1;3mThe symbol Metadata.Builder you are looking for does not exist in the current ref.
+But here is a symbol similar to it. It's `MetadataUpgrader`.
+The file where this symbol is located is: 
+server/src/main/java/org/elasticsearch/plugins/MetadataUpgrader.java:33
+server/src/main/java/org/elasticsearch/plugins/MetadataUpgrader.java:38
+Please be careful to check that this symbol indicates the same thing as the previous symbol.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `locate_symbol` with `{'ref': 'f33d6fc11abb01cdde8821479b1cb13dbc3cd20c', 'symbol': 'RolesMetadata'}`
+
+
+[0m[33;1m[1;3mserver/src/main/java/io/crate/role/metadata/RolesMetadata.java:125
+server/src/main/java/io/crate/role/metadata/RolesMetadata.java:53
+server/src/main/java/io/crate/role/metadata/RolesMetadata.java:59
+server/src/main/java/io/crate/role/metadata/RolesMetadata.java:63[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': 'f33d6fc11abb01cdde8821479b1cb13dbc3cd20c', 'path': 'server/src/main/java/io/crate/role/metadata/RolesMetadata.java', 'startline': 50, 'endline': 70}`
+
+
+[0m[36;1m[1;3mHere are lines 50 through 70.
+
+import io.crate.role.Privilege;
+import io.crate.role.Role;
+
+public class RolesMetadata extends AbstractNamedDiffable<Metadata.Custom> implements Metadata.Custom {
+
+    public static final String TYPE = "roles";
+
+    private final Map<String, Role> roles;
+
+    public RolesMetadata() {
+        this.roles = new HashMap<>();
+    }
+
+    public RolesMetadata(Map<String, Role> roles) {
+        this.roles = roles;
+    }
+
+    public static RolesMetadata newInstance(@Nullable RolesMetadata instance) {
+        if (instance == null) {
+            return new RolesMetadata();
+        }
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': 'f33d6fc11abb01cdde8821479b1cb13dbc3cd20c', 'path': 'server/src/test/java/io/crate/role/TransportRoleActionTest.java', 'startline': 400, 'endline': 410}`
+
+
+[0m[36;1m[1;3mHere are lines 400 through 410.
+
+        assertThatThrownBy(() -> TransportAlterRoleAction.alterRole(
+            mdBuilder,
+            "John",
+            null,
+            new JwtProperties("https:dummy.org", "test", null),
+            false,
+            false))
+            .isExactlyInstanceOf(RoleAlreadyExistsException.class)
+            .hasMessage("Another role with the same combination of iss/username jwt properties already exists");
+    }
+
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `locate_symbol` with `{'ref': 'f33d6fc11abb01cdde8821479b1cb13dbc3cd20c', 'symbol': 'Metadata'}`
+responded: The patch to be backported changes the method call from `mdBuilder.build().custom(RolesMetadata.TYPE)` to `mdBuilder.getCustom(RolesMetadata.TYPE)` in the `roles` method inside `TransportRoleActionTest.java`.
+
+From the code snippet of the old ref (f33d6fc11abb01cdde8821479b1cb13dbc3cd20c), the `roles` method is:
+```java
+private static Map<String, Role> roles(Metadata.Builder mdBuilder) {
+    return ((RolesMetadata) mdBuilder.build().custom(RolesMetadata.TYPE)).roles();
+}
+```
+
+The patch in the new ref changes `.build().custom(...)` to `.getCustom(...)`.
+
+I need to confirm if `Metadata.Builder` in the old ref has the method `getCustom` or if the change in the new ref is related to an API change where `getCustom` was introduced. This will help me decide how to backport this patch correctly.
+
+Next, I will check the definition of `Metadata.Builder` in the old ref to see if `getCustom` exists or if `.build().custom(...)` is the only way. This is crucial to know how to adapt the patch correctly.
+
+I will locate `Metadata.Builder` or `Metadata` class in the old ref to check its methods.
+
+[0m[33;1m[1;3mblackbox/docs/config/cluster.rst:1314
+docs/config/cluster.rst:1314
+server/src/main/java/org/elasticsearch/cluster/metadata/Metadata.java:174
+server/src/main/java/org/elasticsearch/cluster/metadata/Metadata.java:78[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': 'f33d6fc11abb01cdde8821479b1cb13dbc3cd20c', 'path': 'server/src/main/java/org/elasticsearch/cluster/metadata/Metadata.java', 'startline': 70, 'endline': 90}`
+
+
+[0m[36;1m[1;3mHere are lines 70 through 90.
+
+import com.carrotsearch.hppc.cursors.ObjectObjectCursor;
+
+import org.jetbrains.annotations.VisibleForTesting;
+import io.crate.fdw.ForeignTablesMetadata;
+import io.crate.metadata.PartitionName;
+import io.crate.metadata.RelationName;
+import io.crate.metadata.view.ViewsMetadata;
+
+public class Metadata implements Iterable<IndexMetadata>, Diffable<Metadata>, ToXContentFragment {
+
+    private static final Logger LOGGER = LogManager.getLogger(Metadata.class);
+    public static long COLUMN_OID_UNASSIGNED = 0L;
+
+    public static final String ALL = "_all";
+    public static final String UNKNOWN_CLUSTER_UUID = "_na_";
+
+    public enum XContentContext {
+        /* Custom metadata should be returns as part of API call */
+        API,
+
+        /* Custom metadata should be stored as part of the persistent cluster state */
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': 'f33d6fc11abb01cdde8821479b1cb13dbc3cd20c', 'path': 'server/src/main/java/org/elasticsearch/cluster/metadata/Metadata.java', 'startline': 70, 'endline': 110}`
+
+
+[0m[36;1m[1;3mHere are lines 70 through 110.
+
+import com.carrotsearch.hppc.cursors.ObjectObjectCursor;
+
+import org.jetbrains.annotations.VisibleForTesting;
+import io.crate.fdw.ForeignTablesMetadata;
+import io.crate.metadata.PartitionName;
+import io.crate.metadata.RelationName;
+import io.crate.metadata.view.ViewsMetadata;
+
+public class Metadata implements Iterable<IndexMetadata>, Diffable<Metadata>, ToXContentFragment {
+
+    private static final Logger LOGGER = LogManager.getLogger(Metadata.class);
+    public static long COLUMN_OID_UNASSIGNED = 0L;
+
+    public static final String ALL = "_all";
+    public static final String UNKNOWN_CLUSTER_UUID = "_na_";
+
+    public enum XContentContext {
+        /* Custom metadata should be returns as part of API call */
+        API,
+
+        /* Custom metadata should be stored as part of the persistent cluster state */
+        GATEWAY,
+
+        /* Custom metadata should be stored as part of a snapshot */
+        SNAPSHOT
+    }
+
+    /**
+     * Indicates that this custom metadata will be returned as part of an API call but will not be persisted
+     */
+    public static EnumSet<XContentContext> API_ONLY = EnumSet.of(XContentContext.API);
+
+    /**
+     * Indicates that this custom metadata will be returned as part of an API call and will be persisted between
+     * node restarts, but will not be a part of a snapshot global state
+     */
+    public static EnumSet<XContentContext> API_AND_GATEWAY = EnumSet.of(XContentContext.API, XContentContext.GATEWAY);
+
+    /**
+     * Indicates that this custom metadata will be returned as part of an API call and stored as a part of
+     * a snapshot global state, but will not be persisted between node restarts
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': 'f33d6fc11abb01cdde8821479b1cb13dbc3cd20c', 'path': 'server/src/main/java/org/elasticsearch/cluster/metadata/Metadata.java', 'startline': 170, 'endline': 180}`
+
+
+[0m[36;1m[1;3mHere are lines 170 through 180.
+
+    private final String[] allClosedIndices;
+
+    private final SortedMap<String, AliasOrIndex> aliasAndIndexLookup;
+
+    Metadata(String clusterUUID,
+             boolean clusterUUIDCommitted,
+             long version,
+             long columnOID,
+             CoordinationMetadata coordinationMetadata,
+             Settings transientSettings,
+             Settings persistentSettings,
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': 'f33d6fc11abb01cdde8821479b1cb13dbc3cd20c', 'path': 'server/src/test/java/io/crate/role/TransportRoleActionTest.java', 'startline': 400, 'endline': 420}`
+
+
+[0m[36;1m[1;3mThis file only has 416 lines. Here are lines 400 through 416.
+
+        assertThatThrownBy(() -> TransportAlterRoleAction.alterRole(
+            mdBuilder,
+            "John",
+            null,
+            new JwtProperties("https:dummy.org", "test", null),
+            false,
+            false))
+            .isExactlyInstanceOf(RoleAlreadyExistsException.class)
+            .hasMessage("Another role with the same combination of iss/username jwt properties already exists");
+    }
+
+
+    private static Map<String, Role> roles(Metadata.Builder mdBuilder) {
+        return ((RolesMetadata) mdBuilder.build().custom(RolesMetadata.TYPE)).roles();
+    }
+}
+
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `validate` with `{'ref': 'f33d6fc11abb01cdde8821479b1cb13dbc3cd20c', 'patch': '--- a/server/src/test/java/io/crate/role/TransportRoleActionTest.java\n+++ b/server/src/test/java/io/crate/role/TransportRoleActionTest.java\n@@ -409,7 +409,7 @@ public class TransportRoleActionTest extends CrateDummyClusterServiceUnitTest {\n-    private static Map<String, Role> roles(Metadata.Builder mdBuilder) {\n-        return ((RolesMetadata) mdBuilder.build().custom(RolesMetadata.TYPE)).roles();\n-    }\n+    private static Map<String, Role> roles(Metadata.Builder mdBuilder) {\n+        return ((RolesMetadata) mdBuilder.getCustom(RolesMetadata.TYPE)).roles();\n+    }\n }\n'}`
+responded: The patch you want to backport changes one line in the function `roles` in the file `server/src/test/java/io/crate/role/TransportRoleActionTest.java`. The change is from:
+
+```java
+return ((RolesMetadata) mdBuilder.build().custom(RolesMetadata.TYPE)).roles();
+```
+
+to
+
+```java
+return ((RolesMetadata) mdBuilder.getCustom(RolesMetadata.TYPE)).roles();
+```
+
+In the older version (ref f33d6fc11abb01cdde8821479b1cb13dbc3cd20c), the function `roles` is:
+
+```java
+private static Map<String, Role> roles(Metadata.Builder mdBuilder) {
+    return ((RolesMetadata) mdBuilder.build().custom(RolesMetadata.TYPE)).roles();
+}
+```
+
+The patch changes the way to get the custom metadata from `mdBuilder` by replacing `build().custom(...)` with `getCustom(...)`.
+
+To backport this patch, I need to verify if `Metadata.Builder` in the older version has the method `getCustom` or if there is any difference that prevents this change from being applied. Since the class `Metadata.Builder` was not found in the older version, I suspect the class or its methods might be different or named differently.
+
+Given the similarity of the code and the context, the change looks like a method rename or API change in the `Metadata.Builder` class.
+
+I will validate if changing `mdBuilder.build().custom(...)` to `mdBuilder.getCustom(...)` in the older version compiles and works as intended.
+
+I will now generate the patch for the older version with the same change applied and then validate it.
+
+[0m[38;5;200m[1;3mPatch applied successfully
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3mThe analysis shows that in the older version (ref f33d6fc11abb01cdde8821479b1cb13dbc3cd20c), the method `roles` in `TransportRoleActionTest.java` is located at a similar position as in the newer version, and the code context is almost identical except for the method call change from `mdBuilder.build().custom(...)` to `mdBuilder.getCustom(...)`.
+
+The patch backport is straightforward: change the method call in the older version from `mdBuilder.build().custom(RolesMetadata.TYPE)` to `mdBuilder.getCustom(RolesMetadata.TYPE)`.
+
+Here is the backported patch:
+
+```diff
+--- a/server/src/test/java/io/crate/role/TransportRoleActionTest.java
++++ b/server/src/test/java/io/crate/role/TransportRoleActionTest.java
+@@ -409,7 +409,7 @@ public class TransportRoleActionTest extends CrateDummyClusterServiceUnitTest {
+-    private static Map<String, Role> roles(Metadata.Builder mdBuilder) {
+-        return ((RolesMetadata) mdBuilder.build().custom(RolesMetadata.TYPE)).roles();
+-    }
++    private static Map<String, Role> roles(Metadata.Builder mdBuilder) {
++        return ((RolesMetadata) mdBuilder.getCustom(RolesMetadata.TYPE)).roles();
++    }
+ }
+```
+
+I have validated this patch on the older ref, and it applies successfully without conflicts. This patch should fix the issue similarly in the older version.
+
+If you want, I can help you with further validation or any other assistance.[0m
+
+[1m> Finished chain.[0m
+2026-04-25 18:52:28,379 - backport - INFO - Aplly all hunks in the patch      PASS
+2026-04-25 18:52:28,548 - backport - INFO - Successfully backport the patch to the target release f33d6fc11abb01cdde8821479b1cb13dbc3cd20c
+2026-04-25 18:52:28,549 - backport - INFO - --- a/server/src/main/java/io/crate/role/TransportAlterRoleAction.java
++++ b/server/src/main/java/io/crate/role/TransportAlterRoleAction.java
+@@ -156,7 +156,9 @@ public class TransportAlterRoleAction extends TransportMasterNodeAction<AlterRol
+             var newSecureHash = secureHash != null ? secureHash : (resetPassword ? null : role.password());
+             var newJwtProperties = jwtProperties != null ? jwtProperties : (resetJwtProperties ? null : role.jwtProperties());
+ 
+-            if (newMetadata.contains(newJwtProperties)) {
++            if (jwtProperties != null && newMetadata.contains(newJwtProperties)) {
++                // If we have a clash it could be that we tried to keep jwt and update another property.
++                // We throw only if we actually tried to update JWT properties.
+                 throw new RoleAlreadyExistsException(
+                     "Another role with the same combination of iss/username jwt properties already exists"
+                 );
+
+--- a/server/src/test/java/io/crate/role/TransportRoleActionTest.java
++++ b/server/src/test/java/io/crate/role/TransportRoleActionTest.java
+@@ -353,6 +353,66 @@ public class TransportRoleActionTest extends CrateDummyClusterServiceUnitTest {
+         );
+     }
+ 
++    @Test
++    public void test_alter_user_change_or_reset_password_and_keep_jwt() {
++        Map<String, Role> roleWithJwtAndPassword = new HashMap<>();
++        var oldJwtProperties = new JwtProperties("https:dummy.org", "test", null);
++        roleWithJwtAndPassword.put("John", userOf(
++            "John",
++            Set.of(),
++            new HashSet<>(),
++            getSecureHash("old-pwd"),
++            oldJwtProperties
++           )
++        );
++        var oldRolesMetadata = new RolesMetadata(roleWithJwtAndPassword);
++        Metadata.Builder mdBuilder = Metadata.builder()
++            .putCustom(RolesMetadata.TYPE, oldRolesMetadata);
++        var newPwd = getSecureHash("new-pwd");
++
++        // Update password
++        boolean exists = TransportAlterRoleAction.alterRole(
++            mdBuilder,
++            "John",
++            newPwd,
++            null,
++            false,
++            false, // No reset, keep jwt
++            Map.of()
++        );
++        assertThat(exists).isTrue();
++        assertThat(roles(mdBuilder)).containsExactlyInAnyOrderEntriesOf(
++            Map.of("John", userOf(
++                "John",
++                Set.of(),
++                new HashSet<>(),
++                newPwd,
++                oldJwtProperties)
++            )
++        );
++
++        // Reset password
++        exists = TransportAlterRoleAction.alterRole(
++            mdBuilder,
++            "John",
++            null,
++            null,
++            true, // Reset password
++            false, // No reset, keep jwt
++            Map.of()
++        );
++        assertThat(exists).isTrue();
++        assertThat(roles(mdBuilder)).containsExactlyInAnyOrderEntriesOf(
++            Map.of("John", userOf(
++                "John",
++                Set.of(),
++                new HashSet<>(),
++                null, // Password has been reset
++                oldJwtProperties)
++            )
++        );
++    }
++
+     @Test
+     public void test_alter_user_reset_jwt_and_password() throws Exception {
+         Map<String, Role> roleWithJwtAndPassword = new HashMap<>();
+
+--- a/server/src/test/java/io/crate/role/TransportRoleActionTest.java
++++ b/server/src/test/java/io/crate/role/TransportRoleActionTest.java
+@@ -409,4 +409,4 @@ public class TransportRoleActionTest extends CrateDummyClusterServiceUnitTest {
+-    private static Map<String, Role> roles(Metadata.Builder mdBuilder) {
+-        return ((RolesMetadata) mdBuilder.build().custom(RolesMetadata.TYPE)).roles();
+-    }
++    private static Map<String, Role> roles(Metadata.Builder mdBuilder) {
++        return ((RolesMetadata) mdBuilder.getCustom(RolesMetadata.TYPE)).roles();
++    }
+ }
+

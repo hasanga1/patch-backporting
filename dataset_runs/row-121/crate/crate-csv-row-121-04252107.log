@@ -1,0 +1,37 @@
+2026-04-25 21:07:47,652 - backport - INFO - Using openrouter API: https://openrouter.ai/api/v1 (model: openai/gpt-4.1-mini)
+2026-04-25 21:07:48,307 - backport - INFO - Aplly all hunks in the patch      PASS
+2026-04-25 21:07:48,411 - backport - INFO - Successfully backport the patch to the target release ab1c036e253d1e2b9f49ac4d35b7d0fa59d1dc79
+2026-04-25 21:07:48,412 - backport - INFO - --- a/server/src/main/java/io/crate/planner/operators/HashJoinConditionSymbolsExtractor.java
++++ b/server/src/main/java/io/crate/planner/operators/HashJoinConditionSymbolsExtractor.java
+@@ -82,6 +82,14 @@ public final class JoinConditionSymbolsExtractor {
+ 
+         @Override
+         public Void visitFunction(Function function, Context context) {
++            // A join condition maybe an equi-join condition but its parts may not be.
++            // For example, consider `t1.a = t2.a AND t1.a = t1.a + t2.b`, as a whole
++            // it is an equi-join condition due to `t1.a = t2.b`
++            // but `t1.a = t1.a + t2.b` by itself is not an equi-join condition.
++            if (!EquiJoinDetector.isEquiJoin(function)) {
++                return null;
++            }
++
+             String functionName = function.name();
+             switch (functionName) {
+                 case AndOperator.NAME:
+
+--- a/server/src/test/java/io/crate/planner/operators/HashJoinConditionSymbolsExtractorTest.java
++++ b/server/src/test/java/io/crate/planner/operators/HashJoinConditionSymbolsExtractorTest.java
+@@ -118,4 +118,12 @@ public class HashJoinConditionSymbolsExtractorTest extends CrateDummyClusterServ
+                 RelationName.fromIndexName("t1"),
+                 RelationName.fromIndexName("t2"));
+     }
++
++    @Test
++    public void test_can_skip_over_non_equi_join_part() {
++        Symbol joinCondition = sqlExpressions.asSymbol("t1.a = t1.a + t2.b AND t1.a = t2.b");
++        Map<RelationName, List<Symbol>> symbolsPerRelation = JoinConditionSymbolsExtractor.extract(joinCondition);
++        assertThat(symbolsPerRelation.get(tr1.relationName())).satisfiesExactly(isReference("a"));
++        assertThat(symbolsPerRelation.get(tr2.relationName())).satisfiesExactly(isReference("b"));
++    }
+ }
+

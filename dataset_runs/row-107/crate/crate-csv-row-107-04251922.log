@@ -1,0 +1,924 @@
+2026-04-25 19:22:26,499 - backport - INFO - Using openrouter API: https://openrouter.ai/api/v1 (model: openai/gpt-4.1-mini)
+
+
+[1m> Entering new AgentExecutor chain...[0m
+
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `git_history` with `{}`
+
+
+[0m[36;1m[1;3m6c63ebf5fe Fix array_length function for input arrays containing nulls
+
+diff --git a/server/src/main/java/io/crate/expression/scalar/ArrayUpperFunction.java b/server/src/main/java/io/crate/expression/scalar/ArrayUpperFunction.java
+--- a/server/src/main/java/io/crate/expression/scalar/ArrayUpperFunction.java
++++ b/server/src/main/java/io/crate/expression/scalar/ArrayUpperFunction.java
+@@ -179,3 +185,6 @@
++            return toQueryUsingArrayLengthIndex(parentName, arrayRef, cmpVal);
++        }
++
+         // For numeric types all values are stored, so the doc-value-count represents the number of not-null values
+         // Only unique values are stored for IP and TEXT types, so the doc-value-count represents the number of unique not-null  values
+         // [a, a, a
+You need to do the following analysis based on the information in the last commit:
+Analyze the code logic of the context of the patch to be ported in this commit step by step.
+If code logic already existed before this commit, the patch context can be assumed to remain in a similar location. Use `locate` and `viewcode` to check your results.
+If code logic were added in this commit, then you need to `git_show` for further details.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `locate_symbol` with `{'ref': '876040fd299f0c57a10c7d52ccb35ce9f0e82053', 'symbol': 'ArrayUpperFunction'}`
+responded: From the git_history result, the commit 6c63ebf5fe fixed the array_length function for input arrays containing nulls and contains some code that is contextually close to the patch we want to backport.
+
+The patch we want to backport adds a check for innerType being an instance of ArrayType, which is a new check to avoid using _array_length_ index for arrays in tables created before 5.9.
+
+The existing code in the older version already has the return toQueryUsingArrayLengthIndex call and the comments about numeric types and doc-value-count.
+
+This suggests that the patch we want to backport is an addition after the return toQueryUsingArrayLengthIndex call.
+
+Next, I will locate the function containing this code in the old version to get the full context and determine the exact location to insert the new check.
+
+I will use locate_symbol to find the function containing this code in ref 876040fd299f0c57a10c7d52ccb35ce9f0e82053.
+
+[0m[33;1m[1;3mserver/src/main/java/io/crate/expression/scalar/ArrayUpperFunction.java:62
+server/src/main/java/io/crate/expression/scalar/ArrayUpperFunction.java:83[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': '876040fd299f0c57a10c7d52ccb35ce9f0e82053', 'path': 'server/src/main/java/io/crate/expression/scalar/ArrayUpperFunction.java', 'startline': 170, 'endline': 190}`
+
+
+[0m[36;1m[1;3mHere are lines 170 through 190.
+
+        Reference arrayRef = (Reference) arraySymbol;
+        DataType<?> elementType = ArrayType.unnest(arrayRef.valueType());
+        if (elementType.id() == ObjectType.ID || elementType.equals(DataTypes.GEO_SHAPE)) {
+            // No doc-values for these, can't utilize doc-value-count
+            return null;
+        }
+        int cmpVal = cmpNumber.intValue();
+
+        // For numeric types all values are stored, so the doc-value-count represents the number of not-null values
+        // Only unique values are stored for IP and TEXT types, so the doc-value-count represents the number of unique not-null  values
+        // [a, a, a]
+        //      -> docValueCount 1
+        //      -> arrayLength   3
+        // array_length([], 1)
+        //      -> NULL
+        //
+        //  array_length(arr, 1) =  0       noMatch
+        //  array_length(arr, 1) =  1       genericFunctionFilter
+        //  array_length(arr, 1) >  0       exists
+        //  array_length(arr, 1) >  1       genericFunctionFilter
+        //  array_length(arr, 1) >  20      genericFunctionFilter
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `git_history` with `{}`
+responded: The code snippet from the older version (ref 876040fd299f0c57a10c7d52ccb35ce9f0e82053) shows the context around the `cmpVal` variable and some comments about the array length and doc-value counts. However, the specific code added in the newer patch:
+
+```java
+DataType<?> innerType = ((ArrayType<?>) arrayRef.valueType()).innerType();
+if (innerType instanceof ArrayType<?>) {
+    // Cannot utilize `_array_length_` index for arrays in tables created before 5.9
+    return null;
+}
+```
+
+is not present in this snippet. This indicates that this logic was introduced after the older version or in a different part of the code.
+
+Next, I will check the git history of this file or function around this code to see when this logic was introduced and if there is any relevant change history that can help me understand how to backport this logic.
+
+I will check the git history of this file around the lines 170-190 to see if this code was added after the older ref or if there are any related changes.
+
+[0m[36;1m[1;3m6c63ebf5fe Fix array_length function for input arrays containing nulls
+
+diff --git a/server/src/main/java/io/crate/expression/scalar/ArrayUpperFunction.java b/server/src/main/java/io/crate/expression/scalar/ArrayUpperFunction.java
+--- a/server/src/main/java/io/crate/expression/scalar/ArrayUpperFunction.java
++++ b/server/src/main/java/io/crate/expression/scalar/ArrayUpperFunction.java
+@@ -179,3 +185,6 @@
++            return toQueryUsingArrayLengthIndex(parentName, arrayRef, cmpVal);
++        }
++
+         // For numeric types all values are stored, so the doc-value-count represents the number of not-null values
+         // Only unique values are stored for IP and TEXT types, so the doc-value-count represents the number of unique not-null  values
+         // [a, a, a
+You need to do the following analysis based on the information in the last commit:
+Analyze the code logic of the context of the patch to be ported in this commit step by step.
+If code logic already existed before this commit, the patch context can be assumed to remain in a similar location. Use `locate` and `viewcode` to check your results.
+If code logic were added in this commit, then you need to `git_show` for further details.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `git_show` with `{}`
+
+
+[0m[33;1m[1;3mcommit 6c63ebf5feee7ef8db1a6a3158e416d98053166d
+Author: jeeminso <jeeminso@gmail.com>
+Date:   Wed Jul 24 21:48:42 2024 -0400
+
+    Fix array_length function for input arrays containing nulls
+    
+    Introduce '_array_length_' field to index array columns' lengths
+    for performance improvements, see the PR for details
+
+ docs/appendices/release-notes/5.9.0.rst            |   6 ++
+ .../java/io/crate/execution/dml/ArrayIndexer.java  |  19 +++-
+ .../crate/execution/dml/IndexDocumentBuilder.java  |   9 +-
+ .../main/java/io/crate/execution/dml/Indexer.java  |   4 +-
+ .../io/crate/execution/dml/TranslogIndexer.java    |   5 +-
+ .../expression/scalar/ArrayUpperFunction.java      |  71 +++++++++---
+ server/src/main/java/io/crate/types/ArrayType.java |   5 +-
+ .../java/io/crate/execution/dml/IndexerTest.java   |  28 ++++-
+ .../lucene/ArrayLengthQueryBeforeV590Test.java     |  31 ++++++
+ .../ArrayLengthQueryBuilderBeforeV590Test.java     |  99 +++++++++++++++++
+ .../crate/lucene/ArrayLengthQueryBuilderTest.java  |   8 +-
+ .../java/io/crate/lucene/ArrayLengthQueryTest.java | 120 ++++++++++++++++++---
+ .../java/io/crate/testing/QueryTester.java         |   4 +-
+ 13 files changed, 368 insertions(+), 41 deletions(-)
+[IMPORTANT] The relevant code shown by `git_history` is not fully `+` lines.
+[IMPORTANT] This means that the code in question was not added or migrated in this commit.
+[IMPORTANT] Please think step by step and check the abstract below carefully. If error exists in abstract, please ignore the info below.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': '876040fd299f0c57a10c7d52ccb35ce9f0e82053', 'path': 'server/src/main/java/io/crate/expression/scalar/ArrayUpperFunction.java', 'startline': 180, 'endline': 185}`
+
+
+[0m[36;1m[1;3mHere are lines 180 through 185.
+
+        // [a, a, a]
+        //      -> docValueCount 1
+        //      -> arrayLength   3
+        // array_length([], 1)
+        //      -> NULL
+        //
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': '876040fd299f0c57a10c7d52ccb35ce9f0e82053', 'path': 'server/src/main/java/io/crate/expression/scalar/ArrayUpperFunction.java', 'startline': 186, 'endline': 195}`
+
+
+[0m[36;1m[1;3mHere are lines 186 through 195.
+
+        //  array_length(arr, 1) =  0       noMatch
+        //  array_length(arr, 1) =  1       genericFunctionFilter
+        //  array_length(arr, 1) >  0       exists
+        //  array_length(arr, 1) >  1       genericFunctionFilter
+        //  array_length(arr, 1) >  20      genericFunctionFilter
+        //  array_length(arr, 1) >= 0       exists
+        //  array_length(arr, 1) >= 1       docValueCount >= 1
+        //  array_length(arr, 1) >= 20      genericFunctionFilter
+        //  array_length(arr, 1) <  0       noMatch
+        //  array_length(arr, 1) <  1       noMatch
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': '876040fd299f0c57a10c7d52ccb35ce9f0e82053', 'path': 'server/src/main/java/io/crate/expression/scalar/ArrayUpperFunction.java', 'startline': 160, 'endline': 170}`
+
+
+[0m[36;1m[1;3mHere are lines 160 through 170.
+
+        }
+        Symbol dimensionSymbol = arrayLengthArgs.get(1);
+        if (!(dimensionSymbol instanceof Input)) {
+            return null;
+        }
+        int dimension = ((Number) ((Input<?>) dimensionSymbol).value()).intValue();
+        if (dimension != 1) {
+            // Storage of the multidimensional arrays is not supported.
+            return null;
+        }
+        Reference arrayRef = (Reference) arraySymbol;
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `validate` with `{'ref': '876040fd299f0c57a10c7d52ccb35ce9f0e82053', 'patch': "--- a/server/src/main/java/io/crate/expression/scalar/ArrayUpperFunction.java\n+++ b/server/src/main/java/io/crate/expression/scalar/ArrayUpperFunction.java\n@@ -174,10 +174,16 @@\n         Reference arrayRef = (Reference) arraySymbol;\n-        DataType<?> elementType = ArrayType.unnest(arrayRef.valueType());\n-        if (elementType.id() == ObjectType.ID || elementType.equals(DataTypes.GEO_SHAPE)) {\n-            // No doc-values for these, can't utilize doc-value-count\n-            return null;\n-        }\n-        int cmpVal = cmpNumber.intValue();\n+\n+        DataType<?> innerType = ((ArrayType<?>) arrayRef.valueType()).innerType();\n+        if (innerType instanceof ArrayType<?>) {\n+            // Cannot utilize `_array_length_` index for arrays in tables created before 5.9\n+            return null;\n+        }\n+\n+        DataType<?> elementType = ArrayType.unnest(arrayRef.valueType());\n+        if (elementType.id() == ObjectType.ID || elementType.equals(DataTypes.GEO_SHAPE)) {\n+            // No doc-values for these, can't utilize doc-value-count\n+            return null;\n+        }\n+\n+        int cmpVal = cmpNumber.intValue();\n         \n         // For numeric types all values are stored, so the doc-value-count represents the number of not-null values\n         // Only unique values are stored for IP and TEXT types, so the doc-value-count represents the number of unique not-null  values\n         // [a, a, a]\n         //      -> docValueCount 1\n         //      -> arrayLength   3\n         // array_length([], 1)\n         //      -> NULL\n         //\n         //  array_length(arr, 1) =  0       noMatch\n         //  array_length(arr, 1) =  1       genericFunctionFilter\n         //  array_length(arr, 1) >  0       exists\n         //  array_length(arr, 1) >  1       genericFunctionFilter\n         //  array_length(arr, 1) >  20      genericFunctionFilter\n         //  array_length(arr, 1) >= 0       exists\n         //  array_length(arr, 1) >= 1       docValueCount >= 1\n         //  array_length(arr, 1) >= 20      genericFunctionFilter\n         //  array_length(arr, 1) <  0       noMatch\n         //  array_length(arr, 1) <  1       noMatch\n"}`
+responded: I have reviewed the patch for the newer version and the similar code blocks in the older version. The patch in the newer version adds a check for the inner type of the array to see if it is an array itself, and if so, it returns null to avoid using the _array_length_ index for arrays in tables created before version 5.9.
+
+In the older version (ref 876040fd299f0c57a10c7d52ccb35ce9f0e82053), I found the relevant code context around the same location in the file `server/src/main/java/io/crate/expression/scalar/ArrayUpperFunction.java`. The code structure is similar, but the specific check for the inner array type is missing.
+
+The patch to backport should be inserted after the line:
+```java
+Reference arrayRef = (Reference) arraySymbol;
+```
+and before the existing comment about numeric types.
+
+I will now generate the patch for the older version by adapting the newer patch to the older code context.
+
+[0m[38;5;200m[1;3mPatch applied successfully
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3mI have analyzed the patch and the code context in the older version. The key logic to add is the check for innerType being an ArrayType to prevent using the _array_length_ index for arrays in tables created before 5.9. This logic fits well before the existing checks in the older version.
+
+I have generated the following patch for the older version (ref 876040fd299f0c57a10c7d52ccb35ce9f0e82053):
+
+```diff
+--- a/server/src/main/java/io/crate/expression/scalar/ArrayUpperFunction.java
++++ b/server/src/main/java/io/crate/expression/scalar/ArrayUpperFunction.java
+@@ -174,10 +174,16 @@
+         Reference arrayRef = (Reference) arraySymbol;
+-
+-        DataType<?> elementType = ArrayType.unnest(arrayRef.valueType());
+-        if (elementType.id() == ObjectType.ID || elementType.equals(DataTypes.GEO_SHAPE)) {
+-            // No doc-values for these, can't utilize doc-value-count
+-            return null;
+-        }
+-        int cmpVal = cmpNumber.intValue();
++        DataType<?> innerType = ((ArrayType<?>) arrayRef.valueType()).innerType();
++        if (innerType instanceof ArrayType<?>) {
++            // Cannot utilize `_array_length_` index for arrays in tables created before 5.9
++            return null;
++        }
++
++        DataType<?> elementType = ArrayType.unnest(arrayRef.valueType());
++        if (elementType.id() == ObjectType.ID || elementType.equals(DataTypes.GEO_SHAPE)) {
++            // No doc-values for these, can't utilize doc-value-count
++            return null;
++        }
++
++        int cmpVal = cmpNumber.intValue();
+ 
+         // For numeric types all values are stored, so the doc-value-count represents the number of not-null values
+         // Only unique values are stored for IP and TEXT types, so the doc-value-count represents the number of unique not-null  values
+         // [a, a, a]
+         //      -> docValueCount 1
+         //      -> arrayLength   3
+         // array_length([], 1)
+         //      -> NULL
+         //
+         //  array_length(arr, 1) =  0       noMatch
+         //  array_length(arr, 1) =  1       genericFunctionFilter
+         //  array_length(arr, 1) >  0       exists
+         //  array_length(arr, 1) >  1       genericFunctionFilter
+         //  array_length(arr, 1) >  20      genericFunctionFilter
+         //  array_length(arr, 1) >= 0       exists
+         //  array_length(arr, 1) >= 1       docValueCount >= 1
+         //  array_length(arr, 1) >= 20      genericFunctionFilter
+         //  array_length(arr, 1) <  0       noMatch
+         //  array_length(arr, 1) <  1       noMatch
+```
+
+I have validated this patch on the target ref and it applies cleanly without conflicts.
+
+Let me know if you want me to assist with anything else![0m
+
+[1m> Finished chain.[0m
+2026-04-25 19:23:13,957 - backport - INFO - Aplly all hunks in the patch      PASS
+
+
+[1m> Entering new AgentExecutor chain...[0m
+
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `validate` with `{'ref': '876040fd299f0c57a10c7d52ccb35ce9f0e82053', 'patch': '--- a/server/src/main/java/io/crate/expression/scalar/ArrayUpperFunction.java\n+++ b/server/src/main/java/io/crate/expression/scalar/ArrayUpperFunction.java\n@@ -174,26 +174,34 @@\n         Reference arrayRef = (Reference) arraySymbol;\n-        DataType<?> elementType = ArrayType.unnest(arrayRef.valueType());\n-        if (elementType.id() == ObjectType.ID || elementType.equals(DataTypes.GEO_SHAPE)) {\n-            // No doc-values for these, can\'t utilize doc-value-count\n-            return null;\n-        }\n-        int cmpVal = cmpNumber.intValue();\n+\n+        DataType<?> innerType = ((ArrayType<?>) arrayRef.valueType()).innerType();\n+        if (innerType instanceof ArrayType<?>) {\n+            // Cannot utilize `_array_length_` index for arrays in tables created before 5.9\n+            return null;\n+        }\n+\n+        DataType<?> elementType = ArrayType.unnest(arrayRef.valueType());\n+        if (elementType.id() == ObjectType.ID || elementType.equals(DataTypes.GEO_SHAPE)) {\n+            // No doc-values for these, can\'t utilize doc-value-count\n+            return null;\n+        }\n+\n+        int cmpVal = cmpNumber.intValue();\n \n         // For numeric types all values are stored, so the doc-value-count represents the number of not-null values\n         // Only unique values are stored for IP and TEXT types, so the doc-value-count represents the number of unique not-null  values\n         // [a, a, a]\n         //      -> docValueCount 1\n         //      -> arrayLength   3\n         // array_length([], 1)\n         //      -> NULL\n         //\n         //  array_length(arr, 1) =  0       noMatch\n         //  array_length(arr, 1) =  1       genericFunctionFilter\n         //  array_length(arr, 1) >  0       exists\n         //  array_length(arr, 1) >  1       genericFunctionFilter\n         //  array_length(arr, 1) >  20      genericFunctionFilter\n         //  array_length(arr, 1) >= 0       exists\n         //  array_length(arr, 1) >= 1       docValueCount >= 1\n         //  array_length(arr, 1) >= 20      genericFunctionFilter\n         //  array_length(arr, 1) <  0       noMatch\n         //  array_length(arr, 1) <  1       noMatch\n\n--- a/server/src/test/java/io/crate/lucene/ArrayLengthQueryBuilderBeforeV590Test.java\n+++ b/server/src/test/java/io/crate/lucene/ArrayLengthQueryBuilderBeforeV590Test.java\n@@ -96,4 +96,11 @@ public class ArrayLengthQueryBuilderBeforeV590Test extends LuceneQueryBuilderTes\n                 .containsExactly(List.of(1));\n         }\n     }\n+\n+    @Test\n+    public void test_array_length_on_array_sub_columns_of_array_of_objects() {\n+        Query query = convert("array_length(o_array[\'xs\'], 1) > 0");\n+        assertThat(query).isExactlyInstanceOf(GenericFunctionQuery.class);\n+        assertThat(query).hasToString("(array_length(o_array[\'xs\'], 1) > 0)");\n+    }\n }\n\n--- a/server/src/test/java/io/crate/lucene/ArrayLengthQueryBuilderTest.java\n+++ b/server/src/test/java/io/crate/lucene/ArrayLengthQueryBuilderTest.java\n@@ -94,4 +94,7 @@ public class ArrayLengthQueryBuilderTest extends LuceneQueryBuilderTest {\n                 .containsExactly(List.of(1));\n         }\n     }\n+\n+    @Test\n+    public void test_array_length_on_array_sub_columns_of_array_of_objects() {\n+        Query query = convert("array_length(o_array[\'xs\'], 1) > 0");\n+        assertThat(query).hasToString("_array_length_xs:[1 TO 2147483647]");\n+    }\n'}`
+
+
+[0m[38;5;200m[1;3mFor the patch you just generated, there was an APPLY failure during testing. Specifically there was a context mismatch in hunk 1 across the patch, below is part of the feedback I found for you.
+Here are lines 93 through 98 of file server/src/test/java/io/crate/lucene/ArrayLengthQueryBuilderTest.java for commit 876040fd299f0c57a10c7d52ccb35ce9f0e82053.
+```code snippet
+                .containsExactly(List.of(1));
+        }
+    }
+}
+
+```
+Here is the source code near the hunk context for your reference, a good patch context should look exactly like the source code.
+In addition to that, I've got more detailed error messages for you below where the context of your generated patch differs specifically from the source code context.(The line numbers below are all line numbers in the hunk, not the entire patch.)
+Here it shows that there is no difference between your context and the original code, the reason for the failure is that you didn't keep at least three lines of source code at the beginning and end of the patch, please follow this to fix it.
+Based on the above feedback, MUST you please modify only hunk 1 in the patch and leave the other hunks untouched so that the context present in hunk 1 is exactly the same as the source code to guarantee that git apply can be executed normally.
+[0m[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': '876040fd299f0c57a10c7d52ccb35ce9f0e82053', 'path': 'server/src/test/java/io/crate/lucene/ArrayLengthQueryBuilderTest.java', 'startline': 90, 'endline': 98}`
+
+
+[0m[36;1m[1;3mHere are lines 90 through 98.
+
+        ).indexValues("int_array", List.of(), List.of(1)).build()) {
+            Query query = tester.toQuery("array_length(int_array, 1) >= 1");
+            assertThat(query).hasToString(String.format("NumTermsPerDoc: %s", oid));
+            Assertions.assertThat(tester.runQuery("int_array", "array_length(int_array, 1) >= 1"))
+                .containsExactly(List.of(1));
+        }
+    }
+}
+
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': '876040fd299f0c57a10c7d52ccb35ce9f0e82053', 'path': 'server/src/test/java/io/crate/lucene/ArrayLengthQueryBuilderBeforeV590Test.java', 'startline': 90, 'endline': 100}`
+
+
+[0m[36;1m[1;3mThis file doesn't exist in this commit.[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': '876040fd299f0c57a10c7d52ccb35ce9f0e82053', 'path': 'server/src/test/java/io/crate/lucene/ArrayLengthQueryBuilderBeforeV590Test.java', 'startline': 90, 'endline': 100}`
+
+
+[0m[36;1m[1;3mThis file doesn't exist in this commit.[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `validate` with `{'ref': '876040fd299f0c57a10c7d52ccb35ce9f0e82053', 'patch': '--- a/server/src/main/java/io/crate/expression/scalar/ArrayUpperFunction.java\n+++ b/server/src/main/java/io/crate/expression/scalar/ArrayUpperFunction.java\n@@ -174,26 +174,34 @@\n         Reference arrayRef = (Reference) arraySymbol;\n-        DataType<?> elementType = ArrayType.unnest(arrayRef.valueType());\n-        if (elementType.id() == ObjectType.ID || elementType.equals(DataTypes.GEO_SHAPE)) {\n-            // No doc-values for these, can\'t utilize doc-value-count\n-            return null;\n-        }\n-        int cmpVal = cmpNumber.intValue();\n+\n+        DataType<?> innerType = ((ArrayType<?>) arrayRef.valueType()).innerType();\n+        if (innerType instanceof ArrayType<?>) {\n+            // Cannot utilize `_array_length_` index for arrays in tables created before 5.9\n+            return null;\n+        }\n+\n+        DataType<?> elementType = ArrayType.unnest(arrayRef.valueType());\n+        if (elementType.id() == ObjectType.ID || elementType.equals(DataTypes.GEO_SHAPE)) {\n+            // No doc-values for these, can\'t utilize doc-value-count\n+            return null;\n+        }\n+\n+        int cmpVal = cmpNumber.intValue();\n \n         // For numeric types all values are stored, so the doc-value-count represents the number of not-null values\n         // Only unique values are stored for IP and TEXT types, so the doc-value-count represents the number of unique not-null  values\n         // [a, a, a]\n         //      -> docValueCount 1\n         //      -> arrayLength   3\n         // array_length([], 1)\n         //      -> NULL\n         //\n         //  array_length(arr, 1) =  0       noMatch\n         //  array_length(arr, 1) =  1       genericFunctionFilter\n         //  array_length(arr, 1) >  0       exists\n         //  array_length(arr, 1) >  1       genericFunctionFilter\n         //  array_length(arr, 1) >  20      genericFunctionFilter\n         //  array_length(arr, 1) >= 0       exists\n         //  array_length(arr, 1) >= 1       docValueCount >= 1\n         //  array_length(arr, 1) >= 20      genericFunctionFilter\n         //  array_length(arr, 1) <  0       noMatch\n         //  array_length(arr, 1) <  1       noMatch\n\n--- a/server/src/test/java/io/crate/lucene/ArrayLengthQueryBuilderTest.java\n+++ b/server/src/test/java/io/crate/lucene/ArrayLengthQueryBuilderTest.java\n@@ -94,4 +94,10 @@ public class ArrayLengthQueryBuilderTest extends LuceneQueryBuilderTest {\n                 .containsExactly(List.of(1));\n         }\n     }\n+\n+    @Test\n+    public void test_array_length_on_array_sub_columns_of_array_of_objects() {\n+        Query query = convert("array_length(o_array[\'xs\'], 1) > 0");\n+        assertThat(query).hasToString("_array_length_xs:[1 TO 2147483647]");\n+    }\n+\n }\n'}`
+responded: The file server/src/test/java/io/crate/lucene/ArrayLengthQueryBuilderBeforeV590Test.java does not exist in the target ref 876040fd299f0c57a10c7d52ccb35ce9f0e82053, so the patch hunk related to this file is not applicable and should be omitted in the backport.
+
+Regarding the other test file server/src/test/java/io/crate/lucene/ArrayLengthQueryBuilderTest.java, the patch hunk you provided tries to add a new test method after the last closing brace, which is incorrect and causes the patch to fail due to context mismatch. The test method should be added before the last closing brace of the class.
+
+I will revise only the hunk for server/src/test/java/io/crate/lucene/ArrayLengthQueryBuilderTest.java to insert the new test method correctly before the last closing brace, leaving other hunks untouched.
+
+Here is the revised patch:
+
+```diff
+--- a/server/src/main/java/io/crate/expression/scalar/ArrayUpperFunction.java
++++ b/server/src/main/java/io/crate/expression/scalar/ArrayUpperFunction.java
+@@ -174,26 +174,34 @@
+         Reference arrayRef = (Reference) arraySymbol;
+-        DataType<?> elementType = ArrayType.unnest(arrayRef.valueType());
+-        if (elementType.id() == ObjectType.ID || elementType.equals(DataTypes.GEO_SHAPE)) {
+-            // No doc-values for these, can't utilize doc-value-count
+-            return null;
+-        }
+-        int cmpVal = cmpNumber.intValue();
++
++        DataType<?> innerType = ((ArrayType<?>) arrayRef.valueType()).innerType();
++        if (innerType instanceof ArrayType<?>) {
++            // Cannot utilize `_array_length_` index for arrays in tables created before 5.9
++            return null;
++        }
++
++        DataType<?> elementType = ArrayType.unnest(arrayRef.valueType());
++        if (elementType.id() == ObjectType.ID || elementType.equals(DataTypes.GEO_SHAPE)) {
++            // No doc-values for these, can't utilize doc-value-count
++            return null;
++        }
++
++        int cmpVal = cmpNumber.intValue();
+ 
+         // For numeric types all values are stored, so the doc-value-count represents the number of not-null values
+         // Only unique values are stored for IP and TEXT types, so the doc-value-count represents the number of unique not-null  values
+         // [a, a, a]
+         //      -> docValueCount 1
+         //      -> arrayLength   3
+         // array_length([], 1)
+         //      -> NULL
+         //
+         //  array_length(arr, 1) =  0       noMatch
+         //  array_length(arr, 1) =  1       genericFunctionFilter
+         //  array_length(arr, 1) >  0       exists
+         //  array_length(arr, 1) >  1       genericFunctionFilter
+         //  array_length(arr, 1) >  20      genericFunctionFilter
+         //  array_length(arr, 1) >= 0       exists
+         //  array_length(arr, 1) >= 1       docValueCount >= 1
+         //  array_length(arr, 1) >= 20      genericFunctionFilter
+         //  array_length(arr, 1) <  0       noMatch
+         //  array_length(arr, 1) <  1       noMatch
+ 
+--- a/server/src/test/java/io/crate/lucene/ArrayLengthQueryBuilderTest.java
++++ b/server/src/test/java/io/crate/lucene/ArrayLengthQueryBuilderTest.java
+@@ -94,4 +94,10 @@ public class ArrayLengthQueryBuilderTest extends LuceneQueryBuilderTest {
+                 .containsExactly(List.of(1));
+         }
+     }
++
++    @Test
++    public void test_array_length_on_array_sub_columns_of_array_of_objects() {
++        Query query = convert("array_length(o_array['xs'], 1) > 0");
++        assertThat(query).hasToString("_array_length_xs:[1 TO 2147483647]");
++    }
++
+ }
+```
+
+I will now validate this revised patch on the target ref.
+
+[0m[38;5;200m[1;3mThe patched source code could be COMPILED successfully! I really thank you for your great efforts.
+The patched source code could pass TESTCASE! I really thank you for your great efforts.
+Existing PoC could NOT TRIGGER the bug, which means your patch successfully fix the bug! I really thank you for your great efforts.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3mThe patch you formed has been successfully validated on the target ref 876040fd299f0c57a10c7d52ccb35ce9f0e82053. It compiles without errors, passes the test cases, and the PoC no longer triggers the bug, confirming the vulnerability is fixed.
+
+Summary of the final patch:
+- In ArrayUpperFunction.java, added a check for inner array types to return null, matching the fix logic for pre-5.9 tables.
+- Added the test for array_length on array sub-columns of array of objects in ArrayLengthQueryBuilderTest.java.
+- Removed the patch for ArrayLengthQueryBuilderBeforeV590Test.java as that file doesn't exist in the target ref.
+- Ensured context lines in the test file patch to allow clean patch application.
+
+You can safely apply the following patch to backport the fix:
+
+```diff
+--- a/server/src/main/java/io/crate/expression/scalar/ArrayUpperFunction.java
++++ b/server/src/main/java/io/crate/expression/scalar/ArrayUpperFunction.java
+@@ -174,26 +174,34 @@
+         Reference arrayRef = (Reference) arraySymbol;
+
+-        DataType<?> elementType = ArrayType.unnest(arrayRef.valueType());
+-        if (elementType.id() == ObjectType.ID || elementType.equals(DataTypes.GEO_SHAPE)) {
+-            // No doc-values for these, can't utilize doc-value-count
+-            return null;
+-        }
+-        int cmpVal = cmpNumber.intValue();
++        DataType<?> innerType = ((ArrayType<?>) arrayRef.valueType()).innerType();
++        if (innerType instanceof ArrayType<?>) {
++            // Cannot utilize `_array_length_` index for arrays in tables created before 5.9
++            return null;
++        }
++
++        DataType<?> elementType = ArrayType.unnest(arrayRef.valueType());
++        if (elementType.id() == ObjectType.ID || elementType.equals(DataTypes.GEO_SHAPE)) {
++            // No doc-values for these, can't utilize doc-value-count
++            return null;
++        }
++
++        int cmpVal = cmpNumber.intValue();
+
+         // For numeric types all values are stored, so the doc-value-count represents the number of not-null values
+         // Only unique values are stored for IP and TEXT types, so the doc-value-count represents the number of unique not-null  values
+         // [a, a, a]
+         //      -> docValueCount 1
+         //      -> arrayLength   3
+         // array_length([], 1)
+         //      -> NULL
+         //
+         //  array_length(arr, 1) =  0       noMatch
+         //  array_length(arr, 1) =  1       genericFunctionFilter
+         //  array_length(arr, 1) >  0       exists
+         //  array_length(arr, 1) >  1       genericFunctionFilter
+         //  array_length(arr, 1) >  20      genericFunctionFilter
+         //  array_length(arr, 1) >= 0       exists
+         //  array_length(arr, 1) >= 1       docValueCount >= 1
+         //  array_length(arr, 1) >= 20      genericFunctionFilter
+         //  array_length(arr, 1) <  0       noMatch
+         //  array_length(arr, 1) <  1       noMatch
+
+--- a/server/src/test/java/io/crate/lucene/ArrayLengthQueryBuilderTest.java
++++ b/server/src/test/java/io/crate/lucene/ArrayLengthQueryBuilderTest.java
+@@ -94,4 +94,10 @@
+                 .containsExactly(List.of(1));
+         }
+     }
++
++    @Test
++    public void test_array_length_on_array_sub_columns_of_array_of_objects() {
++        Query query = convert("array_length(o_array['xs'], 1) > 0");
++        assertThat(query).hasToString("_array_length_xs:[1 TO 2147483647]");
++    }
++
+ }
+```
+
+If you need further assistance or additional backports, feel free to ask![0m
+
+[1m> Finished chain.[0m
+2026-04-25 19:24:06,195 - backport - INFO - Successfully backport the patch to the target release 876040fd299f0c57a10c7d52ccb35ce9f0e82053
+2026-04-25 19:24:06,200 - backport - INFO - --- a/server/src/main/java/io/crate/expression/scalar/ArrayUpperFunction.java
++++ b/server/src/main/java/io/crate/expression/scalar/ArrayUpperFunction.java
+@@ -174,26 +174,34 @@
+         Reference arrayRef = (Reference) arraySymbol;
+-        DataType<?> elementType = ArrayType.unnest(arrayRef.valueType());
+-        if (elementType.id() == ObjectType.ID || elementType.equals(DataTypes.GEO_SHAPE)) {
+-            // No doc-values for these, can't utilize doc-value-count
+-            return null;
+-        }
+-        int cmpVal = cmpNumber.intValue();
++
++        DataType<?> innerType = ((ArrayType<?>) arrayRef.valueType()).innerType();
++        if (innerType instanceof ArrayType<?>) {
++            // Cannot utilize `_array_length_` index for arrays in tables created before 5.9
++            return null;
++        }
++
++        DataType<?> elementType = ArrayType.unnest(arrayRef.valueType());
++        if (elementType.id() == ObjectType.ID || elementType.equals(DataTypes.GEO_SHAPE)) {
++            // No doc-values for these, can't utilize doc-value-count
++            return null;
++        }
++
++        int cmpVal = cmpNumber.intValue();
+ 
+         // For numeric types all values are stored, so the doc-value-count represents the number of not-null values
+         // Only unique values are stored for IP and TEXT types, so the doc-value-count represents the number of unique not-null  values
+         // [a, a, a]
+         //      -> docValueCount 1
+         //      -> arrayLength   3
+         // array_length([], 1)
+         //      -> NULL
+         //
+         //  array_length(arr, 1) =  0       noMatch
+         //  array_length(arr, 1) =  1       genericFunctionFilter
+         //  array_length(arr, 1) >  0       exists
+         //  array_length(arr, 1) >  1       genericFunctionFilter
+         //  array_length(arr, 1) >  20      genericFunctionFilter
+         //  array_length(arr, 1) >= 0       exists
+         //  array_length(arr, 1) >= 1       docValueCount >= 1
+         //  array_length(arr, 1) >= 20      genericFunctionFilter
+         //  array_length(arr, 1) <  0       noMatch
+         //  array_length(arr, 1) <  1       noMatch
+
+--- a/server/src/test/java/io/crate/lucene/ArrayLengthQueryBuilderTest.java
++++ b/server/src/test/java/io/crate/lucene/ArrayLengthQueryBuilderTest.java
+@@ -94,4 +94,10 @@ public class ArrayLengthQueryBuilderTest extends LuceneQueryBuilderTest {
+                 .containsExactly(List.of(1));
+         }
+     }
++
++    @Test
++    public void test_array_length_on_array_sub_columns_of_array_of_objects() {
++        Query query = convert("array_length(o_array['xs'], 1) > 0");
++        assertThat(query).hasToString("_array_length_xs:[1 TO 2147483647]");
++    }
++
+ }
+
