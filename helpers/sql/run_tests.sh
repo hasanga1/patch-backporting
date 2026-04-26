@@ -43,6 +43,7 @@ ${DOCKER_CMD} run --rm -u root \
 
 echo "--- Executing: ${GRADLE_CMD} ---"
 
+TEST_OK=false
 if ${DOCKER_CMD} run --rm \
     --dns=8.8.8.8 \
     -u 1000:1000 \
@@ -59,6 +60,18 @@ if ${DOCKER_CMD} run --rm \
              mkdir -p /repo/build/all-test-results; \
              find . -name 'TEST-*.xml' -exec cp {} /repo/build/all-test-results/ \; 2>/dev/null || true; \
              exit \$GRADLE_EXIT_CODE"; then
+    TEST_OK=true
+fi
+
+# Fix ownership back to host user so subsequent git operations work
+HOST_UID=$(id -u)
+HOST_GID=$(id -g)
+${DOCKER_CMD} run --rm -u root \
+    -v "${PROJECT_DIR}:/repo" \
+    "${IMAGE_TAG}" \
+    bash -c "chown -R ${HOST_UID}:${HOST_GID} /repo 2>/dev/null || true"
+
+if [ "$TEST_OK" = "true" ]; then
     echo "✅ Tests Passed"
     exit 0
 else

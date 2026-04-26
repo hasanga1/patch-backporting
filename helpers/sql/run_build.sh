@@ -39,6 +39,7 @@ ${DOCKER_CMD} run --rm -u root \
     bash -c "chown -R 1000:1000 /home/gradle/.gradle/caches /home/gradle/.gradle/wrapper /repo 2>/dev/null || true"
 
 echo "--- Compiling and preparing for tests... ---"
+BUILD_OK=false
 if ${DOCKER_CMD} run --rm \
     --dns=8.8.8.8 \
     -u 1000:1000 \
@@ -49,6 +50,18 @@ if ${DOCKER_CMD} run --rm \
     ${BUILDER_IMAGE} \
     bash -c "find /home/gradle/.gradle/caches -name '*.lock' -delete 2>/dev/null || true; \
              ./gradlew classes testClasses -Dbuild.docker=false --continue"; then
+    BUILD_OK=true
+fi
+
+# Fix ownership back to host user so subsequent git operations work
+HOST_UID=$(id -u)
+HOST_GID=$(id -g)
+${DOCKER_CMD} run --rm -u root \
+    -v "${PROJECT_DIR}:/repo" \
+    ${BUILDER_IMAGE} \
+    bash -c "chown -R ${HOST_UID}:${HOST_GID} /repo 2>/dev/null || true"
+
+if [ "$BUILD_OK" = "true" ]; then
     echo "--- Build complete for ${COMMIT_SHA:0:7} ---"
     exit 0
 else

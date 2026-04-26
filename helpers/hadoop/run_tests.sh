@@ -72,10 +72,12 @@ else
 fi
 
 # Fix permissions back to host user AFTER the test run so git restore works
+HOST_UID=$(id -u)
+HOST_GID=$(id -g)
 ${DOCKER_CMD} run --rm -u root \
     -v "${PROJECT_DIR}:/repo" \
     "${IMAGE_TAG}" \
-    bash -c "chown -R 1000:1000 /repo 2>/dev/null || true"
+    bash -c "chown -R ${HOST_UID}:${HOST_GID} /repo 2>/dev/null || true"
 
 if [ "$TEST_OK" = "true" ]; then
     echo "✅ Tests Passed"

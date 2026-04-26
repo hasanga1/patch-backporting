@@ -119,10 +119,12 @@ else
 fi
 
 # Fix permissions back to host user AFTER the build so git operations work
+HOST_UID=$(id -u)
+HOST_GID=$(id -g)
 ${DOCKER_CMD} run --rm -u root \
     -v "${PROJECT_DIR}:/repo" \
     ${BUILDER_IMAGE} \
-    bash -c "chown -R 1000:1000 /repo 2>/dev/null || true"
+    bash -c "chown -R ${HOST_UID}:${HOST_GID} /repo 2>/dev/null || true"
 
 if [ "$BUILD_OK" = "true" ]; then
     echo "--- Build complete for ${COMMIT_SHA:0:7} ---"
