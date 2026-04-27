@@ -1,0 +1,1052 @@
+2026-04-27 08:34:18,812 - backport - INFO - Using openrouter API: https://openrouter.ai/api/v1 (model: openai/gpt-4.1-mini)
+
+
+[1m> Entering new AgentExecutor chain...[0m
+
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `git_history` with `{}`
+
+
+[0m[36;1m[1;3m376e3f52ed8 Return 404 if source index missing in ReindexDataStreamIndexAction (#120971)
+
+diff --git a/x-pack/plugin/migrate/src/internalClusterTest/java/org/elasticsearch/xpack/migrate/action/ReindexDatastreamIndexTransportActionIT.java b/x-pack/plugin/migrate/src/internalClusterTest/java/org/elasticsearch/xpack/migrate/action/ReindexDatastreamIndexTransportActionIT.java
+--- a/x-pack/plugin/migrate/src/internalClusterTest/java/org/elasticsearch/xpack/migrate/action/ReindexDatastreamIndexTransportActionIT.java
++++ b/x-pack/plugin/migrate/src/internalClusterTest/java/org/elasticsearch/xpack/migrate/action/ReindexDatastreamIndexTransportActionIT.java
+@@ -7,6 +7,7 @@
+ 
+ package org.elasticsearch.xpack.migrate.action;
+ 
+ import org.elasticsearch.ElasticsearchException;
++import org.elasticsearch.ResourceNotFoundException;
+ import org.elasticsearch.action.DocWriteRequest;
+ import org.elasticsearch.action.admin.indices.create.CreateIndexRequest;
+cd82da515e0 Improve how reindex data stream index action handles api blocks (#120084)
+
+diff --git a/x-pack/plugin/migrate/src/internalClusterTest/java/org/elasticsearch/xpack/migrate/action/ReindexDatastreamIndexTransportActionIT.java b/x-pack/plugin/migrate/src/internalClusterTest/java/org/elasticsearch/xpack/migrate/action/ReindexDatastreamIndexTransportActionIT.java
+--- a/x-pack/plugin/migrate/src/internalClusterTest/java/org/elasticsearch/xpack/migrate/action/ReindexDatastreamIndexTransportActionIT.java
++++ b/x-pack/plugin/migrate/src/internalClusterTest/java/org/elasticsearch/xpack/migrate/action/ReindexDatastreamIndexTransportActionIT.java
+@@ -7,5 +7,6 @@
+ 
+ package org.elasticsearch.xpack.migrate.action;
+ 
++import org.elasticsearch.ElasticsearchException;
+ import org.elasticsearch.action.DocWriteRequest;
+ import org.elasticsearch.action.admin.indices.create.CreateIndexRequest;
+0a6ce27825d Add ReindexDatastreamIndexAction (#116996)
+
+diff --git a/x-pack/plugin/migrate/src/internalClusterTest/java/org/elasticsearch/xpack/migrate/action/ReindexDatastreamIndexIT.java b/x-pack/plugin/migrate/src/internalClusterTest/java/org/elasticsearch/xpack/migrate/action/ReindexDatastreamIndexIT.java
+--- /dev/null
++++ b/x-pack/plugin/migrate/src/internalClusterTest/java/org/elasticsearch/xpack/migrate/action/ReindexDatastreamIndexIT.java
+@@ -0,0 +7,5 @@
++
++package org.elasticsearch.xpack.migrate.action;
++
++import org.elasticsearch.action.DocWriteRequest;
++import org.elasticsearch.action.admin.indices.create.CreateIndexRequest
+You need to do the following analysis based on the information in the last commit:
+Analyze the code logic of the context of the patch to be ported in this commit step by step.
+If code logic already existed before this commit, the patch context can be assumed to remain in a similar location. Use `locate` and `viewcode` to check your results.
+If code logic were added in this commit, then you need to `git_show` for further details.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': 'f2d591802c789cb0dcf6ff3ea7738d9b3d823d2a', 'path': 'x-pack/plugin/migrate/src/internalClusterTest/java/org/elasticsearch/xpack/migrate/action/ReindexDatastreamIndexTransportActionIT.java', 'startline': 1, 'endline': 20}`
+responded: The patch to be ported involves removing the import of `ElasticsearchException` from the test file `ReindexDatastreamIndexTransportActionIT.java`. 
+
+From the git history, I see that there was a commit (hash: 376e3f52ed8) that added the import of `ResourceNotFoundException` and kept the import of `ElasticsearchException`. Another commit (hash: cd82da515e0) added the import of `ElasticsearchException` again, which seems to be the state in the older version we are targeting (f2d591802c789cb0dcf6ff3ea7738d9b3d823d2a).
+
+The patch in the newer version removes the import of `ElasticsearchException`. This suggests that in the newer version, this import is no longer needed or used in the test file.
+
+Since this is a simple import removal, it is likely that the test file in the older version has the import `ElasticsearchException` and we need to remove it to match the newer version.
+
+Next, I will locate this file in the older version to confirm the import statements and prepare the patch accordingly.
+
+[0m[36;1m[1;3mHere are lines 1 through 20.
+
+/*
+ * Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
+ * or more contributor license agreements. Licensed under the Elastic License
+ * 2.0; you may not use this file except in compliance with the Elastic License
+ * 2.0.
+ */
+
+package org.elasticsearch.xpack.migrate.action;
+
+import org.elasticsearch.ElasticsearchException;
+import org.elasticsearch.ResourceNotFoundException;
+import org.elasticsearch.action.ActionRequest;
+import org.elasticsearch.action.ActionResponse;
+import org.elasticsearch.action.DocWriteRequest;
+import org.elasticsearch.action.admin.indices.create.CreateIndexRequest;
+import org.elasticsearch.action.admin.indices.get.GetIndexRequest;
+import org.elasticsearch.action.admin.indices.mapping.get.GetMappingsRequest;
+import org.elasticsearch.action.admin.indices.refresh.RefreshRequest;
+import org.elasticsearch.action.admin.indices.rollover.RolloverRequest;
+import org.elasticsearch.action.admin.indices.settings.get.GetSettingsRequest;
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `validate` with `{'ref': 'f2d591802c789cb0dcf6ff3ea7738d9b3d823d2a', 'patch': '--- a/x-pack/plugin/migrate/src/internalClusterTest/java/org/elasticsearch/xpack/migrate/action/ReindexDatastreamIndexTransportActionIT.java\n+++ b/x-pack/plugin/migrate/src/internalClusterTest/java/org/elasticsearch/xpack/migrate/action/ReindexDatastreamIndexTransportActionIT.java\n@@ -6,10 +6,9 @@\n \n package org.elasticsearch.xpack.migrate.action;\n \n-import org.elasticsearch.ElasticsearchException;\n import org.elasticsearch.ResourceNotFoundException;\n import org.elasticsearch.action.ActionRequest;\n import org.elasticsearch.action.ActionResponse;\n import org.elasticsearch.action.DocWriteRequest;\n import org.elasticsearch.action.admin.indices.create.CreateIndexRequest;\n'}`
+responded: The code snippet I viewed contains the package declaration and the import statements of the file `ReindexDatastreamIndexTransportActionIT.java` at the ref `f2d591802c789cb0dcf6ff3ea7738d9b3d823d2a`. The patch to be backported modifies the import statements by removing the import of `org.elasticsearch.ElasticsearchException`.
+
+This matches the context of the patch we want to backport, which removes the line:
+```java
+-import org.elasticsearch.ElasticsearchException;
+```
+
+The rest of the import statements in the patch and in the old version are consistent except the patch removes only this import.
+
+Given this, the patch for the older version is simply to remove the import of `org.elasticsearch.ElasticsearchException` from the import section.
+
+No other code changes are indicated in the patch snippet.
+
+I will generate the patch to remove the import line for `ElasticsearchException` from the import section in the older version of the file.
+
+Next step: generate the patch and validate it.
+
+[0m[38;5;200m[1;3mPatch applied successfully
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3mThe patch for the backport is as follows:
+```diff
+--- a/x-pack/plugin/migrate/src/internalClusterTest/java/org/elasticsearch/xpack/migrate/action/ReindexDatastreamIndexTransportActionIT.java
++++ b/x-pack/plugin/migrate/src/internalClusterTest/java/org/elasticsearch/xpack/migrate/action/ReindexDatastreamIndexTransportActionIT.java
+@@ -6,10 +6,9 @@
+ 
+ package org.elasticsearch.xpack.migrate.action;
+ 
+-import org.elasticsearch.ElasticsearchException;
+ import org.elasticsearch.ResourceNotFoundException;
+ import org.elasticsearch.action.ActionRequest;
+ import org.elasticsearch.action.ActionResponse;
+ import org.elasticsearch.action.DocWriteRequest;
+ import org.elasticsearch.action.admin.indices.create.CreateIndexRequest;
+```
+This patch removes the import of `org.elasticsearch.ElasticsearchException` which is consistent with the older version's code context. I have validated the patch on the target ref, and it applies cleanly without conflicts.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new AgentExecutor chain...[0m
+
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `git_history` with `{}`
+
+
+[0m[36;1m[1;3mreamIndexIT.java
+--- /dev/null
++++ b/x-pack/plugin/migrate/src/internalClusterTest/java/org/elasticsearch/xpack/migrate/action/ReindexDatastreamIndexIT.java
+@@ -0,0 +50,7 @@
++import static org.elasticsearch.test.hamcrest.ElasticsearchAssertions.assertAcked;
++import static org.elasticsearch.test.hamcrest.ElasticsearchAssertions.assertHitCount;
++import static org.elasticsearch.xcontent.XContentFactory.jsonBuilder;
++import static org.elasticsearch.xpack.migrate.action.ReindexDataStreamAction.REINDEX_DATA_STREAM_FEATURE_FLAG;
++import static org.hamcrest.Matchers.equalTo;
++
++public class ReindexDatastreamIndexIT extends ESIntegTestCase 
+You need to do the following analysis based on the information in the last commit:
+Analyze the code logic of the context of the patch to be ported in this commit step by step.
+If code logic already existed before this commit, the patch context can be assumed to remain in a similar location. Use `locate` and `viewcode` to check your results.
+If code logic were added in this commit, then you need to `git_show` for further details.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': 'f2d591802c789cb0dcf6ff3ea7738d9b3d823d2a', 'path': 'x-pack/plugin/migrate/src/internalClusterTest/java/org/elasticsearch/xpack/migrate/action/ReindexDatastreamIndexTransportActionIT.java', 'startline': 90, 'endline': 110}`
+responded: The git history shows that the import statements in the patch are already present in the older version, except for the removal of `import static org.elasticsearch.xcontent.XContentFactory.jsonBuilder;` in the patch. The older version still has this import.
+
+The patch only removes this import line from the test file, so it is a simple removal of an unused import.
+
+Since the older version has the import and the patch removes it, the patch for the older version would be to remove that import line as well.
+
+Next, I will locate the file and view the relevant lines around the import statements in the older version to craft the patch correctly.
+
+[0m[36;1m[1;3mHere are lines 90 through 110.
+
+import java.util.List;
+import java.util.Locale;
+import java.util.Map;
+import java.util.concurrent.TimeUnit;
+
+import static java.lang.Boolean.parseBoolean;
+import static org.elasticsearch.cluster.metadata.MetadataIndexTemplateService.DEFAULT_TIMESTAMP_FIELD;
+import static org.elasticsearch.test.hamcrest.ElasticsearchAssertions.assertAcked;
+import static org.elasticsearch.test.hamcrest.ElasticsearchAssertions.assertHitCount;
+import static org.elasticsearch.test.hamcrest.ElasticsearchAssertions.assertResponse;
+import static org.elasticsearch.xcontent.XContentFactory.jsonBuilder;
+import static org.hamcrest.Matchers.equalTo;
+import static org.hamcrest.Matchers.not;
+
+public class ReindexDatastreamIndexTransportActionIT extends ESIntegTestCase {
+
+    @Before
+    private void setup() throws Exception {
+        safeGet(
+            clusterAdmin().execute(
+                DeletePipelineTransportAction.TYPE,
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `validate` with `{'ref': 'f2d591802c789cb8dcf6ff3ea7738d9b3d823d2a', 'patch': '--- a/x-pack/plugin/migrate/src/internalClusterTest/java/org/elasticsearch/xpack/migrate/action/ReindexDatastreamIndexTransportActionIT.java\n+++ b/x-pack/plugin/migrate/src/internalClusterTest/java/org/elasticsearch/xpack/migrate/action/ReindexDatastreamIndexTransportActionIT.java\n@@ -96,9 +96,8 @@\n import static org.elasticsearch.test.hamcrest.ElasticsearchAssertions.assertAcked;\n import static org.elasticsearch.test.hamcrest.ElasticsearchAssertions.assertHitCount;\n import static org.elasticsearch.test.hamcrest.ElasticsearchAssertions.assertResponse;\n-import static org.elasticsearch.xcontent.XContentFactory.jsonBuilder;\n import static org.hamcrest.Matchers.equalTo;\n import static org.hamcrest.Matchers.not;\n\n public class ReindexDatastreamIndexTransportActionIT extends ESIntegTestCase {\n'}`
+responded: I found the target import line "import static org.elasticsearch.xcontent.XContentFactory.jsonBuilder;" in the older version at line 99, which is currently included in the code snippet from line 90 to 110. The patch in the newer version removes this import line.
+
+Since the import line exists in the older version, the patch should remove it to backport the change correctly.
+
+The rest of the import lines around it are similar, so the patch should be a removal of this import line only.
+
+I will now generate the patch for this removal in the older version.
+
+[0m2026-04-27 08:34:48,927 - backport - WARNING - Invalid ref passed to validate: f2d591802c789cb8dcf6ff3ea7738d9b3d823d2a. Falling back to target_release: f2d591802c789cb0dcf6ff3ea7738d9b3d823d2a.
+[38;5;200m[1;3mPatch applied successfully
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3mThe patch for the given hunk is very simple. In the newer version, the import line for `org.elasticsearch.xcontent.XContentFactory.jsonBuilder` was removed from the test file `x-pack/plugin/migrate/src/internalClusterTest/java/org/elasticsearch/xpack/migrate/action/ReindexDatastreamIndexTransportActionIT.java`.
+
+In the older version at ref f2d591802c789cb0dcf6ff3ea7738d9b3d823d2a, this import line still exists. So the backport patch is just to remove this import line to match the newer version.
+
+Here is the backport patch:
+
+```diff
+--- a/x-pack/plugin/migrate/src/internalClusterTest/java/org/elasticsearch/xpack/migrate/action/ReindexDatastreamIndexTransportActionIT.java
++++ b/x-pack/plugin/migrate/src/internalClusterTest/java/org/elasticsearch/xpack/migrate/action/ReindexDatastreamIndexTransportActionIT.java
+@@ -96,9 +96,8 @@
+ import static org.elasticsearch.test.hamcrest.ElasticsearchAssertions.assertAcked;
+ import static org.elasticsearch.test.hamcrest.ElasticsearchAssertions.assertHitCount;
+ import static org.elasticsearch.test.hamcrest.ElasticsearchAssertions.assertResponse;
+-import static org.elasticsearch.xcontent.XContentFactory.jsonBuilder;
+ import static org.hamcrest.Matchers.equalTo;
+ import static org.hamcrest.Matchers.not;
+ 
+ public class ReindexDatastreamIndexTransportActionIT extends ESIntegTestCase {
+```
+
+I have validated this patch on the target ref and it applies cleanly without conflicts.
+
+If you need any more hunks backported or further assistance, please let me know![0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new AgentExecutor chain...[0m
+
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `git_history` with `{}`
+
+
+[0m[36;1m[1;3m0677)
+
+diff --git a/x-pack/plugin/migrate/src/internalClusterTest/java/org/elasticsearch/xpack/migrate/action/ReindexDatastreamIndexTransportActionIT.java b/x-pack/plugin/migrate/src/internalClusterTest/java/org/elasticsearch/xpack/migrate/action/ReindexDatastreamIndexTransportActionIT.java
+--- a/x-pack/plugin/migrate/src/internalClusterTest/java/org/elasticsearch/xpack/migrate/action/ReindexDatastreamIndexTransportActionIT.java
++++ b/x-pack/plugin/migrate/src/internalClusterTest/java/org/elasticsearch/xpack/migrate/action/ReindexDatastreamIndexTransportActionIT.java
+@@ -144,21 +136,19 @@
+         assertHitCount(prepareSearch(response.getDestIndex()).setSize(0), numDocs);
+     }
+ 
+     public void testSetSourceToBlockWrites() throws Exception {
+-        assumeTrue("requires the migration reindex feature flag", REINDEX_DATA_STREAM_FEATURE_FLAG.isEnabled());
+-
+         var settings = randomBoolean() ? Settings.builder().put(IndexMetadata.SETTING_BLOCKS_WRITE, true).build() : Settings.EMPTY;
+ 
+         // empty source index
+         var sourceIndex = randomAlphaOfLength(20).toLowerCase(Locale.ROOT);
+         indicesAdmin().create(new CreateIndexRequest(sourceIndex, settings)).get();
+ 
+         // call reindex
+         client().execute(ReindexDataStreamIndexAction.INSTANCE, new ReindexDataStreamIndexAction.Request(sourceIndex)).actionGet();
+ 
+         // assert that write to source fails
+         var indexReq = new IndexRequest(sourceIndex).source(jsonBuilder().startObject().field("field", "1").endObject());
+         assertThrows(ClusterBlockException.class, () -> client().index(indexReq).actionGet());
+         assertHitCount(prepareSearch(sourceIndex).setSize(0), 0);
+     }
+ 
+1004da29821 Add action to create index from a source index (#118890)
+
+diff --git a/x-pack/plugin/migrate/src/internalClusterTest/java/org/elasticsearch/xpack/migrate/action/ReindexDatastreamIndexIT.java b/x-pack/plugin/migrate/src/internalClusterTest/java/org/elasticsearch/xpack/migrate/action/ReindexDatastreamIndexTransportActionIT.java
+--- a/x-pack/plugin/migrate/src/internalClusterTest/java/org/elasticsearch/xpack/migrate/action/ReindexDatastreamIndexIT.java
++++ b/x-pack/plugin/migrate/src/internalClusterTest/java/org/elasticsearch/xpack/migrate/action/ReindexDatastreamIndexTransportActionIT.java
+@@ -126,19 +126,21 @@
+         assertHitCount(prepareSearch(response.getDestIndex()).setSize(0), numDocs);
+     }
+ 
+-    public void testSetSourceToReadOnly() throws Exception {
++    public void testSetSourceToBlockWrites() throws Exception {
+         assumeTrue("requires the migration reindex feature flag", REINDEX_DATA_STREAM_FEATURE_FLAG.isEnabled());
+ 
++        var settings = randomBoolean() ? Settings.builder().put(IndexMetadata.SETTING_BLOCKS_WRITE, true).build() : Settings.EMPTY;
++
+         // empty source index
+         var sourceIndex = randomAlphaOfLength(20).toLowerCase(Locale.ROOT);
+-        indicesAdmin().create(new CreateIndexRequest(sourceIndex)).get();
++        indicesAdmin().create(new CreateIndexRequest(sourceIndex, settings)).get();
+ 
+         // call reindex
+         client().execute(ReindexDataStreamIndexAction.INSTANCE, new ReindexDataStreamIndexAction.Request(sourceIndex)).actionGet();
+ 
+         // assert that write to source fails
+         var indexReq = new IndexRequest(sourceIndex).source(jsonBuilder().startObject().field("field", "1").endObject());
+         assertThrows(ClusterBlockException.class, () -> client().index(indexReq).actionGet());
+         assertHitCount(prepareSearch(sourceIndex).setSize(0), 0);
+     }
+ 
+0a6ce27825d Add ReindexDatastreamIndexAction (#116996)
+
+diff --git a/x-pack/plugin/migrate/src/internalClusterTest/java/org/elasticsearch/xpack/migrate/action/ReindexDatastreamIndexIT.java b/x-pack/plugin/migrate/src/internalClusterTest/java/org/elasticsearch/xpack/migrate/action/ReindexDatastreamIndexIT.java
+--- /dev/null
++++ b/x-pack/plugin/migrate/src/internalClusterTest/java/org/elasticsearch/xpack/migrate/action/ReindexDatastreamIndexIT.java
+@@ -0,0 +126,19 @@
++        assertHitCount(prepareSearch(response.getDestIndex()).setSize(0), numDocs);
++    }
++
++    public void testSetSourceToReadOnly() throws Exception {
++        assumeTrue("requires the migration reindex feature flag", REINDEX_DATA_STREAM_FEATURE_FLAG.isEnabled());
++
++        // empty source index
++        var sourceIndex = randomAlphaOfLength(20).toLowerCase(Locale.ROOT);
++        indicesAdmin().create(new CreateIndexRequest(sourceIndex)).get();
++
++        // call reindex
++        client().execute(ReindexDataStreamIndexAction.INSTANCE, new ReindexDataStreamIndexAction.Request(sourceIndex)).actionGet();
++
++        // assert that write to source fails
++        var indexReq = new IndexRequest(sourceIndex).source(jsonBuilder().startObject().field("field", "1").endObject());
++        assertThrows(ClusterBlockException.class, () -> client().index(indexReq).actionGet());
++        assertHitCount(prepareSearch(sourceIndex).setSize(0), 0);
++    }
+
+You need to do the following analysis based on the information in the last commit:
+Analyze the code logic of the context of the patch to be ported in this commit step by step.
+If code logic already existed before this commit, the patch context can be assumed to remain in a similar location. Use `locate` and `viewcode` to check your results.
+If code logic were added in this commit, then you need to `git_show` for further details.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `locate_symbol` with `{'ref': 'f2d591802c789cb0dcf6ff3ea7738d9b3d823d2a', 'symbol': 'testSetSourceToBlockWrites'}`
+responded: The git_history result shows that the test method `testSetSourceToBlockWrites` already existed in the older ref but with some differences:
+
+- In the older version, the test method includes a feature flag check (`assumeTrue("requires the migration reindex feature flag", REINDEX_DATA_STREAM_FEATURE_FLAG.isEnabled());`), which is not present in the newer patch version.
+- The older version's test creates the source index with settings that may or may not block writes, similar to the newer version.
+- The older version does not check the read-only block setting on the source index after reindexing, which is added in the newer patch.
+- The older version asserts that writes to the source index fail, similar to the newer version.
+- The newer patch adds assertions to check that the source index is set to read-only (write block) and that the verified read-only setting is false.
+- The newer patch also uses a different way to get the settings response with a timeout setting.
+
+Since the older version already has a similar test method `testSetSourceToBlockWrites` but lacks the new assertions regarding the read-only block and verified read-only setting, the patch should add these assertions in the older version's test method while preserving the existing feature flag check.
+
+Next, I will locate the method `testSetSourceToBlockWrites` in the older ref to confirm its exact location and view the surrounding code for precise patch context.
+
+[0m[33;1m[1;3mx-pack/plugin/migrate/src/internalClusterTest/java/org/elasticsearch/xpack/migrate/action/ReindexDatastreamIndexTransportActionIT.java:338[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': 'f2d591802c789cb0dcf6ff3ea7738d9b3d823d2a', 'path': 'x-pack/plugin/migrate/src/internalClusterTest/java/org/elasticsearch/xpack/migrate/action/ReindexDatastreamIndexTransportActionIT.java', 'startline': 330, 'endline': 360}`
+
+
+[0m[36;1m[1;3mHere are lines 330 through 360.
+
+            client().execute(ReindexDataStreamIndexAction.INSTANCE, new ReindexDataStreamIndexAction.Request(sourceIndex))
+        );
+        safeGet(indicesAdmin().refresh(new RefreshRequest(response.getDestIndex())));
+
+        // verify that dest contains docs
+        assertHitCount(prepareSearch(response.getDestIndex()).setSize(0), numDocs);
+    }
+
+    public void testSetSourceToBlockWrites() throws Exception {
+        var settings = randomBoolean() ? Settings.builder().put(IndexMetadata.SETTING_BLOCKS_WRITE, true).build() : Settings.EMPTY;
+
+        // empty source index
+        var sourceIndex = randomAlphaOfLength(20).toLowerCase(Locale.ROOT);
+        safeGet(indicesAdmin().create(new CreateIndexRequest(sourceIndex, settings)));
+
+        // call reindex
+        safeGet(client().execute(ReindexDataStreamIndexAction.INSTANCE, new ReindexDataStreamIndexAction.Request(sourceIndex)));
+
+        // Assert that source index is now read-only but not verified read-only
+        GetSettingsResponse getSettingsResponse = safeGet(admin().indices().getSettings(new GetSettingsRequest().indices(sourceIndex)));
+        assertTrue(parseBoolean(getSettingsResponse.getSetting(sourceIndex, IndexMetadata.SETTING_BLOCKS_WRITE)));
+        assertFalse(
+            parseBoolean(getSettingsResponse.getSetting(sourceIndex, MetadataIndexStateService.VERIFIED_READ_ONLY_SETTING.getKey()))
+        );
+
+        // assert that write to source fails
+        var indexReq = new IndexRequest(sourceIndex).source(jsonBuilder().startObject().field("field", "1").endObject());
+        expectThrows(ClusterBlockException.class, client().index(indexReq));
+        assertHitCount(prepareSearch(sourceIndex).setSize(0), 0);
+    }
+
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `locate_symbol` with `{'ref': 'f2d591802c789cb0dcf6ff3ea7738d9b3d823d2a', 'symbol': 'MetadataIndexStateService'}`
+responded: I have found the target code block in the older version at the expected location with some slight differences in the details of the code:
+
+- The older version's test method `testSetSourceToBlockWrites()` does not have the comment line "Assert that source index is now read-only but not verified read-only".
+- The older version uses `safeGet` for synchronous calls for `indicesAdmin().create()` and `client().execute()`.
+- The older version uses `expectThrows` for exception assertion but the lambda style is slightly different from the newer version.
+- The older version has the same logic of checking the write block on the source index and asserting that writes to the source index fail.
+
+The patch in the newer version adds a check for the `MetadataIndexStateService.VERIFIED_READ_ONLY_SETTING` being false and changes the comment to explicitly say "read-only but not verified read-only". The rest of the test logic is very similar.
+
+Since the older version already has the test logic for blocking writes and the assertion for the write block setting, the main addition in the newer patch is the assertion for the verified read-only setting being false.
+
+Next, I will check the history of the `MetadataIndexStateService.VERIFIED_READ_ONLY_SETTING` usage or existence in the older version to see if this setting exists and how to adapt it.
+
+I will locate `MetadataIndexStateService` symbol in the older version to find the file and line where this setting is defined or used.
+
+[0m[33;1m[1;3mserver/src/main/java/org/elasticsearch/cluster/metadata/MetadataIndexStateService.java:141
+server/src/main/java/org/elasticsearch/cluster/metadata/MetadataIndexStateService.java:99[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': 'f2d591802c789cb0dcf6ff3ea7738d9b3d823d2a', 'path': 'server/src/main/java/org/elasticsearch/cluster/metadata/MetadataIndexStateService.java', 'startline': 90, 'endline': 110}`
+
+
+[0m[36;1m[1;3mHere are lines 90 through 110.
+
+import java.util.stream.Collectors;
+
+import static java.util.stream.Collectors.joining;
+import static org.elasticsearch.cluster.metadata.IndexMetadataVerifier.hasReadOnlyBlocks;
+import static org.elasticsearch.core.Strings.format;
+
+/**
+ * Service responsible for submitting open/close index requests as well as for adding index blocks
+ */
+public class MetadataIndexStateService {
+    private static final Logger logger = LogManager.getLogger(MetadataIndexStateService.class);
+
+    public static final int INDEX_CLOSED_BLOCK_ID = 4;
+    public static final ClusterBlock INDEX_CLOSED_BLOCK = new ClusterBlock(
+        4,
+        "index closed",
+        false,
+        false,
+        false,
+        RestStatus.FORBIDDEN,
+        ClusterBlockLevel.READ_WRITE
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': 'f2d591802c789cb0dcf6ff3ea7738d9b3d823d2a', 'path': 'server/src/main/java/org/elasticsearch/cluster/metadata/MetadataIndexStateService.java', 'startline': 130, 'endline': 150}`
+
+
+[0m[36;1m[1;3mHere are lines 130 through 150.
+
+    private final IndicesService indicesService;
+    private final ShardLimitValidator shardLimitValidator;
+    private final NodeClient client;
+    private final ThreadPool threadPool;
+    private final MasterServiceTaskQueue<OpenIndicesTask> opensQueue;
+    private final MasterServiceTaskQueue<AddBlocksToCloseTask> addBlocksToCloseQueue;
+    private final MasterServiceTaskQueue<CloseIndicesTask> closesQueue;
+    private final MasterServiceTaskQueue<AddBlocksTask> addBlocksQueue;
+    private final MasterServiceTaskQueue<FinalizeBlocksTask> finalizeBlocksQueue;
+
+    @Inject
+    public MetadataIndexStateService(
+        ClusterService clusterService,
+        AllocationService allocationService,
+        IndexMetadataVerifier indexMetadataVerifier,
+        IndicesService indicesService,
+        ShardLimitValidator shardLimitValidator,
+        NodeClient client,
+        ThreadPool threadPool
+    ) {
+        this.clusterService = clusterService;
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': 'f2d591802c789cb0dcf6ff3ea7738d9b3d823d2a', 'path': 'server/src/main/java/org/elasticsearch/cluster/metadata/MetadataIndexStateService.java', 'startline': 50, 'endline': 70}`
+
+
+[0m[36;1m[1;3mHere are lines 50 through 70.
+
+import org.elasticsearch.cluster.service.ClusterService;
+import org.elasticsearch.cluster.service.MasterServiceTaskQueue;
+import org.elasticsearch.common.Priority;
+import org.elasticsearch.common.Strings;
+import org.elasticsearch.common.UUIDs;
+import org.elasticsearch.common.settings.Setting;
+import org.elasticsearch.common.settings.Settings;
+import org.elasticsearch.common.util.concurrent.AtomicArray;
+import org.elasticsearch.common.util.concurrent.ConcurrentCollections;
+import org.elasticsearch.common.util.concurrent.CountDown;
+import org.elasticsearch.common.util.set.Sets;
+import org.elasticsearch.core.SuppressForbidden;
+import org.elasticsearch.core.TimeValue;
+import org.elasticsearch.core.Tuple;
+import org.elasticsearch.index.Index;
+import org.elasticsearch.index.IndexNotFoundException;
+import org.elasticsearch.index.IndexVersion;
+import org.elasticsearch.index.shard.IndexLongFieldRange;
+import org.elasticsearch.index.shard.ShardId;
+import org.elasticsearch.indices.IndicesService;
+import org.elasticsearch.indices.ShardLimitValidator;
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': 'f2d591802c789cb0dcf6ff3ea7738d9b3d823d2a', 'path': 'x-pack/plugin/migrate/src/internalClusterTest/java/org/elasticsearch/xpack/migrate/action/ReindexDatastreamIndexTransportActionIT.java', 'startline': 320, 'endline': 370}`
+
+
+[0m[36;1m[1;3mHere are lines 320 through 370.
+
+
+    public void testDestIndexContainsDocs() throws Exception {
+        // source index with docs
+        var numDocs = randomIntBetween(1, 100);
+        var sourceIndex = randomAlphaOfLength(20).toLowerCase(Locale.ROOT);
+        safeGet(indicesAdmin().create(new CreateIndexRequest(sourceIndex)));
+        indexDocs(sourceIndex, numDocs);
+
+        // call reindex
+        var response = safeGet(
+            client().execute(ReindexDataStreamIndexAction.INSTANCE, new ReindexDataStreamIndexAction.Request(sourceIndex))
+        );
+        safeGet(indicesAdmin().refresh(new RefreshRequest(response.getDestIndex())));
+
+        // verify that dest contains docs
+        assertHitCount(prepareSearch(response.getDestIndex()).setSize(0), numDocs);
+    }
+
+    public void testSetSourceToBlockWrites() throws Exception {
+        var settings = randomBoolean() ? Settings.builder().put(IndexMetadata.SETTING_BLOCKS_WRITE, true).build() : Settings.EMPTY;
+
+        // empty source index
+        var sourceIndex = randomAlphaOfLength(20).toLowerCase(Locale.ROOT);
+        safeGet(indicesAdmin().create(new CreateIndexRequest(sourceIndex, settings)));
+
+        // call reindex
+        safeGet(client().execute(ReindexDataStreamIndexAction.INSTANCE, new ReindexDataStreamIndexAction.Request(sourceIndex)));
+
+        // Assert that source index is now read-only but not verified read-only
+        GetSettingsResponse getSettingsResponse = safeGet(admin().indices().getSettings(new GetSettingsRequest().indices(sourceIndex)));
+        assertTrue(parseBoolean(getSettingsResponse.getSetting(sourceIndex, IndexMetadata.SETTING_BLOCKS_WRITE)));
+        assertFalse(
+            parseBoolean(getSettingsResponse.getSetting(sourceIndex, MetadataIndexStateService.VERIFIED_READ_ONLY_SETTING.getKey()))
+        );
+
+        // assert that write to source fails
+        var indexReq = new IndexRequest(sourceIndex).source(jsonBuilder().startObject().field("field", "1").endObject());
+        expectThrows(ClusterBlockException.class, client().index(indexReq));
+        assertHitCount(prepareSearch(sourceIndex).setSize(0), 0);
+    }
+
+    public void testMissingSourceIndex() {
+        var nonExistentSourceIndex = randomAlphaOfLength(20).toLowerCase(Locale.ROOT);
+        expectThrows(
+            ResourceNotFoundException.class,
+            client().execute(ReindexDataStreamIndexAction.INSTANCE, new ReindexDataStreamIndexAction.Request(nonExistentSourceIndex))
+        );
+    }
+
+    public void testSettingsAddedBeforeReindex() {
+        // start with a static setting
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3mAnalysis:
+- The patch to be backported removes the test method `testSetSourceToBlockWrites` entirely.
+- In the older version (ref f2d5918...), the method `testSetSourceToBlockWrites` exists and has similar logic to the patch's removed test method.
+- The patch's commit message and code mention adding a read-only block on the source index during reindexing, but the old version test only asserts a write block.
+- The removed test method in the patch asserts the source index is set to write block but not verified read-only, and that writes fail.
+- The older version test also asserts the write block and that writes fail, but does not check the verified read-only setting.
+- The patch removes the test method, likely replaced or superseded by other tests or changes in the new version.
+
+Conclusion:
+- Since the patch removes this test method and it exists in the older version, the backport should remove the test method in the older version file.
+- The test method name and content match closely, so the removal can be done by deleting the method from the older version file.
+- The context lines around the method are present in the older version.
+- This is a straightforward removal patch.
+
+Next:
+- I will create a patch that removes the `testSetSourceToBlockWrites` method from the file `x-pack/plugin/migrate/src/internalClusterTest/java/org/elasticsearch/xpack/migrate/action/ReindexDatastreamIndexTransportActionIT.java` at the appropriate lines.
+- I will ensure the context lines before and after the method are preserved as in the older version.
+- Then I will validate the patch on the older version ref.
+
+I will generate the patch now.[0m
+
+[1m> Finished chain.[0m
+2026-04-27 08:35:46,416 - backport - ERROR - Reach max_iterations for hunk 6

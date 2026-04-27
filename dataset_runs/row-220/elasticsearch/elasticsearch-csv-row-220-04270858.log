@@ -1,0 +1,43 @@
+2026-04-27 08:58:11,701 - backport - INFO - Using openrouter API: https://openrouter.ai/api/v1 (model: openai/gpt-4.1-mini)
+2026-04-27 08:58:17,851 - backport - INFO - Aplly all hunks in the patch      PASS
+2026-04-27 08:58:18,423 - backport - INFO - Successfully backport the patch to the target release 19de56893099c730eb2533ba740aa0b75badeed5
+2026-04-27 08:58:18,425 - backport - INFO - --- a/server/src/main/java/org/elasticsearch/index/mapper/IpPrefixAutomatonUtil.java
++++ b/server/src/main/java/org/elasticsearch/index/mapper/IpPrefixAutomatonUtil.java
+@@ -108,7 +108,7 @@ public class IpPrefixAutomatonUtil {
+                 } else {
+                     // potentially partial block
+                     if (groupsAdded == 0 && ONLY_ZEROS.matcher(group).matches()) {
+-                        // here we have a leading group with only "0" characters. If we would allow this to match
++                        // here we have a leading group with only "0" characters. If we allowed this to match
+                         // ipv6 addresses, this would include things like 0000::127.0.0.1 (and all other ipv4 addresses).
+                         // Allowing this would be counterintuitive, so "0*" prefixes should only expand
+                         // to ipv4 addresses like "0.1.2.3" and we return with an automaton not matching anything here
+
+--- a/server/src/main/java/org/elasticsearch/index/mapper/IpPrefixAutomatonUtil.java
++++ b/server/src/main/java/org/elasticsearch/index/mapper/IpPrefixAutomatonUtil.java
+@@ -129,7 +129,7 @@ public class IpPrefixAutomatonUtil {
+ 
+     static Automaton automatonFromIPv6Group(String ipv6Group) {
+         assert ipv6Group.length() > 0 && ipv6Group.length() <= 4 : "expected a full ipv6 group or prefix";
+-        Automaton result = Automata.makeString("");
++        Automaton result = Automata.makeEmpty();
+         for (int leadingZeros = 0; leadingZeros <= 4 - ipv6Group.length(); leadingZeros++) {
+             int bytesAdded = 0;
+             String padded = padWithZeros(ipv6Group, leadingZeros);
+
+--- a/server/src/test/java/org/elasticsearch/index/mapper/IpPrefixAutomatonUtilTests.java
++++ b/server/src/test/java/org/elasticsearch/index/mapper/IpPrefixAutomatonUtilTests.java
+@@ -174,6 +174,12 @@ public class IpPrefixAutomatonUtilTests extends ESTestCase {
+             assertTrue(accepts(a, "255.27.240.24"));
+             assertTrue(accepts(a, "255:a360::25bb:828f:ffff:ffff"));
+         }
++        {
++            CompiledAutomaton a = buildIpPrefixAutomaton("23c9::");
++            assertTrue(accepts(a, "23c9::6063:7ac9:ffff:ffff"));
++            assertFalse(accepts(a, "0.0.0.0"));
++            assertFalse(accepts(a, "249.43.32.175"));
++        }
+     }
+ 
+     private static boolean accepts(CompiledAutomaton compiledAutomaton, String address) throws UnknownHostException {
+

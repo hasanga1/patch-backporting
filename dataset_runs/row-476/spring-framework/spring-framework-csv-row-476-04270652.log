@@ -1,0 +1,107 @@
+2026-04-27 06:52:28,063 - backport - INFO - Using openrouter API: https://openrouter.ai/api/v1 (model: openai/gpt-4.1-mini)
+2026-04-27 06:52:33,063 - backport - INFO - Aplly all hunks in the patch      PASS
+2026-04-27 06:52:33,300 - backport - INFO - Successfully backport the patch to the target release c6684731865e5699a28f30353157ef1dcbe02b17
+2026-04-27 06:52:33,301 - backport - INFO - --- a/spring-web/src/main/java/org/springframework/web/client/RestTemplate.java
++++ b/spring-web/src/main/java/org/springframework/web/client/RestTemplate.java
+@@ -880,7 +880,7 @@ public class RestTemplate extends InterceptingHttpAccessor implements RestOperat
+ 		Observation observation = ClientHttpObservationDocumentation.HTTP_CLIENT_EXCHANGES.observation(this.observationConvention,
+ 				DEFAULT_OBSERVATION_CONVENTION, () -> observationContext, this.observationRegistry).start();
+ 		ClientHttpResponse response = null;
+-		try {
++		try (Observation.Scope scope = observation.openScope()){
+ 			if (requestCallback != null) {
+ 				requestCallback.doWithRequest(request);
+ 			}
+
+--- a/spring-web/src/main/java/org/springframework/web/client/RestTemplate.java
++++ b/spring-web/src/main/java/org/springframework/web/client/RestTemplate.java
+@@ -894,7 +894,7 @@ public class RestTemplate extends InterceptingHttpAccessor implements RestOperat
+ 			observation.error(exception);
+ 			throw exception;
+ 		}
+-		catch (RestClientException exc) {
++		catch (Throwable exc) {
+ 			observation.error(exc);
+ 			throw exc;
+ 		}
+
+--- a/spring-web/src/test/java/org/springframework/web/client/RestTemplateObservationTests.java
++++ b/spring-web/src/test/java/org/springframework/web/client/RestTemplateObservationTests.java
+@@ -39,9 +39,11 @@ import org.springframework.http.client.ClientHttpRequestFactory;
+ import org.springframework.http.client.ClientHttpResponse;
+ import org.springframework.http.client.observation.ClientRequestObservationContext;
+ import org.springframework.http.converter.HttpMessageConverter;
++import org.springframework.lang.Nullable;
+ 
+ import static org.assertj.core.api.Assertions.assertThat;
+ import static org.assertj.core.api.Assertions.assertThatExceptionOfType;
++import static org.assertj.core.api.Assertions.assertThatIllegalStateException;
+ import static org.mockito.ArgumentMatchers.any;
+ import static org.mockito.ArgumentMatchers.eq;
+ import static org.mockito.BDDMockito.given;
+
+--- a/spring-web/src/test/java/org/springframework/web/client/RestTemplateObservationTests.java
++++ b/spring-web/src/test/java/org/springframework/web/client/RestTemplateObservationTests.java
+@@ -157,6 +159,31 @@ class RestTemplateObservationTests {
+ 		assertThatHttpObservation().hasLowCardinalityKeyValue("outcome", "UNKNOWN");
+ 	}
+ 
++	@Test // gh-32060
++	void executeShouldRecordErrorsThrownByErrorHandler() throws Exception {
++		mockSentRequest(GET, "https://example.org");
++		mockResponseStatus(HttpStatus.OK);
++		mockResponseBody("Hello World", MediaType.TEXT_PLAIN);
++		given(errorHandler.hasError(any())).willThrow(new IllegalStateException("error handler"));
++
++		assertThatIllegalStateException().isThrownBy(() ->
++				template.execute("https://example.org", GET, null, null));
++
++		assertThatHttpObservation().hasLowCardinalityKeyValue("exception", "IllegalStateException");
++	}
++
++	@Test // gh-32060
++	void executeShouldCreateObservationScope() throws Exception {
++		mockSentRequest(GET, "https://example.org");
++		mockResponseStatus(HttpStatus.OK);
++		mockResponseBody("Hello World", MediaType.TEXT_PLAIN);
++		ObservationErrorHandler observationErrorHandler = new ObservationErrorHandler(observationRegistry);
++		template.setErrorHandler(observationErrorHandler);
++
++		template.execute("https://example.org", GET, null, null);
++		assertThat(observationErrorHandler.currentObservation).isNotNull();
++	}
++
+ 
+ 	private void mockSentRequest(HttpMethod method, String uri) throws Exception {
+ 		mockSentRequest(method, uri, new HttpHeaders());
+
+--- a/spring-web/src/test/java/org/springframework/web/client/RestTemplateObservationTests.java
++++ b/spring-web/src/test/java/org/springframework/web/client/RestTemplateObservationTests.java
+@@ -204,4 +231,26 @@ class RestTemplateObservationTests {
+ 		}
+ 	}
+ 
++	static class ObservationErrorHandler implements ResponseErrorHandler {
++
++		final TestObservationRegistry observationRegistry;
++
++		@Nullable
++		Observation currentObservation;
++
++		public ObservationErrorHandler(TestObservationRegistry observationRegistry) {
++			this.observationRegistry = observationRegistry;
++		}
++
++		@Override
++		public boolean hasError(ClientHttpResponse response) throws IOException {
++			return true;
++		}
++
++		@Override
++		public void handleError(ClientHttpResponse response) throws IOException {
++			currentObservation = this.observationRegistry.getCurrentObservation();
++		}
++	}
++
+ }
+

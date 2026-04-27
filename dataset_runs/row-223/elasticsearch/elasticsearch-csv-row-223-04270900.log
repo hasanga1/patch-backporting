@@ -1,0 +1,82 @@
+2026-04-27 09:00:43,350 - backport - INFO - Using openrouter API: https://openrouter.ai/api/v1 (model: openai/gpt-4.1-mini)
+2026-04-27 09:00:46,445 - backport - INFO - Aplly all hunks in the patch      PASS
+2026-04-27 09:00:46,908 - backport - INFO - Successfully backport the patch to the target release a2338d7133ba9e364a3d663d505ecdb95a253895
+2026-04-27 09:00:46,909 - backport - INFO - --- a/libs/x-content/impl/src/main/java/org/elasticsearch/xcontent/provider/json/JsonXContentParser.java
++++ b/libs/x-content/impl/src/main/java/org/elasticsearch/xcontent/provider/json/JsonXContentParser.java
+@@ -111,7 +111,7 @@ public class JsonXContentParser extends AbstractXContentParser {
+     }
+ 
+     private void throwOnNoText() {
+-        throw new IllegalStateException("Can't get text on a " + currentToken() + " at " + getTokenLocation());
++        throw new IllegalArgumentException("Expected text at " + getTokenLocation() + " but found " + currentToken());
+     }
+ 
+     @Override
+
+--- a/server/src/main/java/org/elasticsearch/index/mapper/IpFieldMapper.java
++++ b/server/src/main/java/org/elasticsearch/index/mapper/IpFieldMapper.java
+@@ -42,7 +42,6 @@ import org.elasticsearch.search.DocValueFormat;
+ import org.elasticsearch.search.aggregations.support.CoreValuesSourceType;
+ import org.elasticsearch.search.lookup.FieldValues;
+ import org.elasticsearch.search.lookup.SearchLookup;
+-import org.elasticsearch.xcontent.XContentParser;
+ 
+ import java.io.IOException;
+ import java.net.InetAddress;
+
+--- a/server/src/main/java/org/elasticsearch/index/mapper/IpFieldMapper.java
++++ b/server/src/main/java/org/elasticsearch/index/mapper/IpFieldMapper.java
+@@ -545,8 +544,9 @@ public class IpFieldMapper extends FieldMapper {
+     @Override
+     protected void parseCreateField(DocumentParserContext context) throws IOException {
+         InetAddress address;
++        String value = context.parser().textOrNull();
+         try {
+-            address = value(context.parser(), nullValue);
++            address = value == null ? nullValue : InetAddresses.forString(value);
+         } catch (IllegalArgumentException e) {
+             if (ignoreMalformed) {
+                 context.addIgnoredField(fieldType().name());
+
+--- a/server/src/main/java/org/elasticsearch/index/mapper/IpFieldMapper.java
++++ b/server/src/main/java/org/elasticsearch/index/mapper/IpFieldMapper.java
+@@ -564,14 +564,6 @@ public class IpFieldMapper extends FieldMapper {
+         }
+     }
+ 
+-    private static InetAddress value(XContentParser parser, InetAddress nullValue) throws IOException {
+-        String value = parser.textOrNull();
+-        if (value == null) {
+-            return nullValue;
+-        }
+-        return InetAddresses.forString(value);
+-    }
+-
+     private void indexValue(DocumentParserContext context, InetAddress address) {
+         if (dimension) {
+             context.getDimensions().addIp(fieldType().name(), address).validate(context.indexSettings());
+
+--- a/server/src/test/java/org/elasticsearch/common/ReferenceDocsTests.java
++++ b/server/src/test/java/org/elasticsearch/common/ReferenceDocsTests.java
+@@ -66,7 +66,7 @@ public class ReferenceDocsTests extends ESTestCase {
+             builder.startObject("UNEXPECTED").endObject().endObject();
+ 
+             try (var stream = BytesReference.bytes(builder).streamInput()) {
+-                expectThrows(IllegalStateException.class, () -> ReferenceDocs.readLinksBySymbol(stream));
++                expectThrows(IllegalArgumentException.class, () -> ReferenceDocs.readLinksBySymbol(stream));
+             }
+         }
+ 
+
+--- a/server/src/test/java/org/elasticsearch/index/query/MatchQueryBuilderTests.java
++++ b/server/src/test/java/org/elasticsearch/index/query/MatchQueryBuilderTests.java
+@@ -373,7 +373,7 @@ public class MatchQueryBuilderTests extends AbstractQueryTestCase<MatchQueryBuil
+                 "message1" : ["term1", "term2"]
+               }
+             }""";
+-        expectThrows(IllegalStateException.class, () -> parseQuery(json2));
++        expectThrows(IllegalArgumentException.class, () -> parseQuery(json2));
+     }
+ 
+     public void testExceptionUsingAnalyzerOnNumericField() {
+

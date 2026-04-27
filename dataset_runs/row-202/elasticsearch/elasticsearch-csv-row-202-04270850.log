@@ -1,0 +1,884 @@
+2026-04-27 08:50:47,680 - backport - INFO - Using openrouter API: https://openrouter.ai/api/v1 (model: openai/gpt-4.1-mini)
+
+
+[1m> Entering new AgentExecutor chain...[0m
+
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `git_history` with `{}`
+
+
+[0m[36;1m[1;3mddfdd40b167 Reduce footprint of codec instances further (#114072)
+
+diff --git a/server/src/main/java/org/elasticsearch/index/codec/vectors/ES815BitFlatVectorsFormat.java b/server/src/main/java/org/elasticsearch/index/codec/vectors/ES815BitFlatVectorsFormat.java
+--- a/server/src/main/java/org/elasticsearch/index/codec/vectors/ES815BitFlatVectorsFormat.java
++++ b/server/src/main/java/org/elasticsearch/index/codec/vectors/ES815BitFlatVectorsFormat.java
+@@ -25,6 +25,6 @@
+ 
+ import java.io.IOException;
+ 
+ class ES815BitFlatVectorsFormat extends FlatVectorsFormat {
+ 
+-    private final FlatVectorsFormat delegate = new Lucene99FlatVectorsFormat(FlatBitVectorScorer.INSTANCE);
++    private static final FlatVectorsFormat delegate = new Lucene99FlatVectorsFormat(FlatBitVectorScorer.INSTANCE)
+You need to do the following analysis based on the information in the last commit:
+Analyze the code logic of the context of the patch to be ported in this commit step by step.
+If code logic already existed before this commit, the patch context can be assumed to remain in a similar location. Use `locate` and `viewcode` to check your results.
+If code logic were added in this commit, then you need to `git_show` for further details.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `locate_symbol` with `{'ref': '6a00e91b1c3e4e284030331003a22123e8fd8b8a', 'symbol': 'ES815BitFlatVectorsFormat'}`
+responded: The last commit in the history of this file shows a simple change in the declaration of the `delegate` field from `private final` to `private static final`. This indicates that the class and its fields already existed before this commit, and the change was minor.
+
+Given that the patch we want to backport involves adding an import statement and changing the `delegate` field to be static final, this matches the change in the last commit.
+
+Next, I will locate the symbol `ES815BitFlatVectorsFormat` in the older version ref 6a00e91b1c3e4e284030331003a22123e8fd8b8a to confirm its exact location and see the surrounding code to generate the patch.
+
+[0m[33;1m[1;3mserver/src/main/java/org/elasticsearch/index/codec/vectors/ES815BitFlatVectorsFormat.java:28
+server/src/main/java/org/elasticsearch/index/codec/vectors/ES815BitFlatVectorsFormat.java:32[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': '6a00e91b1c3e4e284030331003a22123e8fd8b8a', 'path': 'server/src/main/java/org/elasticsearch/index/codec/vectors/ES815BitFlatVectorsFormat.java', 'startline': 20, 'endline': 40}`
+
+
+[0m[36;1m[1;3mHere are lines 20 through 40.
+
+import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
+import org.apache.lucene.util.hnsw.RandomVectorScorer;
+import org.apache.lucene.util.hnsw.RandomVectorScorerSupplier;
+import org.apache.lucene.util.quantization.RandomAccessQuantizedByteVectorValues;
+import org.elasticsearch.script.field.vectors.ESVectorUtil;
+
+import java.io.IOException;
+
+class ES815BitFlatVectorsFormat extends FlatVectorsFormat {
+
+    private final FlatVectorsFormat delegate = new Lucene99FlatVectorsFormat(FlatBitVectorScorer.INSTANCE);
+
+    protected ES815BitFlatVectorsFormat() {
+        super("ES815BitFlatVectorsFormat");
+    }
+
+    @Override
+    public FlatVectorsWriter fieldsWriter(SegmentWriteState segmentWriteState) throws IOException {
+        return delegate.fieldsWriter(segmentWriteState);
+    }
+
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': '6a00e91b1c3e4e284030331003a22123e8fd8b8a', 'path': 'server/src/main/java/org/elasticsearch/index/codec/vectors/ES815BitFlatVectorsFormat.java', 'startline': 41, 'endline': 50}`
+
+
+[0m[36;1m[1;3mHere are lines 41 through 50.
+
+    @Override
+    public FlatVectorsReader fieldsReader(SegmentReadState segmentReadState) throws IOException {
+        return delegate.fieldsReader(segmentReadState);
+    }
+
+    static class FlatBitVectorScorer implements FlatVectorsScorer {
+
+        static final FlatBitVectorScorer INSTANCE = new FlatBitVectorScorer();
+
+        static void checkDimensions(int queryLen, int fieldLen) {
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': '6a00e91b1c3e4e284030331003a22123e8fd8b8a', 'path': 'server/src/main/java/org/elasticsearch/index/codec/vectors/ES815BitFlatVectorsFormat.java', 'startline': 51, 'endline': 70}`
+
+
+[0m[36;1m[1;3mHere are lines 51 through 70.
+
+            if (queryLen != fieldLen) {
+                throw new IllegalArgumentException("vector query dimension: " + queryLen + " differs from field dimension: " + fieldLen);
+            }
+        }
+
+        @Override
+        public String toString() {
+            return super.toString();
+        }
+
+        @Override
+        public RandomVectorScorerSupplier getRandomVectorScorerSupplier(
+            VectorSimilarityFunction vectorSimilarityFunction,
+            RandomAccessVectorValues randomAccessVectorValues
+        ) throws IOException {
+            assert randomAccessVectorValues instanceof RandomAccessVectorValues.Bytes;
+            assert vectorSimilarityFunction == VectorSimilarityFunction.EUCLIDEAN;
+            if (randomAccessVectorValues instanceof RandomAccessVectorValues.Bytes randomAccessVectorValuesBytes) {
+                assert randomAccessVectorValues instanceof RandomAccessQuantizedByteVectorValues == false;
+                return switch (vectorSimilarityFunction) {
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': '6a00e91b1c3e4e284030331003a22123e8fd8b8a', 'path': 'server/src/main/java/org/elasticsearch/index/codec/vectors/ES815BitFlatVectorsFormat.java', 'startline': 1, 'endline': 23}`
+
+
+[0m[36;1m[1;3mHere are lines 1 through 23.
+
+/*
+ * Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
+ * or more contributor license agreements. Licensed under the "Elastic License
+ * 2.0", the "GNU Affero General Public License v3.0 only", and the "Server Side
+ * Public License v 1"; you may not use this file except in compliance with, at
+ * your election, the "Elastic License 2.0", the "GNU Affero General Public
+ * License v3.0 only", or the "Server Side Public License, v 1".
+ */
+
+package org.elasticsearch.index.codec.vectors;
+
+import org.apache.lucene.codecs.hnsw.FlatVectorsFormat;
+import org.apache.lucene.codecs.hnsw.FlatVectorsReader;
+import org.apache.lucene.codecs.hnsw.FlatVectorsScorer;
+import org.apache.lucene.codecs.hnsw.FlatVectorsWriter;
+import org.apache.lucene.codecs.lucene99.Lucene99FlatVectorsFormat;
+import org.apache.lucene.index.SegmentReadState;
+import org.apache.lucene.index.SegmentWriteState;
+import org.apache.lucene.index.VectorSimilarityFunction;
+import org.apache.lucene.util.hnsw.RandomAccessVectorValues;
+import org.apache.lucene.util.hnsw.RandomVectorScorer;
+import org.apache.lucene.util.hnsw.RandomVectorScorerSupplier;
+import org.apache.lucene.util.quantization.RandomAccessQuantizedByteVectorValues;
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': '6a00e91b1c3e4e284030331003a22123e8fd8b8a', 'path': 'server/src/main/java/org/elasticsearch/index/codec/vectors/ES815BitFlatVectorsFormat.java', 'startline': 24, 'endline': 33}`
+
+
+[0m[36;1m[1;3mHere are lines 24 through 33.
+
+import org.elasticsearch.script.field.vectors.ESVectorUtil;
+
+import java.io.IOException;
+
+class ES815BitFlatVectorsFormat extends FlatVectorsFormat {
+
+    private final FlatVectorsFormat delegate = new Lucene99FlatVectorsFormat(FlatBitVectorScorer.INSTANCE);
+
+    protected ES815BitFlatVectorsFormat() {
+        super("ES815BitFlatVectorsFormat");
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `git_history` with `{}`
+
+
+[0m[36;1m[1;3mddfdd40b167 Reduce footprint of codec instances further (#114072)
+
+diff --git a/server/src/main/java/org/elasticsearch/index/codec/vectors/ES815BitFlatVectorsFormat.java b/server/src/main/java/org/elasticsearch/index/codec/vectors/ES815BitFlatVectorsFormat.java
+--- a/server/src/main/java/org/elasticsearch/index/codec/vectors/ES815BitFlatVectorsFormat.java
++++ b/server/src/main/java/org/elasticsearch/index/codec/vectors/ES815BitFlatVectorsFormat.java
+@@ -25,6 +25,6 @@
+ 
+ import java.io.IOException;
+ 
+ class ES815BitFlatVectorsFormat extends FlatVectorsFormat {
+ 
+-    private final FlatVectorsFormat delegate = new Lucene99FlatVectorsFormat(FlatBitVectorScorer.INSTANCE);
++    private static final FlatVectorsFormat delegate = new Lucene99FlatVectorsFormat(FlatBitVectorScorer.INSTANCE)
+You need to do the following analysis based on the information in the last commit:
+Analyze the code logic of the context of the patch to be ported in this commit step by step.
+If code logic already existed before this commit, the patch context can be assumed to remain in a similar location. Use `locate` and `viewcode` to check your results.
+If code logic were added in this commit, then you need to `git_show` for further details.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `git_show` with `{}`
+
+
+[0m[33;1m[1;3mcommit ddfdd40b167b7cb6ddaf682997c44859d62e6379
+Author: Armin Braun <me@obrown.io>
+Date:   Fri Oct 4 08:34:24 2024 +0200
+
+    Reduce footprint of codec instances further (#114072)
+    
+    Lots of effectively singleton objects here and fields that can be made
+    static, saves a little more on the per-index overhead and might reveal
+    further simplifications.
+
+ .../index/codec/tsdb/internal/DecodeBenchmark.java      |  3 ++-
+ .../index/codec/Elasticsearch814Codec.java              |  2 +-
+ .../index/codec/Elasticsearch816Codec.java              | 15 +++++++--------
+ .../index/codec/tsdb/DocValuesForUtil.java              | 17 +++++------------
+ .../index/codec/tsdb/ES87TSDBDocValuesEncoder.java      |  4 ++--
+ .../index/codec/tsdb/ES87TSDBDocValuesProducer.java     |  2 +-
+ .../index/codec/vectors/ES813FlatVectorFormat.java      |  2 +-
+ .../vectors/ES814ScalarQuantizedVectorsFormat.java      |  6 ++++--
+ .../index/codec/vectors/ES815BitFlatVectorFormat.java   |  2 +-
+ .../index/codec/vectors/ES815BitFlatVectorsFormat.java  |  2 +-
+ .../index/codec/vectors/ES815HnswBitVectorsFormat.java  |  2 +-
+ .../index/codec/zstd/Zstd814StoredFieldsFormat.java     |  8 +++++++-
+ .../index/codec/tsdb/DocValuesForUtilTests.java         |  3 +--
+ 13 files changed, 34 insertions(+), 34 deletions(-)
+[IMPORTANT] The relevant code shown by `git_history` is not fully `+` lines.
+[IMPORTANT] This means that the code in question was not added or migrated in this commit.
+[IMPORTANT] Please think step by step and check the abstract below carefully. If error exists in abstract, please ignore the info below.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `locate_symbol` with `{'ref': '6a00e91b1c3e4e284030331003a22123e8fd8b8a', 'symbol': 'MAX_DIMS_COUNT'}`
+
+
+[0m[33;1m[1;3mserver/src/main/java/org/elasticsearch/index/mapper/vectors/DenseVectorFieldMapper.java:116[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': '6a00e91b1c3e4e284030331003a22123e8fd8b8a', 'path': 'server/src/main/java/org/elasticsearch/index/mapper/vectors/DenseVectorFieldMapper.java', 'startline': 110, 'endline': 130}`
+
+
+[0m[36;1m[1;3mHere are lines 110 through 130.
+
+    public static final IndexVersion INDEXED_BY_DEFAULT_INDEX_VERSION = IndexVersions.FIRST_DETACHED_INDEX_VERSION;
+    public static final IndexVersion NORMALIZE_COSINE = IndexVersions.NORMALIZED_VECTOR_COSINE;
+    public static final IndexVersion DEFAULT_TO_INT8 = DEFAULT_DENSE_VECTOR_TO_INT8_HNSW;
+    public static final IndexVersion LITTLE_ENDIAN_FLOAT_STORED_INDEX_VERSION = IndexVersions.V_8_9_0;
+
+    public static final String CONTENT_TYPE = "dense_vector";
+    public static short MAX_DIMS_COUNT = 4096; // maximum allowed number of dimensions
+    public static int MAX_DIMS_COUNT_BIT = 4096 * Byte.SIZE; // maximum allowed number of dimensions
+
+    public static short MIN_DIMS_FOR_DYNAMIC_FLOAT_MAPPING = 128; // minimum number of dims for floats to be dynamically mapped to vector
+    public static final int MAGNITUDE_BYTES = 4;
+
+    private static DenseVectorFieldMapper toType(FieldMapper in) {
+        return (DenseVectorFieldMapper) in;
+    }
+
+    public static class Builder extends FieldMapper.Builder {
+
+        private final Parameter<ElementType> elementType = new Parameter<>("element_type", false, () -> ElementType.FLOAT, (n, c, o) -> {
+            ElementType elementType = namesToElementType.get((String) o);
+            if (elementType == null) {
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': '6a00e91b1c3e4e284030331003a22123e8fd8b8a', 'path': 'server/src/main/java/org/elasticsearch/index/mapper/vectors/DenseVectorFieldMapper.java', 'startline': 100, 'endline': 115}`
+
+
+[0m[36;1m[1;3mHere are lines 100 through 115.
+
+    private static final float EPS = 1e-3f;
+
+    public static boolean isNotUnitVector(float magnitude) {
+        return Math.abs(magnitude - 1.0f) > EPS;
+    }
+
+    public static final NodeFeature INT4_QUANTIZATION = new NodeFeature("mapper.vectors.int4_quantization");
+    public static final NodeFeature BIT_VECTORS = new NodeFeature("mapper.vectors.bit_vectors");
+
+    public static final IndexVersion MAGNITUDE_STORED_INDEX_VERSION = IndexVersions.V_7_5_0;
+    public static final IndexVersion INDEXED_BY_DEFAULT_INDEX_VERSION = IndexVersions.FIRST_DETACHED_INDEX_VERSION;
+    public static final IndexVersion NORMALIZE_COSINE = IndexVersions.NORMALIZED_VECTOR_COSINE;
+    public static final IndexVersion DEFAULT_TO_INT8 = DEFAULT_DENSE_VECTOR_TO_INT8_HNSW;
+    public static final IndexVersion LITTLE_ENDIAN_FLOAT_STORED_INDEX_VERSION = IndexVersions.V_8_9_0;
+
+    public static final String CONTENT_TYPE = "dense_vector";
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': '6a00e91b1c3e4e284030331003a22123e8fd8b8a', 'path': 'server/src/main/java/org/elasticsearch/index/mapper/vectors/DenseVectorFieldMapper.java', 'startline': 114, 'endline': 120}`
+
+
+[0m[36;1m[1;3mHere are lines 114 through 120.
+
+
+    public static final String CONTENT_TYPE = "dense_vector";
+    public static short MAX_DIMS_COUNT = 4096; // maximum allowed number of dimensions
+    public static int MAX_DIMS_COUNT_BIT = 4096 * Byte.SIZE; // maximum allowed number of dimensions
+
+    public static short MIN_DIMS_FOR_DYNAMIC_FLOAT_MAPPING = 128; // minimum number of dims for floats to be dynamically mapped to vector
+    public static final int MAGNITUDE_BYTES = 4;
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `validate` with `{'ref': '6a00e91b1c3e4e284030331003a22123e8fd8b8a', 'patch': '--- a/server/src/main/java/org/elasticsearch/index/codec/vectors/ES815BitFlatVectorsFormat.java\n+++ b/server/src/main/java/org/elasticsearch/index/codec/vectors/ES815BitFlatVectorsFormat.java\n@@ -23,7 +23,9 @@\n \n import java.io.IOException;\n+\n+import static org.elasticsearch.index.mapper.vectors.DenseVectorFieldMapper.MAX_DIMS_COUNT;\n \n-class ES815BitFlatVectorsFormat extends FlatVectorsFormat {\n-\n-    private final FlatVectorsFormat delegate = new Lucene99FlatVectorsFormat(FlatBitVectorScorer.INSTANCE);\n+class ES815BitFlatVectorsFormat extends FlatVectorsFormat {\n+\n+    private final FlatVectorsFormat delegate = new Lucene99FlatVectorsFormat(FlatBitVectorScorer.INSTANCE);\n '}`
+responded: The patch to be backported adds an import line for MAX_DIMS_COUNT from DenseVectorFieldMapper in the new version. I have located the definition of MAX_DIMS_COUNT and MAX_DIMS_COUNT_BIT in the older version in DenseVectorFieldMapper.java at lines 114-120.
+
+The ES815BitFlatVectorsFormat.java file in the older version already contains the class ES815BitFlatVectorsFormat with a delegate field and constructor. The patch in the new version adds an import for MAX_DIMS_COUNT but no other changes are shown in the snippet you provided.
+
+Since the patch only adds the import statement for MAX_DIMS_COUNT and MAX_DIMS_COUNT_BIT, and the class ES815BitFlatVectorsFormat already exists in the older version, the backport patch will be to add the import line for MAX_DIMS_COUNT in ES815BitFlatVectorsFormat.java in the older version.
+
+I will now generate the backport patch for this hunk accordingly.
+
+[0m[38;5;200m[1;3mPatch applied successfully
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3mI have analyzed the patch and the codebase for the older version at ref 6a00e91b1c3e4e284030331003a22123e8fd8b8a. The code context for the patch exists and the changes are mostly about adding an import for MAX_DIMS_COUNT from DenseVectorFieldMapper. The delegate field remains the same except for a minor formatting difference.
+
+I generated the corresponding patch for the older version as below:
+
+```diff
+--- a/server/src/main/java/org/elasticsearch/index/codec/vectors/ES815BitFlatVectorsFormat.java
++++ b/server/src/main/java/org/elasticsearch/index/codec/vectors/ES815BitFlatVectorsFormat.java
+@@ -23,7 +23,9 @@
+ 
+ import java.io.IOException;
++
++import static org.elasticsearch.index.mapper.vectors.DenseVectorFieldMapper.MAX_DIMS_COUNT;
+ 
+-class ES815BitFlatVectorsFormat extends FlatVectorsFormat {
+-
+-    private final FlatVectorsFormat delegate = new Lucene99FlatVectorsFormat(FlatBitVectorScorer.INSTANCE);
++class ES815BitFlatVectorsFormat extends FlatVectorsFormat {
++
++    private final FlatVectorsFormat delegate = new Lucene99FlatVectorsFormat(FlatBitVectorScorer.INSTANCE);
+ }
+```
+
+I have validated this patch on the target ref and it applies cleanly without conflicts.
+
+Let me know if you need any further assistance![0m
+
+[1m> Finished chain.[0m
+2026-04-27 08:51:35,747 - backport - INFO - Aplly all hunks in the patch      PASS
+2026-04-27 08:51:36,462 - backport - INFO - Successfully backport the patch to the target release 6a00e91b1c3e4e284030331003a22123e8fd8b8a
+2026-04-27 08:51:36,463 - backport - INFO - --- a/server/src/main/java/org/elasticsearch/index/codec/vectors/ES814ScalarQuantizedVectorsFormat.java
++++ b/server/src/main/java/org/elasticsearch/index/codec/vectors/ES814ScalarQuantizedVectorsFormat.java
+@@ -41,6 +41,7 @@ import org.elasticsearch.simdvec.VectorSimilarityType;
+ import java.io.IOException;
+ 
+ import static org.apache.lucene.codecs.lucene99.Lucene99ScalarQuantizedVectorsFormat.DYNAMIC_CONFIDENCE_INTERVAL;
++import static org.elasticsearch.index.mapper.vectors.DenseVectorFieldMapper.MAX_DIMS_COUNT;
+ 
+ public class ES814ScalarQuantizedVectorsFormat extends FlatVectorsFormat {
+ 
+
+--- a/server/src/main/java/org/elasticsearch/index/codec/vectors/ES814ScalarQuantizedVectorsFormat.java
++++ b/server/src/main/java/org/elasticsearch/index/codec/vectors/ES814ScalarQuantizedVectorsFormat.java
+@@ -291,4 +292,9 @@ public class ES814ScalarQuantizedVectorsFormat extends FlatVectorsFormat {
+             return delegate.getRandomVectorScorer(sim, values, query);
+         }
+     }
++
++    @Override
++    public int getMaxDimensions(String fieldName) {
++        return MAX_DIMS_COUNT;
++    }
+ }
+
+--- a/server/src/main/java/org/elasticsearch/index/codec/vectors/ES815BitFlatVectorsFormat.java
++++ b/server/src/main/java/org/elasticsearch/index/codec/vectors/ES815BitFlatVectorsFormat.java
+@@ -23,7 +23,9 @@
+ 
+ import java.io.IOException;
++
++import static org.elasticsearch.index.mapper.vectors.DenseVectorFieldMapper.MAX_DIMS_COUNT;
+ 
+-class ES815BitFlatVectorsFormat extends FlatVectorsFormat {
+-
+-    private final FlatVectorsFormat delegate = new Lucene99FlatVectorsFormat(FlatBitVectorScorer.INSTANCE);
++class ES815BitFlatVectorsFormat extends FlatVectorsFormat {
++
++    private final FlatVectorsFormat delegate = new Lucene99FlatVectorsFormat(FlatBitVectorScorer.INSTANCE);
+ 
+
+--- a/server/src/main/java/org/elasticsearch/index/codec/vectors/ES815BitFlatVectorsFormat.java
++++ b/server/src/main/java/org/elasticsearch/index/codec/vectors/ES815BitFlatVectorsFormat.java
+@@ -43,6 +45,11 @@ class ES815BitFlatVectorsFormat extends FlatVectorsFormat {
+         return delegate.fieldsReader(segmentReadState);
+     }
+ 
++    @Override
++    public int getMaxDimensions(String fieldName) {
++        return MAX_DIMS_COUNT;
++    }
++
+     static class FlatBitVectorScorer implements FlatVectorsScorer {
+ 
+         static final FlatBitVectorScorer INSTANCE = new FlatBitVectorScorer();
+
+--- a/server/src/main/java/org/elasticsearch/index/mapper/vectors/DenseVectorFieldMapper.java
++++ b/server/src/main/java/org/elasticsearch/index/mapper/vectors/DenseVectorFieldMapper.java
+@@ -2270,7 +2270,7 @@ public class DenseVectorFieldMapper extends FieldMapper {
+             if (indexCreatedVersion.onOrAfter(LITTLE_ENDIAN_FLOAT_STORED_INDEX_VERSION)) {
+                 byteBuffer.order(ByteOrder.LITTLE_ENDIAN);
+             }
+-            int dims = fieldType().dims;
++            int dims = fieldType().elementType == ElementType.BIT ? fieldType().dims / Byte.SIZE : fieldType().dims;
+             for (int dim = 0; dim < dims; dim++) {
+                 fieldType().elementType.readAndWriteValue(byteBuffer, b);
+             }
+
+--- a/server/src/main/java/org/elasticsearch/rest/action/search/SearchCapabilities.java
++++ b/server/src/main/java/org/elasticsearch/rest/action/search/SearchCapabilities.java
+@@ -20,6 +20,11 @@ public final class SearchCapabilities {
+ 
+     /** Support regex and range match rules in interval queries. */
+     private static final String RANGE_REGEX_INTERVAL_QUERY_CAPABILITY = "range_regexp_interval_queries";
++    /** Support synthetic source with `bit` type in `dense_vector` field when `index` is set to `false`. */
++    private static final String BIT_DENSE_VECTOR_SYNTHETIC_SOURCE_CAPABILITY = "bit_dense_vector_synthetic_source";
+ 
+-    public static final Set<String> CAPABILITIES = Set.of(RANGE_REGEX_INTERVAL_QUERY_CAPABILITY);
++    public static final Set<String> CAPABILITIES = Set.of(
++        RANGE_REGEX_INTERVAL_QUERY_CAPABILITY,
++        BIT_DENSE_VECTOR_SYNTHETIC_SOURCE_CAPABILITY
++    );
+ }
+
+--- a/server/src/test/java/org/elasticsearch/index/mapper/vectors/DenseVectorFieldMapperTests.java
++++ b/server/src/test/java/org/elasticsearch/index/mapper/vectors/DenseVectorFieldMapperTests.java
+@@ -2022,24 +2022,27 @@ public class DenseVectorFieldMapperTests extends MapperTestCase {
+ 
+     private static class DenseVectorSyntheticSourceSupport implements SyntheticSourceSupport {
+         private final int dims = between(5, 1000);
+-        private final ElementType elementType = randomFrom(ElementType.BYTE, ElementType.FLOAT);
++        private final ElementType elementType = randomFrom(ElementType.BYTE, ElementType.FLOAT, ElementType.BIT);
+         private final boolean indexed = randomBoolean();
+         private final boolean indexOptionsSet = indexed && randomBoolean();
+ 
+         @Override
+         public SyntheticSourceExample example(int maxValues) throws IOException {
+-            Object value = elementType == ElementType.BYTE
+-                ? randomList(dims, dims, ESTestCase::randomByte)
+-                : randomList(dims, dims, ESTestCase::randomFloat);
++            Object value = switch (elementType) {
++                case BYTE, BIT:
++                    yield randomList(dims, dims, ESTestCase::randomByte);
++                case FLOAT:
++                    yield randomList(dims, dims, ESTestCase::randomFloat);
++            };
+             return new SyntheticSourceExample(value, value, this::mapping);
+         }
+ 
+         private void mapping(XContentBuilder b) throws IOException {
+             b.field("type", "dense_vector");
+-            b.field("dims", dims);
+-            if (elementType == ElementType.BYTE || randomBoolean()) {
++            if (elementType == ElementType.BYTE || elementType == ElementType.BIT || randomBoolean()) {
+                 b.field("element_type", elementType.toString());
+             }
++            b.field("dims", elementType == ElementType.BIT ? dims * Byte.SIZE : dims);
+             if (indexed) {
+                 b.field("index", true);
+                 b.field("similarity", "l2_norm");
+

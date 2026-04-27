@@ -1,0 +1,1227 @@
+2026-04-27 08:26:35,006 - backport - INFO - Using openrouter API: https://openrouter.ai/api/v1 (model: openai/gpt-4.1-mini)
+
+
+[1m> Entering new AgentExecutor chain...[0m
+
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `git_history` with `{}`
+
+
+[0m[36;1m[1;3m77a179706d6 [8.x] Remove IndexNameExpressionResolver from base classes that don't use it (#120531) (#120599)
+
+diff --git a/server/src/main/java/org/elasticsearch/action/admin/cluster/allocation/TransportGetAllocationStatsAction.java b/server/src/main/java/org/elasticsearch/action/admin/cluster/allocation/TransportGetAllocationStatsAction.java
+--- a/server/src/main/java/org/elasticsearch/action/admin/cluster/allocation/TransportGetAllocationStatsAction.java
++++ b/server/src/main/java/org/elasticsearch/action/admin/cluster/allocation/TransportGetAllocationStatsAction.java
+@@ -69,10 +69,9 @@
+             actionFilters,
+             TransportGetAllocationStatsAction.Request::new,
+-            indexNameExpressionResolver,
+             TransportGetAllocationStatsAction.Response::new,
+             threadPool.executor(ThreadPool.Names.MANAGEMENT)
+         );
+         this.allocationStatsService = allocationStatsService;
+         this.diskThresholdSettings = new DiskThresholdSettings(clusterService.getSettings(), clusterService.getClusterSettings());
+         this.featureService = featureService;
+     
+You need to do the following analysis based on the information in the last commit:
+Analyze the code logic of the context of the patch to be ported in this commit step by step.
+If code logic already existed before this commit, the patch context can be assumed to remain in a similar location. Use `locate` and `viewcode` to check your results.
+If code logic were added in this commit, then you need to `git_show` for further details.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `locate_symbol` with `{'ref': '9cc75734d0a6fe1c82e57c6c900daa7c5ac0db1e', 'symbol': 'TransportGetAllocationStatsAction'}`
+responded: The git history shows a commit (77a179706d6) that removed the `indexNameExpressionResolver` from the constructor parameters of `TransportGetAllocationStatsAction` and its usage in the constructor. This commit does not seem to change the core logic around the `allocationStatsService` or the thread pool executor usage.
+
+The patch to be backported modifies the executor used in the constructor from `threadPool.executor(ThreadPool.Names.MANAGEMENT)` to `EsExecutors.DIRECT_EXECUTOR_SERVICE` and adds a `SingleResultDeduplicator` to avoid redundant work when calling allocation stats. This logic seems to be an addition rather than a modification of existing logic.
+
+Since the core logic around the constructor and the usage of `allocationStatsService` and executors already existed before this commit, the patch context can be assumed to remain in a similar location. 
+
+Next, I will locate the symbol `TransportGetAllocationStatsAction` in the target ref 9cc75734d0a6fe1c82e57c6c900daa7c5ac0db1e to view the full constructor and understand the context better before crafting the patch.
+
+[0m[33;1m[1;3mserver/src/main/java/org/elasticsearch/action/admin/cluster/allocation/TransportGetAllocationStatsAction.java:44
+server/src/main/java/org/elasticsearch/action/admin/cluster/allocation/TransportGetAllocationStatsAction.java:55[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': '9cc75734d0a6fe1c82e57c6c900daa7c5ac0db1e', 'path': 'server/src/main/java/org/elasticsearch/action/admin/cluster/allocation/TransportGetAllocationStatsAction.java', 'startline': 40, 'endline': 80}`
+
+
+[0m[36;1m[1;3mHere are lines 40 through 80.
+
+import java.io.IOException;
+import java.util.EnumSet;
+import java.util.Map;
+
+public class TransportGetAllocationStatsAction extends TransportMasterNodeReadAction<
+    TransportGetAllocationStatsAction.Request,
+    TransportGetAllocationStatsAction.Response> {
+
+    public static final ActionType<TransportGetAllocationStatsAction.Response> TYPE = new ActionType<>("cluster:monitor/allocation/stats");
+
+    private final AllocationStatsService allocationStatsService;
+    private final DiskThresholdSettings diskThresholdSettings;
+    private final FeatureService featureService;
+
+    @Inject
+    public TransportGetAllocationStatsAction(
+        TransportService transportService,
+        ClusterService clusterService,
+        ThreadPool threadPool,
+        ActionFilters actionFilters,
+        IndexNameExpressionResolver indexNameExpressionResolver,
+        AllocationStatsService allocationStatsService,
+        FeatureService featureService
+    ) {
+        super(
+            TYPE.name(),
+            transportService,
+            clusterService,
+            threadPool,
+            actionFilters,
+            TransportGetAllocationStatsAction.Request::new,
+            indexNameExpressionResolver,
+            TransportGetAllocationStatsAction.Response::new,
+            threadPool.executor(ThreadPool.Names.MANAGEMENT)
+        );
+        this.allocationStatsService = allocationStatsService;
+        this.diskThresholdSettings = new DiskThresholdSettings(clusterService.getSettings(), clusterService.getClusterSettings());
+        this.featureService = featureService;
+    }
+
+    @Override
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `locate_symbol` with `{'ref': '9cc75734d0a6fe1c82e57c6c900daa7c5ac0db1e', 'symbol': 'SingleResultDeduplicator'}`
+responded: The code snippet from the older version at ref 9cc75734d0a6fe1c82e57c6c900daa7c5ac0db1e shows the constructor of the class TransportGetAllocationStatsAction. It uses the MANAGEMENT thread pool executor directly in the super constructor call and initializes allocationStatsService directly without any deduplicator or additional logic.
+
+The patch from the newer version ref 1bf0a6ba8e2b937bdef68f85471d49ffd28d7a4b introduces a deduplicator that wraps the allocationStatsService.stats call to avoid redundant computation on MANAGEMENT threads. It also changes the executor in the super constructor call from MANAGEMENT to DIRECT_EXECUTOR_SERVICE, because the allocation stats computation is forked back onto MANAGEMENT threads by the deduplicator.
+
+This means the patch changes the way allocation stats are computed and introduces a new field allocationStatsSupplier, which is a SingleResultDeduplicator.
+
+The older version does not have this allocationStatsSupplier field or the deduplicator logic, so we need to add this logic in the backport patch.
+
+Next, I will locate the SingleResultDeduplicator class usage or declaration in the older version to verify if it exists or if it needs to be imported or added. Also, I will verify the threadPool and EsExecutors.DIRECT_EXECUTOR_SERVICE usage in the older version.
+
+I will start by searching for SingleResultDeduplicator usage or declaration in the older version.
+
+[0m[33;1m[1;3mserver/src/main/java/org/elasticsearch/action/SingleResultDeduplicator.java:30
+server/src/main/java/org/elasticsearch/action/SingleResultDeduplicator.java:48[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': '9cc75734d0a6fe1c82e57c6c900daa7c5ac0db1e', 'path': 'server/src/main/java/org/elasticsearch/action/SingleResultDeduplicator.java', 'startline': 20, 'endline': 60}`
+
+
+[0m[36;1m[1;3mHere are lines 20 through 60.
+
+/**
+ *
+ * Wraps an async action that consumes an {@link ActionListener} such that multiple invocations of {@link #execute(ActionListener)} can
+ * share the result from a single call to the wrapped action. This implementation is similar to {@link ResultDeduplicator} but offers
+ * stronger guarantees of not seeing a stale result ever. Concretely, every invocation of {@link #execute(ActionListener)} is guaranteed to
+ * be resolved with a response that has been computed at a time after the call to {@code execute} has been made. This allows this class to
+ * be used to deduplicate results from actions that produce results that change over time transparently.
+ *
+ * @param <T> Result type
+ */
+public final class SingleResultDeduplicator<T> {
+
+    private final ThreadContext threadContext;
+
+    /**
+     * List of listeners waiting for the execution after the current in-progress execution. If {@code null} then no execution is in
+     * progress currently, otherwise an execution is in progress and will trigger another execution that will resolve any listeners queued
+     * up here once done.
+     */
+    private List<ActionListener<T>> waitingListeners;
+    /**
+     * The threadContext associated with the first listener in the waitingListeners. This context will be restored right before
+     * we perform the {@code executeAction}.
+     */
+    private ThreadContext.StoredContext waitingStoredContext;
+
+    private final Consumer<ActionListener<T>> executeAction;
+
+    public SingleResultDeduplicator(ThreadContext threadContext, Consumer<ActionListener<T>> executeAction) {
+        this.threadContext = threadContext;
+        this.executeAction = executeAction;
+    }
+
+    /**
+     * Execute the action for the given {@code listener}.
+     * @param listener listener to resolve with execution result. The listener always has its threadContext preserved, i.e.
+     *                 when the listener is invoked, it will see its original threadContext plus any response headers generated
+     *                 by performing the {@code executeAction}.
+     */
+    public void execute(ActionListener<T> listener) {
+        synchronized (this) {
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': '9cc75734d0a6fe1c82e57c6c900daa7c5ac0db1e', 'path': 'server/src/main/java/org/elasticsearch/action/admin/cluster/allocation/TransportGetAllocationStatsAction.java', 'startline': 60, 'endline': 90}`
+
+
+[0m[36;1m[1;3mHere are lines 60 through 90.
+
+        IndexNameExpressionResolver indexNameExpressionResolver,
+        AllocationStatsService allocationStatsService,
+        FeatureService featureService
+    ) {
+        super(
+            TYPE.name(),
+            transportService,
+            clusterService,
+            threadPool,
+            actionFilters,
+            TransportGetAllocationStatsAction.Request::new,
+            indexNameExpressionResolver,
+            TransportGetAllocationStatsAction.Response::new,
+            threadPool.executor(ThreadPool.Names.MANAGEMENT)
+        );
+        this.allocationStatsService = allocationStatsService;
+        this.diskThresholdSettings = new DiskThresholdSettings(clusterService.getSettings(), clusterService.getClusterSettings());
+        this.featureService = featureService;
+    }
+
+    @Override
+    protected void doExecute(Task task, Request request, ActionListener<Response> listener) {
+        if (clusterService.state().getMinTransportVersion().before(TransportVersions.V_8_14_0)) {
+            // The action is not available before ALLOCATION_STATS
+            listener.onResponse(new Response(Map.of(), null));
+            return;
+        }
+        super.doExecute(task, request, listener);
+    }
+
+    @Override
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': '9cc75734d0a6fe1c82e57c6c900daa7c5ac0db1e', 'path': 'server/src/main/java/org/elasticsearch/action/admin/cluster/allocation/TransportGetAllocationStatsAction.java', 'startline': 1, 'endline': 40}`
+responded: The patch to be backported changes the constructor of the `TransportGetAllocationStatsAction` class. In the newer version, it replaces the executor from `threadPool.executor(ThreadPool.Names.MANAGEMENT)` to `EsExecutors.DIRECT_EXECUTOR_SERVICE` and adds a `SingleResultDeduplicator` instance for `allocationStatsSupplier` which uses the `MANAGEMENT` executor to run the expensive allocation stats computation.
+
+In the older version (ref 9cc75734d0a6fe1c82e57c6c900daa7c5ac0db1e), the constructor does not have this deduplication logic yet, and the executor is still `threadPool.executor(ThreadPool.Names.MANAGEMENT)`. Also, the older version constructor has an additional parameter `IndexNameExpressionResolver indexNameExpressionResolver` which was removed in the newer version.
+
+I have confirmed the location of the constructor and the relevant lines in the older version. The `SingleResultDeduplicator` class exists in the older version, so it can be used.
+
+Next, I will generate the backport patch by adapting the patch to the older version's constructor signature and context, removing the `indexNameExpressionResolver` parameter from the constructor call, changing the executor to `EsExecutors.DIRECT_EXECUTOR_SERVICE`, and adding the `allocationStatsSupplier` initialization with the `SingleResultDeduplicator`.
+
+Before generating the patch, I will check the import statements in the older version to see if `EsExecutors` is imported or if it needs to be added. I will view the first 40 lines of the file to check imports.
+
+[0m[36;1m[1;3mHere are lines 1 through 40.
+
+/*
+ * Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
+ * or more contributor license agreements. Licensed under the "Elastic License
+ * 2.0", the "GNU Affero General Public License v3.0 only", and the "Server Side
+ * Public License v 1"; you may not use this file except in compliance with, at
+ * your election, the "Elastic License 2.0", the "GNU Affero General Public
+ * License v3.0 only", or the "Server Side Public License, v 1".
+ */
+
+package org.elasticsearch.action.admin.cluster.allocation;
+
+import org.elasticsearch.TransportVersions;
+import org.elasticsearch.action.ActionListener;
+import org.elasticsearch.action.ActionRequestValidationException;
+import org.elasticsearch.action.ActionResponse;
+import org.elasticsearch.action.ActionType;
+import org.elasticsearch.action.admin.cluster.node.stats.NodesStatsRequestParameters.Metric;
+import org.elasticsearch.action.support.ActionFilters;
+import org.elasticsearch.action.support.master.MasterNodeReadRequest;
+import org.elasticsearch.action.support.master.TransportMasterNodeReadAction;
+import org.elasticsearch.cluster.ClusterState;
+import org.elasticsearch.cluster.block.ClusterBlockException;
+import org.elasticsearch.cluster.block.ClusterBlockLevel;
+import org.elasticsearch.cluster.metadata.IndexNameExpressionResolver;
+import org.elasticsearch.cluster.routing.allocation.AllocationStatsService;
+import org.elasticsearch.cluster.routing.allocation.DiskThresholdSettings;
+import org.elasticsearch.cluster.routing.allocation.NodeAllocationStats;
+import org.elasticsearch.cluster.service.ClusterService;
+import org.elasticsearch.common.io.stream.StreamInput;
+import org.elasticsearch.common.io.stream.StreamOutput;
+import org.elasticsearch.core.Nullable;
+import org.elasticsearch.core.TimeValue;
+import org.elasticsearch.features.FeatureService;
+import org.elasticsearch.injection.guice.Inject;
+import org.elasticsearch.tasks.Task;
+import org.elasticsearch.tasks.TaskId;
+import org.elasticsearch.threadpool.ThreadPool;
+import org.elasticsearch.transport.TransportService;
+
+import java.io.IOException;
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `locate_symbol` with `{'ref': '9cc75734d0a6fe1c82e57c6c900daa7c5ac0db1e', 'symbol': 'EsExecutors'}`
+responded: The target code to be backported is in the constructor of the class TransportGetAllocationStatsAction. The patch modifies the executor used in the super constructor call from threadPool.executor(ThreadPool.Names.MANAGEMENT) to EsExecutors.DIRECT_EXECUTOR_SERVICE, and adds a new field allocationStatsSupplier initialized with a SingleResultDeduplicator that wraps allocationStatsService::stats executed on the MANAGEMENT thread pool.
+
+From the older version code (ref 9cc75734d0a6fe1c82e57c6c900daa7c5ac0db1e), the constructor has the following differences:
+- It still uses threadPool.executor(ThreadPool.Names.MANAGEMENT) in the super constructor call.
+- It has a parameter indexNameExpressionResolver which is no longer present in the newer version.
+- It initializes allocationStatsService directly, but no allocationStatsSupplier field or SingleResultDeduplicator usage.
+
+The patch will need to:
+- Change the executor in the super constructor call to EsExecutors.DIRECT_EXECUTOR_SERVICE.
+- Add a field allocationStatsSupplier initialized with a SingleResultDeduplicator wrapping allocationStatsService::stats executed on the MANAGEMENT thread pool.
+- Remove the usage of indexNameExpressionResolver parameter from the super constructor call.
+- Keep the initialization of allocationStatsService, diskThresholdSettings, and featureService.
+
+Next, I want to confirm if EsExecutors.DIRECT_EXECUTOR_SERVICE is available in the older version or if it needs to be imported or replaced. I will locate EsExecutors in the older version.
+
+[0m[33;1m[1;3mserver/src/main/java/org/elasticsearch/common/util/concurrent/EsExecutors.java:367
+server/src/main/java/org/elasticsearch/common/util/concurrent/EsExecutors.java:40[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': '9cc75734d0a6fe1c82e57c6c900daa7c5ac0db1e', 'path': 'server/src/main/java/org/elasticsearch/common/util/concurrent/EsExecutors.java', 'startline': 350, 'endline': 380}`
+
+
+[0m[36;1m[1;3mHere are lines 350 through 380.
+
+            group = (s != null) ? s.getThreadGroup() : Thread.currentThread().getThreadGroup();
+        }
+
+        @Override
+        public Thread newThread(Runnable r) {
+            return AccessController.doPrivileged((PrivilegedAction<Thread>) () -> {
+                Thread t = new Thread(group, r, namePrefix + "[T#" + threadNumber.getAndIncrement() + "]", 0);
+                t.setDaemon(true);
+                return t;
+            });
+        }
+
+    }
+
+    /**
+     * Cannot instantiate.
+     */
+    private EsExecutors() {}
+
+    static class ExecutorScalingQueue<E> extends LinkedTransferQueue<E> {
+
+        ThreadPoolExecutor executor;
+
+        ExecutorScalingQueue() {}
+
+        @Override
+        public boolean offer(E e) {
+            // first try to transfer to a waiting worker thread
+            if (tryTransfer(e) == false) {
+                // check if there might be spare capacity in the thread
+                // pool executor
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': '9cc75734d0a6fe1c82e57c6c900daa7c5ac0db1e', 'path': 'server/src/main/java/org/elasticsearch/common/util/concurrent/EsExecutors.java', 'startline': 30, 'endline': 70}`
+
+
+[0m[36;1m[1;3mHere are lines 30 through 70.
+
+import java.util.concurrent.RunnableFuture;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.ThreadPoolExecutor;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
+
+/**
+ * A collection of static methods to help create different ES Executor types.
+ */
+public class EsExecutors {
+
+    // although the available processors may technically change, for node sizing we use the number available at launch
+    private static final int MAX_NUM_PROCESSORS = Runtime.getRuntime().availableProcessors();
+
+    /**
+     * Setting to manually control the number of allocated processors. This setting is used to adjust thread pool sizes per node. The
+     * default value is {@link Runtime#availableProcessors()} but should be manually controlled if not all processors on the machine are
+     * available to Elasticsearch (e.g., because of CPU limits). Note that this setting accepts floating point processors.
+     * If a rounded number is needed, always use {@link EsExecutors#allocatedProcessors(Settings)}.
+     */
+    public static final Setting<Processors> NODE_PROCESSORS_SETTING = new Setting<>(
+        "node.processors",
+        Double.toString(MAX_NUM_PROCESSORS),
+        textValue -> {
+            double numberOfProcessors = Double.parseDouble(textValue);
+            if (Double.isNaN(numberOfProcessors) || Double.isInfinite(numberOfProcessors)) {
+                String err = "Failed to parse value [" + textValue + "] for setting [node.processors]";
+                throw new IllegalArgumentException(err);
+            }
+
+            if (numberOfProcessors <= 0.0) {
+                String err = "Failed to parse value [" + textValue + "] for setting [node.processors] must be > 0";
+                throw new IllegalArgumentException(err);
+            }
+
+            if (numberOfProcessors > MAX_NUM_PROCESSORS) {
+                String err = "Failed to parse value [" + textValue + "] for setting [node.processors] must be <= " + MAX_NUM_PROCESSORS;
+                throw new IllegalArgumentException(err);
+            }
+            return Processors.of(numberOfProcessors);
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': '9cc75734d0a6fe1c82e57c6c900daa7c5ac0db1e', 'path': 'server/src/main/java/org/elasticsearch/common/util/concurrent/EsExecutors.java', 'startline': 360, 'endline': 370}`
+
+
+[0m[36;1m[1;3mHere are lines 360 through 370.
+
+        }
+
+    }
+
+    /**
+     * Cannot instantiate.
+     */
+    private EsExecutors() {}
+
+    static class ExecutorScalingQueue<E> extends LinkedTransferQueue<E> {
+
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `locate_symbol` with `{'ref': '9cc75734d0a6fe1c82e57c6c900daa7c5ac0db1e', 'symbol': 'DIRECT_EXECUTOR_SERVICE'}`
+responded: The patch changes the constructor of TransportGetAllocationStatsAction to use EsExecutors.DIRECT_EXECUTOR_SERVICE instead of threadPool.executor(ThreadPool.Names.MANAGEMENT) for the super call, and introduces a SingleResultDeduplicator that uses the MANAGEMENT executor to execute allocationStatsService::stats. The patch also removes the direct assignment of allocationStatsService to this.allocationStatsService.
+
+From the older version (ref 9cc75734d0a6fe1c82e57c6c900daa7c5ac0db1e) code snippet I see:
+- The constructor still uses threadPool.executor(ThreadPool.Names.MANAGEMENT) in the super call.
+- allocationStatsService is assigned directly to this.allocationStatsService.
+- indexNameExpressionResolver is still passed to the super constructor (which was removed in the newer version).
+- There is no SingleResultDeduplicator usage in the constructor.
+
+From the git_history, the removal of indexNameExpressionResolver from the super constructor call was done in commit 77a179706d6, which is after the target ref 9cc75734d0a6fe1c82e57c6c900daa7c5ac0db1e. So indexNameExpressionResolver is still part of the constructor call in the target ref.
+
+The SingleResultDeduplicator class exists in the target ref, so we can use it.
+
+EsExecutors.DIRECT_EXECUTOR_SERVICE is used in the patch, so we need to check if it exists in the target ref. From the EsExecutors code snippet, I haven't found DIRECT_EXECUTOR_SERVICE yet, so I need to confirm if EsExecutors.DIRECT_EXECUTOR_SERVICE exists in the target ref.
+
+I will locate EsExecutors.DIRECT_EXECUTOR_SERVICE in the target ref to confirm its presence and usage. If it does not exist, we need to adapt the patch accordingly.
+
+I will locate the symbol "DIRECT_EXECUTOR_SERVICE" in the target ref.
+
+[0m[33;1m[1;3mserver/src/main/java/org/elasticsearch/common/util/concurrent/EsExecutors.java:295[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': '9cc75734d0a6fe1c82e57c6c900daa7c5ac0db1e', 'path': 'server/src/main/java/org/elasticsearch/common/util/concurrent/EsExecutors.java', 'startline': 280, 'endline': 300}`
+
+
+[0m[36;1m[1;3mHere are lines 280 through 300.
+
+        public boolean awaitTermination(long timeout, TimeUnit unit) {
+            throw new UnsupportedOperationException();
+        }
+
+        @Override
+        public void execute(Runnable command) {
+            command.run();
+            rethrowErrors(command);
+        }
+    }
+
+    /**
+     * {@link ExecutorService} that executes submitted tasks on the current thread. This executor service does not support being
+     * shutdown.
+     */
+    public static final ExecutorService DIRECT_EXECUTOR_SERVICE = new DirectExecutorService();
+
+    public static String threadName(Settings settings, String namePrefix) {
+        if (Node.NODE_NAME_SETTING.exists(settings)) {
+            return threadName(Node.NODE_NAME_SETTING.get(settings), namePrefix);
+        } else {
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `validate` with `{'ref': '9cc75734d0a6fe1c82e57c6c900daa7c5ac0db1e', 'patch': '--- a/server/src/main/java/org/elasticsearch/action/admin/cluster/allocation/TransportGetAllocationStatsAction.java\n+++ b/server/src/main/java/org/elasticsearch/action/admin/cluster/allocation/TransportGetAllocationStatsAction.java\n@@ -68,11 +68,19 @@\n-            actionFilters,\n-            TransportGetAllocationStatsAction.Request::new,\n-            indexNameExpressionResolver,\n-            TransportGetAllocationStatsAction.Response::new,\n-            threadPool.executor(ThreadPool.Names.MANAGEMENT)\n-        );\n-        this.allocationStatsService = allocationStatsService;\n-        this.diskThresholdSettings = new DiskThresholdSettings(clusterService.getSettings(), clusterService.getClusterSettings());\n-        this.featureService = featureService;\n+            actionFilters,\n+            TransportGetAllocationStatsAction.Request::new,\n+            indexNameExpressionResolver,\n+            TransportGetAllocationStatsAction.Response::new,\n+            EsExecutors.DIRECT_EXECUTOR_SERVICE\n+        );\n+        final var managementExecutor = threadPool.executor(ThreadPool.Names.MANAGEMENT);\n+        this.allocationStatsSupplier = new SingleResultDeduplicator<>(\n+            threadPool.getThreadContext(),\n+            l -> managementExecutor.execute(ActionRunnable.supply(l, allocationStatsService::stats))\n+        );\n+        this.diskThresholdSettings = new DiskThresholdSettings(clusterService.getSettings(), clusterService.getClusterSettings());\n+        this.featureService = featureService;\n'}`
+responded: The original code in the older version 9cc75734d0a6fe1c82e57c6c900daa7c5ac0db1e for the constructor of TransportGetAllocationStatsAction is:
+
+```java
+super(
+    TYPE.name(),
+    transportService,
+    clusterService,
+    threadPool,
+    actionFilters,
+    TransportGetAllocationStatsAction.Request::new,
+    indexNameExpressionResolver,
+    TransportGetAllocationStatsAction.Response::new,
+    threadPool.executor(ThreadPool.Names.MANAGEMENT)
+);
+this.allocationStatsService = allocationStatsService;
+this.diskThresholdSettings = new DiskThresholdSettings(clusterService.getSettings(), clusterService.getClusterSettings());
+this.featureService = featureService;
+```
+
+The patch in the newer version changes the executor from `threadPool.executor(ThreadPool.Names.MANAGEMENT)` to `EsExecutors.DIRECT_EXECUTOR_SERVICE` and adds a deduplicator `SingleResultDeduplicator` that wraps the allocationStatsService.stats call executed on the management thread pool executor.
+
+The class `SingleResultDeduplicator` exists in the older version and can be used for backporting.
+
+The `EsExecutors.DIRECT_EXECUTOR_SERVICE` also exists in the older version.
+
+The patch also removes the direct assignment of `this.allocationStatsService = allocationStatsService;` because the service is now wrapped in the deduplicator.
+
+So the backport patch should:
+
+- Change the executor in the super constructor call.
+- Add a `managementExecutor` variable from the threadPool.management executor.
+- Add a new field `allocationStatsSupplier` initialized with the SingleResultDeduplicator wrapping the allocationStatsService.stats call executed on the managementExecutor.
+- Remove the direct assignment `this.allocationStatsService = allocationStatsService;`.
+- Keep the rest unchanged.
+
+The older version constructor has an additional parameter `IndexNameExpressionResolver indexNameExpressionResolver` passed to super, which is removed in the newer version, so we keep it in the backport.
+
+The patch must keep the context lines as in the older version.
+
+Now I will generate the patch for the older version accordingly.
+
+```diff
+--- a/server/src/main/java/org/elasticsearch/action/admin/cluster/allocation/TransportGetAllocationStatsAction.java
++++ b/server/src/main/java/org/elasticsearch/action/admin/cluster/allocation/TransportGetAllocationStatsAction.java
+@@ -68,11 +68,19 @@
+-            actionFilters,
+-            TransportGetAllocationStatsAction.Request::new,
+-            indexNameExpressionResolver,
+-            TransportGetAllocationStatsAction.Response::new,
+-            threadPool.executor(ThreadPool.Names.MANAGEMENT)
+-        );
+-        this.allocationStatsService = allocationStatsService;
+-        this.diskThresholdSettings = new DiskThresholdSettings(clusterService.getSettings(), clusterService.getClusterSettings());
+-        this.featureService = featureService;
++            actionFilters,
++            TransportGetAllocationStatsAction.Request::new,
++            indexNameExpressionResolver,
++            TransportGetAllocationStatsAction.Response::new,
++            EsExecutors.DIRECT_EXECUTOR_SERVICE
++        );
++        final var managementExecutor = threadPool.executor(ThreadPool.Names.MANAGEMENT);
++        this.allocationStatsSupplier = new SingleResultDeduplicator<>(
++            threadPool.getThreadContext(),
++            l -> managementExecutor.execute(ActionRunnable.supply(l, allocationStatsService::stats))
++        );
++        this.diskThresholdSettings = new DiskThresholdSettings(clusterService.getSettings(), clusterService.getClusterSettings());
++        this.featureService = featureService;
+```
+
+I will now validate this patch.
+
+[0m[38;5;200m[1;3mThis patch does not apply because of CONTEXT MISMATCH. Context are patch lines that already exist in the file, that is, lines starting with ` ` and `-`. You should modify the error patch according to the context of older version.
+Here are lines 68 through 78 of file server/src/main/java/org/elasticsearch/action/admin/cluster/allocation/TransportGetAllocationStatsAction.java for commit 9cc75734d0a6fe1c82e57c6c900daa7c5ac0db1e.
+```code snippet
+            actionFilters,
+            TransportGetAllocationStatsAction.Request::new,
+            indexNameExpressionResolver,
+            TransportGetAllocationStatsAction.Response::new,
+            threadPool.executor(ThreadPool.Names.MANAGEMENT)
+        );
+        this.allocationStatsService = allocationStatsService;
+        this.diskThresholdSettings = new DiskThresholdSettings(clusterService.getSettings(), clusterService.getClusterSettings());
+        this.featureService = featureService;
+    }
+```
+Besides, here is detailed info about how the context differs between the patch and the old version.
+Here it shows that there is no difference between your context and the original code, the reason for the failure is that you didn't keep at least three lines of source code at the beginning and end of the patch, please follow this to fix it.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `validate` with `{'ref': '9cc75734d0a6fe1c82e57c6c900daa7c5ac0db1e', 'patch': '--- a/server/src/main/java/org/elasticsearch/action/admin/cluster/allocation/TransportGetAllocationStatsAction.java\n+++ b/server/src/main/java/org/elasticsearch/action/admin/cluster/allocation/TransportGetAllocationStatsAction.java\n@@ -65,14 +65,22 @@\n             actionFilters,\n             TransportGetAllocationStatsAction.Request::new,\n             indexNameExpressionResolver,\n             TransportGetAllocationStatsAction.Response::new,\n-            threadPool.executor(ThreadPool.Names.MANAGEMENT)\n-        );\n-        this.allocationStatsService = allocationStatsService;\n-        this.diskThresholdSettings = new DiskThresholdSettings(clusterService.getSettings(), clusterService.getClusterSettings());\n-        this.featureService = featureService;\n+            EsExecutors.DIRECT_EXECUTOR_SERVICE\n+        );\n+        final var managementExecutor = threadPool.executor(ThreadPool.Names.MANAGEMENT);\n+        this.allocationStatsSupplier = new SingleResultDeduplicator<>(\n+            threadPool.getThreadContext(),\n+            l -> managementExecutor.execute(ActionRunnable.supply(l, allocationStatsService::stats))\n+        );\n+        this.allocationStatsService = allocationStatsService;\n+        this.diskThresholdSettings = new DiskThresholdSettings(clusterService.getSettings(), clusterService.getClusterSettings());\n+        this.featureService = featureService;\n     }\n'}`
+responded: The main issue for the patch validation failure is that the context lines at the beginning and end of the patch were not preserved correctly. The original code block has these lines:
+
+```
+            actionFilters,
+            TransportGetAllocationStatsAction.Request::new,
+            indexNameExpressionResolver,
+            TransportGetAllocationStatsAction.Response::new,
+            threadPool.executor(ThreadPool.Names.MANAGEMENT)
+        );
+        this.allocationStatsService = allocationStatsService;
+        this.diskThresholdSettings = new DiskThresholdSettings(clusterService.getSettings(), clusterService.getClusterSettings());
+        this.featureService = featureService;
+    }
+```
+
+The new patch must keep at least three lines of this context at the beginning and end to be accepted.
+
+Also, the patch needs to add the deduplicator logic and change the executor service from MANAGEMENT to DIRECT_EXECUTOR_SERVICE.
+
+I will regenerate the patch with correct context preservation and the backported logic adapted to the old version's structure.
+
+[0m[38;5;200m[1;3mPatch applied successfully
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3mI have backported the patch for the given hunk to the older version ref 9cc75734d0a6fe1c82e57c6c900daa7c5ac0db1e. The patch replaces the executor used in the superclass constructor with EsExecutors.DIRECT_EXECUTOR_SERVICE and adds the SingleResultDeduplicator allocationStatsSupplier with the management executor. The rest of the constructor initialization remains consistent with the older version context.
+
+Here is the backported patch:
+
+```diff
+--- a/server/src/main/java/org/elasticsearch/action/admin/cluster/allocation/TransportGetAllocationStatsAction.java
++++ b/server/src/main/java/org/elasticsearch/action/admin/cluster/allocation/TransportGetAllocationStatsAction.java
+@@ -65,14 +65,22 @@
+             actionFilters,
+             TransportGetAllocationStatsAction.Request::new,
+             indexNameExpressionResolver,
+             TransportGetAllocationStatsAction.Response::new,
+-            threadPool.executor(ThreadPool.Names.MANAGEMENT)
+-        );
+-        this.allocationStatsService = allocationStatsService;
+-        this.diskThresholdSettings = new DiskThresholdSettings(clusterService.getSettings(), clusterService.getClusterSettings());
+-        this.featureService = featureService;
++            EsExecutors.DIRECT_EXECUTOR_SERVICE
++        );
++        final var managementExecutor = threadPool.executor(ThreadPool.Names.MANAGEMENT);
++        this.allocationStatsSupplier = new SingleResultDeduplicator<>(
++            threadPool.getThreadContext(),
++            l -> managementExecutor.execute(ActionRunnable.supply(l, allocationStatsService::stats))
++        );
++        this.allocationStatsService = allocationStatsService;
++        this.diskThresholdSettings = new DiskThresholdSettings(clusterService.getSettings(), clusterService.getClusterSettings());
++        this.featureService = featureService;
+     }
+```
+
+I have validated this patch on the target ref and it applies cleanly without conflicts. If you want, I can assist you further with testing or with other backports.[0m
+
+[1m> Finished chain.[0m
+2026-04-27 08:28:26,351 - backport - INFO - Aplly all hunks in the patch      PASS
+2026-04-27 08:28:27,179 - backport - INFO - Successfully backport the patch to the target release 9cc75734d0a6fe1c82e57c6c900daa7c5ac0db1e
+2026-04-27 08:28:27,180 - backport - INFO - --- a/server/src/main/java/org/elasticsearch/action/admin/cluster/allocation/TransportGetAllocationStatsAction.java
++++ b/server/src/main/java/org/elasticsearch/action/admin/cluster/allocation/TransportGetAllocationStatsAction.java
+@@ -13,9 +13,12 @@ import org.elasticsearch.TransportVersions;
+ import org.elasticsearch.action.ActionListener;
+ import org.elasticsearch.action.ActionRequestValidationException;
+ import org.elasticsearch.action.ActionResponse;
++import org.elasticsearch.action.ActionRunnable;
+ import org.elasticsearch.action.ActionType;
++import org.elasticsearch.action.SingleResultDeduplicator;
+ import org.elasticsearch.action.admin.cluster.node.stats.NodesStatsRequestParameters.Metric;
+ import org.elasticsearch.action.support.ActionFilters;
++import org.elasticsearch.action.support.SubscribableListener;
+ import org.elasticsearch.action.support.master.MasterNodeReadRequest;
+ import org.elasticsearch.action.support.master.TransportMasterNodeReadAction;
+ import org.elasticsearch.cluster.ClusterState;
+
+--- a/server/src/main/java/org/elasticsearch/action/admin/cluster/allocation/TransportGetAllocationStatsAction.java
++++ b/server/src/main/java/org/elasticsearch/action/admin/cluster/allocation/TransportGetAllocationStatsAction.java
+@@ -28,6 +31,7 @@ import org.elasticsearch.cluster.routing.allocation.NodeAllocationStats;
+ import org.elasticsearch.cluster.service.ClusterService;
+ import org.elasticsearch.common.io.stream.StreamInput;
+ import org.elasticsearch.common.io.stream.StreamOutput;
++import org.elasticsearch.common.util.concurrent.EsExecutors;
+ import org.elasticsearch.core.Nullable;
+ import org.elasticsearch.core.TimeValue;
+ import org.elasticsearch.features.FeatureService;
+
+--- a/server/src/main/java/org/elasticsearch/action/admin/cluster/allocation/TransportGetAllocationStatsAction.java
++++ b/server/src/main/java/org/elasticsearch/action/admin/cluster/allocation/TransportGetAllocationStatsAction.java
+@@ -47,7 +51,7 @@ public class TransportGetAllocationStatsAction extends TransportMasterNodeReadAc
+ 
+     public static final ActionType<TransportGetAllocationStatsAction.Response> TYPE = new ActionType<>("cluster:monitor/allocation/stats");
+ 
+-    private final AllocationStatsService allocationStatsService;
++    private final SingleResultDeduplicator<Map<String, NodeAllocationStats>> allocationStatsSupplier;
+     private final DiskThresholdSettings diskThresholdSettings;
+     private final FeatureService featureService;
+ 
+
+--- a/server/src/main/java/org/elasticsearch/action/admin/cluster/allocation/TransportGetAllocationStatsAction.java
++++ b/server/src/main/java/org/elasticsearch/action/admin/cluster/allocation/TransportGetAllocationStatsAction.java
+@@ -65,10 +65,15 @@
+             actionFilters,
+             TransportGetAllocationStatsAction.Request::new,
+             indexNameExpressionResolver,
+             TransportGetAllocationStatsAction.Response::new,
+-            threadPool.executor(ThreadPool.Names.MANAGEMENT)
+-        );
+-        this.allocationStatsService = allocationStatsService;
+-        this.diskThresholdSettings = new DiskThresholdSettings(clusterService.getSettings(), clusterService.getClusterSettings());
+-        this.featureService = featureService;
++            EsExecutors.DIRECT_EXECUTOR_SERVICE
++        );
++        final var managementExecutor = threadPool.executor(ThreadPool.Names.MANAGEMENT);
++        this.allocationStatsSupplier = new SingleResultDeduplicator<>(
++            threadPool.getThreadContext(),
++            l -> managementExecutor.execute(ActionRunnable.supply(l, allocationStatsService::stats))
++        );
++        this.allocationStatsService = allocationStatsService;
++        this.diskThresholdSettings = new DiskThresholdSettings(clusterService.getSettings(), clusterService.getClusterSettings());
++        this.featureService = featureService;
+     }
+
+--- a/server/src/main/java/org/elasticsearch/action/admin/cluster/allocation/TransportGetAllocationStatsAction.java
++++ b/server/src/main/java/org/elasticsearch/action/admin/cluster/allocation/TransportGetAllocationStatsAction.java
+@@ -88,15 +98,21 @@ public class TransportGetAllocationStatsAction extends TransportMasterNodeReadAc
+ 
+     @Override
+     protected void masterOperation(Task task, Request request, ClusterState state, ActionListener<Response> listener) throws Exception {
+-        listener.onResponse(
+-            new Response(
+-                request.metrics().contains(Metric.ALLOCATIONS) ? allocationStatsService.stats() : Map.of(),
++        // NB we are still on a transport thread here - if adding more functionality here make sure to fork to a different pool
++
++        final SubscribableListener<Map<String, NodeAllocationStats>> allocationStatsStep = request.metrics().contains(Metric.ALLOCATIONS)
++            ? SubscribableListener.newForked(allocationStatsSupplier::execute)
++            : SubscribableListener.newSucceeded(Map.of());
++
++        allocationStatsStep.andThenApply(
++            allocationStats -> new Response(
++                allocationStats,
+                 request.metrics().contains(Metric.FS)
+                     && featureService.clusterHasFeature(clusterService.state(), AllocationStatsFeatures.INCLUDE_DISK_THRESHOLD_SETTINGS)
+                         ? diskThresholdSettings
+                         : null
+             )
+-        );
++        ).addListener(listener);
+     }
+ 
+     @Override
+
+--- a/server/src/main/java/org/elasticsearch/cluster/routing/allocation/AllocationStatsService.java
++++ b/server/src/main/java/org/elasticsearch/cluster/routing/allocation/AllocationStatsService.java
+@@ -18,6 +18,7 @@ import org.elasticsearch.cluster.routing.allocation.allocator.DesiredBalanceShar
+ import org.elasticsearch.cluster.routing.allocation.allocator.ShardsAllocator;
+ import org.elasticsearch.cluster.service.ClusterService;
+ import org.elasticsearch.common.util.Maps;
++import org.elasticsearch.transport.Transports;
+ 
+ import java.util.Map;
+ 
+
+--- a/server/src/main/java/org/elasticsearch/cluster/routing/allocation/AllocationStatsService.java
++++ b/server/src/main/java/org/elasticsearch/cluster/routing/allocation/AllocationStatsService.java
+@@ -41,6 +42,8 @@ public class AllocationStatsService {
+     }
+ 
+     public Map<String, NodeAllocationStats> stats() {
++        assert Transports.assertNotTransportThread("too expensive for a transport worker");
++
+         var state = clusterService.state();
+         var info = clusterInfoService.getClusterInfo();
+         var desiredBalance = desiredBalanceShardsAllocator != null ? desiredBalanceShardsAllocator.getDesiredBalance() : null;
+
+--- a/server/src/test/java/org/elasticsearch/action/admin/cluster/allocation/TransportGetAllocationStatsActionTests.java
++++ b/server/src/test/java/org/elasticsearch/action/admin/cluster/allocation/TransportGetAllocationStatsActionTests.java
+@@ -32,8 +32,13 @@ import org.junit.Before;
+ import java.util.EnumSet;
+ import java.util.Map;
+ import java.util.Set;
++import java.util.concurrent.CyclicBarrier;
++import java.util.concurrent.atomic.AtomicBoolean;
++import java.util.concurrent.atomic.AtomicInteger;
+ 
+ import static org.hamcrest.Matchers.anEmptyMap;
++import static org.hamcrest.Matchers.containsString;
++import static org.hamcrest.Matchers.greaterThanOrEqualTo;
+ import static org.hamcrest.Matchers.not;
+ import static org.mockito.ArgumentMatchers.any;
+ import static org.mockito.ArgumentMatchers.eq;
+
+--- a/server/src/test/java/org/elasticsearch/action/admin/cluster/allocation/TransportGetAllocationStatsActionTests.java
++++ b/server/src/test/java/org/elasticsearch/action/admin/cluster/allocation/TransportGetAllocationStatsActionTests.java
+@@ -120,4 +125,50 @@ public class TransportGetAllocationStatsActionTests extends ESTestCase {
+             assertNull(response.getDiskThresholdSettings());
+         }
+     }
++
++    public void testDeduplicatesStatsComputations() throws InterruptedException {
++        final var requestCounter = new AtomicInteger();
++        final var isExecuting = new AtomicBoolean();
++        when(allocationStatsService.stats()).thenAnswer(invocation -> {
++            try {
++                assertTrue(isExecuting.compareAndSet(false, true));
++                assertThat(Thread.currentThread().getName(), containsString("[management]"));
++                return Map.of(Integer.toString(requestCounter.incrementAndGet()), NodeAllocationStatsTests.randomNodeAllocationStats());
++            } finally {
++                Thread.yield();
++                assertTrue(isExecuting.compareAndSet(true, false));
++            }
++        });
++
++        final var threads = new Thread[between(1, 5)];
++        final var startBarrier = new CyclicBarrier(threads.length);
++        for (int i = 0; i < threads.length; i++) {
++            threads[i] = new Thread(() -> {
++                safeAwait(startBarrier);
++
++                final var minRequestIndex = requestCounter.get();
++
++                final TransportGetAllocationStatsAction.Response response = safeAwait(
++                    l -> action.masterOperation(
++                        mock(Task.class),
++                        new TransportGetAllocationStatsAction.Request(
++                            TEST_REQUEST_TIMEOUT,
++                            TaskId.EMPTY_TASK_ID,
++                            EnumSet.of(Metric.ALLOCATIONS)
++                        ),
++                        ClusterState.EMPTY_STATE,
++                        l
++                    )
++                );
++
++                final var requestIndex = Integer.valueOf(response.getNodeAllocationStats().keySet().iterator().next());
++                assertThat(requestIndex, greaterThanOrEqualTo(minRequestIndex)); // did not get a stale result
++            }, "thread-" + i);
++            threads[i].start();
++        }
++
++        for (final var thread : threads) {
++            thread.join();
++        }
++    }
+ }
+

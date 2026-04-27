@@ -1,0 +1,1255 @@
+2026-04-27 08:35:47,051 - backport - INFO - Using openrouter API: https://openrouter.ai/api/v1 (model: openai/gpt-4.1-mini)
+
+
+[1m> Entering new AgentExecutor chain...[0m
+
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `git_history` with `{}`
+
+
+[0m[36;1m[1;3metadata, ClusterState clusterState) {
+45ae0718cc6 Report Deprecated Indices That Are Flagged To Ignore Migration Reindex As A Warning (#120629)
+
+diff --git a/x-pack/plugin/deprecation/src/main/java/org/elasticsearch/xpack/deprecation/IndexDeprecationChecks.java b/x-pack/plugin/deprecation/src/main/java/org/elasticsearch/xpack/deprecation/IndexDeprecationChecks.java
+--- a/x-pack/plugin/deprecation/src/main/java/org/elasticsearch/xpack/deprecation/IndexDeprecationChecks.java
++++ b/x-pack/plugin/deprecation/src/main/java/org/elasticsearch/xpack/deprecation/IndexDeprecationChecks.java
+@@ -37,15 +37,16 @@
+         IndexVersion currentCompatibilityVersion = indexMetadata.getCompatibilityVersion();
+         // We intentionally exclude indices that are in data streams because they will be picked up by DataStreamDeprecationChecks
+-        if (DeprecatedIndexPredicate.reindexRequired(indexMetadata) && isNotDataStreamIndex(indexMetadata, clusterState)) {
++        if (DeprecatedIndexPredicate.reindexRequired(indexMetadata, false) && isNotDataStreamIndex(indexMetadata, clusterState)) {
+             return new DeprecationIssue(
+                 DeprecationIssue.Level.CRITICAL,
+                 "Old index with a compatibility version < 9.0",
+                 "https://www.elastic.co/guide/en/elasticsearch/reference/master/breaking-changes-9.0.html",
+                 "This index has version: " + currentCompatibilityVersion.toReleaseVersion(),
+                 false,
+                 Collections.singletonMap("reindex_required", true)
+             );
+         }
+         return null;
+     }
+ 
++    static DeprecationIssue ignoredOldIndicesCheck(IndexMetadata indexMetadata, ClusterState clusterState) {
+54879278b1c Update data stream deprecations warnings to new format and filter searchable snapshots from response (#118562)
+
+diff --git a/x-pack/plugin/deprecation/src/main/java/org/elasticsearch/xpack/deprecation/IndexDeprecationChecks.java b/x-pack/plugin/deprecation/src/main/java/org/elasticsearch/xpack/deprecation/IndexDeprecationChecks.java
+--- a/x-pack/plugin/deprecation/src/main/java/org/elasticsearch/xpack/deprecation/IndexDeprecationChecks.java
++++ b/x-pack/plugin/deprecation/src/main/java/org/elasticsearch/xpack/deprecation/IndexDeprecationChecks.java
+@@ -37,15 +38,15 @@
+         IndexVersion currentCompatibilityVersion = indexMetadata.getCompatibilityVersion();
+         // We intentionally exclude indices that are in data streams because they will be picked up by DataStreamDeprecationChecks
+-        if (currentCompatibilityVersion.before(IndexVersions.V_8_0_0) && isNotDataStreamIndex(indexMetadata, clusterState)) {
++        if (DeprecatedIndexPredicate.reindexRequired(indexMetadata) && isNotDataStreamIndex(indexMetadata, clusterState)) {
+             return new DeprecationIssue(
+                 DeprecationIssue.Level.CRITICAL,
+-                "Old index with a compatibility version < 8.0",
++                "Old index with a compatibility version < 9.0",
+                 "https://www.elastic.co/guide/en/elasticsearch/reference/master/breaking-changes-9.0.html",
+                 "This index has version: " + currentCompatibilityVersion.toReleaseVersion(),
+                 false,
+-                null
++                Collections.singletonMap("reindex_required", true)
+             );
+         }
+         return null;
+     }
+ 
+b3424ff44cb Excluding data stream indices from IndexDeprecationChecks.oldIndicesCheck() (#116527)
+
+diff --git a/x-pack/plugin/deprecation/src/main/java/org/elasticsearch/xpack/deprecation/IndexDeprecationChecks.java b/x-pack/plugin/deprecation/src/main/java/org/elasticsearch/xpack/deprecation/IndexDeprecationChecks.java
+--- a/x-pack/plugin/deprecation/src/main/java/org/elasticsearch/xpack/deprecation/IndexDeprecationChecks.java
++++ b/x-pack/plugin/deprecation/src/main/java/org/elasticsearch/xpack/deprecation/IndexDeprecationChecks.java
+@@ -35,14 +36,15 @@
+         IndexVersion currentCompatibilityVersion = indexMetadata.getCompatibilityVersion();
+-        if (currentCompatibilityVersion.before(IndexVersions.V_7_0_0)) {
++        // We intentionally exclude indices that are in data streams because they will be picked up by DataStreamDeprecationChecks
++        if (currentCompatibilityVersion.before(IndexVersions.V_8_0_0) && isNotDataStreamIndex(indexMetadata, clusterState)) {
+             return new DeprecationIssue(
+                 DeprecationIssue.Level.CRITICAL,
+-                "Old index with a compatibility version < 7.0",
+-                "https://www.elastic.co/guide/en/elasticsearch/reference/master/" + "breaking-changes-8.0.html",
++                "Old index with a compatibility version < 8.0",
++                "https://www.elastic.co/guide/en/elasticsearch/reference/master/breaking-changes-9.0.html",
+                 "This index has version: " + currentCompatibilityVersion.toReleaseVersion(),
+                 false,
+                 null
+             );
+         }
+         return null;
+     }
+
+You need to do the following analysis based on the information in the last commit:
+Analyze the code logic of the context of the patch to be ported in this commit step by step.
+If code logic already existed before this commit, the patch context can be assumed to remain in a similar location. Use `locate` and `viewcode` to check your results.
+If code logic were added in this commit, then you need to `git_show` for further details.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `locate_symbol` with `{'ref': '2eea5f28f04e9593ad24e225e89b3b5cc4f07775', 'symbol': 'ignoredOldIndicesCheck'}`
+responded: The git history shows multiple commits related to changes in the deprecation checks for old indices. The commit 45ae0718cc6 mentions changes related to reporting deprecated indices flagged to ignore migration reindex as a warning. The commit 54879278b1c updates data stream deprecation warnings to a new format and filters searchable snapshots from the response. The commit b3424ff44cb excludes data stream indices from IndexDeprecationChecks.oldIndicesCheck().
+
+The patch to be backported is related to refining the transform destination index message when a transform writes to an index with compatibility version less than 9.0. The old version code snippet shows a simpler deprecation issue message for indices with compatibility version less than 8.0, without any special handling for transforms.
+
+The patch context logic related to handling transforms writing to the index and providing a detailed message is not present in the older version's code snippet. This suggests that the logic was added after the older version ref 2eea5f28f04e9593ad24e225e89b3b5cc4f07775.
+
+Next, I will locate the method in the older version to confirm the exact location and view the full method code to understand how to integrate the new logic. I will locate the symbol `ignoredOldIndicesCheck` in the older version since the similar code block ends with the method signature of `ignoredOldIndicesCheck`. This will help me find the exact file and line number to view the full context.
+
+[0m[33;1m[1;3mx-pack/plugin/deprecation/src/main/java/org/elasticsearch/xpack/deprecation/DataStreamDeprecationChecker.java:110
+x-pack/plugin/deprecation/src/main/java/org/elasticsearch/xpack/deprecation/IndexDeprecationChecker.java:121[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': '2eea5f28f04e9593ad24e225e89b3b5cc4f07775', 'path': 'x-pack/plugin/deprecation/src/main/java/org/elasticsearch/xpack/deprecation/IndexDeprecationChecker.java', 'startline': 90, 'endline': 130}`
+
+
+[0m[36;1m[1;3mHere are lines 90 through 130.
+
+
+    private DeprecationIssue oldIndicesCheck(
+        IndexMetadata indexMetadata,
+        ClusterState clusterState,
+        Map<String, List<String>> indexToTransformIds
+    ) {
+        // TODO: this check needs to be revised. It's trivially true right now.
+        IndexVersion currentCompatibilityVersion = indexMetadata.getCompatibilityVersion();
+        // We intentionally exclude indices that are in data streams because they will be picked up by DataStreamDeprecationChecks
+        if (DeprecatedIndexPredicate.reindexRequired(indexMetadata, false) && isNotDataStreamIndex(indexMetadata, clusterState)) {
+            return new DeprecationIssue(
+                DeprecationIssue.Level.CRITICAL,
+                "Old index with a compatibility version < 8.0",
+                "https://www.elastic.co/guide/en/elasticsearch/reference/current/migrating-8.0.html#breaking-changes-8.0",
+                "This index has version: " + currentCompatibilityVersion.toReleaseVersion(),
+                false,
+                meta(indexMetadata, indexToTransformIds)
+            );
+        }
+        return null;
+    }
+
+    private Map<String, Object> meta(IndexMetadata indexMetadata, Map<String, List<String>> indexToTransformIds) {
+        var transforms = indexToTransformIds.getOrDefault(indexMetadata.getIndex().getName(), List.of());
+        if (transforms.isEmpty()) {
+            return Map.of("reindex_required", true);
+        } else {
+            return Map.of("reindex_required", true, "transform_ids", transforms);
+        }
+    }
+
+    private DeprecationIssue ignoredOldIndicesCheck(
+        IndexMetadata indexMetadata,
+        ClusterState clusterState,
+        Map<String, List<String>> indexToTransformIds
+    ) {
+        IndexVersion currentCompatibilityVersion = indexMetadata.getCompatibilityVersion();
+        // We intentionally exclude indices that are in data streams because they will be picked up by DataStreamDeprecationChecks
+        if (DeprecatedIndexPredicate.reindexRequired(indexMetadata, true) && isNotDataStreamIndex(indexMetadata, clusterState)) {
+            return new DeprecationIssue(
+                DeprecationIssue.Level.WARNING,
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': '2eea5f28f04e9593ad24e225e89b3b5cc4f07775', 'path': 'x-pack/plugin/deprecation/src/main/java/org/elasticsearch/xpack/deprecation/IndexDeprecationChecker.java', 'startline': 120, 'endline': 140}`
+
+
+[0m[36;1m[1;3mHere are lines 120 through 140.
+
+
+    private DeprecationIssue ignoredOldIndicesCheck(
+        IndexMetadata indexMetadata,
+        ClusterState clusterState,
+        Map<String, List<String>> indexToTransformIds
+    ) {
+        IndexVersion currentCompatibilityVersion = indexMetadata.getCompatibilityVersion();
+        // We intentionally exclude indices that are in data streams because they will be picked up by DataStreamDeprecationChecks
+        if (DeprecatedIndexPredicate.reindexRequired(indexMetadata, true) && isNotDataStreamIndex(indexMetadata, clusterState)) {
+            return new DeprecationIssue(
+                DeprecationIssue.Level.WARNING,
+                "Old index with a compatibility version < 8.0 Has Been Ignored",
+                "https://www.elastic.co/guide/en/elasticsearch/reference/current/migrating-8.0.html#breaking-changes-8.0",
+                "This read-only index has version: "
+                    + currentCompatibilityVersion.toReleaseVersion()
+                    + " and will be supported as read-only in 9.0",
+                false,
+                meta(indexMetadata, indexToTransformIds)
+            );
+        }
+        return null;
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': '2eea5f28f04e9593ad24e225e89b3b5cc4f07775', 'path': 'x-pack/plugin/deprecation/src/main/java/org/elasticsearch/xpack/deprecation/IndexDeprecationChecker.java', 'startline': 80, 'endline': 100}`
+
+
+[0m[36;1m[1;3mHere are lines 80 through 100.
+
+        if (indexSettingsIssues.isEmpty()) {
+            return Map.of();
+        }
+        return indexSettingsIssues;
+    }
+
+    @Override
+    public String getName() {
+        return NAME;
+    }
+
+    private DeprecationIssue oldIndicesCheck(
+        IndexMetadata indexMetadata,
+        ClusterState clusterState,
+        Map<String, List<String>> indexToTransformIds
+    ) {
+        // TODO: this check needs to be revised. It's trivially true right now.
+        IndexVersion currentCompatibilityVersion = indexMetadata.getCompatibilityVersion();
+        // We intentionally exclude indices that are in data streams because they will be picked up by DataStreamDeprecationChecks
+        if (DeprecatedIndexPredicate.reindexRequired(indexMetadata, false) && isNotDataStreamIndex(indexMetadata, clusterState)) {
+            return new DeprecationIssue(
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `locate_symbol` with `{'ref': '2eea5f28f04e9593ad24e225e89b3b5cc4f07775', 'symbol': 'oldIndicesCheck'}`
+responded: I have found the target code block in the old version at the same location (method oldIndicesCheck). The code logic is similar but the message and the version numbers differ. The older version checks for compatibility version < 8.0 while the new one checks for < 9.0 and has more detailed messages for when transforms write to the index.
+
+The helper method meta is also present in the old version with similar logic.
+
+The patch in the new version refines the message when transforms write to the index and changes the version numbers and URLs to 9.0.
+
+Next, I will locate the method oldIndicesCheck and the helper method meta in the old version to get their full context for crafting the backport patch. I will use locate_symbol for oldIndicesCheck and meta.
+
+[0m[33;1m[1;3mx-pack/plugin/deprecation/src/main/java/org/elasticsearch/xpack/deprecation/DataStreamDeprecationChecker.java:86
+x-pack/plugin/deprecation/src/main/java/org/elasticsearch/xpack/deprecation/IndexDeprecationChecker.java:91[0m[32;1m[1;3m
+Invoking: `locate_symbol` with `{'ref': '2eea5f28f04e9593ad24e225e89b3b5cc4f07775', 'symbol': 'meta'}`
+responded: I have found the target code block in the old version at the same location (method oldIndicesCheck). The code logic is similar but the message and the version numbers differ. The older version checks for compatibility version < 8.0 while the new one checks for < 9.0 and has more detailed messages for when transforms write to the index.
+
+The helper method meta is also present in the old version with similar logic.
+
+The patch in the new version refines the message when transforms write to the index and changes the version numbers and URLs to 9.0.
+
+Next, I will locate the method oldIndicesCheck and the helper method meta in the old version to get their full context for crafting the backport patch. I will use locate_symbol for oldIndicesCheck and meta.
+
+[0m[33;1m[1;3mmodules/legacy-geo/src/main/java/org/elasticsearch/legacygeo/mapper/LegacyGeoShapeFieldMapper.java:213
+modules/mapper-extras/src/main/java/org/elasticsearch/index/mapper/extras/MatchOnlyTextFieldMapper.java:101
+modules/mapper-extras/src/main/java/org/elasticsearch/index/mapper/extras/RankFeatureFieldMapper.java:58
+modules/mapper-extras/src/main/java/org/elasticsearch/index/mapper/extras/RankFeaturesFieldMapper.java:54
+modules/mapper-extras/src/main/java/org/elasticsearch/index/mapper/extras/ScaledFloatFieldMapper.java:117
+modules/mapper-extras/src/main/java/org/elasticsearch/index/mapper/extras/SearchAsYouTypeFieldMapper.java:144
+modules/mapper-extras/src/main/java/org/elasticsearch/index/mapper/extras/TokenCountFieldMapper.java:67
+modules/mapper-extras/src/test/resources/org/elasticsearch/index/mapper/extras/filebeat-6.0.template.json:420
+modules/mapper-extras/src/test/resources/org/elasticsearch/index/mapper/extras/metricbeat-6.0.template.json:2215
+modules/mapper-extras/src/test/resources/org/elasticsearch/index/mapper/extras/metricbeat-6.0.template.json:3134
+modules/mapper-extras/src/test/resources/org/elasticsearch/index/mapper/extras/packetbeat-6.0.template.json:1126
+modules/mapper-extras/src/test/resources/org/elasticsearch/index/mapper/extras/packetbeat-6.0.template.json:493
+modules/parent-join/src/main/java/org/elasticsearch/join/mapper/ParentJoinFieldMapper.java:102
+modules/percolator/src/main/java/org/elasticsearch/percolator/PercolatorFieldMapper.java:111
+plugins/analysis-icu/src/main/java/org/elasticsearch/plugin/analysis/icu/ICUCollationKeywordFieldMapper.java:231
+plugins/mapper-annotated-text/src/main/java/org/elasticsearch/index/mapper/annotatedtext/AnnotatedTextFieldMapper.java:91
+plugins/mapper-murmur3/src/main/java/org/elasticsearch/index/mapper/murmur3/Murmur3FieldMapper.java:45
+server/src/main/java/org/elasticsearch/action/fieldcaps/FieldCapabilities.java:436
+server/src/main/java/org/elasticsearch/action/fieldcaps/FieldCapabilities.java:486
+server/src/main/java/org/elasticsearch/action/fieldcaps/FieldCapabilities.java:76
+server/src/main/java/org/elasticsearch/index/codec/tsdb/ES87TSDBDocValuesConsumer.java:51
+server/src/main/java/org/elasticsearch/index/codec/vectors/es818/ES818BinaryQuantizedVectorsWriter.java:76
+server/src/main/java/org/elasticsearch/index/mapper/BinaryFieldMapper.java:50
+server/src/main/java/org/elasticsearch/index/mapper/BooleanFieldMapper.java:98
+server/src/main/java/org/elasticsearch/index/mapper/CompletionFieldMapper.java:157
+server/src/main/java/org/elasticsearch/index/mapper/DateFieldMapper.java:238
+server/src/main/java/org/elasticsearch/index/mapper/GeoPointFieldMapper.java:100
+server/src/main/java/org/elasticsearch/index/mapper/IpFieldMapper.java:89
+server/src/main/java/org/elasticsearch/index/mapper/KeywordFieldMapper.java:180
+server/src/main/java/org/elasticsearch/index/mapper/MappedFieldType.java:622
+server/src/main/java/org/elasticsearch/index/mapper/MappedFieldType.java:74
+server/src/main/java/org/elasticsearch/index/mapper/Mapping.java:45
+server/src/main/java/org/elasticsearch/index/mapper/NumberFieldMapper.java:122
+server/src/main/java/org/elasticsearch/index/mapper/RangeFieldMapper.java:93
+server/src/main/java/org/elasticsearch/index/mapper/RuntimeField.java:48
+server/src/main/java/org/elasticsearch/index/mapper/RuntimeField.java:54
+server/src/main/java/org/elasticsearch/index/mapper/TextFieldMapper.java:285
+server/src/main/java/org/elasticsearch/index/mapper/flattened/FlattenedFieldMapper.java:188
+server/src/main/java/org/elasticsearch/index/mapper/vectors/DenseVectorFieldMapper.java:174
+server/src/main/java/org/elasticsearch/index/mapper/vectors/SparseVectorFieldMapper.java:75
+server/src/test/java/org/elasticsearch/index/codec/vectors/es816/ES816BinaryQuantizedVectorsWriter.java:78
+server/src/test/java/org/elasticsearch/index/mapper/NonDynamicFieldMapperTests.java:55
+server/src/test/java/org/elasticsearch/script/UpdateByQueryMetadataTests.java:17
+server/src/test/java/org/elasticsearch/script/UpdateCtxMapTests.java:23
+server/src/test/java/org/elasticsearch/script/UpsertCtxMapTests.java:22
+test/yaml-rest-runner/src/main/java/org/elasticsearch/test/rest/yaml/ImpersonateOfficialClientTestClient.java:30
+x-pack/plugin/analytics/src/main/java/org/elasticsearch/xpack/analytics/mapper/HistogramFieldMapper.java:78
+x-pack/plugin/core/src/main/java/org/elasticsearch/xpack/core/deprecation/DeprecationIssue.java:77
+x-pack/plugin/core/src/main/java/org/elasticsearch/xpack/core/ml/dataframe/DataFrameAnalyticsConfig.java:145
+x-pack/plugin/core/src/main/java/org/elasticsearch/xpack/core/ml/dataframe/DataFrameAnalyticsConfig.java:404
+x-pack/plugin/core/src/main/java/org/elasticsearch/xpack/core/ml/dataframe/DataFrameAnalyticsConfigUpdate.java:239
+x-pack/plugin/core/src/main/java/org/elasticsearch/xpack/core/ml/dataframe/DataFrameAnalyticsConfigUpdate.java:55
+x-pack/plugin/core/template-resources/src/main/resources/kibana-reporting@template.json:14
+x-pack/plugin/deprecation/src/main/java/org/elasticsearch/xpack/deprecation/IndexDeprecationChecker.java:112
+x-pack/plugin/inference/src/main/java/org/elasticsearch/xpack/inference/mapper/OffsetSourceFieldMapper.java:109
+x-pack/plugin/inference/src/main/java/org/elasticsearch/xpack/inference/mapper/SemanticTextFieldMapper.java:180
+x-pack/plugin/mapper-aggregate-metric/src/main/java/org/elasticsearch/xpack/aggregatemetric/mapper/AggregateMetricDoubleFieldMapper.java:128
+x-pack/plugin/mapper-constant-keyword/src/main/java/org/elasticsearch/xpack/constantkeyword/mapper/ConstantKeywordFieldMapper.java:90
+x-pack/plugin/mapper-counted-keyword/src/main/java/org/elasticsearch/xpack/countedkeyword/CountedKeywordFieldMapper.java:279
+x-pack/plugin/mapper-unsigned-long/src/main/java/org/elasticsearch/xpack/unsignedlong/UnsignedLongFieldMapper.java:85
+x-pack/plugin/mapper-version/src/main/java/org/elasticsearch/xpack/versionfield/VersionStringFieldMapper.java:108
+x-pack/plugin/old-lucene-versions/src/main/java/org/elasticsearch/xpack/lucene/bwc/codecs/lucene54/Lucene54DocValuesConsumer.java:89
+x-pack/plugin/rank-vectors/src/main/java/org/elasticsearch/xpack/rank/vectors/mapper/RankVectorsFieldMapper.java:111
+x-pack/plugin/spatial/src/main/java/org/elasticsearch/xpack/spatial/index/mapper/GeoShapeWithDocValuesFieldMapper.java:116
+x-pack/plugin/spatial/src/main/java/org/elasticsearch/xpack/spatial/index/mapper/PointFieldMapper.java:69
+x-pack/plugin/spatial/src/main/java/org/elasticsearch/xpack/spatial/index/mapper/ShapeFieldMapper.java:89
+x-pack/plugin/sql/jdbc/src/main/java/org/elasticsearch/xpack/sql/jdbc/DefaultCursor.java:17
+x-pack/plugin/wildcard/src/main/java/org/elasticsearch/xpack/wildcard/mapper/WildcardFieldMapper.java:207
+x-pack/qa/repository-old-versions/src/test/resources/org/elasticsearch/oldrepos/filebeat.json:274
+x-pack/qa/repository-old-versions/src/test/resources/org/elasticsearch/oldrepos/winlogbeat.json:1497
+x-pack/qa/repository-old-versions/src/test/resources/org/elasticsearch/oldrepos/winlogbeat.json:76[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': '2eea5f28f04e9593ad24e225e89b3b5cc4f07775', 'path': 'x-pack/plugin/deprecation/src/main/java/org/elasticsearch/xpack/deprecation/IndexDeprecationChecker.java', 'startline': 85, 'endline': 115}`
+
+
+[0m[36;1m[1;3mHere are lines 85 through 115.
+
+
+    @Override
+    public String getName() {
+        return NAME;
+    }
+
+    private DeprecationIssue oldIndicesCheck(
+        IndexMetadata indexMetadata,
+        ClusterState clusterState,
+        Map<String, List<String>> indexToTransformIds
+    ) {
+        // TODO: this check needs to be revised. It's trivially true right now.
+        IndexVersion currentCompatibilityVersion = indexMetadata.getCompatibilityVersion();
+        // We intentionally exclude indices that are in data streams because they will be picked up by DataStreamDeprecationChecks
+        if (DeprecatedIndexPredicate.reindexRequired(indexMetadata, false) && isNotDataStreamIndex(indexMetadata, clusterState)) {
+            return new DeprecationIssue(
+                DeprecationIssue.Level.CRITICAL,
+                "Old index with a compatibility version < 8.0",
+                "https://www.elastic.co/guide/en/elasticsearch/reference/current/migrating-8.0.html#breaking-changes-8.0",
+                "This index has version: " + currentCompatibilityVersion.toReleaseVersion(),
+                false,
+                meta(indexMetadata, indexToTransformIds)
+            );
+        }
+        return null;
+    }
+
+    private Map<String, Object> meta(IndexMetadata indexMetadata, Map<String, List<String>> indexToTransformIds) {
+        var transforms = indexToTransformIds.getOrDefault(indexMetadata.getIndex().getName(), List.of());
+        if (transforms.isEmpty()) {
+            return Map.of("reindex_required", true);
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `git_history` with `{}`
+responded: I have found the relevant code block in the older version (ref 2eea5f28f04e9593ad24e225e89b3b5cc4f07775). The method oldIndicesCheck is present with a similar structure but the logic is simpler and does not contain the new transform-specific message and metadata.
+
+The old code uses compatibility version < 8.0 and references the 8.0 migration guide, while the new patch updates this to < 9.0 with a more detailed message if transforms write to the index.
+
+The meta method is also present and returns a map with "reindex_required" and optionally "transform_ids".
+
+The new patch changes the oldIndicesCheck method to check if there are transforms writing to the index and modifies the message accordingly.
+
+Next, I will check the history of this oldIndicesCheck method to see if the new transform-specific logic was introduced in a commit after the ref 2eea5f28f04e9593ad24e225e89b3b5cc4f07775 or if it existed before. This will help determine how to backport the patch.
+
+I will use git_history on the oldIndicesCheck method to check its history.
+
+[0m[36;1m[1;3metadata, ClusterState clusterState) {
+45ae0718cc6 Report Deprecated Indices That Are Flagged To Ignore Migration Reindex As A Warning (#120629)
+
+diff --git a/x-pack/plugin/deprecation/src/main/java/org/elasticsearch/xpack/deprecation/IndexDeprecationChecks.java b/x-pack/plugin/deprecation/src/main/java/org/elasticsearch/xpack/deprecation/IndexDeprecationChecks.java
+--- a/x-pack/plugin/deprecation/src/main/java/org/elasticsearch/xpack/deprecation/IndexDeprecationChecks.java
++++ b/x-pack/plugin/deprecation/src/main/java/org/elasticsearch/xpack/deprecation/IndexDeprecationChecks.java
+@@ -37,15 +37,16 @@
+         IndexVersion currentCompatibilityVersion = indexMetadata.getCompatibilityVersion();
+         // We intentionally exclude indices that are in data streams because they will be picked up by DataStreamDeprecationChecks
+-        if (DeprecatedIndexPredicate.reindexRequired(indexMetadata) && isNotDataStreamIndex(indexMetadata, clusterState)) {
++        if (DeprecatedIndexPredicate.reindexRequired(indexMetadata, false) && isNotDataStreamIndex(indexMetadata, clusterState)) {
+             return new DeprecationIssue(
+                 DeprecationIssue.Level.CRITICAL,
+                 "Old index with a compatibility version < 9.0",
+                 "https://www.elastic.co/guide/en/elasticsearch/reference/master/breaking-changes-9.0.html",
+                 "This index has version: " + currentCompatibilityVersion.toReleaseVersion(),
+                 false,
+                 Collections.singletonMap("reindex_required", true)
+             );
+         }
+         return null;
+     }
+ 
++    static DeprecationIssue ignoredOldIndicesCheck(IndexMetadata indexMetadata, ClusterState clusterState) {
+54879278b1c Update data stream deprecations warnings to new format and filter searchable snapshots from response (#118562)
+
+diff --git a/x-pack/plugin/deprecation/src/main/java/org/elasticsearch/xpack/deprecation/IndexDeprecationChecks.java b/x-pack/plugin/deprecation/src/main/java/org/elasticsearch/xpack/deprecation/IndexDeprecationChecks.java
+--- a/x-pack/plugin/deprecation/src/main/java/org/elasticsearch/xpack/deprecation/IndexDeprecationChecks.java
++++ b/x-pack/plugin/deprecation/src/main/java/org/elasticsearch/xpack/deprecation/IndexDeprecationChecks.java
+@@ -37,15 +38,15 @@
+         IndexVersion currentCompatibilityVersion = indexMetadata.getCompatibilityVersion();
+         // We intentionally exclude indices that are in data streams because they will be picked up by DataStreamDeprecationChecks
+-        if (currentCompatibilityVersion.before(IndexVersions.V_8_0_0) && isNotDataStreamIndex(indexMetadata, clusterState)) {
++        if (DeprecatedIndexPredicate.reindexRequired(indexMetadata) && isNotDataStreamIndex(indexMetadata, clusterState)) {
+             return new DeprecationIssue(
+                 DeprecationIssue.Level.CRITICAL,
+-                "Old index with a compatibility version < 8.0",
++                "Old index with a compatibility version < 9.0",
+                 "https://www.elastic.co/guide/en/elasticsearch/reference/master/breaking-changes-9.0.html",
+                 "This index has version: " + currentCompatibilityVersion.toReleaseVersion(),
+                 false,
+-                null
++                Collections.singletonMap("reindex_required", true)
+             );
+         }
+         return null;
+     }
+ 
+b3424ff44cb Excluding data stream indices from IndexDeprecationChecks.oldIndicesCheck() (#116527)
+
+diff --git a/x-pack/plugin/deprecation/src/main/java/org/elasticsearch/xpack/deprecation/IndexDeprecationChecks.java b/x-pack/plugin/deprecation/src/main/java/org/elasticsearch/xpack/deprecation/IndexDeprecationChecks.java
+--- a/x-pack/plugin/deprecation/src/main/java/org/elasticsearch/xpack/deprecation/IndexDeprecationChecks.java
++++ b/x-pack/plugin/deprecation/src/main/java/org/elasticsearch/xpack/deprecation/IndexDeprecationChecks.java
+@@ -35,14 +36,15 @@
+         IndexVersion currentCompatibilityVersion = indexMetadata.getCompatibilityVersion();
+-        if (currentCompatibilityVersion.before(IndexVersions.V_7_0_0)) {
++        // We intentionally exclude indices that are in data streams because they will be picked up by DataStreamDeprecationChecks
++        if (currentCompatibilityVersion.before(IndexVersions.V_8_0_0) && isNotDataStreamIndex(indexMetadata, clusterState)) {
+             return new DeprecationIssue(
+                 DeprecationIssue.Level.CRITICAL,
+-                "Old index with a compatibility version < 7.0",
+-                "https://www.elastic.co/guide/en/elasticsearch/reference/master/" + "breaking-changes-8.0.html",
++                "Old index with a compatibility version < 8.0",
++                "https://www.elastic.co/guide/en/elasticsearch/reference/master/breaking-changes-9.0.html",
+                 "This index has version: " + currentCompatibilityVersion.toReleaseVersion(),
+                 false,
+                 null
+             );
+         }
+         return null;
+     }
+
+You need to do the following analysis based on the information in the last commit:
+Analyze the code logic of the context of the patch to be ported in this commit step by step.
+If code logic already existed before this commit, the patch context can be assumed to remain in a similar location. Use `locate` and `viewcode` to check your results.
+If code logic were added in this commit, then you need to `git_show` for further details.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': '2eea5f28f04e9593ad24e225e89b3b5cc4f07775', 'path': 'x-pack/plugin/deprecation/src/main/java/org/elasticsearch/xpack/deprecation/IndexDeprecationChecker.java', 'startline': 80, 'endline': 130}`
+responded: Analysis:
+
+1. The patch to be backported modifies the method called `oldIndicesCheck` in `IndexDeprecationChecker.java`.
+2. In the older version (ref 2eea5f28f04e9593ad24e225e89b3b5cc4f07775), this method exists and has a similar structure but with some differences:
+   - The older version checks for compatibility version < 8.0, the newer patch changes it to < 9.0.
+   - The older version uses a simpler message and URL.
+   - The older version calls a helper method `meta` to build the metadata map, while the patch changes this logic to inline and adds handling for transforms writing to the index.
+3. The patch adds new logic to check if transforms write to the index and customizes the message and metadata accordingly.
+4. The helper method `meta` in the older version is similar but simpler than the new method `transformIdsForIndex` in the patch.
+5. The patch changes the URL and the message to reflect the new 9.0 upgrade and transform-specific instructions.
+6. The patch also changes the metadata map structure to be more detailed with transform IDs if present.
+
+Conclusion:
+- The method `oldIndicesCheck` exists in the older version but with simpler logic.
+- The patch adds new logic around transforms writing to the index and updates the version check and messages.
+- This logic can be backported by adapting the older method to include the new transform-related logic and updating the version and URLs accordingly.
+- The helper method `meta` can be renamed and simplified as per the patch.
+
+Next steps:
+- View the full method `oldIndicesCheck` and `meta` in the older version to confirm the full context.
+- Create a patch that modifies `oldIndicesCheck` and `meta` in the older version to match the patch logic, adapting to the older code style and structure.
+
+I will view the full method `oldIndicesCheck` and `meta` in the older version now to confirm.
+
+[0m[36;1m[1;3mHere are lines 80 through 130.
+
+        if (indexSettingsIssues.isEmpty()) {
+            return Map.of();
+        }
+        return indexSettingsIssues;
+    }
+
+    @Override
+    public String getName() {
+        return NAME;
+    }
+
+    private DeprecationIssue oldIndicesCheck(
+        IndexMetadata indexMetadata,
+        ClusterState clusterState,
+        Map<String, List<String>> indexToTransformIds
+    ) {
+        // TODO: this check needs to be revised. It's trivially true right now.
+        IndexVersion currentCompatibilityVersion = indexMetadata.getCompatibilityVersion();
+        // We intentionally exclude indices that are in data streams because they will be picked up by DataStreamDeprecationChecks
+        if (DeprecatedIndexPredicate.reindexRequired(indexMetadata, false) && isNotDataStreamIndex(indexMetadata, clusterState)) {
+            return new DeprecationIssue(
+                DeprecationIssue.Level.CRITICAL,
+                "Old index with a compatibility version < 8.0",
+                "https://www.elastic.co/guide/en/elasticsearch/reference/current/migrating-8.0.html#breaking-changes-8.0",
+                "This index has version: " + currentCompatibilityVersion.toReleaseVersion(),
+                false,
+                meta(indexMetadata, indexToTransformIds)
+            );
+        }
+        return null;
+    }
+
+    private Map<String, Object> meta(IndexMetadata indexMetadata, Map<String, List<String>> indexToTransformIds) {
+        var transforms = indexToTransformIds.getOrDefault(indexMetadata.getIndex().getName(), List.of());
+        if (transforms.isEmpty()) {
+            return Map.of("reindex_required", true);
+        } else {
+            return Map.of("reindex_required", true, "transform_ids", transforms);
+        }
+    }
+
+    private DeprecationIssue ignoredOldIndicesCheck(
+        IndexMetadata indexMetadata,
+        ClusterState clusterState,
+        Map<String, List<String>> indexToTransformIds
+    ) {
+        IndexVersion currentCompatibilityVersion = indexMetadata.getCompatibilityVersion();
+        // We intentionally exclude indices that are in data streams because they will be picked up by DataStreamDeprecationChecks
+        if (DeprecatedIndexPredicate.reindexRequired(indexMetadata, true) && isNotDataStreamIndex(indexMetadata, clusterState)) {
+            return new DeprecationIssue(
+                DeprecationIssue.Level.WARNING,
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': '2eea5f28f04e9593ad24e225e89b3b5cc4f07775', 'path': 'x-pack/plugin/deprecation/src/main/java/org/elasticsearch/xpack/deprecation/IndexDeprecationChecker.java', 'startline': 90, 'endline': 125}`
+responded: Based on the information and code snippets from the older version at ref 2eea5f28f04e9593ad24e225e89b3b5cc4f07775, the relevant method oldIndicesCheck is present and has similar logic but with differences in the message, version number, and URL. The method meta is also present and has a similar structure to the one in the newer patch. The new patch introduces a more detailed check involving transform IDs when reindexing is required, which is not present in the older code.
+
+The older code has a simpler return of a DeprecationIssue with a generic message about old index compatibility version < 8.0, while the newer patch refines this message if the index is a transform destination.
+
+The patch to be backported modifies oldIndicesCheck to:
+- Check for transform IDs writing to the index.
+- Provide a more detailed DeprecationIssue if transforms exist.
+- Update the version compatibility message to < 9.0.
+- Use Map.of instead of a meta method returning Map.
+
+The older code uses meta method for the map, which can be adapted to the new logic.
+
+Next, I will:
+- Check the full content of the oldIndicesCheck method and meta method in the old ref.
+- Confirm the exact line numbers and context.
+- Then craft the backport patch accordingly.
+
+I will view more lines around oldIndicesCheck and meta to get complete context for patching.
+
+[0m[36;1m[1;3mHere are lines 90 through 125.
+
+
+    private DeprecationIssue oldIndicesCheck(
+        IndexMetadata indexMetadata,
+        ClusterState clusterState,
+        Map<String, List<String>> indexToTransformIds
+    ) {
+        // TODO: this check needs to be revised. It's trivially true right now.
+        IndexVersion currentCompatibilityVersion = indexMetadata.getCompatibilityVersion();
+        // We intentionally exclude indices that are in data streams because they will be picked up by DataStreamDeprecationChecks
+        if (DeprecatedIndexPredicate.reindexRequired(indexMetadata, false) && isNotDataStreamIndex(indexMetadata, clusterState)) {
+            return new DeprecationIssue(
+                DeprecationIssue.Level.CRITICAL,
+                "Old index with a compatibility version < 8.0",
+                "https://www.elastic.co/guide/en/elasticsearch/reference/current/migrating-8.0.html#breaking-changes-8.0",
+                "This index has version: " + currentCompatibilityVersion.toReleaseVersion(),
+                false,
+                meta(indexMetadata, indexToTransformIds)
+            );
+        }
+        return null;
+    }
+
+    private Map<String, Object> meta(IndexMetadata indexMetadata, Map<String, List<String>> indexToTransformIds) {
+        var transforms = indexToTransformIds.getOrDefault(indexMetadata.getIndex().getName(), List.of());
+        if (transforms.isEmpty()) {
+            return Map.of("reindex_required", true);
+        } else {
+            return Map.of("reindex_required", true, "transform_ids", transforms);
+        }
+    }
+
+    private DeprecationIssue ignoredOldIndicesCheck(
+        IndexMetadata indexMetadata,
+        ClusterState clusterState,
+        Map<String, List<String>> indexToTransformIds
+    ) {
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': '2eea5f28f04e9593ad24e225e89b3b5cc4f07775', 'path': 'x-pack/plugin/deprecation/src/main/java/org/elasticsearch/xpack/deprecation/IndexDeprecationChecker.java', 'startline': 85, 'endline': 130}`
+responded: The target code to backport is the method `oldIndicesCheck` and the helper method `transformIdsForIndex` (which replaces `meta` in the new patch) in the class `IndexDeprecationChecker`.
+
+From the code snippet in the older version (ref 2eea5f28f04e9593ad24e225e89b3b5cc4f07775), we have the `oldIndicesCheck` method that returns a `DeprecationIssue` with a fixed message about old indices with compatibility version < 8.0, and the `meta` method that returns a map with reindex_required and optionally transform_ids.
+
+From the patch in the newer version (commit fda7fc71e68259f313d6fcfd6b43ca9fec97b983), the `oldIndicesCheck` method is updated to check if there are transforms writing to the index and update the message and details accordingly, including a new URL and a list of transform IDs.
+
+The patch also renames the helper method `meta` to `transformIdsForIndex` and simplifies it to just return the list of transform IDs for the index.
+
+The main differences between the old and new code are:
+- The version check message changes from <8.0 to <9.0.
+- The URL changes to the 9.0 breaking changes or migration guide.
+- The message changes if there are transforms writing to the index.
+- The helper method changes from returning a map to returning a list of transform IDs.
+
+We need to backport these changes to the older version's code, adapting to the older context:
+- Change the version number in the message to <9.0.
+- Change the URL to the 9.0 migration guide.
+- Add the check for transforms writing to the index and update the message accordingly.
+- Rename and adapt the helper method as in the patch.
+
+Next, I will view the full method `oldIndicesCheck` and the helper method `meta` in the old version to verify the exact code context and line numbers for the patch.
+
+[0m[36;1m[1;3mHere are lines 85 through 130.
+
+
+    @Override
+    public String getName() {
+        return NAME;
+    }
+
+    private DeprecationIssue oldIndicesCheck(
+        IndexMetadata indexMetadata,
+        ClusterState clusterState,
+        Map<String, List<String>> indexToTransformIds
+    ) {
+        // TODO: this check needs to be revised. It's trivially true right now.
+        IndexVersion currentCompatibilityVersion = indexMetadata.getCompatibilityVersion();
+        // We intentionally exclude indices that are in data streams because they will be picked up by DataStreamDeprecationChecks
+        if (DeprecatedIndexPredicate.reindexRequired(indexMetadata, false) && isNotDataStreamIndex(indexMetadata, clusterState)) {
+            return new DeprecationIssue(
+                DeprecationIssue.Level.CRITICAL,
+                "Old index with a compatibility version < 8.0",
+                "https://www.elastic.co/guide/en/elasticsearch/reference/current/migrating-8.0.html#breaking-changes-8.0",
+                "This index has version: " + currentCompatibilityVersion.toReleaseVersion(),
+                false,
+                meta(indexMetadata, indexToTransformIds)
+            );
+        }
+        return null;
+    }
+
+    private Map<String, Object> meta(IndexMetadata indexMetadata, Map<String, List<String>> indexToTransformIds) {
+        var transforms = indexToTransformIds.getOrDefault(indexMetadata.getIndex().getName(), List.of());
+        if (transforms.isEmpty()) {
+            return Map.of("reindex_required", true);
+        } else {
+            return Map.of("reindex_required", true, "transform_ids", transforms);
+        }
+    }
+
+    private DeprecationIssue ignoredOldIndicesCheck(
+        IndexMetadata indexMetadata,
+        ClusterState clusterState,
+        Map<String, List<String>> indexToTransformIds
+    ) {
+        IndexVersion currentCompatibilityVersion = indexMetadata.getCompatibilityVersion();
+        // We intentionally exclude indices that are in data streams because they will be picked up by DataStreamDeprecationChecks
+        if (DeprecatedIndexPredicate.reindexRequired(indexMetadata, true) && isNotDataStreamIndex(indexMetadata, clusterState)) {
+            return new DeprecationIssue(
+                DeprecationIssue.Level.WARNING,
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': '2eea5f28f04e9593ad24e225e89b3b5cc4f07775', 'path': 'x-pack/plugin/deprecation/src/main/java/org/elasticsearch/xpack/deprecation/IndexDeprecationChecker.java', 'startline': 85, 'endline': 130}`
+responded: The code block to be patched in the old version is present in the file x-pack/plugin/deprecation/src/main/java/org/elasticsearch/xpack/deprecation/IndexDeprecationChecker.java at lines around 85-130, specifically in the method oldIndicesCheck and the private method meta. The old version uses compatibility version < 8.0 and a simpler DeprecationIssue construction. The new version refines the message for indices that are destinations of transforms and changes the compatibility version check to < 9.0.
+
+The patch changes the oldIndicesCheck method to check if the index is a destination for transforms and changes the deprecation message accordingly. It also replaces the meta method with a simpler transformIdsForIndex method.
+
+Since the old version uses similar method names and structure, we can adapt the new patch logic to the old code location.
+
+Next, I will view the full method oldIndicesCheck and meta in the old version to ensure I have the full context for patching.
+
+[0m[36;1m[1;3mHere are lines 85 through 130.
+
+
+    @Override
+    public String getName() {
+        return NAME;
+    }
+
+    private DeprecationIssue oldIndicesCheck(
+        IndexMetadata indexMetadata,
+        ClusterState clusterState,
+        Map<String, List<String>> indexToTransformIds
+    ) {
+        // TODO: this check needs to be revised. It's trivially true right now.
+        IndexVersion currentCompatibilityVersion = indexMetadata.getCompatibilityVersion();
+        // We intentionally exclude indices that are in data streams because they will be picked up by DataStreamDeprecationChecks
+        if (DeprecatedIndexPredicate.reindexRequired(indexMetadata, false) && isNotDataStreamIndex(indexMetadata, clusterState)) {
+            return new DeprecationIssue(
+                DeprecationIssue.Level.CRITICAL,
+                "Old index with a compatibility version < 8.0",
+                "https://www.elastic.co/guide/en/elasticsearch/reference/current/migrating-8.0.html#breaking-changes-8.0",
+                "This index has version: " + currentCompatibilityVersion.toReleaseVersion(),
+                false,
+                meta(indexMetadata, indexToTransformIds)
+            );
+        }
+        return null;
+    }
+
+    private Map<String, Object> meta(IndexMetadata indexMetadata, Map<String, List<String>> indexToTransformIds) {
+        var transforms = indexToTransformIds.getOrDefault(indexMetadata.getIndex().getName(), List.of());
+        if (transforms.isEmpty()) {
+            return Map.of("reindex_required", true);
+        } else {
+            return Map.of("reindex_required", true, "transform_ids", transforms);
+        }
+    }
+
+    private DeprecationIssue ignoredOldIndicesCheck(
+        IndexMetadata indexMetadata,
+        ClusterState clusterState,
+        Map<String, List<String>> indexToTransformIds
+    ) {
+        IndexVersion currentCompatibilityVersion = indexMetadata.getCompatibilityVersion();
+        // We intentionally exclude indices that are in data streams because they will be picked up by DataStreamDeprecationChecks
+        if (DeprecatedIndexPredicate.reindexRequired(indexMetadata, true) && isNotDataStreamIndex(indexMetadata, clusterState)) {
+            return new DeprecationIssue(
+                DeprecationIssue.Level.WARNING,
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `git_show` with `{}`
+
+
+[0m[33;1m[1;3mcommit b3424ff44cbddb5266516121ced09403424f2c98
+Author: Keith Massey <keith.massey@elastic.co>
+Date:   Mon Nov 11 13:51:24 2024 -0600
+
+    Excluding data stream indices from IndexDeprecationChecks.oldIndicesCheck() (#116527)
+
+ .../xpack/deprecation/DeprecationChecks.java       |  2 +-
+ .../xpack/deprecation/DeprecationInfoAction.java   |  7 +-
+ .../xpack/deprecation/IndexDeprecationChecks.java  | 24 +++---
+ .../DeprecationInfoActionResponseTests.java        | 16 ++--
+ .../deprecation/IndexDeprecationChecksTests.java   | 92 +++++++++++++++++++---
+ 5 files changed, 113 insertions(+), 28 deletions(-)
+[IMPORTANT] The relevant code shown by `git_history` is not fully `+` lines.
+[IMPORTANT] This means that the code in question was not added or migrated in this commit.
+[IMPORTANT] Please think step by step and check the abstract below carefully. If error exists in abstract, please ignore the info below.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': '2eea5f28f04e9593ad24e225e89b3b5cc4f07775', 'path': 'x-pack/plugin/deprecation/src/main/java/org/elasticsearch/xpack/deprecation/IndexDeprecationChecker.java', 'startline': 85, 'endline': 130}`
+responded: Analysis:
+
+1. The patch to be backported modifies the method `oldIndicesCheck` in `IndexDeprecationChecker.java` by adding a special case when transforms write to the index, changing the message and metadata accordingly.
+2. The old version already has the method `oldIndicesCheck` with similar logic, but the compatibility version check is for < 8.0 instead of < 9.0, and the message and URL are different.
+3. The old version has a helper method `meta` that returns metadata about whether reindexing is required and any transform IDs, similar to the patch.
+4. The patch changes the message to mention transforms writing to the index and changes the URL to a migration guide for 9.0.
+5. The patch also changes the compatibility version check from < 8.0 to < 9.0.
+6. The patch adds a new method `transformIdsForIndex` which is basically the same as the old `meta` method but simplified to just return the list of transform IDs.
+7. The old version's `meta` method returns a map with keys `"reindex_required"` and optionally `"transform_ids"`.
+8. The patch uses `Map.of` from Java 9+ while the old version uses `Map.of` as well.
+9. The patch changes the message and URL strings to reflect the 9.0 changes.
+10. The patch checks if there are transforms for the index and adjusts the message accordingly.
+
+Conclusion:
+The patch can be backported by:
+- Changing the compatibility version check from <8.0 to <9.0.
+- Changing the message strings and URLs to those in the patch.
+- Adding the check for transforms and adjusting the message and metadata accordingly.
+- Replacing the `meta` method with `transformIdsForIndex` method as per the patch.
+- Adjusting the call to `meta` to call `transformIdsForIndex` and handle the new logic.
+
+Next step:
+View the full method `oldIndicesCheck` and `meta` method in old version with some extra context to ensure the patch can be applied correctly.
+
+I will view lines 85-130 in `x-pack/plugin/deprecation/src/main/java/org/elasticsearch/xpack/deprecation/IndexDeprecationChecker.java` at ref 2eea5f28f04e9593ad24e225e89b3b5cc4f07775 to get the full context.
+
+[0m[36;1m[1;3mHere are lines 85 through 130.
+
+
+    @Override
+    public String getName() {
+        return NAME;
+    }
+
+    private DeprecationIssue oldIndicesCheck(
+        IndexMetadata indexMetadata,
+        ClusterState clusterState,
+        Map<String, List<String>> indexToTransformIds
+    ) {
+        // TODO: this check needs to be revised. It's trivially true right now.
+        IndexVersion currentCompatibilityVersion = indexMetadata.getCompatibilityVersion();
+        // We intentionally exclude indices that are in data streams because they will be picked up by DataStreamDeprecationChecks
+        if (DeprecatedIndexPredicate.reindexRequired(indexMetadata, false) && isNotDataStreamIndex(indexMetadata, clusterState)) {
+            return new DeprecationIssue(
+                DeprecationIssue.Level.CRITICAL,
+                "Old index with a compatibility version < 8.0",
+                "https://www.elastic.co/guide/en/elasticsearch/reference/current/migrating-8.0.html#breaking-changes-8.0",
+                "This index has version: " + currentCompatibilityVersion.toReleaseVersion(),
+                false,
+                meta(indexMetadata, indexToTransformIds)
+            );
+        }
+        return null;
+    }
+
+    private Map<String, Object> meta(IndexMetadata indexMetadata, Map<String, List<String>> indexToTransformIds) {
+        var transforms = indexToTransformIds.getOrDefault(indexMetadata.getIndex().getName(), List.of());
+        if (transforms.isEmpty()) {
+            return Map.of("reindex_required", true);
+        } else {
+            return Map.of("reindex_required", true, "transform_ids", transforms);
+        }
+    }
+
+    private DeprecationIssue ignoredOldIndicesCheck(
+        IndexMetadata indexMetadata,
+        ClusterState clusterState,
+        Map<String, List<String>> indexToTransformIds
+    ) {
+        IndexVersion currentCompatibilityVersion = indexMetadata.getCompatibilityVersion();
+        // We intentionally exclude indices that are in data streams because they will be picked up by DataStreamDeprecationChecks
+        if (DeprecatedIndexPredicate.reindexRequired(indexMetadata, true) && isNotDataStreamIndex(indexMetadata, clusterState)) {
+            return new DeprecationIssue(
+                DeprecationIssue.Level.WARNING,
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3mThe target code to be backported is in the method `oldIndicesCheck` of the class `IndexDeprecationChecker`. The old version has a similar method `oldIndicesCheck` with the same structure but with some differences in the logic and message content.
+
+Key differences:
+- The old version checks for compatibility version < 8.0, the new version checks < 9.0.
+- The old version directly returns a `DeprecationIssue` with a standard message.
+- The new version refines the message if the index is a destination for transforms, listing the transform IDs and providing a more detailed message.
+
+The method `meta` in the old version corresponds to the new helper method `transformIdsForIndex` but returns a Map directly.
+
+To backport:
+- Update the `oldIndicesCheck` method to check for compatibility version < 8.0 but adapt the new logic for transform detection and message refinement.
+- Replace the `meta` method with `transformIdsForIndex` returning only the list of transform IDs.
+- Update the message URLs and texts to match the old version style but include the new logic for transforms.
+- Keep the structure and context lines as in the old version.
+
+Next, I will craft the patch for the old version based on the above analysis and the old version code snippet.[0m
+
+[1m> Finished chain.[0m
+2026-04-27 08:37:16,810 - backport - ERROR - Reach max_iterations for hunk 1

@@ -1,0 +1,134 @@
+--- a/hibernate-core/src/main/java/org/hibernate/dialect/function/array/ArrayAndElementArgumentValidator.java
++++ b/hibernate-core/src/main/java/org/hibernate/dialect/function/array/ArrayAndElementArgumentValidator.java
+@@ -6,7 +6,9 @@
+ 
+ import java.util.List;
++
++import org.hibernate.query.sqm.SqmBindableType;
+ 
+ import org.hibernate.query.sqm.SqmExpressible;
+ import org.hibernate.query.sqm.produce.function.ArgumentsValidator;
+ import org.hibernate.query.sqm.produce.function.FunctionArgumentException;
+ import org.hibernate.query.sqm.tree.SqmTypedNode;
+
+--- a/hibernate-core/src/main/java/org/hibernate/dialect/function/array/ArrayAndElementArgumentValidator.java
++++ b/hibernate-core/src/main/java/org/hibernate/dialect/function/array/ArrayAndElementArgumentValidator.java
+@@ -36,7 +37,8 @@ public class ArrayAndElementArgumentValidator extends ArrayArgumentValidator {
+ 		for ( int elementIndex : elementIndexes ) {
+ 			if ( elementIndex < arguments.size() ) {
+ 				final SqmTypedNode<?> elementArgument = arguments.get( elementIndex );
+-				final SqmExpressible<?> elementType = elementArgument.getExpressible().getSqmType();
++				final SqmBindableType<?> expressible = elementArgument.getExpressible();
++				final SqmExpressible<?> elementType = expressible != null ? expressible.getSqmType() : null;
+ 				if ( expectedElementType != null && elementType != null && expectedElementType != elementType ) {
+ 					throw new FunctionArgumentException(
+ 							String.format(
+
+--- a/hibernate-core/src/main/java/org/hibernate/dialect/function/array/HSQLArrayPositionFunction.java
++++ b/hibernate-core/src/main/java/org/hibernate/dialect/function/array/HSQLArrayPositionFunction.java
+@@ -7,8 +7,9 @@
+ import java.util.List;
+ 
+-import org.hibernate.query.ReturnableType;
++import org.hibernate.metamodel.model.domain.ReturnableType;
+ import org.hibernate.sql.ast.SqlAstTranslator;
++import org.hibernate.sql.ast.SqlAstNodeRenderingMode;
+ import org.hibernate.sql.ast.spi.SqlAppender;
+ import org.hibernate.sql.ast.tree.SqlAstNode;
+ import org.hibernate.sql.ast.tree.expression.Expression;
+ import org.hibernate.type.spi.TypeConfiguration;
+
+--- a/hibernate-core/src/main/java/org/hibernate/dialect/function/array/HSQLArrayPositionFunction.java
++++ b/hibernate-core/src/main/java/org/hibernate/dialect/function/array/HSQLArrayPositionFunction.java
+@@ -35,7 +36,7 @@ public class HSQLArrayPositionFunction extends AbstractArrayPositionFunction {
+ 		sqlAppender.append( " is not null then coalesce((select t.idx from unnest(");
+ 		arrayExpression.accept( walker );
+ 		sqlAppender.append(") with ordinality t(val,idx) where t.val is not distinct from " );
+-		elementExpression.accept( walker );
++		walker.render( elementExpression, SqlAstNodeRenderingMode.NO_PLAIN_PARAMETER );
+ 		if ( sqlAstArguments.size() > 2 ) {
+ 			sqlAppender.append( " and t.idx>=" );
+ 			sqlAstArguments.get( 2 ).accept( walker );
+
+--- a/hibernate-core/src/main/java/org/hibernate/dialect/function/array/HSQLArrayPositionsFunction.java
++++ b/hibernate-core/src/main/java/org/hibernate/dialect/function/array/HSQLArrayPositionsFunction.java
+@@ -7,8 +7,9 @@
+ import java.util.List;
+ 
+-import org.hibernate.query.ReturnableType;
++import org.hibernate.metamodel.model.domain.ReturnableType;
+ import org.hibernate.sql.ast.SqlAstTranslator;
++import org.hibernate.sql.ast.SqlAstNodeRenderingMode;
+ import org.hibernate.sql.ast.spi.SqlAppender;
+ import org.hibernate.sql.ast.tree.SqlAstNode;
+ import org.hibernate.sql.ast.tree.expression.Expression;
+ import org.hibernate.type.spi.TypeConfiguration;
+
+--- a/hibernate-core/src/main/java/org/hibernate/dialect/function/array/HSQLArrayPositionsFunction.java
++++ b/hibernate-core/src/main/java/org/hibernate/dialect/function/array/HSQLArrayPositionsFunction.java
+@@ -35,7 +36,7 @@ public class HSQLArrayPositionsFunction extends AbstractArrayPositionsFunction {
+ 		sqlAppender.append( " is not null then coalesce((select array_agg(t.idx) from unnest(");
+ 		arrayExpression.accept( walker );
+ 		sqlAppender.append(") with ordinality t(val,idx) where t.val is not distinct from " );
+-		elementExpression.accept( walker );
++		walker.render( elementExpression, SqlAstNodeRenderingMode.NO_PLAIN_PARAMETER );
+ 		sqlAppender.append( "),cast(array[] as integer array)) end" );
+ 	}
+ }
+
+--- a/hibernate-core/src/test/java/org/hibernate/orm/test/function/array/ArrayPositionTest.java
++++ b/hibernate-core/src/test/java/org/hibernate/orm/test/function/array/ArrayPositionTest.java
+@@ -85,6 +85,18 @@ public class ArrayPositionTest {
+ 		} );
+ 	}
+ 
++	@Test
++	@Jira("https://hibernate.atlassian.net/browse/HHH-19490")
++	public void testPositionParam(SessionFactoryScope scope) {
++		scope.inSession( em -> {
++			List<EntityWithArrays> results = em.createQuery( "from EntityWithArrays e where array_position(e.theArray, ?1) = 1", EntityWithArrays.class )
++					.setParameter( 1, "abc" )
++					.getResultList();
++			assertEquals( 1, results.size() );
++			assertEquals( 2L, results.get( 0 ).getId() );
++		} );
++	}
++
+ 	@Test
+ 	@Jira("https://hibernate.atlassian.net/browse/HHH-17801")
+ 	public void testEnumPosition(SessionFactoryScope scope) {
+
+--- a/hibernate-core/src/test/java/org/hibernate/orm/test/function/array/ArrayPositionsTest.java
++++ b/hibernate-core/src/test/java/org/hibernate/orm/test/function/array/ArrayPositionsTest.java
+@@ -15,6 +15,7 @@ import org.hibernate.testing.jdbc.SharedDriverManagerTypeCacheClearingIntegrator
+ import org.hibernate.testing.orm.junit.BootstrapServiceRegistry;
+ import org.hibernate.testing.orm.junit.DialectFeatureChecks;
+ import org.hibernate.testing.orm.junit.DomainModel;
++import org.hibernate.testing.orm.junit.Jira;
+ import org.hibernate.testing.orm.junit.RequiresDialectFeature;
+ import org.hibernate.testing.orm.junit.SessionFactory;
+ import org.hibernate.testing.orm.junit.SessionFactoryScope;
+
+--- a/hibernate-core/src/test/java/org/hibernate/orm/test/function/array/ArrayPositionsTest.java
++++ b/hibernate-core/src/test/java/org/hibernate/orm/test/function/array/ArrayPositionsTest.java
+@@ -93,6 +94,20 @@ public class ArrayPositionsTest {
+ 		} );
+ 	}
+ 
++	@Test
++	@Jira("https://hibernate.atlassian.net/browse/HHH-19490")
++	public void testPositionsParam(SessionFactoryScope scope) {
++		scope.inSession( em -> {
++			List<int[]> results = em.createQuery( "select array_positions(e.theArray, ?1) from EntityWithArrays e order by e.id", int[].class )
++					.setParameter( 1, "abc" )
++					.getResultList();
++			assertEquals( 3, results.size() );
++			assertArrayEquals( new int[0], results.get( 0 ) );
++			assertArrayEquals( new int[]{ 1, 4 }, results.get( 1 ) );
++			assertNull( results.get( 2 ) );
++		} );
++	}
++
+ 	@Test
+ 	public void testPositionsList(SessionFactoryScope scope) {
+ 		scope.inSession( em -> {

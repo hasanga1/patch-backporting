@@ -1,0 +1,27 @@
+--- a/spring-web/src/main/java/org/springframework/http/ContentDisposition.java
++++ b/spring-web/src/main/java/org/springframework/http/ContentDisposition.java
+@@ -68,6 +68,7 @@ public final class ContentDisposition {
+ 		for (int i=33; i<= 126; i++) {
+ 			PRINTABLE.set(i);
+ 		}
++		PRINTABLE.set(34, false); // "
+ 		PRINTABLE.set(61, false); // =
+ 		PRINTABLE.set(63, false); // ?
+ 		PRINTABLE.set(95, false); // _
+
+--- a/spring-web/src/test/java/org/springframework/http/ContentDispositionTests.java
++++ b/spring-web/src/test/java/org/springframework/http/ContentDispositionTests.java
+@@ -313,6 +313,13 @@ class ContentDispositionTests {
+ 		tester.accept("foo.txt\\\\\\", "foo.txt\\\\\\\\\\\\");
+ 	}
+ 
++	@Test
++	void formatWithUtf8FilenameWithQuotes() {
++		String filename = "\"中文.txt";
++		assertThat(ContentDisposition.formData().filename(filename, StandardCharsets.UTF_8).build().toString())
++				.isEqualTo("form-data; filename=\"=?UTF-8?Q?=22=E4=B8=AD=E6=96=87.txt?=\"; filename*=UTF-8''%22%E4%B8%AD%E6%96%87.txt");
++	}
++
+ 	@Test
+ 	void formatWithEncodedFilenameUsingInvalidCharset() {
+ 		assertThatIllegalArgumentException().isThrownBy(() ->

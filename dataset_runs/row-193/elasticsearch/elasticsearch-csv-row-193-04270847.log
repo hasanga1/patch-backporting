@@ -1,0 +1,30 @@
+2026-04-27 08:47:30,214 - backport - INFO - Using openrouter API: https://openrouter.ai/api/v1 (model: openai/gpt-4.1-mini)
+2026-04-27 08:47:33,002 - backport - INFO - Aplly all hunks in the patch      PASS
+2026-04-27 08:47:33,523 - backport - INFO - Successfully backport the patch to the target release 3b2cfae8b92aa346f4e660214f8271333be6aeca
+2026-04-27 08:47:33,524 - backport - INFO - --- a/server/src/main/java/org/elasticsearch/index/query/BoolQueryBuilder.java
++++ b/server/src/main/java/org/elasticsearch/index/query/BoolQueryBuilder.java
+@@ -356,6 +356,7 @@ public class BoolQueryBuilder extends AbstractQueryBuilder<BoolQueryBuilder> {
+         if (mustClauses.size() == 0
+             && filterClauses.size() == 0
+             && shouldClauses.size() > 0
++            && mustNotClauses.size() == 0
+             && newBuilder.shouldClauses.stream().allMatch(b -> b instanceof MatchNoneQueryBuilder)) {
+             return new MatchNoneQueryBuilder("The \"" + getName() + "\" query was rewritten to a \"match_none\" query.");
+         }
+
+--- a/server/src/test/java/org/elasticsearch/index/query/BoolQueryBuilderTests.java
++++ b/server/src/test/java/org/elasticsearch/index/query/BoolQueryBuilderTests.java
+@@ -449,6 +449,12 @@ public class BoolQueryBuilderTests extends AbstractQueryTestCase<BoolQueryBuilde
+         rewritten = Rewriteable.rewrite(boolQueryBuilder, createSearchExecutionContext());
+         assertNotEquals(new MatchNoneQueryBuilder(), rewritten);
+ 
++        boolQueryBuilder = new BoolQueryBuilder();
++        boolQueryBuilder.should(new WrapperQueryBuilder(new MatchNoneQueryBuilder().toString()));
++        boolQueryBuilder.mustNot(new TermQueryBuilder(TEXT_FIELD_NAME, "bar"));
++        rewritten = Rewriteable.rewrite(boolQueryBuilder, createSearchExecutionContext());
++        assertNotEquals(new MatchNoneQueryBuilder(), rewritten);
++
+         boolQueryBuilder = new BoolQueryBuilder();
+         boolQueryBuilder.filter(new TermQueryBuilder(TEXT_FIELD_NAME, "bar"));
+         boolQueryBuilder.mustNot(new WrapperQueryBuilder(new WrapperQueryBuilder(new MatchAllQueryBuilder().toString()).toString()));
+

@@ -1,0 +1,626 @@
+2026-04-27 06:30:37,951 - backport - INFO - Using openrouter API: https://openrouter.ai/api/v1 (model: openai/gpt-4.1-mini)
+
+
+[1m> Entering new AgentExecutor chain...[0m
+
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `git_history` with `{}`
+
+
+[0m[36;1m[1;3ma2b351d5cb big cleanup in the bytebuddy package
+
+diff --git a/hibernate-core/src/main/java/org/hibernate/bytecode/enhance/internal/bytebuddy/EnhancerImpl.java b/hibernate-core/src/main/java/org/hibernate/bytecode/enhance/internal/bytebuddy/EnhancerImpl.java
+--- a/hibernate-core/src/main/java/org/hibernate/bytecode/enhance/internal/bytebuddy/EnhancerImpl.java
++++ b/hibernate-core/src/main/java/org/hibernate/bytecode/enhance/internal/bytebuddy/EnhancerImpl.java
+@@ -411,8 +242,8 @@
+ 			}
+ 			else {
+ 				ENHANCEMENT_LOGGER.enhancingAsMappedSuperclass( managedCtClass.getName() );
+-				DynamicType.Builder<?> builder = builderSupplier.get();
++				final var builder = builderSupplier.get();
+ 				builder.implement( constants.INTERFACES_for_ManagedMappedSuperclass );
+ 				return createTransformer( managedCtClass ).applyTo( builder );
+ 			}
+ 		
+You need to do the following analysis based on the information in the last commit:
+Analyze the code logic of the context of the patch to be ported in this commit step by step.
+If code logic already existed before this commit, the patch context can be assumed to remain in a similar location. Use `locate` and `viewcode` to check your results.
+If code logic were added in this commit, then you need to `git_show` for further details.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `locate_symbol` with `{'ref': '23a544ee3f6bb99cb72a769c4103871fa6c3e0ce', 'symbol': 'EnhancerImpl'}`
+responded: The git history shows that the last change to this code block was in commit a2b351d5cb, which was a "big cleanup in the bytebuddy package." The diff snippet from that commit shows that the older code used `DynamicType.Builder<?> builder = builderSupplier.get();` while the newer code uses `final var builder = builderSupplier.get()` and chains `.implement(constants.INTERFACES_for_ManagedMappedSuperclass)` directly on the builderSupplier.get() call.
+
+The logic of enhancing mapped superclasses and applying a transformer to the builder already existed before the latest patch. The patch in the newer version simplifies the code by chaining the `.implement` call immediately after getting the builder, but the underlying logic remains the same.
+
+This means the patch can be backported by adapting the chaining style to the older version's style, which uses a separate statement for `builder.implement(...)`.
+
+Next, I will locate the function or surrounding function in the older version to confirm the exact location and surrounding code for the patch. I will use `locate_symbol` on the older ref 23a544ee3f6bb99cb72a769c4103871fa6c3e0ce for the symbol likely containing this code, which is probably `EnhancerImpl` class or a method related to enhancement. Since the patch is in `EnhancerImpl.java` and involves enhancement logic, I'll try to locate the main enhancement method or the class itself.
+
+I will locate the symbol `EnhancerImpl` in the older ref.
+
+[0m[33;1m[1;3mhibernate-core/src/main/java/org/hibernate/bytecode/enhance/internal/bytebuddy/EnhancerImpl.java:70
+hibernate-core/src/main/java/org/hibernate/bytecode/enhance/internal/bytebuddy/EnhancerImpl.java:85
+hibernate-core/src/main/java/org/hibernate/bytecode/enhance/internal/bytebuddy/EnhancerImpl.java:96[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': '23a544ee3f6bb99cb72a769c4103871fa6c3e0ce', 'path': 'hibernate-core/src/main/java/org/hibernate/bytecode/enhance/internal/bytebuddy/EnhancerImpl.java', 'startline': 400, 'endline': 420}`
+
+
+[0m[36;1m[1;3mHere are lines 400 through 420.
+
+						)
+								.withParameter( constants.TypeString )
+								.intercept( constants.implementationClearOwner );
+			}
+
+			return createTransformer( managedCtClass ).applyTo( builder );
+		}
+		else if ( enhancementContext.isMappedSuperclassClass( managedCtClass ) ) {
+			// Check for HHH-16572 (PROPERTY attributes with mismatched field and method names)
+			if ( checkUnsupportedAttributeNaming( managedCtClass, enhancementContext ) ) {
+				return null;
+			}
+			else {
+				ENHANCEMENT_LOGGER.enhancingAsMappedSuperclass( managedCtClass.getName() );
+				DynamicType.Builder<?> builder = builderSupplier.get();
+				builder.implement( constants.INTERFACES_for_ManagedMappedSuperclass );
+				return createTransformer( managedCtClass ).applyTo( builder );
+			}
+		}
+		else if ( enhancementContext.doExtendedEnhancement() ) {
+			ENHANCEMENT_LOGGER.extendedEnhancement( managedCtClass.getName() );
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `validate` with `{'ref': '23a544ee3f6bb99cb72a769c4103871fa6c3e0ce', 'patch': '--- a/hibernate-core/src/main/java/org/hibernate/bytecode/enhance/internal/bytebuddy/EnhancerImpl.java\n+++ b/hibernate-core/src/main/java/org/hibernate/bytecode/enhance/internal/bytebuddy/EnhancerImpl.java\n@@ -410,10 +410,10 @@\n \t\t\t\t\t\t}\n \t\t\t\t\t\telse {\n \t\t\t\t\t\t\tENHANCEMENT_LOGGER.enhancingAsMappedSuperclass( managedCtClass.getName() );\n-                DynamicType.Builder<?> builder = builderSupplier.get();\n-                builder.implement( constants.INTERFACES_for_ManagedMappedSuperclass );\n+                final var builder = builderSupplier.get()\n+                        .implement( constants.INTERFACES_for_ManagedMappedSuperclass );\n \t\t\t\t\t\t\treturn createTransformer( managedCtClass ).applyTo( builder );\n \t\t\t\t\t\t}\n \t\t\t\t\t\t\n \t\t\t\t\t}\n \t\t\t\t\telse if ( enhancementContext.doExtendedEnhancement() ) {\n \t\t\t\t\t\tENHANCEMENT_LOGGER.extendedEnhancement( managedCtClass.getName() );\n'}`
+responded: The target code block to be patched is present in the older version at lines 410-419, as shown in the snippet:
+
+```java
+else if ( enhancementContext.isMappedSuperclassClass( managedCtClass ) ) {
+	// Check for HHH-16572 (PROPERTY attributes with mismatched field and method names)
+	if ( checkUnsupportedAttributeNaming( managedCtClass, enhancementContext ) ) {
+		return null;
+	}
+	else {
+		ENHANCEMENT_LOGGER.enhancingAsMappedSuperclass( managedCtClass.getName() );
+		DynamicType.Builder<?> builder = builderSupplier.get();
+		builder.implement( constants.INTERFACES_for_ManagedMappedSuperclass );
+		return createTransformer( managedCtClass ).applyTo( builder );
+	}
+}
+```
+
+The patch in the newer version modifies the lines:
+
+```java
+-DynamicType.Builder<?> builder = builderSupplier.get();
+-builder.implement( constants.INTERFACES_for_ManagedMappedSuperclass );
++final var builder = builderSupplier.get()
++		.implement( constants.INTERFACES_for_ManagedMappedSuperclass );
+```
+
+This change is primarily a refactoring to chain the method call `implement()` directly on the builder returned by `builderSupplier.get()`, and also uses `final var` instead of explicit type declaration.
+
+From the `git_history` output, the previous commit already changed the declaration to `final var builder = builderSupplier.get();` but the call to `implement()` remained on the next line. So the patch further refactors this to chain the call.
+
+Logically, this is a minor refactoring and does not change the behavior.
+
+Hence, for backporting, the patch should adapt this refactoring to the older version code style, which uses explicit type declaration `DynamicType.Builder<?> builder` and separate call to `implement()`.
+
+Therefore, the backport patch should change:
+
+```java
+DynamicType.Builder<?> builder = builderSupplier.get();
+builder.implement( constants.INTERFACES_for_ManagedMappedSuperclass );
+```
+
+to
+
+```java
+final var builder = builderSupplier.get()
+		.implement( constants.INTERFACES_for_ManagedMappedSuperclass );
+```
+
+And keep the other context lines unchanged.
+
+Next, I will generate the patch for the older version accordingly.
+
+[0m[38;5;200m[1;3mThis patch does not apply because of CONTEXT MISMATCH. Context are patch lines that already exist in the file, that is, lines starting with ` ` and `-`. You should modify the error patch according to the context of older version.
+Here are lines 410 through 422 of file hibernate-core/src/main/java/org/hibernate/bytecode/enhance/internal/bytebuddy/EnhancerImpl.java for commit 23a544ee3f6bb99cb72a769c4103871fa6c3e0ce.
+```code snippet
+			}
+			else {
+				ENHANCEMENT_LOGGER.enhancingAsMappedSuperclass( managedCtClass.getName() );
+				DynamicType.Builder<?> builder = builderSupplier.get();
+				builder.implement( constants.INTERFACES_for_ManagedMappedSuperclass );
+				return createTransformer( managedCtClass ).applyTo( builder );
+			}
+		}
+		else if ( enhancementContext.doExtendedEnhancement() ) {
+			ENHANCEMENT_LOGGER.extendedEnhancement( managedCtClass.getName() );
+			return createTransformer( managedCtClass ).applyExtended( builderSupplier.get() );
+		}
+```
+Besides, here is detailed info about how the context differs between the patch and the old version.
+```context diff
+On the line 13 of your patch.
+          Your patch:						
+Original source code:		}
+On the line 14 of your patch.
+          Your patch:					}
+Original source code:		else if ( enhancementContext.doExtendedEnhancement() ) {
+On the line 15 of your patch.
+          Your patch:					else if ( enhancementContext.doExtendedEnhancement() ) {
+Original source code:			ENHANCEMENT_LOGGER.extendedEnhancement( managedCtClass.getName() );
+On the line 16 of your patch.
+          Your patch:						ENHANCEMENT_LOGGER.extendedEnhancement( managedCtClass.getName() );
+Original source code:			return createTransformer( managedCtClass ).applyExtended( builderSupplier.get() );
+```
+Please eliminate these diffs step by step. Be sure to eliminate these diffs the next time you generate a patch!
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `validate` with `{'ref': '23a544ee3f6bb99cb72a769c4103871fa6c3e0ce', 'patch': '--- a/hibernate-core/src/main/java/org/hibernate/bytecode/enhance/internal/bytebuddy/EnhancerImpl.java\n+++ b/hibernate-core/src/main/java/org/hibernate/bytecode/enhance/internal/bytebuddy/EnhancerImpl.java\n@@ -410,11 +410,11 @@\n \t\t\t\t\t}\n \t\t\t\t\telse {\n \t\t\t\t\t\tENHANCEMENT_LOGGER.enhancingAsMappedSuperclass( managedCtClass.getName() );\n-                DynamicType.Builder<?> builder = builderSupplier.get();\n-                builder.implement( constants.INTERFACES_for_ManagedMappedSuperclass );\n+                final var builder = builderSupplier.get()\n+                        .implement( constants.INTERFACES_for_ManagedMappedSuperclass );\n \t\t\t\t\t\treturn createTransformer( managedCtClass ).applyTo( builder );\n \t\t\t\t\t}\n \t\t\t\t\t\n \t\t\t\t\t}\n \t\t\t\t\telse if ( enhancementContext.doExtendedEnhancement() ) {\n \t\t\t\t\t\tENHANCEMENT_LOGGER.extendedEnhancement( managedCtClass.getName() );\n \t\t\t\t\t\treturn createTransformer( managedCtClass ).applyExtended( builderSupplier.get() );\n'}`
+responded: The main difference between the patch context and the old version context is that in the old version, the code lines after the else block continue with an else if block for `enhancementContext.doExtendedEnhancement()` and its content, which is missing in the patch.
+
+The patch only modifies the lines inside the else block:
+- It changes the builder initialization from:
+  ```java
+  DynamicType.Builder<?> builder = builderSupplier.get();
+  builder.implement( constants.INTERFACES_for_ManagedMappedSuperclass );
+  ```
+  to
+  ```java
+  final var builder = builderSupplier.get()
+          .implement( constants.INTERFACES_for_ManagedMappedSuperclass );
+  ```
+
+The old version separates these two steps, while the patch chains them.
+
+To backport the patch correctly, I need to keep the rest of the context as it is in the old version and only change the builder initialization as in the patch.
+
+So, the backported patch should look like this:
+
+```diff
+--- a/hibernate-core/src/main/java/org/hibernate/bytecode/enhance/internal/bytebuddy/EnhancerImpl.java
++++ b/hibernate-core/src/main/java/org/hibernate/bytecode/enhance/internal/bytebuddy/EnhancerImpl.java
+@@ -410,11 +410,11 @@
+ 			}
+ 			else {
+ 				ENHANCEMENT_LOGGER.enhancingAsMappedSuperclass( managedCtClass.getName() );
+-				DynamicType.Builder<?> builder = builderSupplier.get();
+-				builder.implement( constants.INTERFACES_for_ManagedMappedSuperclass );
++				final var builder = builderSupplier.get()
++						.implement( constants.INTERFACES_for_ManagedMappedSuperclass );
+ 				return createTransformer( managedCtClass ).applyTo( builder );
+ 			}
+ 		}
+ 		else if ( enhancementContext.doExtendedEnhancement() ) {
+ 			ENHANCEMENT_LOGGER.extendedEnhancement( managedCtClass.getName() );
+ 			return createTransformer( managedCtClass ).applyExtended( builderSupplier.get() );
+ 		}
+```
+
+I will validate this patch now.
+
+[0m[38;5;200m[1;3mThis patch does not apply because of CONTEXT MISMATCH. Context are patch lines that already exist in the file, that is, lines starting with ` ` and `-`. You should modify the error patch according to the context of older version.
+Here are lines 410 through 423 of file hibernate-core/src/main/java/org/hibernate/bytecode/enhance/internal/bytebuddy/EnhancerImpl.java for commit 23a544ee3f6bb99cb72a769c4103871fa6c3e0ce.
+```code snippet
+			}
+			else {
+				ENHANCEMENT_LOGGER.enhancingAsMappedSuperclass( managedCtClass.getName() );
+				DynamicType.Builder<?> builder = builderSupplier.get();
+				builder.implement( constants.INTERFACES_for_ManagedMappedSuperclass );
+				return createTransformer( managedCtClass ).applyTo( builder );
+			}
+		}
+		else if ( enhancementContext.doExtendedEnhancement() ) {
+			ENHANCEMENT_LOGGER.extendedEnhancement( managedCtClass.getName() );
+			return createTransformer( managedCtClass ).applyExtended( builderSupplier.get() );
+		}
+		else {
+```
+Besides, here is detailed info about how the context differs between the patch and the old version.
+```context diff
+On the line 13 of your patch.
+          Your patch:					
+Original source code:		}
+On the line 14 of your patch.
+          Your patch:					}
+Original source code:		else if ( enhancementContext.doExtendedEnhancement() ) {
+On the line 15 of your patch.
+          Your patch:					else if ( enhancementContext.doExtendedEnhancement() ) {
+Original source code:			ENHANCEMENT_LOGGER.extendedEnhancement( managedCtClass.getName() );
+On the line 16 of your patch.
+          Your patch:						ENHANCEMENT_LOGGER.extendedEnhancement( managedCtClass.getName() );
+Original source code:			return createTransformer( managedCtClass ).applyExtended( builderSupplier.get() );
+On the line 17 of your patch.
+          Your patch:						return createTransformer( managedCtClass ).applyExtended( builderSupplier.get() );
+Original source code:		}
+```
+Please eliminate these diffs step by step. Be sure to eliminate these diffs the next time you generate a patch!
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `validate` with `{'ref': '23a544ee3f6bb99cb72a769c4103871fa6c3e0ce', 'patch': '--- a/hibernate-core/src/main/java/org/hibernate/bytecode/enhance/internal/bytebuddy/EnhancerImpl.java\n+++ b/hibernate-core/src/main/java/org/hibernate/bytecode/enhance/internal/bytebuddy/EnhancerImpl.java\n@@ -410,14 +410,14 @@\n \t\t\t\t\t}\n \t\t\t\t\telse {\n \t\t\t\t\t\tENHANCEMENT_LOGGER.enhancingAsMappedSuperclass( managedCtClass.getName() );\n-                DynamicType.Builder<?> builder = builderSupplier.get();\n-                builder.implement( constants.INTERFACES_for_ManagedMappedSuperclass );\n+                final var builder = builderSupplier.get()\n+                        .implement( constants.INTERFACES_for_ManagedMappedSuperclass );\n \t\t\t\t\t\treturn createTransformer( managedCtClass ).applyTo( builder );\n \t\t\t\t\t}\n \t\t\t\t\t\n \t\t\t\t\t}\n \t\t\t\t\telse if ( enhancementContext.doExtendedEnhancement() ) {\n \t\t\t\t\t\tENHANCEMENT_LOGGER.extendedEnhancement( managedCtClass.getName() );\n \t\t\t\t\t\treturn createTransformer( managedCtClass ).applyExtended( builderSupplier.get() );\n \t\t\t\t\t}\n \t\t\t\t\telse {\n'}`
+responded: The main issue for the patch not applying is the context lines after the patched lines. The old version has these extra lines after the patched block:
+
+```
+		}
+		else if ( enhancementContext.doExtendedEnhancement() ) {
+			ENHANCEMENT_LOGGER.extendedEnhancement( managedCtClass.getName() );
+			return createTransformer( managedCtClass ).applyExtended( builderSupplier.get() );
+		}
+		else {
+```
+
+But in the patch, these lines are missing or different.
+
+To fix this, I will keep the patch changes only in the lines that are changed and keep the rest of the context lines exactly as they appear in the old version.
+
+The patch changes only the two lines:
+```java
+DynamicType.Builder<?> builder = builderSupplier.get();
+builder.implement( constants.INTERFACES_for_ManagedMappedSuperclass );
+```
+to
+```java
+final var builder = builderSupplier.get()
+        .implement( constants.INTERFACES_for_ManagedMappedSuperclass );
+```
+
+I will generate the patch accordingly with the correct context lines from the old version.
+
+[0m[38;5;200m[1;3mPatch applied successfully
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3mI have backported the patch for the hunk in question to the older version ref 23a544ee3f6bb99cb72a769c4103871fa6c3e0ce. The main change was to adapt the patch to the existing context and code style of the older version, specifically changing the two separate statements into a chained method call with final var builder.
+
+Here is the backported patch:
+
+```diff
+--- a/hibernate-core/src/main/java/org/hibernate/bytecode/enhance/internal/bytebuddy/EnhancerImpl.java
++++ b/hibernate-core/src/main/java/org/hibernate/bytecode/enhance/internal/bytebuddy/EnhancerImpl.java
+@@ -410,14 +410,14 @@
+ 			}
+ 			else {
+ 				ENHANCEMENT_LOGGER.enhancingAsMappedSuperclass( managedCtClass.getName() );
+-                DynamicType.Builder<?> builder = builderSupplier.get();
+-                builder.implement( constants.INTERFACES_for_ManagedMappedSuperclass );
++                final var builder = builderSupplier.get()
++                        .implement( constants.INTERFACES_for_ManagedMappedSuperclass );
+ 				return createTransformer( managedCtClass ).applyTo( builder );
+ 			}
+			
+		}
+		else if ( enhancementContext.doExtendedEnhancement() ) {
+			ENHANCEMENT_LOGGER.extendedEnhancement( managedCtClass.getName() );
+			return createTransformer( managedCtClass ).applyExtended( builderSupplier.get() );
+		}
+		else {
+```
+
+I have validated this patch on the target ref and it applies cleanly without conflicts. This patch should fix the same vulnerability in the older version as in the newer version.
+
+If you want, I can help you with anything else related to this backport.[0m
+
+[1m> Finished chain.[0m
+2026-04-27 06:31:39,118 - backport - INFO - Aplly all hunks in the patch      PASS
+2026-04-27 06:31:39,376 - backport - INFO - Successfully backport the patch to the target release 23a544ee3f6bb99cb72a769c4103871fa6c3e0ce
+2026-04-27 06:31:39,377 - backport - INFO - --- a/hibernate-core/src/main/java/org/hibernate/bytecode/enhance/internal/bytebuddy/EnhancerImpl.java
++++ b/hibernate-core/src/main/java/org/hibernate/bytecode/enhance/internal/bytebuddy/EnhancerImpl.java
+@@ -410,14 +410,14 @@
+ 			}
+ 			else {
+ 				ENHANCEMENT_LOGGER.enhancingAsMappedSuperclass( managedCtClass.getName() );
+-				DynamicType.Builder<?> builder = builderSupplier.get();
+-				builder.implement( constants.INTERFACES_for_ManagedMappedSuperclass );
++                final var builder = builderSupplier.get()
++                        .implement( constants.INTERFACES_for_ManagedMappedSuperclass );
+ 				return createTransformer( managedCtClass ).applyTo( builder );
+ 			}
+ 		}
+ 		else if ( enhancementContext.doExtendedEnhancement() ) {
+ 			ENHANCEMENT_LOGGER.extendedEnhancement( managedCtClass.getName() );
+ 			return createTransformer( managedCtClass ).applyExtended( builderSupplier.get() );
+ 		}
+ 		else {
+ 			ENHANCEMENT_LOGGER.skippingNotEntityOrComposite( managedCtClass.getName() );
+
+--- a/hibernate-core/src/test/java/org/hibernate/orm/test/bytecode/enhance/version/ReEnhancementTests.java
++++ b/hibernate-core/src/test/java/org/hibernate/orm/test/bytecode/enhance/version/ReEnhancementTests.java
+@@ -4,6 +4,14 @@
+  */
+ package org.hibernate.orm.test.bytecode.enhance.version;
+ 
++import jakarta.persistence.Entity;
++import jakarta.persistence.Id;
++import jakarta.persistence.MappedSuperclass;
++import net.bytebuddy.description.type.TypeDefinition;
++import net.bytebuddy.dynamic.ClassFileLocator;
++import net.bytebuddy.dynamic.ClassFileLocator.Compound;
++import net.bytebuddy.dynamic.ClassFileLocator.ForClassLoader;
++import net.bytebuddy.pool.TypePool;
+ import org.hibernate.bytecode.enhance.VersionMismatchException;
+ import org.hibernate.bytecode.enhance.internal.bytebuddy.EnhancerImpl;
+ import org.hibernate.bytecode.enhance.internal.bytebuddy.FeatureMismatchException;
+
+--- a/hibernate-core/src/test/java/org/hibernate/orm/test/bytecode/enhance/version/ReEnhancementTests.java
++++ b/hibernate-core/src/test/java/org/hibernate/orm/test/bytecode/enhance/version/ReEnhancementTests.java
+@@ -11,10 +19,14 @@
+ import org.hibernate.bytecode.enhance.spi.Enhancer;
+ import org.hibernate.bytecode.internal.bytebuddy.ByteBuddyState;
+ import org.hibernate.bytecode.spi.ByteCodeHelper;
++import org.hibernate.engine.spi.Managed;
+ import org.junit.jupiter.api.Test;
++import org.junit.jupiter.params.ParameterizedTest;
++import org.junit.jupiter.params.provider.ValueSource;
+ 
+ import java.io.IOException;
+ import java.io.InputStream;
++import java.io.UncheckedIOException;
+ 
+ import static org.assertj.core.api.Assertions.assertThat;
+ import static org.assertj.core.api.Assertions.fail;
+
+--- a/hibernate-core/src/test/java/org/hibernate/orm/test/bytecode/enhance/version/ReEnhancementTests.java
++++ b/hibernate-core/src/test/java/org/hibernate/orm/test/bytecode/enhance/version/ReEnhancementTests.java
+@@ -92,16 +104,55 @@ public boolean doBiDirectionalAssociationManagement() {
+ 		}
+ 	}
+ 
+-	private void attemptEnhancement(Class<?> clazz, Enhancer enhancer) {
++	@ParameterizedTest
++	@ValueSource(classes = {MappedSuper.class, EntityClass.class})
++	void testAlreadyEnhancedEntitiesShouldNotGetEnhancedAgain(Class<?> testClass) {
++		final var enhancementContext = new DefaultEnhancementContext();
++		final var byteBuddyState = new ByteBuddyState();
++		final var enhancer = new EnhancerImpl( enhancementContext, byteBuddyState );
++
++		final var firstRoundEnhancement = attemptEnhancement( testClass, enhancer );
++		final var secondRoundEnhancement = enhancer.enhance( testClass.getName(), firstRoundEnhancement );
++
++		// Enhancer returns null if it decides that the class is already enhanced.
++		assertThat( secondRoundEnhancement ).isNull();
++
++		try (final var enhancedClassLocator = ClassFileLocator.Simple.of( testClass.getName(), firstRoundEnhancement );
++			final var classLoaderLocator = ForClassLoader.of( ReEnhancementTests.class.getClassLoader() );
++			final var locator = new Compound( enhancedClassLocator, classLoaderLocator )) {
++
++			final var typePool = TypePool.Default.of( locator );
++			final var typeDescription = typePool.describe( testClass.getName() ).resolve();
++
++			assertThat( typeDescription.getInterfaces().stream()
++					.map( TypeDefinition::asErasure ) )
++					.anySatisfy( it -> it.isAssignableFrom( Managed.class ) );
++		}
++		catch (IOException e) {
++			throw new UncheckedIOException( e );
++		}
++	}
++
++	private byte[] attemptEnhancement(Class<?> clazz, Enhancer enhancer) {
+ 		final String classFileName = clazz.getName().replace( '.', '/' ) + ".class";
+ 		try (InputStream classFileStream = clazz.getClassLoader().getResourceAsStream( classFileName ) ) {
+ 			final byte[] originalBytes = ByteCodeHelper.readByteCode( classFileStream );
+-			enhancer.enhance( clazz.getName(), originalBytes );
++			return enhancer.enhance( clazz.getName(), originalBytes );
+ 		}
+ 		catch (IOException e) {
+ 			throw new RuntimeException( e );
+ 		}
+ 	}
+ 
++	@MappedSuperclass
++	static abstract class MappedSuper {
++		@Id
++		private Long id;
++	}
+ 
++	@Entity
++	static class EntityClass {
++		@Id
++		private Long id;
++	}
+ }
+

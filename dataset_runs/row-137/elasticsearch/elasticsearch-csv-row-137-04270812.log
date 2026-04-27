@@ -1,0 +1,2293 @@
+2026-04-27 08:12:04,547 - backport - INFO - Using openrouter API: https://openrouter.ai/api/v1 (model: openai/gpt-4.1-mini)
+
+
+[1m> Entering new AgentExecutor chain...[0m
+
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `git_history` with `{}`
+
+
+[0m[36;1m[1;3m9e7a90facfe Do not retry CBE (#124300)
+
+diff --git a/x-pack/plugin/esql/src/main/java/org/elasticsearch/xpack/esql/plugin/DataNodeRequestSender.java b/x-pack/plugin/esql/src/main/java/org/elasticsearch/xpack/esql/plugin/DataNodeRequestSender.java
+--- a/x-pack/plugin/esql/src/main/java/org/elasticsearch/xpack/esql/plugin/DataNodeRequestSender.java
++++ b/x-pack/plugin/esql/src/main/java/org/elasticsearch/xpack/esql/plugin/DataNodeRequestSender.java
+@@ -17,5 +17,6 @@
+ import org.elasticsearch.action.search.SearchShardsResponse;
+ import org.elasticsearch.action.support.TransportActions;
+ import org.elasticsearch.cluster.node.DiscoveryNode;
++import org.elasticsearch.common.breaker.CircuitBreakingException;
+ import org.elasticsearch.common.util.concurrent.ConcurrentCollections;
+ import org.elasticsearch.compute.operator.DriverProfile;
+2d99a66415d Retry ES|QL node requests on shard level failures (#120774)
+
+diff --git a/x-pack/plugin/esql/src/main/java/org/elasticsearch/xpack/esql/plugin/DataNodeRequestSender.java b/x-pack/plugin/esql/src/main/java/org/elasticsearch/xpack/esql/plugin/DataNodeRequestSender.java
+--- /dev/null
++++ b/x-pack/plugin/esql/src/main/java/org/elasticsearch/xpack/esql/plugin/DataNodeRequestSender.java
+@@ -0,0 +17,5 @@
++import org.elasticsearch.action.search.SearchShardsResponse;
++import org.elasticsearch.action.support.TransportActions;
++import org.elasticsearch.cluster.node.DiscoveryNode;
++import org.elasticsearch.common.util.concurrent.ConcurrentCollections;
++import org.elasticsearch.compute.operator.DriverProfile
+You need to do the following analysis based on the information in the last commit:
+Analyze the code logic of the context of the patch to be ported in this commit step by step.
+If code logic already existed before this commit, the patch context can be assumed to remain in a similar location. Use `locate` and `viewcode` to check your results.
+If code logic were added in this commit, then you need to `git_show` for further details.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': 'd7fb0e2462681e67795d6c7ec1ba084e94a47a5c', 'path': 'x-pack/plugin/esql/src/main/java/org/elasticsearch/xpack/esql/plugin/DataNodeRequestSender.java', 'startline': 10, 'endline': 25}`
+responded: The git_history command shows two commits related to the file `DataNodeRequestSender.java`:
+
+1. Commit `9e7a90facfe` titled "Do not retry CBE (#124300)" that modifies `DataNodeRequestSender.java` and adds an import for `CircuitBreakingException`.
+2. Commit `2d99a66415d` titled "Retry ES|QL node requests on shard level failures (#120774)" which seems to have introduced the file `DataNodeRequestSender.java` initially with some imports.
+
+The patch to be backported adds an import of `DiscoveryNodeRole` to this file. The file itself was introduced in commit `2d99a66415d`. This means the file and its initial imports were added in that commit.
+
+Since the file existed in the older ref and the patch only adds an import statement, it is likely that the patch can be backported by adding the import statement in the corresponding place in the older version.
+
+Next, I will locate the file `x-pack/plugin/esql/src/main/java/org/elasticsearch/xpack/esql/plugin/DataNodeRequestSender.java` in the older ref `d7fb0e2462681e67795d6c7ec1ba084e94a47a5c` and view around lines 16-23 to see the imports and confirm the exact place to add the new import statement.
+
+[0m[36;1m[1;3mHere are lines 10 through 25.
+
+import org.elasticsearch.ExceptionsHelper;
+import org.elasticsearch.action.ActionListener;
+import org.elasticsearch.action.ActionListenerResponseHandler;
+import org.elasticsearch.action.NoShardAvailableActionException;
+import org.elasticsearch.action.OriginalIndices;
+import org.elasticsearch.action.search.SearchShardsGroup;
+import org.elasticsearch.action.search.SearchShardsRequest;
+import org.elasticsearch.action.search.SearchShardsResponse;
+import org.elasticsearch.action.search.ShardSearchFailure;
+import org.elasticsearch.action.support.TransportActions;
+import org.elasticsearch.cluster.node.DiscoveryNode;
+import org.elasticsearch.cluster.service.ClusterService;
+import org.elasticsearch.common.breaker.CircuitBreakingException;
+import org.elasticsearch.common.util.Maps;
+import org.elasticsearch.common.util.concurrent.ConcurrentCollections;
+import org.elasticsearch.compute.operator.DriverProfile;
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': 'd7fb0e2462681e67795d6c7ec1ba084e94a47a5c', 'path': 'x-pack/plugin/esql/src/main/java/org/elasticsearch/xpack/esql/plugin/DataNodeRequestSender.java', 'startline': 16, 'endline': 30}`
+
+
+[0m[36;1m[1;3mHere are lines 16 through 30.
+
+import org.elasticsearch.action.search.SearchShardsRequest;
+import org.elasticsearch.action.search.SearchShardsResponse;
+import org.elasticsearch.action.search.ShardSearchFailure;
+import org.elasticsearch.action.support.TransportActions;
+import org.elasticsearch.cluster.node.DiscoveryNode;
+import org.elasticsearch.cluster.service.ClusterService;
+import org.elasticsearch.common.breaker.CircuitBreakingException;
+import org.elasticsearch.common.util.Maps;
+import org.elasticsearch.common.util.concurrent.ConcurrentCollections;
+import org.elasticsearch.compute.operator.DriverProfile;
+import org.elasticsearch.compute.operator.FailureCollector;
+import org.elasticsearch.index.Index;
+import org.elasticsearch.index.query.QueryBuilder;
+import org.elasticsearch.index.shard.ShardId;
+import org.elasticsearch.search.SearchShardTarget;
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': '4a951e752c20ed793807be88ec5a547ab53cb90a', 'path': 'x-pack/plugin/esql/src/main/java/org/elasticsearch/xpack/esql/plugin/DataNodeRequestSender.java', 'startline': 10, 'endline': 25}`
+
+
+[0m[36;1m[1;3mHere are lines 10 through 25.
+
+import org.elasticsearch.ExceptionsHelper;
+import org.elasticsearch.action.ActionListener;
+import org.elasticsearch.action.ActionListenerResponseHandler;
+import org.elasticsearch.action.NoShardAvailableActionException;
+import org.elasticsearch.action.OriginalIndices;
+import org.elasticsearch.action.search.SearchShardsGroup;
+import org.elasticsearch.action.search.SearchShardsRequest;
+import org.elasticsearch.action.search.SearchShardsResponse;
+import org.elasticsearch.action.support.TransportActions;
+import org.elasticsearch.cluster.node.DiscoveryNode;
+import org.elasticsearch.common.breaker.CircuitBreakingException;
+import org.elasticsearch.common.util.concurrent.ConcurrentCollections;
+import org.elasticsearch.compute.operator.DriverProfile;
+import org.elasticsearch.compute.operator.FailureCollector;
+import org.elasticsearch.core.TimeValue;
+import org.elasticsearch.index.Index;
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': '4a951e752c20ed793807be88ec5a547ab53cb90a', 'path': 'x-pack/plugin/esql/src/main/java/org/elasticsearch/xpack/esql/plugin/DataNodeRequestSender.java', 'startline': 14, 'endline': 25}`
+
+
+[0m[36;1m[1;3mHere are lines 14 through 25.
+
+import org.elasticsearch.action.OriginalIndices;
+import org.elasticsearch.action.search.SearchShardsGroup;
+import org.elasticsearch.action.search.SearchShardsRequest;
+import org.elasticsearch.action.search.SearchShardsResponse;
+import org.elasticsearch.action.support.TransportActions;
+import org.elasticsearch.cluster.node.DiscoveryNode;
+import org.elasticsearch.common.breaker.CircuitBreakingException;
+import org.elasticsearch.common.util.concurrent.ConcurrentCollections;
+import org.elasticsearch.compute.operator.DriverProfile;
+import org.elasticsearch.compute.operator.FailureCollector;
+import org.elasticsearch.core.TimeValue;
+import org.elasticsearch.index.Index;
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `git_show` with `{}`
+
+
+[0m[33;1m[1;3mcommit 2d99a66415d40d3279078baf1badad7c29d59dd5
+Author: Nhat Nguyen <nhat.nguyen@elastic.co>
+Date:   Wed Feb 5 19:01:19 2025 -0800
+
+    Retry ES|QL node requests on shard level failures (#120774)
+    
+    Today, ES|QL fails fast on any failure. This PR introduces support for
+    retrying within a cluster when data-node requests fail.
+    
+    There are two types of failures that occur with data-node requests:
+    entire request failures and individual shard failures. For individual
+    shard failures, we can retry the next copies of the failing shards. For
+    entire request failures, we can retry every shard in the node request if
+    no pages have been received.
+    
+    On the handling side, ES|QL executes against a batch of shards
+    concurrently. Here, we need to track whether any pages have been
+    produced. If pages have been produced, the entire request must fail.
+    Otherwise, we can track the failed shards and send them back to the
+    sender for retries.
+    
+    There are two decisions around how quickly we should retry:
+    
+    1. Should we notify the sender of failing shards immediately (via a
+    different channel) to enable quick retries, or should we accumulate
+    failures and return them in the final response?
+    
+    2. What is the maximum number of inflight requests we should allow on
+    the sending side?
+    
+    This PR considers failures often occurring when the cluster is under
+    load or during a rolling upgrade. To prevent retries from adding more
+    load and to allow the cluster to stabilize, this PR chooses to send
+    shard failures in the final response and limits the number of inflight
+    requests to one per data node
+
+ docs/changelog/120774.yaml                         |   5 +
+ .../java/org/elasticsearch/TransportVersions.java  |   2 +
+ .../compute/operator/FailureCollector.java         |   2 +-
+ .../xpack/esql/action/EsqlRetryIT.java             |  91 +++++
+ .../xpack/esql/plugin/DataNodeComputeHandler.java  | 366 ++++++++++-----------
+ .../xpack/esql/plugin/DataNodeComputeResponse.java |  64 ++++
+ .../xpack/esql/plugin/DataNodeRequestSender.java   | 343 +++++++++++++++++++
+ .../esql/plugin/DataNodeRequestSenderTests.java    | 287 ++++++++++++++++
+ 8 files changed, 958 insertions(+), 202 deletions(-)
+Because the commit's code change maybe too long, so I generate the abstract of the code change to show you how code changed in this commit.
+Commit shows that the patch code in old version maybe in the file x-pack/plugin/esql/src/main/java/org/elasticsearch/xpack/esql/plugin/DataNodeComputeHandler.java around line number 257 to 262. The code is below
+    ) {
+        ActionListener<SearchShardsResponse> searchShardsListener = listener.map(resp -> {
+            Map<String, DiscoveryNode> nodes = new HashMap<>();
+            for (DiscoveryNode node : resp.getNodes()) {
+                nodes.put(node.getId(), node);
+You can call `viewcode` and `locate_symbol` to find the relevant code based on this information step by step.[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `locate_symbol` with `{'ref': 'd7fb0e2462681e67795d6c7ec1ba084e94a47a5c', 'symbol': 'DataNodeRequestSender'}`
+
+
+[0m[33;1m[1;3mx-pack/plugin/esql/src/main/java/org/elasticsearch/xpack/esql/plugin/DataNodeRequestSender.java:61
+x-pack/plugin/esql/src/main/java/org/elasticsearch/xpack/esql/plugin/DataNodeRequestSender.java:83[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': 'd7fb0e2462681e67795d6c7ec1ba084e94a47a5c', 'path': 'x-pack/plugin/esql/src/main/java/org/elasticsearch/xpack/esql/plugin/DataNodeRequestSender.java', 'startline': 55, 'endline': 90}`
+
+
+[0m[36;1m[1;3mHere are lines 55 through 90.
+
+import static org.elasticsearch.core.TimeValue.timeValueNanos;
+
+/**
+ * Handles computes within a single cluster by dispatching {@link DataNodeRequest} to data nodes
+ * and executing these computes on the data nodes.
+ */
+abstract class DataNodeRequestSender {
+
+    private final ClusterService clusterService;
+    private final TransportService transportService;
+    private final Executor esqlExecutor;
+    private final CancellableTask rootTask;
+
+    private final String clusterAlias;
+    private final OriginalIndices originalIndices;
+    private final QueryBuilder requestFilter;
+
+    private final boolean allowPartialResults;
+    private final Semaphore concurrentRequests;
+    private final ReentrantLock sendingLock = new ReentrantLock();
+    private final Queue<ShardId> pendingShardIds = ConcurrentCollections.newQueue();
+    private final Map<DiscoveryNode, Semaphore> nodePermits = new HashMap<>();
+    private final Map<ShardId, ShardFailure> shardFailures = ConcurrentCollections.newConcurrentMap();
+    private final AtomicInteger skippedShards = new AtomicInteger();
+    private final AtomicBoolean changed = new AtomicBoolean();
+    private boolean reportedFailure = false; // guarded by sendingLock
+    private final AtomicInteger remainingUnavailableShardResolutionAttempts;
+
+    DataNodeRequestSender(
+        ClusterService clusterService,
+        TransportService transportService,
+        Executor esqlExecutor,
+        CancellableTask rootTask,
+        OriginalIndices originalIndices,
+        QueryBuilder requestFilter,
+        String clusterAlias,
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': 'd7fb0e2462681e67795d6c7ec1ba084e94a47a5c', 'path': 'x-pack/plugin/esql/src/main/java/org/elasticsearch/xpack/esql/plugin/DataNodeRequestSender.java', 'startline': 1, 'endline': 20}`
+
+
+[0m[36;1m[1;3mHere are lines 1 through 20.
+
+/*
+ * Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
+ * or more contributor license agreements. Licensed under the Elastic License
+ * 2.0; you may not use this file except in compliance with the Elastic License
+ * 2.0.
+ */
+
+package org.elasticsearch.xpack.esql.plugin;
+
+import org.elasticsearch.ExceptionsHelper;
+import org.elasticsearch.action.ActionListener;
+import org.elasticsearch.action.ActionListenerResponseHandler;
+import org.elasticsearch.action.NoShardAvailableActionException;
+import org.elasticsearch.action.OriginalIndices;
+import org.elasticsearch.action.search.SearchShardsGroup;
+import org.elasticsearch.action.search.SearchShardsRequest;
+import org.elasticsearch.action.search.SearchShardsResponse;
+import org.elasticsearch.action.search.ShardSearchFailure;
+import org.elasticsearch.action.support.TransportActions;
+import org.elasticsearch.cluster.node.DiscoveryNode;
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': '4a951e752c20ed793807be88ec5a547ab53cb90a', 'path': 'x-pack/plugin/esql/src/main/java/org/elasticsearch/xpack/esql/plugin/DataNodeRequestSender.java', 'startline': 10, 'endline': 40}`
+
+
+[0m[36;1m[1;3mHere are lines 10 through 40.
+
+import org.elasticsearch.ExceptionsHelper;
+import org.elasticsearch.action.ActionListener;
+import org.elasticsearch.action.ActionListenerResponseHandler;
+import org.elasticsearch.action.NoShardAvailableActionException;
+import org.elasticsearch.action.OriginalIndices;
+import org.elasticsearch.action.search.SearchShardsGroup;
+import org.elasticsearch.action.search.SearchShardsRequest;
+import org.elasticsearch.action.search.SearchShardsResponse;
+import org.elasticsearch.action.support.TransportActions;
+import org.elasticsearch.cluster.node.DiscoveryNode;
+import org.elasticsearch.common.breaker.CircuitBreakingException;
+import org.elasticsearch.common.util.concurrent.ConcurrentCollections;
+import org.elasticsearch.compute.operator.DriverProfile;
+import org.elasticsearch.compute.operator.FailureCollector;
+import org.elasticsearch.core.TimeValue;
+import org.elasticsearch.index.Index;
+import org.elasticsearch.index.query.QueryBuilder;
+import org.elasticsearch.index.shard.ShardId;
+import org.elasticsearch.search.internal.AliasFilter;
+import org.elasticsearch.tasks.CancellableTask;
+import org.elasticsearch.tasks.Task;
+import org.elasticsearch.tasks.TaskCancelledException;
+import org.elasticsearch.transport.TransportException;
+import org.elasticsearch.transport.TransportRequestOptions;
+import org.elasticsearch.transport.TransportService;
+import org.elasticsearch.xpack.esql.action.EsqlSearchShardsAction;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.IdentityHashMap;
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': '4a951e752c20ed793807be88ec5a547ab53cb90a', 'path': 'x-pack/plugin/esql/src/main/java/org/elasticsearch/xpack/esql/plugin/DataNodeRequestSender.java', 'startline': 15, 'endline': 25}`
+
+
+[0m[36;1m[1;3mHere are lines 15 through 25.
+
+import org.elasticsearch.action.search.SearchShardsGroup;
+import org.elasticsearch.action.search.SearchShardsRequest;
+import org.elasticsearch.action.search.SearchShardsResponse;
+import org.elasticsearch.action.support.TransportActions;
+import org.elasticsearch.cluster.node.DiscoveryNode;
+import org.elasticsearch.common.breaker.CircuitBreakingException;
+import org.elasticsearch.common.util.concurrent.ConcurrentCollections;
+import org.elasticsearch.compute.operator.DriverProfile;
+import org.elasticsearch.compute.operator.FailureCollector;
+import org.elasticsearch.core.TimeValue;
+import org.elasticsearch.index.Index;
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': '4a951e752c20ed793807be88ec5a547ab53cb90a', 'path': 'x-pack/plugin/esql/src/main/java/org/elasticsearch/xpack/esql/plugin/DataNodeRequestSender.java', 'startline': 16, 'endline': 30}`
+
+
+[0m[36;1m[1;3mHere are lines 16 through 30.
+
+import org.elasticsearch.action.search.SearchShardsRequest;
+import org.elasticsearch.action.search.SearchShardsResponse;
+import org.elasticsearch.action.support.TransportActions;
+import org.elasticsearch.cluster.node.DiscoveryNode;
+import org.elasticsearch.common.breaker.CircuitBreakingException;
+import org.elasticsearch.common.util.concurrent.ConcurrentCollections;
+import org.elasticsearch.compute.operator.DriverProfile;
+import org.elasticsearch.compute.operator.FailureCollector;
+import org.elasticsearch.core.TimeValue;
+import org.elasticsearch.index.Index;
+import org.elasticsearch.index.query.QueryBuilder;
+import org.elasticsearch.index.shard.ShardId;
+import org.elasticsearch.search.internal.AliasFilter;
+import org.elasticsearch.tasks.CancellableTask;
+import org.elasticsearch.tasks.Task;
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': '4a951e752c20ed793807be88ec5a547ab53cb90a', 'path': 'x-pack/plugin/esql/src/main/java/org/elasticsearch/xpack/esql/plugin/DataNodeRequestSender.java', 'startline': 12, 'endline': 20}`
+
+
+[0m[36;1m[1;3mHere are lines 12 through 20.
+
+import org.elasticsearch.action.ActionListenerResponseHandler;
+import org.elasticsearch.action.NoShardAvailableActionException;
+import org.elasticsearch.action.OriginalIndices;
+import org.elasticsearch.action.search.SearchShardsGroup;
+import org.elasticsearch.action.search.SearchShardsRequest;
+import org.elasticsearch.action.search.SearchShardsResponse;
+import org.elasticsearch.action.support.TransportActions;
+import org.elasticsearch.cluster.node.DiscoveryNode;
+import org.elasticsearch.common.breaker.CircuitBreakingException;
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `validate` with `{'ref': 'd7fb0e2462681e67795d6c7ec1ba084e94a47a5c', 'patch': '--- a/x-pack/plugin/esql/src/main/java/org/elasticsearch/xpack/esql/plugin/DataNodeRequestSender.java\n+++ b/x-pack/plugin/esql/src/main/java/org/elasticsearch/xpack/esql/plugin/DataNodeRequestSender.java\n@@ -16,7 +16,8 @@\n import org.elasticsearch.action.search.SearchShardsRequest;\n import org.elasticsearch.action.search.SearchShardsResponse;\n import org.elasticsearch.action.search.ShardSearchFailure;\n import org.elasticsearch.action.support.TransportActions;\n-import org.elasticsearch.cluster.node.DiscoveryNode;\n+import org.elasticsearch.cluster.node.DiscoveryNode;\n+import org.elasticsearch.cluster.node.DiscoveryNodeRole;\n import org.elasticsearch.cluster.service.ClusterService;\n import org.elasticsearch.common.breaker.CircuitBreakingException;\n import org.elasticsearch.common.util.Maps;\n'}`
+responded: The patch to be backported only adds an import statement:
+
+```java
+import org.elasticsearch.cluster.node.DiscoveryNodeRole;
+```
+
+In the older version at ref d7fb0e2462681e67795d6c7ec1ba084e94a47a5c, the imports in the file `x-pack/plugin/esql/src/main/java/org/elasticsearch/xpack/esql/plugin/DataNodeRequestSender.java` around the relevant lines do not include this import.
+
+The addition of this import does not affect the existing code logic or structure. It is safe to backport this change simply by adding the import line in the appropriate place among the existing imports in the older version.
+
+Now, I will generate the patch for the older version that adds this import line after the import of `DiscoveryNode` to keep the import order consistent.
+
+[0m[38;5;200m[1;3mPatch applied successfully
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3mI have backported the patch for the import addition in DataNodeRequestSender.java to the older ref d7fb0e2462681e67795d6c7ec1ba084e94a47a5c. The patch adds the import statement for DiscoveryNodeRole, adapting the context to the older codebase.
+
+Here is the patch:
+
+```diff
+--- a/x-pack/plugin/esql/src/main/java/org/elasticsearch/xpack/esql/plugin/DataNodeRequestSender.java
++++ b/x-pack/plugin/esql/src/main/java/org/elasticsearch/xpack/esql/plugin/DataNodeRequestSender.java
+@@ -16,7 +16,8 @@
+ import org.elasticsearch.action.search.SearchShardsRequest;
+ import org.elasticsearch.action.search.SearchShardsResponse;
+ import org.elasticsearch.action.search.ShardSearchFailure;
+ import org.elasticsearch.action.support.TransportActions;
+-import org.elasticsearch.cluster.node.DiscoveryNode;
++import org.elasticsearch.cluster.node.DiscoveryNode;
++import org.elasticsearch.cluster.node.DiscoveryNodeRole;
+ import org.elasticsearch.cluster.service.ClusterService;
+ import org.elasticsearch.common.breaker.CircuitBreakingException;
+ import org.elasticsearch.common.util.Maps;
+```
+
+I have validated the patch and it applies cleanly on the target older ref.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new AgentExecutor chain...[0m
+
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `git_history` with `{}`
+
+
+[0m[36;1m[1;3mbda99c93902 Fix DataNodeRequestSender (#121999)
+
+diff --git a/x-pack/plugin/esql/src/main/java/org/elasticsearch/xpack/esql/plugin/DataNodeRequestSender.java b/x-pack/plugin/esql/src/main/java/org/elasticsearch/xpack/esql/plugin/DataNodeRequestSender.java
+--- a/x-pack/plugin/esql/src/main/java/org/elasticsearch/xpack/esql/plugin/DataNodeRequestSender.java
++++ b/x-pack/plugin/esql/src/main/java/org/elasticsearch/xpack/esql/plugin/DataNodeRequestSender.java
+@@ -35,7 +35,9 @@
+ 
+ import java.util.ArrayList;
++import java.util.Collections;
+ import java.util.HashMap;
++import java.util.IdentityHashMap;
+ import java.util.Iterator;
+ import java.util.List;
+ import java.util.Map;
+ import java.util.Queue;
+2d99a66415d Retry ES|QL node requests on shard level failures (#120774)
+
+diff --git a/x-pack/plugin/esql/src/main/java/org/elasticsearch/xpack/esql/plugin/DataNodeRequestSender.java b/x-pack/plugin/esql/src/main/java/org/elasticsearch/xpack/esql/plugin/DataNodeRequestSender.java
+--- /dev/null
++++ b/x-pack/plugin/esql/src/main/java/org/elasticsearch/xpack/esql/plugin/DataNodeRequestSender.java
+@@ -0,0 +35,7 @@
++
++import java.util.ArrayList;
++import java.util.HashMap;
++import java.util.Iterator;
++import java.util.List;
++import java.util.Map;
++import java.util.Queue
+You need to do the following analysis based on the information in the last commit:
+Analyze the code logic of the context of the patch to be ported in this commit step by step.
+If code logic already existed before this commit, the patch context can be assumed to remain in a similar location. Use `locate` and `viewcode` to check your results.
+If code logic were added in this commit, then you need to `git_show` for further details.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `locate_symbol` with `{'ref': 'd7fb0e2462681e67795d6c7ec1ba084e94a47a5c', 'symbol': 'DataNodeRequestSender'}`
+responded: The last commit in the history, bda99c93902, shows some changes to the imports of the file x-pack/plugin/esql/src/main/java/org/elasticsearch/xpack/esql/plugin/DataNodeRequestSender.java. It added some imports including Collections and IdentityHashMap, which are also present in the patch to be ported.
+
+The previous commit 2d99a66415d added the file itself with some initial imports but fewer than the patch.
+
+The patch adds the imports Comparator and LinkedHashMap in addition to those already present in the older version.
+
+The code logic for the imports is not new in the patch context, but the patch adds new imports. The location for imports seems stable.
+
+Next step is to locate the file in the older ref d7fb0e2462681e67795d6c7ec1ba084e94a47a5c and view the import lines to confirm the context and generate the patch accordingly.
+
+I will locate the symbol DataNodeRequestSender in the older ref to get the exact file path and line number.
+
+[0m[33;1m[1;3mx-pack/plugin/esql/src/main/java/org/elasticsearch/xpack/esql/plugin/DataNodeRequestSender.java:61
+x-pack/plugin/esql/src/main/java/org/elasticsearch/xpack/esql/plugin/DataNodeRequestSender.java:83[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': 'd7fb0e2462681e67795d6c7ec1ba084e94a47a5c', 'path': 'x-pack/plugin/esql/src/main/java/org/elasticsearch/xpack/esql/plugin/DataNodeRequestSender.java', 'startline': 30, 'endline': 50}`
+
+
+[0m[36;1m[1;3mHere are lines 30 through 50.
+
+import org.elasticsearch.search.SearchShardTarget;
+import org.elasticsearch.search.internal.AliasFilter;
+import org.elasticsearch.tasks.CancellableTask;
+import org.elasticsearch.tasks.TaskCancelledException;
+import org.elasticsearch.transport.TransportException;
+import org.elasticsearch.transport.TransportRequestOptions;
+import org.elasticsearch.transport.TransportService;
+import org.elasticsearch.xpack.esql.action.EsqlSearchShardsAction;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.IdentityHashMap;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.Queue;
+import java.util.Set;
+import java.util.concurrent.Executor;
+import java.util.concurrent.Semaphore;
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': 'd7fb0e2462681e67795d6c7ec1ba084e94a47a5c', 'path': 'x-pack/plugin/esql/src/main/java/org/elasticsearch/xpack/esql/plugin/DataNodeRequestSender.java', 'startline': 55, 'endline': 95}`
+
+
+[0m[36;1m[1;3mHere are lines 55 through 95.
+
+import static org.elasticsearch.core.TimeValue.timeValueNanos;
+
+/**
+ * Handles computes within a single cluster by dispatching {@link DataNodeRequest} to data nodes
+ * and executing these computes on the data nodes.
+ */
+abstract class DataNodeRequestSender {
+
+    private final ClusterService clusterService;
+    private final TransportService transportService;
+    private final Executor esqlExecutor;
+    private final CancellableTask rootTask;
+
+    private final String clusterAlias;
+    private final OriginalIndices originalIndices;
+    private final QueryBuilder requestFilter;
+
+    private final boolean allowPartialResults;
+    private final Semaphore concurrentRequests;
+    private final ReentrantLock sendingLock = new ReentrantLock();
+    private final Queue<ShardId> pendingShardIds = ConcurrentCollections.newQueue();
+    private final Map<DiscoveryNode, Semaphore> nodePermits = new HashMap<>();
+    private final Map<ShardId, ShardFailure> shardFailures = ConcurrentCollections.newConcurrentMap();
+    private final AtomicInteger skippedShards = new AtomicInteger();
+    private final AtomicBoolean changed = new AtomicBoolean();
+    private boolean reportedFailure = false; // guarded by sendingLock
+    private final AtomicInteger remainingUnavailableShardResolutionAttempts;
+
+    DataNodeRequestSender(
+        ClusterService clusterService,
+        TransportService transportService,
+        Executor esqlExecutor,
+        CancellableTask rootTask,
+        OriginalIndices originalIndices,
+        QueryBuilder requestFilter,
+        String clusterAlias,
+        boolean allowPartialResults,
+        int concurrentRequests,
+        int unavailableShardResolutionAttempts
+    ) {
+        this.clusterService = clusterService;
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': 'd7fb0e2462681e67795d6c7ec1ba084e94a47a5c', 'path': 'x-pack/plugin/esql/src/main/java/org/elasticsearch/xpack/esql/plugin/DataNodeRequestSender.java', 'startline': 35, 'endline': 47}`
+
+
+[0m[36;1m[1;3mHere are lines 35 through 47.
+
+import org.elasticsearch.transport.TransportRequestOptions;
+import org.elasticsearch.transport.TransportService;
+import org.elasticsearch.xpack.esql.action.EsqlSearchShardsAction;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.IdentityHashMap;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.Queue;
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `validate` with `{'ref': 'd7fb0e2462681e67795d6c7ec1ba084e94a47a5c', 'patch': '--- a/x-pack/plugin/esql/src/main/java/org/elasticsearch/xpack/esql/plugin/DataNodeRequestSender.java\n+++ b/x-pack/plugin/esql/src/main/java/org/elasticsearch/xpack/esql/plugin/DataNodeRequestSender.java\n@@ -37,10 +37,13 @@\n import java.util.ArrayList;\n import java.util.Collections;\n+import java.util.Comparator;\n import java.util.HashMap;\n+import java.util.IdentityHashMap;\n import java.util.HashSet;\n import java.util.IdentityHashMap;\n import java.util.Iterator;\n import java.util.List;\n+import java.util.LinkedHashMap;\n import java.util.Map;\n import java.util.Queue;\n'}`
+responded: The patch to be backported only modifies the import statements in the file `x-pack/plugin/esql/src/main/java/org/elasticsearch/xpack/esql/plugin/DataNodeRequestSender.java`. The newer version adds two imports: `java.util.Comparator` and `java.util.LinkedHashMap`. 
+
+In the older version (ref d7fb0e2462681e67795d6c7ec1ba084e94a47a5c), the import statements do not include these two imports. The rest of the imports are mostly the same except the older version has `java.util.HashSet` which is not present in the newer version's snippet.
+
+Since the patch only changes imports, the backport patch should only add these two imports in the corresponding section of the older version's file.
+
+I will now generate the patch for these import changes accordingly.
+
+```diff
+--- a/x-pack/plugin/esql/src/main/java/org/elasticsearch/xpack/esql/plugin/DataNodeRequestSender.java
++++ b/x-pack/plugin/esql/src/main/java/org/elasticsearch/xpack/esql/plugin/DataNodeRequestSender.java
+@@ -37,10 +37,13 @@
+ import java.util.ArrayList;
+ import java.util.Collections;
++import java.util.Comparator;
+ import java.util.HashMap;
++import java.util.IdentityHashMap;
+ import java.util.HashSet;
+ import java.util.IdentityHashMap;
+ import java.util.Iterator;
+ import java.util.List;
++import java.util.LinkedHashMap;
+ import java.util.Map;
+ import java.util.Queue;
+```
+
+I will validate the patch now.
+
+[0m[38;5;200m[1;3mPatch applied successfully
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3mThe patch for the import section in DataNodeRequestSender.java can be backported to the older version d7fb0e2462681e67795d6c7ec1ba084e94a47a5c as follows:
+
+```diff
+--- a/x-pack/plugin/esql/src/main/java/org/elasticsearch/xpack/esql/plugin/DataNodeRequestSender.java
++++ b/x-pack/plugin/esql/src/main/java/org/elasticsearch/xpack/esql/plugin/DataNodeRequestSender.java
+@@ -37,10 +37,13 @@
+ import java.util.ArrayList;
+ import java.util.Collections;
++import java.util.Comparator;
+ import java.util.HashMap;
++import java.util.IdentityHashMap;
+ import java.util.HashSet;
+ import java.util.IdentityHashMap;
+ import java.util.Iterator;
+ import java.util.List;
++import java.util.LinkedHashMap;
+ import java.util.Map;
+ import java.util.Queue;
+```
+
+I have validated this patch on the older version and it applies cleanly without conflicts. If you need further backporting assistance for other hunks or files, please let me know.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new AgentExecutor chain...[0m
+
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `git_history` with `{}`
+
+
+[0m[36;1m[1;3m2d99a66415d Retry ES|QL node requests on shard level failures (#120774)
+
+diff --git a/x-pack/plugin/esql/src/main/java/org/elasticsearch/xpack/esql/plugin/DataNodeRequestSender.java b/x-pack/plugin/esql/src/main/java/org/elasticsearch/xpack/esql/plugin/DataNodeRequestSender.java
+--- /dev/null
++++ b/x-pack/plugin/esql/src/main/java/org/elasticsearch/xpack/esql/plugin/DataNodeRequestSender.java
+@@ -0,0 +50,6 @@
++ * and executing these computes on the data nodes.
++ */
++abstract class DataNodeRequestSender {
++    private final TransportService transportService;
++    private final Executor esqlExecutor;
++    private final CancellableTask rootTask
+You need to do the following analysis based on the information in the last commit:
+Analyze the code logic of the context of the patch to be ported in this commit step by step.
+If code logic already existed before this commit, the patch context can be assumed to remain in a similar location. Use `locate` and `viewcode` to check your results.
+If code logic were added in this commit, then you need to `git_show` for further details.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `locate_symbol` with `{'ref': 'd7fb0e2462681e67795d6c7ec1ba084e94a47a5c', 'symbol': 'DataNodeRequestSender'}`
+responded: The git_history shows a commit 2d99a66415d that added the initial version of the class DataNodeRequestSender with the fields transportService, esqlExecutor, and rootTask. This means the class itself and these fields were introduced in that commit.
+
+The patch we want to backport adds a new static list NODE_QUERY_ORDER inside this class. Since the class itself was introduced in 2d99a66415d, this static list was likely added after that commit.
+
+The patch to backport adds a new static final List<String> NODE_QUERY_ORDER with specific node roles.
+
+Next, I will locate the class DataNodeRequestSender in the target ref d7fb0e2462681e67795d6c7ec1ba084e94a47a5c to see its exact location and current content. This will help me understand where to add the new static list.
+
+I will use locate_symbol for "DataNodeRequestSender" in ref d7fb0e2462681e67795d6c7ec1ba084e94a47a5c.
+
+[0m[33;1m[1;3mx-pack/plugin/esql/src/main/java/org/elasticsearch/xpack/esql/plugin/DataNodeRequestSender.java:61
+x-pack/plugin/esql/src/main/java/org/elasticsearch/xpack/esql/plugin/DataNodeRequestSender.java:83[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': 'd7fb0e2462681e67795d6c7ec1ba084e94a47a5c', 'path': 'x-pack/plugin/esql/src/main/java/org/elasticsearch/xpack/esql/plugin/DataNodeRequestSender.java', 'startline': 50, 'endline': 90}`
+
+
+[0m[36;1m[1;3mHere are lines 50 through 90.
+
+import java.util.concurrent.Semaphore;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.locks.ReentrantLock;
+
+import static org.elasticsearch.core.TimeValue.timeValueNanos;
+
+/**
+ * Handles computes within a single cluster by dispatching {@link DataNodeRequest} to data nodes
+ * and executing these computes on the data nodes.
+ */
+abstract class DataNodeRequestSender {
+
+    private final ClusterService clusterService;
+    private final TransportService transportService;
+    private final Executor esqlExecutor;
+    private final CancellableTask rootTask;
+
+    private final String clusterAlias;
+    private final OriginalIndices originalIndices;
+    private final QueryBuilder requestFilter;
+
+    private final boolean allowPartialResults;
+    private final Semaphore concurrentRequests;
+    private final ReentrantLock sendingLock = new ReentrantLock();
+    private final Queue<ShardId> pendingShardIds = ConcurrentCollections.newQueue();
+    private final Map<DiscoveryNode, Semaphore> nodePermits = new HashMap<>();
+    private final Map<ShardId, ShardFailure> shardFailures = ConcurrentCollections.newConcurrentMap();
+    private final AtomicInteger skippedShards = new AtomicInteger();
+    private final AtomicBoolean changed = new AtomicBoolean();
+    private boolean reportedFailure = false; // guarded by sendingLock
+    private final AtomicInteger remainingUnavailableShardResolutionAttempts;
+
+    DataNodeRequestSender(
+        ClusterService clusterService,
+        TransportService transportService,
+        Executor esqlExecutor,
+        CancellableTask rootTask,
+        OriginalIndices originalIndices,
+        QueryBuilder requestFilter,
+        String clusterAlias,
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': 'd7fb0e2462681e67795d6c7ec1ba084e94a47a5c', 'path': 'x-pack/plugin/esql/src/main/java/org/elasticsearch/xpack/esql/plugin/DataNodeRequestSender.java', 'startline': 91, 'endline': 110}`
+
+
+[0m[36;1m[1;3mHere are lines 91 through 110.
+
+        boolean allowPartialResults,
+        int concurrentRequests,
+        int unavailableShardResolutionAttempts
+    ) {
+        this.clusterService = clusterService;
+        this.transportService = transportService;
+        this.esqlExecutor = esqlExecutor;
+        this.rootTask = rootTask;
+        this.originalIndices = originalIndices;
+        this.requestFilter = requestFilter;
+        this.clusterAlias = clusterAlias;
+        this.allowPartialResults = allowPartialResults;
+        this.concurrentRequests = concurrentRequests > 0 ? new Semaphore(concurrentRequests) : null;
+        this.remainingUnavailableShardResolutionAttempts = new AtomicInteger(
+            unavailableShardResolutionAttempts >= 0 ? unavailableShardResolutionAttempts : Integer.MAX_VALUE
+        );
+    }
+
+    final void startComputeOnDataNodes(Set<String> concreteIndices, Runnable runOnTaskFailure, ActionListener<ComputeResponse> listener) {
+        final long startTimeInNanos = System.nanoTime();
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': 'd7fb0e2462681e67795d6c7ec1ba084e94a47a5c', 'path': 'x-pack/plugin/esql/src/main/java/org/elasticsearch/xpack/esql/plugin/DataNodeRequestSender.java', 'startline': 40, 'endline': 60}`
+
+
+[0m[36;1m[1;3mHere are lines 40 through 60.
+
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.IdentityHashMap;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.Queue;
+import java.util.Set;
+import java.util.concurrent.Executor;
+import java.util.concurrent.Semaphore;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.locks.ReentrantLock;
+
+import static org.elasticsearch.core.TimeValue.timeValueNanos;
+
+/**
+ * Handles computes within a single cluster by dispatching {@link DataNodeRequest} to data nodes
+ * and executing these computes on the data nodes.
+ */
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': 'd7fb0e2462681e67795d6c7ec1ba084e94a47a5c', 'path': 'x-pack/plugin/esql/src/main/java/org/elasticsearch/xpack/esql/plugin/DataNodeRequestSender.java', 'startline': 60, 'endline': 80}`
+
+
+[0m[36;1m[1;3mHere are lines 60 through 80.
+
+ */
+abstract class DataNodeRequestSender {
+
+    private final ClusterService clusterService;
+    private final TransportService transportService;
+    private final Executor esqlExecutor;
+    private final CancellableTask rootTask;
+
+    private final String clusterAlias;
+    private final OriginalIndices originalIndices;
+    private final QueryBuilder requestFilter;
+
+    private final boolean allowPartialResults;
+    private final Semaphore concurrentRequests;
+    private final ReentrantLock sendingLock = new ReentrantLock();
+    private final Queue<ShardId> pendingShardIds = ConcurrentCollections.newQueue();
+    private final Map<DiscoveryNode, Semaphore> nodePermits = new HashMap<>();
+    private final Map<ShardId, ShardFailure> shardFailures = ConcurrentCollections.newConcurrentMap();
+    private final AtomicInteger skippedShards = new AtomicInteger();
+    private final AtomicBoolean changed = new AtomicBoolean();
+    private boolean reportedFailure = false; // guarded by sendingLock
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': '4a951e752c20ed793807be88ec5a547ab53cb90a', 'path': 'x-pack/plugin/esql/src/main/java/org/elasticsearch/xpack/esql/plugin/DataNodeRequestSender.java', 'startline': 50, 'endline': 90}`
+
+
+[0m[36;1m[1;3mHere are lines 50 through 90.
+
+import java.util.concurrent.locks.ReentrantLock;
+
+/**
+ * Handles computes within a single cluster by dispatching {@link DataNodeRequest} to data nodes
+ * and executing these computes on the data nodes.
+ */
+abstract class DataNodeRequestSender {
+    private final TransportService transportService;
+    private final Executor esqlExecutor;
+    private final CancellableTask rootTask;
+    private final boolean allowPartialResults;
+    private final Semaphore concurrentRequests;
+    private final ReentrantLock sendingLock = new ReentrantLock();
+    private final Queue<ShardId> pendingShardIds = ConcurrentCollections.newQueue();
+    private final Map<DiscoveryNode, Semaphore> nodePermits = new HashMap<>();
+    private final Map<ShardId, ShardFailure> shardFailures = ConcurrentCollections.newConcurrentMap();
+    private final AtomicInteger skippedShards = new AtomicInteger();
+    private final AtomicBoolean changed = new AtomicBoolean();
+    private boolean reportedFailure = false; // guarded by sendingLock
+
+    DataNodeRequestSender(
+        TransportService transportService,
+        Executor esqlExecutor,
+        CancellableTask rootTask,
+        boolean allowPartialResults,
+        int concurrentRequests
+    ) {
+        this.transportService = transportService;
+        this.esqlExecutor = esqlExecutor;
+        this.rootTask = rootTask;
+        this.allowPartialResults = allowPartialResults;
+        this.concurrentRequests = concurrentRequests > 0 ? new Semaphore(concurrentRequests) : null;
+    }
+
+    final void startComputeOnDataNodes(
+        String clusterAlias,
+        Set<String> concreteIndices,
+        OriginalIndices originalIndices,
+        QueryBuilder requestFilter,
+        Runnable runOnTaskFailure,
+        ActionListener<ComputeResponse> listener
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': 'd7fb0e2462681e67795d6c7ec1ba084e94a47a5c', 'path': 'x-pack/plugin/esql/src/main/java/org/elasticsearch/xpack/esql/plugin/DataNodeRequestSender.java', 'startline': 1, 'endline': 40}`
+responded: The patch adds a static final list NODE_QUERY_ORDER with a specific query order of node roles to the class DataNodeRequestSender.
+
+From the code snippets of the older version (ref d7fb0e2462681e67795d6c7ec1ba084e94a47a5c), the class DataNodeRequestSender exists, but it does not have this static final list NODE_QUERY_ORDER.
+
+The constructor and fields are somewhat different between the two versions, but the class structure and imports are similar enough that the patch can be applied by adding the static final list NODE_QUERY_ORDER in the appropriate place.
+
+The patch hunk in the newer version is added right after the class declaration and before the instance fields.
+
+For the older version, the class declaration is at around line 60, and instance fields start immediately after.
+
+Therefore, the patch for the older version should add the static final list NODE_QUERY_ORDER right after the class declaration line:
+
+```java
+abstract class DataNodeRequestSender {
+
+    /**
+     * Query order according to the
+     * <a href="https://www.elastic.co/guide/en/elasticsearch/reference/current/node-roles-overview.html">node roles</a>.
+     */
+    private static final List<String> NODE_QUERY_ORDER = List.of(
+        DiscoveryNodeRole.SEARCH_ROLE.roleName(),
+        DiscoveryNodeRole.DATA_CONTENT_NODE_ROLE.roleName(),
+        DiscoveryNodeRole.DATA_HOT_NODE_ROLE.roleName(),
+        DiscoveryNodeRole.DATA_WARM_NODE_ROLE.roleName(),
+        DiscoveryNodeRole.DATA_COLD_NODE_ROLE.roleName(),
+        DiscoveryNodeRole.DATA_FROZEN_NODE_ROLE.roleName()
+    );
+
+    // existing fields follow...
+}
+```
+
+I need to check if the class imports List and DiscoveryNodeRole in the older version. If not, we may need to add those imports as part of the patch.
+
+From the older version snippet, List is imported:
+
+```java
+import java.util.List;
+```
+
+DiscoveryNodeRole is likely imported as well or needs to be imported.
+
+I will check if DiscoveryNodeRole is imported in the older version.
+
+I will view the top of the file in the older version to check imports.
+
+I will view lines 1 to 40 of the file in the older version to check imports.
+
+[0m[36;1m[1;3mHere are lines 1 through 40.
+
+/*
+ * Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
+ * or more contributor license agreements. Licensed under the Elastic License
+ * 2.0; you may not use this file except in compliance with the Elastic License
+ * 2.0.
+ */
+
+package org.elasticsearch.xpack.esql.plugin;
+
+import org.elasticsearch.ExceptionsHelper;
+import org.elasticsearch.action.ActionListener;
+import org.elasticsearch.action.ActionListenerResponseHandler;
+import org.elasticsearch.action.NoShardAvailableActionException;
+import org.elasticsearch.action.OriginalIndices;
+import org.elasticsearch.action.search.SearchShardsGroup;
+import org.elasticsearch.action.search.SearchShardsRequest;
+import org.elasticsearch.action.search.SearchShardsResponse;
+import org.elasticsearch.action.search.ShardSearchFailure;
+import org.elasticsearch.action.support.TransportActions;
+import org.elasticsearch.cluster.node.DiscoveryNode;
+import org.elasticsearch.cluster.service.ClusterService;
+import org.elasticsearch.common.breaker.CircuitBreakingException;
+import org.elasticsearch.common.util.Maps;
+import org.elasticsearch.common.util.concurrent.ConcurrentCollections;
+import org.elasticsearch.compute.operator.DriverProfile;
+import org.elasticsearch.compute.operator.FailureCollector;
+import org.elasticsearch.index.Index;
+import org.elasticsearch.index.query.QueryBuilder;
+import org.elasticsearch.index.shard.ShardId;
+import org.elasticsearch.search.SearchShardTarget;
+import org.elasticsearch.search.internal.AliasFilter;
+import org.elasticsearch.tasks.CancellableTask;
+import org.elasticsearch.tasks.TaskCancelledException;
+import org.elasticsearch.transport.TransportException;
+import org.elasticsearch.transport.TransportRequestOptions;
+import org.elasticsearch.transport.TransportService;
+import org.elasticsearch.xpack.esql.action.EsqlSearchShardsAction;
+
+import java.util.ArrayList;
+import java.util.Collections;
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': 'd7fb0e2462681e67795d6c7ec1ba084e94a47a5c', 'path': 'x-pack/plugin/esql/src/main/java/org/elasticsearch/xpack/esql/plugin/DataNodeRequestSender.java', 'startline': 20, 'endline': 40}`
+responded: The patch to be backported adds a new static final list `NODE_QUERY_ORDER` inside the `DataNodeRequestSender` class. This list defines the query order according to node roles.
+
+From the exploration of the older version (ref d7fb0e2462681e67795d6c7ec1ba084e94a47a5c), the class `DataNodeRequestSender` exists but has some differences:
+- It has more instance variables, including `clusterService` which is not in the newer version.
+- Its constructor and method signatures differ somewhat.
+- The class is still an abstract class and the general structure is similar.
+
+Given the patch only adds a static final list and does not modify any existing code logic or structure, the backport should be straightforward:
+- Insert the definition of the static final list `NODE_QUERY_ORDER` with the same content in the older version's `DataNodeRequestSender` class.
+- The list uses `DiscoveryNodeRole.SEARCH_ROLE.roleName()` and other similar constants, so we need to verify that `DiscoveryNodeRole` is imported and available in the older version.
+
+Next, I will check if `DiscoveryNodeRole` is imported in the older version of the file, as the patch uses it.
+
+I will view the import section of the older version to confirm this.
+
+[0m[36;1m[1;3mHere are lines 20 through 40.
+
+import org.elasticsearch.cluster.node.DiscoveryNode;
+import org.elasticsearch.cluster.service.ClusterService;
+import org.elasticsearch.common.breaker.CircuitBreakingException;
+import org.elasticsearch.common.util.Maps;
+import org.elasticsearch.common.util.concurrent.ConcurrentCollections;
+import org.elasticsearch.compute.operator.DriverProfile;
+import org.elasticsearch.compute.operator.FailureCollector;
+import org.elasticsearch.index.Index;
+import org.elasticsearch.index.query.QueryBuilder;
+import org.elasticsearch.index.shard.ShardId;
+import org.elasticsearch.search.SearchShardTarget;
+import org.elasticsearch.search.internal.AliasFilter;
+import org.elasticsearch.tasks.CancellableTask;
+import org.elasticsearch.tasks.TaskCancelledException;
+import org.elasticsearch.transport.TransportException;
+import org.elasticsearch.transport.TransportRequestOptions;
+import org.elasticsearch.transport.TransportService;
+import org.elasticsearch.xpack.esql.action.EsqlSearchShardsAction;
+
+import java.util.ArrayList;
+import java.util.Collections;
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `locate_symbol` with `{'ref': 'd7fb0e2462681e67795d6c7ec1ba084e94a47a5c', 'symbol': 'DiscoveryNodeRole'}`
+responded: Based on the information gathered:
+
+1. The patch to backport adds a static final list `NODE_QUERY_ORDER` with node roles in the class `DataNodeRequestSender`.
+2. In the older version (ref d7fb0e2), the class `DataNodeRequestSender` exists but the static final list `NODE_QUERY_ORDER` is not present.
+3. The class structure and imports are somewhat different between the two versions, but the class `DataNodeRequestSender` is present in both.
+4. The patch does not change any other code but just adds the static final list inside the class.
+
+Given that the static list `NODE_QUERY_ORDER` is a new addition in the newer version and does not depend on other new code in the class, the backport should be straightforward: add the static final list with the same content inside the class `DataNodeRequestSender` in the old version.
+
+I will now craft the patch for the old version `d7fb0e2` to add this static final list in the corresponding location inside the class `DataNodeRequestSender`.
+
+The context lines in the old version around line 60 are:
+```java
+abstract class DataNodeRequestSender {
+
+    private final ClusterService clusterService;
+    private final TransportService transportService;
+    private final Executor esqlExecutor;
+    private final CancellableTask rootTask;
+```
+
+The new code to add is:
+```java
+    /**
+     * Query order according to the
+     * <a href="https://www.elastic.co/guide/en/elasticsearch/reference/current/node-roles-overview.html">node roles</a>.
+     */
+    private static final List<String> NODE_QUERY_ORDER = List.of(
+        DiscoveryNodeRole.SEARCH_ROLE.roleName(),
+        DiscoveryNodeRole.DATA_CONTENT_NODE_ROLE.roleName(),
+        DiscoveryNodeRole.DATA_HOT_NODE_ROLE.roleName(),
+        DiscoveryNodeRole.DATA_WARM_NODE_ROLE.roleName(),
+        DiscoveryNodeRole.DATA_COLD_NODE_ROLE.roleName(),
+        DiscoveryNodeRole.DATA_FROZEN_NODE_ROLE.roleName()
+    );
+```
+
+I will insert this code after the class declaration and before the existing fields.
+
+Before finalizing the patch, I need to confirm that `DiscoveryNodeRole` is imported or available in the old version. From the imports in the old version, I do not see `DiscoveryNodeRole` imported. I need to check if this class exists in the old version and where it is imported from.
+
+I will locate the symbol `DiscoveryNodeRole` in the old version to check its location and import path.
+
+[0m[33;1m[1;3mserver/src/main/java/org/elasticsearch/cluster/node/DiscoveryNodeRole.java:28
+server/src/main/java/org/elasticsearch/cluster/node/DiscoveryNodeRole.java:86
+server/src/main/java/org/elasticsearch/cluster/node/DiscoveryNodeRole.java:90
+server/src/main/java/org/elasticsearch/cluster/node/DiscoveryNodeRole.java:94[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': 'd7fb0e2462681e67795d6c7ec1ba084e94a47a5c', 'path': 'server/src/main/java/org/elasticsearch/cluster/node/DiscoveryNodeRole.java', 'startline': 20, 'endline': 60}`
+
+
+[0m[36;1m[1;3mHere are lines 20 through 60.
+
+import java.util.Optional;
+import java.util.SortedSet;
+import java.util.function.Function;
+import java.util.stream.Collectors;
+
+/**
+ * Represents a node role.
+ */
+public class DiscoveryNodeRole implements Comparable<DiscoveryNodeRole> {
+
+    private final String roleName;
+
+    /**
+     * The name of the role.
+     *
+     * @return the role name
+     */
+    public final String roleName() {
+        return roleName;
+    }
+
+    private final String roleNameAbbreviation;
+
+    /**
+     * The abbreviation of the name of the role. This is used in the cat nodes API to display an abbreviated version of the name of the
+     * role.
+     *
+     * @return the role name abbreviation
+     */
+    public final String roleNameAbbreviation() {
+        return roleNameAbbreviation;
+    }
+
+    private final boolean canContainData;
+
+    /**
+     * Indicates whether a node with this role can contain data.
+     *
+     * @return true if a node with this role can contain data, otherwise false
+     */
+    public final boolean canContainData() {
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': 'd7fb0e2462681e67795d6c7ec1ba084e94a47a5c', 'path': 'server/src/main/java/org/elasticsearch/cluster/node/DiscoveryNodeRole.java', 'startline': 80, 'endline': 100}`
+
+
+[0m[36;1m[1;3mHere are lines 80 through 100.
+
+     * @param roles the complete set of configured roles
+     */
+    public void validateRoles(final List<DiscoveryNodeRole> roles) {
+
+    }
+
+    protected DiscoveryNodeRole(final String roleName, final String roleNameAbbreviation) {
+        this(roleName, roleNameAbbreviation, false);
+    }
+
+    protected DiscoveryNodeRole(final String roleName, final String roleNameAbbreviation, final boolean canContainData) {
+        this(true, roleName, roleNameAbbreviation, canContainData);
+    }
+
+    private DiscoveryNodeRole(
+        final boolean isKnownRole,
+        final String roleName,
+        final String roleNameAbbreviation,
+        final boolean canContainData
+    ) {
+        this.isKnownRole = isKnownRole;
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': 'd7fb0e2462681e67795d6c7ec1ba084e94a47a5c', 'path': 'server/src/main/java/org/elasticsearch/cluster/node/DiscoveryNodeRole.java', 'startline': 70, 'endline': 90}`
+
+
+[0m[36;1m[1;3mHere are lines 70 through 90.
+
+     * @return true if the role is enabled by default given the specified settings, otherwise false
+     */
+    public boolean isEnabledByDefault(final Settings settings) {
+        return true;
+    }
+
+    /**
+     * Validate this role against all configured roles. Implementors are expected to throw an {@link IllegalArgumentException} when the
+     * combination of configured roles is invalid with this role.
+     *
+     * @param roles the complete set of configured roles
+     */
+    public void validateRoles(final List<DiscoveryNodeRole> roles) {
+
+    }
+
+    protected DiscoveryNodeRole(final String roleName, final String roleNameAbbreviation) {
+        this(roleName, roleNameAbbreviation, false);
+    }
+
+    protected DiscoveryNodeRole(final String roleName, final String roleNameAbbreviation, final boolean canContainData) {
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': 'd7fb0e2462681e67795d6c7ec1ba084e94a47a5c', 'path': 'server/src/main/java/org/elasticsearch/cluster/node/DiscoveryNodeRole.java', 'startline': 80, 'endline': 110}`
+
+
+[0m[36;1m[1;3mHere are lines 80 through 110.
+
+     * @param roles the complete set of configured roles
+     */
+    public void validateRoles(final List<DiscoveryNodeRole> roles) {
+
+    }
+
+    protected DiscoveryNodeRole(final String roleName, final String roleNameAbbreviation) {
+        this(roleName, roleNameAbbreviation, false);
+    }
+
+    protected DiscoveryNodeRole(final String roleName, final String roleNameAbbreviation, final boolean canContainData) {
+        this(true, roleName, roleNameAbbreviation, canContainData);
+    }
+
+    private DiscoveryNodeRole(
+        final boolean isKnownRole,
+        final String roleName,
+        final String roleNameAbbreviation,
+        final boolean canContainData
+    ) {
+        this.isKnownRole = isKnownRole;
+        this.roleName = Objects.requireNonNull(roleName);
+        this.roleNameAbbreviation = Objects.requireNonNull(roleNameAbbreviation);
+        this.canContainData = canContainData;
+    }
+
+    @Override
+    public final boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        DiscoveryNodeRole that = (DiscoveryNodeRole) o;
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': 'd7fb0e2462681e67795d6c7ec1ba084e94a47a5c', 'path': 'x-pack/plugin/esql/src/main/java/org/elasticsearch/xpack/esql/plugin/DataNodeRequestSender.java', 'startline': 55, 'endline': 75}`
+
+
+[0m[36;1m[1;3mHere are lines 55 through 75.
+
+import static org.elasticsearch.core.TimeValue.timeValueNanos;
+
+/**
+ * Handles computes within a single cluster by dispatching {@link DataNodeRequest} to data nodes
+ * and executing these computes on the data nodes.
+ */
+abstract class DataNodeRequestSender {
+
+    private final ClusterService clusterService;
+    private final TransportService transportService;
+    private final Executor esqlExecutor;
+    private final CancellableTask rootTask;
+
+    private final String clusterAlias;
+    private final OriginalIndices originalIndices;
+    private final QueryBuilder requestFilter;
+
+    private final boolean allowPartialResults;
+    private final Semaphore concurrentRequests;
+    private final ReentrantLock sendingLock = new ReentrantLock();
+    private final Queue<ShardId> pendingShardIds = ConcurrentCollections.newQueue();
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3mThe patch to be backported adds a static final list NODE_QUERY_ORDER in the class DataNodeRequestSender. This list contains an order of node roles for query priority.
+
+From the code in the older version (ref d7fb0e2462681e67795d6c7ec1ba084e94a47a5c), the class DataNodeRequestSender is present, but it does not have this NODE_QUERY_ORDER list. The class has more fields than in the newer version's snippet, but the main structure is largely similar.
+
+The class DiscoveryNodeRole is present in the older version and contains a method roleName(), which is used in the patch to get role names for the list.
+
+Since the patch only adds a static final list and no other logic changes around it, and since the class and roleName method exist in the older version, it should be straightforward to add this list to the older version class.
+
+I will now prepare a patch that adds the NODE_QUERY_ORDER list in the appropriate place in the older version of DataNodeRequestSender.java, adapting the context to the older version's code structure.
+
+The patch will:
+- Add the import for java.util.List if missing.
+- Add the NODE_QUERY_ORDER list after the class declaration and before the instance fields, matching the style and indentation of the older version.
+
+Next, I will generate the patch.[0m
+
+[1m> Finished chain.[0m
+2026-04-27 08:14:17,372 - backport - ERROR - Reach max_iterations for hunk 2

@@ -1,0 +1,60 @@
+2026-04-27 08:46:12,446 - backport - INFO - Using openrouter API: https://openrouter.ai/api/v1 (model: openai/gpt-4.1-mini)
+2026-04-27 08:46:14,842 - backport - INFO - Aplly all hunks in the patch      PASS
+2026-04-27 08:46:15,402 - backport - INFO - Successfully backport the patch to the target release 70b3bb551111ea4fb4a504aaed3ad5a5c4b7fc3a
+2026-04-27 08:46:15,403 - backport - INFO - --- a/server/src/main/java/org/elasticsearch/cluster/metadata/MetadataCreateIndexService.java
++++ b/server/src/main/java/org/elasticsearch/cluster/metadata/MetadataCreateIndexService.java
+@@ -237,6 +237,9 @@ public class MetadataCreateIndexService {
+      * Validate the name for an index or alias against some static rules.
+      */
+     public static void validateIndexOrAliasName(String index, BiFunction<String, String, ? extends RuntimeException> exceptionCtor) {
++        if (index == null || index.isEmpty()) {
++            throw exceptionCtor.apply(index, "must not be empty");
++        }
+         if (Strings.validFileName(index) == false) {
+             throw exceptionCtor.apply(index, "must not contain the following characters " + Strings.INVALID_FILENAME_CHARS);
+         }
+
+--- a/server/src/test/java/org/elasticsearch/cluster/metadata/MetadataCreateIndexServiceTests.java
++++ b/server/src/test/java/org/elasticsearch/cluster/metadata/MetadataCreateIndexServiceTests.java
+@@ -561,6 +561,9 @@ public class MetadataCreateIndexServiceTests extends ESTestCase {
+             validateIndexName(checkerService, "..", "must not be '.' or '..'");
+ 
+             validateIndexName(checkerService, "foo:bar", "must not contain ':'");
++
++            validateIndexName(checkerService, "", "must not be empty");
++            validateIndexName(checkerService, null, "must not be empty");
+         }));
+     }
+ 
+
+--- a/x-pack/plugin/esql/src/test/java/org/elasticsearch/xpack/esql/parser/AbstractStatementParserTests.java
++++ b/x-pack/plugin/esql/src/test/java/org/elasticsearch/xpack/esql/parser/AbstractStatementParserTests.java
+@@ -151,8 +151,12 @@ abstract class AbstractStatementParserTests extends ESTestCase {
+         expectInvalidIndexNameErrorWithLineNumber(query, "\"" + indexString + "\"", lineNumber, indexString);
+     }
+ 
+-    void expectInvalidIndexNameErrorWithLineNumber(String query, String indexString, String lineNumber, String error) {
+-        expectError(LoggerMessageFormat.format(null, query, indexString), lineNumber + "Invalid index name [" + error);
++    void expectInvalidIndexNameErrorWithLineNumber(String query, String indexString, String lineNumber, String name) {
++        expectError(LoggerMessageFormat.format(null, query, indexString), lineNumber + "Invalid index name [" + name);
++    }
++
++    void expectInvalidIndexNameErrorWithLineNumber(String query, String indexString, String lineNumber, String name, String error) {
++        expectError(LoggerMessageFormat.format(null, query, indexString), lineNumber + "Invalid index name [" + name + "], " + error);
+     }
+ 
+     void expectDateMathErrorWithLineNumber(String query, String arg, String lineNumber, String error) {
+
+--- a/x-pack/plugin/esql/src/test/java/org/elasticsearch/xpack/esql/parser/StatementParserTests.java
++++ b/x-pack/plugin/esql/src/test/java/org/elasticsearch/xpack/esql/parser/StatementParserTests.java
+@@ -578,6 +578,9 @@ public class StatementParserTests extends AbstractStatementParserTests {
+             expectInvalidIndexNameErrorWithLineNumber(command, "indexpattern, --indexpattern", lineNumber, "-indexpattern");
+             expectInvalidIndexNameErrorWithLineNumber(command, "indexpattern, \"--indexpattern\"", lineNumber, "-indexpattern");
+             expectInvalidIndexNameErrorWithLineNumber(command, "\"indexpattern, --indexpattern\"", commands.get(command), "-indexpattern");
++            expectInvalidIndexNameErrorWithLineNumber(command, "\"- , -\"", commands.get(command), "", "must not be empty");
++            expectInvalidIndexNameErrorWithLineNumber(command, "\"indexpattern,-\"", commands.get(command), "", "must not be empty");
++            clustersAndIndices(command, "indexpattern", "*-");
+             clustersAndIndices(command, "indexpattern", "-indexpattern");
+         }
+ 
+

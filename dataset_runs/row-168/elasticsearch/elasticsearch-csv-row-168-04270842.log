@@ -1,0 +1,537 @@
+2026-04-27 08:42:32,620 - backport - INFO - Using openrouter API: https://openrouter.ai/api/v1 (model: openai/gpt-4.1-mini)
+
+
+[1m> Entering new AgentExecutor chain...[0m
+
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `git_history` with `{}`
+
+
+[0m[36;1m[1;3m54879278b1c Update data stream deprecations warnings to new format and filter searchable snapshots from response (#118562)
+
+diff --git a/x-pack/plugin/deprecation/src/main/java/org/elasticsearch/xpack/deprecation/IndexDeprecationChecks.java b/x-pack/plugin/deprecation/src/main/java/org/elasticsearch/xpack/deprecation/IndexDeprecationChecks.java
+--- a/x-pack/plugin/deprecation/src/main/java/org/elasticsearch/xpack/deprecation/IndexDeprecationChecks.java
++++ b/x-pack/plugin/deprecation/src/main/java/org/elasticsearch/xpack/deprecation/IndexDeprecationChecks.java
+@@ -15,7 +15,7 @@
+ import org.elasticsearch.index.IndexSettings;
+ import org.elasticsearch.index.IndexVersion;
+-import org.elasticsearch.index.IndexVersions;
+ import org.elasticsearch.index.engine.frozen.FrozenEngine;
+ import org.elasticsearch.index.mapper.SourceFieldMapper;
++import org.elasticsearch.xpack.core.deprecation.DeprecatedIndexPredicate;
+ import org.elasticsearch.xpack.core.deprecation.DeprecationIssue;
+ 
+631345f9653 Adjust index version for deprecating source mode (#117183)
+
+diff --git a/x-pack/plugin/deprecation/src/main/java/org/elasticsearch/xpack/deprecation/IndexDeprecationChecks.java b/x-pack/plugin/deprecation/src/main/java/org/elasticsearch/xpack/deprecation/IndexDeprecationChecks.java
+--- a/x-pack/plugin/deprecation/src/main/java/org/elasticsearch/xpack/deprecation/IndexDeprecationChecks.java
++++ b/x-pack/plugin/deprecation/src/main/java/org/elasticsearch/xpack/deprecation/IndexDeprecationChecks.java
+@@ -15,6 +15,7 @@
+ import org.elasticsearch.index.IndexSettings;
+ import org.elasticsearch.index.IndexVersion;
+ import org.elasticsearch.index.IndexVersions;
+ import org.elasticsearch.index.engine.frozen.FrozenEngine;
++import org.elasticsearch.index.mapper.SourceFieldMapper;
+ import org.elasticsearch.xpack.core.deprecation.DeprecationIssue;
+
+You need to do the following analysis based on the information in the last commit:
+Analyze the code logic of the context of the patch to be ported in this commit step by step.
+If code logic already existed before this commit, the patch context can be assumed to remain in a similar location. Use `locate` and `viewcode` to check your results.
+If code logic were added in this commit, then you need to `git_show` for further details.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': '4ddd9b6352d29e3df55d60f6d5fd74eb19a9d1c3', 'path': 'x-pack/plugin/deprecation/src/main/java/org/elasticsearch/xpack/deprecation/IndexDeprecationChecks.java', 'startline': 10, 'endline': 25}`
+responded: From the git history, I see the following:
+
+- The import of `org.elasticsearch.index.IndexVersions` was removed in the newer patch.
+- The import of `org.elasticsearch.xpack.core.deprecation.DeprecatedIndexPredicate` was added in the newer patch.
+- The import of `org.elasticsearch.index.mapper.SourceFieldMapper` was removed in the newer patch.
+- In the older version, `SourceFieldMapper` was imported, but in the newer version, it is removed.
+
+This suggests that the patch is mainly about cleaning up unused imports related to `SourceFieldMapper` and `IndexVersions` and adding the import for `DeprecatedIndexPredicate`.
+
+The code logic related to these imports seems to exist before the commit, meaning the patch only modifies import statements. So the patch context remains the same in the older version, but with some imports present that are removed in the newer version.
+
+Next, I will locate the file `x-pack/plugin/deprecation/src/main/java/org/elasticsearch/xpack/deprecation/IndexDeprecationChecks.java` in the older version at ref `4ddd9b6352d29e3df55d60f6d5fd74eb19a9d1c3` and view lines around 14-22 to confirm the import statements and context.
+
+I will use `viewcode` to check lines 10 to 25 of this file in the older version to get enough context around imports.
+
+[0m[36;1m[1;3mHere are lines 10 through 25.
+
+import org.elasticsearch.cluster.metadata.IndexMetadata;
+import org.elasticsearch.cluster.metadata.MappingMetadata;
+import org.elasticsearch.common.time.DateFormatter;
+import org.elasticsearch.common.time.LegacyFormatNames;
+import org.elasticsearch.index.IndexModule;
+import org.elasticsearch.index.IndexSettings;
+import org.elasticsearch.index.IndexVersion;
+import org.elasticsearch.index.IndexVersions;
+import org.elasticsearch.index.engine.frozen.FrozenEngine;
+import org.elasticsearch.index.mapper.SourceFieldMapper;
+import org.elasticsearch.xpack.core.deprecation.DeprecatedIndexPredicate;
+import org.elasticsearch.xpack.core.deprecation.DeprecationIssue;
+
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `validate` with `{'ref': '4ddd9b6352d29e3df55d60f6d5fd74eb19a9d1c3', 'patch': '--- a/x-pack/plugin/deprecation/src/main/java/org/elasticsearch/xpack/deprecation/IndexDeprecationChecks.java\n+++ b/x-pack/plugin/deprecation/src/main/java/org/elasticsearch/xpack/deprecation/IndexDeprecationChecks.java\n@@ -14,10 +14,9 @@\n import org.elasticsearch.index.IndexModule;\n import org.elasticsearch.index.IndexSettings;\n import org.elasticsearch.index.IndexVersion;\n-import org.elasticsearch.index.IndexVersions;\n import org.elasticsearch.index.engine.frozen.FrozenEngine;\n-import org.elasticsearch.index.mapper.SourceFieldMapper;\n+import org.elasticsearch.xpack.core.deprecation.DeprecatedIndexPredicate;\n import org.elasticsearch.xpack.core.deprecation.DeprecationIssue;\n\n'}`
+responded: The patch to backport involves removing the import of `SourceFieldMapper` from the file `x-pack/plugin/deprecation/src/main/java/org/elasticsearch/xpack/deprecation/IndexDeprecationChecks.java`.
+
+From the snippet of the older version (ref 4ddd9b6352d29e3df55d60f6d5fd74eb19a9d1c3) provided, the import `import org.elasticsearch.index.mapper.SourceFieldMapper;` is present.
+
+From the patch in the newer version (ref 4e0e36b38c4ce71546b3411e2114fcc5dc962c8a), this import is removed.
+
+The other imports in the snippet are mostly consistent between the old and new versions, except for some minor rearrangements or additions.
+
+Since the patch is only about removing the import line, and the import line exists in the older version, the backport patch should only remove this import line from the older version file.
+
+I do not see any code logic changes in this hunk, only the import line removal.
+
+Next, I will validate if this patch can be applied cleanly to the older version.
+
+I will prepare the patch to remove the import line of `SourceFieldMapper` from the older version file and then validate it.
+
+[0m[38;5;200m[1;3mThis patch does not apply because of CONTEXT MISMATCH. Context are patch lines that already exist in the file, that is, lines starting with ` ` and `-`. You should modify the error patch according to the context of older version.
+Here are lines 13 through 21 of file x-pack/plugin/deprecation/src/main/java/org/elasticsearch/xpack/deprecation/IndexDeprecationChecks.java for commit 4ddd9b6352d29e3df55d60f6d5fd74eb19a9d1c3.
+```code snippet
+import org.elasticsearch.index.IndexModule;
+import org.elasticsearch.index.IndexSettings;
+import org.elasticsearch.index.IndexVersion;
+import org.elasticsearch.index.IndexVersions;
+import org.elasticsearch.index.engine.frozen.FrozenEngine;
+import org.elasticsearch.index.mapper.SourceFieldMapper;
+import org.elasticsearch.xpack.core.deprecation.DeprecatedIndexPredicate;
+import org.elasticsearch.xpack.core.deprecation.DeprecationIssue;
+```
+Besides, here is detailed info about how the context differs between the patch and the old version.
+```context diff
+On the line 11 of your patch.
+          Your patch:import org.elasticsearch.xpack.core.deprecation.DeprecationIssue;
+Original source code:import org.elasticsearch.xpack.core.deprecation.DeprecatedIndexPredicate;
+```
+Please eliminate these diffs step by step. Be sure to eliminate these diffs the next time you generate a patch!
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `validate` with `{'ref': '4ddd9b6352d29e3df55d60f6d5fd74eb19a9d1c3', 'patch': '--- a/x-pack/plugin/deprecation/src/main/java/org/elasticsearch/xpack/deprecation/IndexDeprecationChecks.java\n+++ b/x-pack/plugin/deprecation/src/main/java/org/elasticsearch/xpack/deprecation/IndexDeprecationChecks.java\n@@ -14,8 +14,7 @@\n import org.elasticsearch.index.IndexModule;\n import org.elasticsearch.index.IndexSettings;\n import org.elasticsearch.index.IndexVersion;\n-import org.elasticsearch.index.IndexVersions;\n import org.elasticsearch.index.engine.frozen.FrozenEngine;\n-import org.elasticsearch.index.mapper.SourceFieldMapper;\n import org.elasticsearch.xpack.core.deprecation.DeprecatedIndexPredicate;\n import org.elasticsearch.xpack.core.deprecation.DeprecationIssue;\n'}`
+responded: The conflict is due to the import lines. In the old version, the imports include `IndexVersions` and `SourceFieldMapper` which are not in the new patch, and the order of `DeprecatedIndexPredicate` and `DeprecationIssue` is reversed.
+
+The patch removes the import of `SourceFieldMapper` and `IndexVersions`, and changes the order of the last two imports.
+
+To backport correctly, I need to adapt the patch to keep the imports as they are in the old version but remove only the import of `SourceFieldMapper` as the patch suggests, and keep the others intact.
+
+I will generate a patch that only removes the import of `SourceFieldMapper` and leaves the rest unchanged to fit the older version context.
+
+[0m[38;5;200m[1;3mPatch applied successfully
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3mThe patch for this hunk is simply to remove the import lines for `IndexVersions` and `SourceFieldMapper` and add the import for `DeprecatedIndexPredicate` in the old version. The context in the old version includes `IndexVersions` and `SourceFieldMapper` imports, which are removed in the new patch.
+
+Here is the backported patch for the older version 4ddd9b6352d29e3df55d60f6d5fd74eb19a9d1c3:
+
+```diff
+--- a/x-pack/plugin/deprecation/src/main/java/org/elasticsearch/xpack/deprecation/IndexDeprecationChecks.java
++++ b/x-pack/plugin/deprecation/src/main/java/org/elasticsearch/xpack/deprecation/IndexDeprecationChecks.java
+@@ -14,8 +14,7 @@
+ import org.elasticsearch.index.IndexModule;
+ import org.elasticsearch.index.IndexSettings;
+ import org.elasticsearch.index.IndexVersion;
+-import org.elasticsearch.index.IndexVersions;
+ import org.elasticsearch.index.engine.frozen.FrozenEngine;
+-import org.elasticsearch.index.mapper.SourceFieldMapper;
+ import org.elasticsearch.xpack.core.deprecation.DeprecatedIndexPredicate;
+ import org.elasticsearch.xpack.core.deprecation.DeprecationIssue;
+```
+
+I have validated this patch on the target ref, and it applies successfully without conflicts. If you want, I can assist you further with other hunks or any other task.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new AgentExecutor chain...[0m
+
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `git_history` with `{}`
+
+
+[0m[36;1m[1;3mtionChecks.java
+@@ -201,6 +202,31 @@
+         return issues;
+     }
+ 
++    static DeprecationIssue checkSourceModeInMapping(IndexMetadata indexMetadata, ClusterState clusterState) {
++        if (SourceFieldMapper.onOrAfterDeprecateModeVersion(indexMetadata.getCreationVersion())) {
++            boolean[] useSourceMode = { false };
++            fieldLevelMappingIssue(indexMetadata, ((mappingMetadata, sourceAsMap) -> {
++                Object source = sourceAsMap.get("_source");
++                if (source instanceof Map<?, ?> sourceMap) {
++                    if (sourceMap.containsKey("mode")) {
++                        useSourceMode[0] = true;
++                    }
++                }
++            }));
++            if (useSourceMode[0]) {
++                return new DeprecationIssue(
++                    DeprecationIssue.Level.CRITICAL,
++                    SourceFieldMapper.DEPRECATION_WARNING,
++                    "https://github.com/elastic/elasticsearch/pull/117172",
++                    SourceFieldMapper.DEPRECATION_WARNING,
++                    false,
++                    null
++                );
++            }
++        }
++        return null;
++    }
++
+     static DeprecationIssue deprecatedCamelCasePattern(IndexMetadata indexMetadata, ClusterState clusterState) {
+         List<String> fields = new ArrayList<>();
+         fieldLevelMappingIssue(
+b3424ff44cb Excluding data stream indices from IndexDeprecationChecks.oldIndicesCheck() (#116527)
+
+diff --git a/x-pack/plugin/deprecation/src/main/java/org/elasticsearch/xpack/deprecation/IndexDeprecationChecks.java b/x-pack/plugin/deprecation/src/main/java/org/elasticsearch/xpack/deprecation/IndexDeprecationChecks.java
+--- a/x-pack/plugin/deprecation/src/main/java/org/elasticsearch/xpack/deprecation/IndexDeprecationChecks.java
++++ b/x-pack/plugin/deprecation/src/main/java/org/elasticsearch/xpack/deprecation/IndexDeprecationChecks.java
+@@ -195,6 +201,6 @@
+         return issues;
+     }
+ 
+-    static DeprecationIssue deprecatedCamelCasePattern(IndexMetadata indexMetadata) {
++    static DeprecationIssue deprecatedCamelCasePattern(IndexMetadata indexMetadata, ClusterState clusterState) {
+         List<String> fields = new ArrayList<>();
+         fieldLevelMappingIssue
+You need to do the following analysis based on the information in the last commit:
+Analyze the code logic of the context of the patch to be ported in this commit step by step.
+If code logic already existed before this commit, the patch context can be assumed to remain in a similar location. Use `locate` and `viewcode` to check your results.
+If code logic were added in this commit, then you need to `git_show` for further details.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `locate_symbol` with `{'ref': '4ddd9b6352d29e3df55d60f6d5fd74eb19a9d1c3', 'symbol': 'checkSourceModeInMapping'}`
+responded: The git_history output shows that the function checkSourceModeInMapping was added in a commit with the message "Excluding data stream indices from IndexDeprecationChecks.oldIndicesCheck() (#116527)" (commit b3424ff44cb). This means the function did not exist before this commit and was introduced at this commit.
+
+The older ref 4ddd9b6352d29e3df55d60f6d5fd74eb19a9d1c3 is older than this commit, so the function checkSourceModeInMapping as it appears in the newer patch does not exist in the older ref.
+
+The patch in the newer version removes this function from the class, so for the backport, we need to check if the function exists in the older ref and if it does, we need to remove it to match the newer version.
+
+Next, I will check the location of the function checkSourceModeInMapping in the older ref 4ddd9b6352d29e3df55d60f6d5fd74eb19a9d1c3 using locate_symbol to confirm its exact location.
+
+[0m[33;1m[1;3mx-pack/plugin/deprecation/src/main/java/org/elasticsearch/xpack/deprecation/IndexDeprecationChecks.java:207[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': '4ddd9b6352d29e3df55d60f6d5fd74eb19a9d1c3', 'path': 'x-pack/plugin/deprecation/src/main/java/org/elasticsearch/xpack/deprecation/IndexDeprecationChecks.java', 'startline': 200, 'endline': 235}`
+
+
+[0m[36;1m[1;3mHere are lines 200 through 235.
+
+                issues.addAll(findInPropertiesRecursively(type, valueMap, predicate, fieldFormatter, fieldBeginMarker, fieldEndMarker));
+            }
+        }
+
+        return issues;
+    }
+
+    static DeprecationIssue checkSourceModeInMapping(IndexMetadata indexMetadata, ClusterState clusterState) {
+        if (indexMetadata.getCreationVersion().onOrAfter(IndexVersions.DEPRECATE_SOURCE_MODE_MAPPER)) {
+            boolean[] useSourceMode = { false };
+            fieldLevelMappingIssue(indexMetadata, ((mappingMetadata, sourceAsMap) -> {
+                Object source = sourceAsMap.get("_source");
+                if (source instanceof Map<?, ?> sourceMap) {
+                    if (sourceMap.containsKey("mode")) {
+                        useSourceMode[0] = true;
+                    }
+                }
+            }));
+            if (useSourceMode[0]) {
+                return new DeprecationIssue(
+                    DeprecationIssue.Level.CRITICAL,
+                    SourceFieldMapper.DEPRECATION_WARNING,
+                    "https://github.com/elastic/elasticsearch/pull/117172",
+                    SourceFieldMapper.DEPRECATION_WARNING,
+                    false,
+                    null
+                );
+            }
+        }
+        return null;
+    }
+
+    static DeprecationIssue deprecatedCamelCasePattern(IndexMetadata indexMetadata, ClusterState clusterState) {
+        List<String> fields = new ArrayList<>();
+        fieldLevelMappingIssue(
+            indexMetadata,
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3mYes, the target code for the function checkSourceModeInMapping exists in the old version at the expected location. The main difference is the condition:
+
+- New version uses SourceFieldMapper.onOrAfterDeprecateModeVersion(indexMetadata.getCreationVersion())
+- Old version uses indexMetadata.getCreationVersion().onOrAfter(IndexVersions.DEPRECATE_SOURCE_MODE_MAPPER)
+
+Other than that, the logic inside the function is the same.
+
+The patch in the new version removes this function entirely. So the backport for the old version should also remove this function but keep the surrounding code intact.
+
+I will generate a patch that removes the checkSourceModeInMapping function from the old version adapting the context accordingly.[0m
+
+[1m> Finished chain.[0m
+2026-04-27 08:43:25,882 - backport - ERROR - Reach max_iterations for hunk 3

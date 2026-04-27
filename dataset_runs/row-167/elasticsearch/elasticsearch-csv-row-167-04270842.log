@@ -1,0 +1,202 @@
+2026-04-27 08:42:22,891 - backport - INFO - Using openrouter API: https://openrouter.ai/api/v1 (model: openai/gpt-4.1-mini)
+2026-04-27 08:42:31,665 - backport - INFO - Aplly all hunks in the patch      PASS
+2026-04-27 08:42:32,268 - backport - INFO - Successfully backport the patch to the target release 2e12bbb933daf934b86e5208027f02ca299fcbcc
+2026-04-27 08:42:32,269 - backport - INFO - --- a/server/src/main/java/org/elasticsearch/transport/OutboundHandler.java
++++ b/server/src/main/java/org/elasticsearch/transport/OutboundHandler.java
+@@ -15,6 +15,7 @@ import org.apache.logging.log4j.Logger;
+ import org.apache.lucene.store.AlreadyClosedException;
+ import org.apache.lucene.util.BytesRef;
+ import org.elasticsearch.TransportVersion;
++import org.elasticsearch.TransportVersions;
+ import org.elasticsearch.action.ActionListener;
+ import org.elasticsearch.cluster.node.DiscoveryNode;
+ import org.elasticsearch.common.bytes.BytesReference;
+
+--- a/server/src/main/java/org/elasticsearch/transport/OutboundHandler.java
++++ b/server/src/main/java/org/elasticsearch/transport/OutboundHandler.java
+@@ -27,6 +28,7 @@ import org.elasticsearch.core.Nullable;
+ import org.elasticsearch.core.Releasable;
+ import org.elasticsearch.core.Releasables;
+ import org.elasticsearch.core.TimeValue;
++import org.elasticsearch.core.UpdateForV10;
+ import org.elasticsearch.threadpool.ThreadPool;
+ 
+ import java.io.IOException;
+
+--- a/server/src/main/java/org/elasticsearch/transport/OutboundHandler.java
++++ b/server/src/main/java/org/elasticsearch/transport/OutboundHandler.java
+@@ -38,7 +40,10 @@ final class OutboundHandler {
+     private static final Logger logger = LogManager.getLogger(OutboundHandler.class);
+ 
+     private final String nodeName;
++
++    @UpdateForV10(owner = UpdateForV10.Owner.DISTRIBUTED_COORDINATION) // only used in assertions, can be dropped in future
+     private final TransportVersion version;
++
+     private final StatsTracker statsTracker;
+     private final ThreadPool threadPool;
+     private final Recycler<BytesRef> recycler;
+
+--- a/server/src/main/java/org/elasticsearch/transport/OutboundHandler.java
++++ b/server/src/main/java/org/elasticsearch/transport/OutboundHandler.java
+@@ -98,11 +103,11 @@ final class OutboundHandler {
+         final Compression.Scheme compressionScheme,
+         final boolean isHandshake
+     ) throws IOException, TransportException {
+-        TransportVersion version = TransportVersion.min(this.version, transportVersion);
+-        OutboundMessage.Request message = new OutboundMessage.Request(
++        assert assertValidTransportVersion(transportVersion);
++        final OutboundMessage.Request message = new OutboundMessage.Request(
+             threadPool.getThreadContext(),
+             request,
+-            version,
++            transportVersion,
+             action,
+             requestId,
+             isHandshake,
+
+--- a/server/src/main/java/org/elasticsearch/transport/OutboundHandler.java
++++ b/server/src/main/java/org/elasticsearch/transport/OutboundHandler.java
+@@ -137,11 +142,11 @@ final class OutboundHandler {
+         final boolean isHandshake,
+         final ResponseStatsConsumer responseStatsConsumer
+     ) {
+-        TransportVersion version = TransportVersion.min(this.version, transportVersion);
++        assert assertValidTransportVersion(transportVersion);
+         OutboundMessage.Response message = new OutboundMessage.Response(
+             threadPool.getThreadContext(),
+             response,
+-            version,
++            transportVersion,
+             requestId,
+             isHandshake,
+             compressionScheme
+
+--- a/server/src/main/java/org/elasticsearch/transport/OutboundHandler.java
++++ b/server/src/main/java/org/elasticsearch/transport/OutboundHandler.java
+@@ -158,7 +163,11 @@ final class OutboundHandler {
+         } catch (Exception ex) {
+             if (isHandshake) {
+                 logger.error(
+-                    () -> format("Failed to send handshake response version [%s] received on [%s], closing channel", version, channel),
++                    () -> format(
++                        "Failed to send handshake response version [%s] received on [%s], closing channel",
++                        transportVersion,
++                        channel
++                    ),
+                     ex
+                 );
+                 channel.close();
+
+--- a/server/src/main/java/org/elasticsearch/transport/OutboundHandler.java
++++ b/server/src/main/java/org/elasticsearch/transport/OutboundHandler.java
+@@ -179,9 +188,15 @@ final class OutboundHandler {
+         final ResponseStatsConsumer responseStatsConsumer,
+         final Exception error
+     ) {
+-        TransportVersion version = TransportVersion.min(this.version, transportVersion);
+-        RemoteTransportException tx = new RemoteTransportException(nodeName, channel.getLocalAddress(), action, error);
+-        OutboundMessage.Response message = new OutboundMessage.Response(threadPool.getThreadContext(), tx, version, requestId, false, null);
++        assert assertValidTransportVersion(transportVersion);
++        OutboundMessage.Response message = new OutboundMessage.Response(
++            threadPool.getThreadContext(),
++            new RemoteTransportException(nodeName, channel.getLocalAddress(), action, error),
++            transportVersion,
++            requestId,
++            false,
++            null
++        );
+         try {
+             sendMessage(channel, message, responseStatsConsumer, () -> messageListener.onResponseSent(requestId, action, error));
+         } catch (Exception sendException) {
+
+--- a/server/src/main/java/org/elasticsearch/transport/OutboundHandler.java
++++ b/server/src/main/java/org/elasticsearch/transport/OutboundHandler.java
+@@ -297,4 +312,10 @@ final class OutboundHandler {
+         return rstOnClose;
+     }
+ 
++    private boolean assertValidTransportVersion(TransportVersion transportVersion) {
++        assert this.version.before(TransportVersions.MINIMUM_COMPATIBLE) // running an incompatible-version test
++            || this.version.onOrAfter(transportVersion) : this.version + " vs " + transportVersion;
++        return true;
++    }
++
+ }
+
+--- a/server/src/main/java/org/elasticsearch/transport/TransportHandshaker.java
++++ b/server/src/main/java/org/elasticsearch/transport/TransportHandshaker.java
+@@ -257,7 +257,7 @@ final class TransportHandshaker {
+                         )
+                     );
+                 } else {
+-                    listener.onResponse(responseVersion);
++                    listener.onResponse(TransportVersion.min(TransportHandshaker.this.version, response.getResponseVersion()));
+                 }
+             }
+         }
+
+--- a/server/src/test/java/org/elasticsearch/transport/TransportHandshakerTests.java
++++ b/server/src/test/java/org/elasticsearch/transport/TransportHandshakerTests.java
+@@ -18,6 +18,7 @@ import org.elasticsearch.common.io.stream.StreamInput;
+ import org.elasticsearch.core.TimeValue;
+ import org.elasticsearch.tasks.TaskId;
+ import org.elasticsearch.test.ESTestCase;
++import org.elasticsearch.test.TransportVersionUtils;
+ import org.elasticsearch.threadpool.TestThreadPool;
+ 
+ import java.io.IOException;
+
+--- a/server/src/test/java/org/elasticsearch/transport/TransportHandshakerTests.java
++++ b/server/src/test/java/org/elasticsearch/transport/TransportHandshakerTests.java
+@@ -51,7 +52,7 @@ public class TransportHandshakerTests extends ESTestCase {
+             .address("host", "host_address", buildNewFakeTransportAddress())
+             .roles(Collections.emptySet())
+             .build();
+-        threadPool = new TestThreadPool("thread-poll");
++        threadPool = new TestThreadPool(getTestName());
+         handshaker = new TransportHandshaker(TransportVersion.current(), threadPool, requestSender, false);
+     }
+ 
+
+--- a/server/src/test/java/org/elasticsearch/transport/TransportHandshakerTests.java
++++ b/server/src/test/java/org/elasticsearch/transport/TransportHandshakerTests.java
+@@ -85,6 +86,37 @@ public class TransportHandshakerTests extends ESTestCase {
+         assertEquals(TransportVersion.current(), versionFuture.actionGet());
+     }
+ 
++    public void testHandshakeResponseFromOlderNode() throws Exception {
++        final PlainActionFuture<TransportVersion> versionFuture = new PlainActionFuture<>();
++        final long reqId = randomNonNegativeLong();
++        handshaker.sendHandshake(reqId, node, channel, SAFE_AWAIT_TIMEOUT, versionFuture);
++        TransportResponseHandler<TransportHandshaker.HandshakeResponse> handler = handshaker.removeHandlerForHandshake(reqId);
++
++        assertFalse(versionFuture.isDone());
++
++        final var remoteVersion = TransportVersionUtils.randomCompatibleVersion(random());
++        handler.handleResponse(new TransportHandshaker.HandshakeResponse(remoteVersion));
++
++        assertTrue(versionFuture.isDone());
++        assertEquals(remoteVersion, versionFuture.result());
++    }
++
++    public void testHandshakeResponseFromNewerNode() throws Exception {
++        final PlainActionFuture<TransportVersion> versionFuture = new PlainActionFuture<>();
++        final long reqId = randomNonNegativeLong();
++        handshaker.sendHandshake(reqId, node, channel, SAFE_AWAIT_TIMEOUT, versionFuture);
++        TransportResponseHandler<TransportHandshaker.HandshakeResponse> handler = handshaker.removeHandlerForHandshake(reqId);
++
++        assertFalse(versionFuture.isDone());
++
++        handler.handleResponse(
++            new TransportHandshaker.HandshakeResponse(TransportVersion.fromId(TransportVersion.current().id() + between(0, 10)))
++        );
++
++        assertTrue(versionFuture.isDone());
++        assertEquals(TransportVersion.current(), versionFuture.result());
++    }
++
+     public void testHandshakeRequestFutureVersionsCompatibility() throws IOException {
+         long reqId = randomLongBetween(1, 10);
+         handshaker.sendHandshake(reqId, node, channel, new TimeValue(30, TimeUnit.SECONDS), new PlainActionFuture<>());
+

@@ -1,0 +1,1647 @@
+2026-04-27 08:49:10,062 - backport - INFO - Using openrouter API: https://openrouter.ai/api/v1 (model: openai/gpt-4.1-mini)
+
+
+[1m> Entering new AgentExecutor chain...[0m
+
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `git_history` with `{}`
+
+
+[0m[36;1m[1;3m4d5906422b6 [ML] Default inference endpoint for ELSER (#113873)
+
+diff --git a/docs/reference/rest-api/usage.asciidoc b/docs/reference/rest-api/usage.asciidoc
+--- a/docs/reference/rest-api/usage.asciidoc
++++ b/docs/reference/rest-api/usage.asciidoc
+@@ -209,3 +210,7 @@
+-    "models" : []
++        "service": "elasticsearch",
++        "task_type": "SPARSE_EMBEDDING",
++        "count": 1
++      }
++    ]
+   },
+   "logstash" : 
+You need to do the following analysis based on the information in the last commit:
+Analyze the code logic of the context of the patch to be ported in this commit step by step.
+If code logic already existed before this commit, the patch context can be assumed to remain in a similar location. Use `locate` and `viewcode` to check your results.
+If code logic were added in this commit, then you need to `git_show` for further details.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `git_show` with `{}`
+
+
+[0m[33;1m[1;3mcommit 4d5906422b6696f1e083fae716ac2b1486de39ea
+Author: David Kyle <david.kyle@elastic.co>
+Date:   Fri Oct 4 10:27:10 2024 +0100
+
+    [ML] Default inference endpoint for ELSER (#113873)
+    
+    Adds a default configuration for the ELSER model. The config uses
+    adaptive allocations to automatically scale. Min number of allocations
+    is set to 1 for this PR, a follow up with change that to 0 and enable
+    scale from 0.
+    
+    This end point is always visible in the GET API.
+    
+    ```
+    GET _inference
+    
+    {
+      "endpoints": [
+        {
+          "inference_id": ".elser-2",
+          "task_type": "sparse_embedding",
+          "service": "elser",
+          "service_settings": {
+            "num_threads": 1,
+            "model_id": ".elser_model_2",
+            "adaptive_allocations": {
+              "enabled": true,
+              "min_number_of_allocations": 1,
+              "max_number_of_allocations": 8
+            }
+          },
+          "task_settings": {}
+        }
+      ]
+    }
+    ```
+    
+    The default configuration can be used against without any prior setup.
+    If the model is not downloaded it is automatically downloaded. If it is
+    not deployed it is deployed
+    
+    ```
+    POST _inference/.elser-2
+    {
+      "input": "Automagically deploy and infer"
+    }
+     ...
+    
+    {
+      "sparse_embedding": [
+        {
+          "is_truncated": false,
+          "embedding": {
+            "##fer": 2.2107008,
+            "deployment": 2.1624098,
+            "deploy": 2.144009,
+            "auto": 1.9384763,
+    ```
+    
+    ### Follow up tasks - [ ] Add default config for the E5 text embedding
+    model - [ ] Select platform specific version - [ ] Scale from 0 - [ ]
+    Chunking settings - What happens when the end point is deleted, can it
+    be deleted? - Can the default config be modified - chunking settings for
+    example? Probably not
+
+ docs/changelog/113873.yaml                         |   5 +
+ docs/reference/rest-api/usage.asciidoc             |   7 +-
+ .../elasticsearch/inference/InferenceService.java  |   9 +
+ .../org/elasticsearch/inference/UnparsedModel.java |  24 +++
+ .../elasticsearch/test/cluster/FeatureFlag.java    |   3 +-
+ x-pack/plugin/build.gradle                         |   1 +
+ .../action/StartTrainedModelDeploymentAction.java  |   4 +-
+ .../assignment/AdaptiveAllocationsSettings.java    |   4 +-
+ .../AdaptiveAllocationSettingsTests.java           |   2 +-
+ .../xpack/inference/CustomElandModelIT.java        |   2 +-
+ .../xpack/inference/DefaultElserIT.java            |  70 +++++++
+ .../xpack/inference/InferenceBaseRestTest.java     |  21 +-
+ .../xpack/inference/InferenceCrudIT.java           |   8 +-
+ .../inference/MockDenseInferenceServiceIT.java     |  11 +-
+ .../inference/MockSparseInferenceServiceIT.java    |  15 +-
+ .../xpack/inference/TextEmbeddingCrudIT.java       |   4 +-
+ .../inference/integration/ModelRegistryIT.java     | 215 ++++++++++++++++++++-
+ .../xpack/inference/DefaultElserFeatu
+Because the commit's code change maybe too long, so I generate the abstract of the code change to show you how code changed in this commit.
+Commit shows that the patch code in old version maybe in the file x-pack/plugin/inference/src/main/java/org/elasticsearch/xpack/inference/action/TransportInferenceAction.java around line number 76 to 81. The code is below
+                    )
+                );
+                return;
+            }
+
+You can call `viewcode` and `locate_symbol` to find the relevant code based on this information step by step.[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `locate_symbol` with `{'ref': '5babddff4d06c5090fb67073aeb40b28f095baf0', 'symbol': 'TransportInferenceAction'}`
+
+
+[0m[33;1m[1;3mx-pack/plugin/inference/src/main/java/org/elasticsearch/xpack/inference/action/TransportInferenceAction.java:37
+x-pack/plugin/inference/src/main/java/org/elasticsearch/xpack/inference/action/TransportInferenceAction.java:50[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': '5babddff4d06c5090fb67073aeb40b28f095baf0', 'path': 'x-pack/plugin/inference/src/main/java/org/elasticsearch/xpack/inference/action/TransportInferenceAction.java', 'startline': 30, 'endline': 90}`
+
+
+[0m[36;1m[1;3mHere are lines 30 through 90.
+
+import org.elasticsearch.xpack.inference.telemetry.InferenceStats;
+
+import java.util.Set;
+import java.util.stream.Collectors;
+
+import static org.elasticsearch.core.Strings.format;
+
+public class TransportInferenceAction extends HandledTransportAction<InferenceAction.Request, InferenceAction.Response> {
+    private static final String STREAMING_INFERENCE_TASK_TYPE = "streaming_inference";
+    private static final String STREAMING_TASK_ACTION = "xpack/inference/streaming_inference[n]";
+
+    private static final Set<Class<? extends InferenceService>> supportsStreaming = Set.of();
+
+    private final ModelRegistry modelRegistry;
+    private final InferenceServiceRegistry serviceRegistry;
+    private final InferenceStats inferenceStats;
+    private final StreamingTaskManager streamingTaskManager;
+    private static final DeprecationLogger DEPRECATION_LOGGER = DeprecationLogger.getLogger(TransportInferenceAction.class);
+
+    @Inject
+    public TransportInferenceAction(
+        TransportService transportService,
+        ActionFilters actionFilters,
+        ModelRegistry modelRegistry,
+        InferenceServiceRegistry serviceRegistry,
+        InferenceStats inferenceStats,
+        StreamingTaskManager streamingTaskManager
+    ) {
+        super(InferenceAction.NAME, transportService, actionFilters, InferenceAction.Request::new, EsExecutors.DIRECT_EXECUTOR_SERVICE);
+        this.modelRegistry = modelRegistry;
+        this.serviceRegistry = serviceRegistry;
+        this.inferenceStats = inferenceStats;
+        this.streamingTaskManager = streamingTaskManager;
+    }
+
+    @Override
+    protected void doExecute(Task task, InferenceAction.Request request, ActionListener<InferenceAction.Response> listener) {
+
+        ActionListener<UnparsedModel> getModelListener = listener.delegateFailureAndWrap((delegate, unparsedModel) -> {
+            var service = serviceRegistry.getService(unparsedModel.service());
+            if (service.isEmpty()) {
+                listener.onFailure(unknownServiceException(unparsedModel.service(), request.getInferenceEntityId()));
+                return;
+            }
+
+            if (request.getTaskType().isAnyOrSame(unparsedModel.taskType()) == false) {
+                // not the wildcard task type and not the model task type
+                listener.onFailure(incompatibleTaskTypeException(request.getTaskType(), unparsedModel.taskType()));
+                return;
+            }
+
+            var model = service.get()
+                .parsePersistedConfigWithSecrets(
+                    unparsedModel.inferenceEntityId(),
+                    unparsedModel.taskType(),
+                    unparsedModel.settings(),
+                    unparsedModel.secrets()
+                );
+            inferOnService(model, request, service.get(), delegate);
+        });
+
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': '5babddff4d06c5090fb67073aeb40b28f095baf0', 'path': 'docs/reference/rest-api/usage.asciidoc', 'startline': 200, 'endline': 220}`
+
+
+[0m[36;1m[1;3mHere are lines 200 through 220.
+
+      anomaly_detectors_memory_bytes: 0,
+      data_frame_analytics_memory_bytes: 0,
+      pytorch_inference_memory_bytes: 0,
+      total_used_memory_bytes: 0
+    }
+  },
+  "inference": {
+    "available" : true,
+    "enabled" : true,
+    "models" : [{
+        "service": "elasticsearch",
+        "task_type": "SPARSE_EMBEDDING",
+        "count": 1
+      }
+    ]
+  },
+  "logstash" : {
+    "available" : true,
+    "enabled" : true
+  },
+  "eql" : {
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `validate` with `{'ref': '5babddff4d06c5090fb67073aeb40b28f095baf0', 'patch': '--- a/docs/reference/rest-api/usage.asciidoc\n+++ b/docs/reference/rest-api/usage.asciidoc\n@@ -209,7 +209,12 @@\n-        "service": "elasticsearch",\n-        "task_type": "SPARSE_EMBEDDING",\n-        "count": 1\n-      }\n+        "service": "elasticsearch",\n+        "task_type": "SPARSE_EMBEDDING",\n+        "count": 1\n+      },\n+      {\n+        "service": "elasticsearch",\n+        "task_type": "TEXT_EMBEDDING",\n+        "count": 1\n+      },\n     ]\n   },\n   "logstash" : {\n'}`
+responded: The patch to backport is about adding a new entry in the "models" array under "inference" in the usage.asciidoc file. Specifically, it adds a new model with "task_type": "TEXT_EMBEDDING" alongside the existing "SPARSE_EMBEDDING" model.
+
+In the older version (ref 5babddff4d06c5090fb67073aeb40b28f095baf0), the "models" array under "inference" currently has only one entry:
+
+```json
+{
+  "service": "elasticsearch",
+  "task_type": "SPARSE_EMBEDDING",
+  "count": 1
+}
+```
+
+The patch adds a second entry for "TEXT_EMBEDDING":
+
+```json
+{
+  "service": "elasticsearch",
+  "task_type": "TEXT_EMBEDDING",
+  "count": 1
+}
+```
+
+The context lines around this snippet in the older version are present and match the patch context, so the patch can be adapted by adding the new entry in the correct place in the older version.
+
+There are no code logic changes or function changes here, just an addition in the documentation usage file.
+
+Therefore, the backport patch for this hunk should be straightforward: add the new entry for "TEXT_EMBEDDING" model in the "models" array under "inference" in the usage.asciidoc file at the corresponding location.
+
+Next, I will generate the patch for the older version accordingly.
+
+[0m[38;5;200m[1;3mPatch applied successfully
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3mThe patch to add the default inference endpoint for the multilingual-e5-small model is a small addition to the usage.asciidoc file. The context in the older version already contains the entry for the "SPARSE_EMBEDDING" task_type under the "inference" section, so the patch just adds a new entry for "TEXT_EMBEDDING" with count 1 in the same list.
+
+Here is the backported patch for ref 5babddff4d06c5090fb67073aeb40b28f095baf0:
+
+```diff
+--- a/docs/reference/rest-api/usage.asciidoc
++++ b/docs/reference/rest-api/usage.asciidoc
+@@ -209,7 +209,12 @@
+-        "service": "elasticsearch",
+-        "task_type": "SPARSE_EMBEDDING",
+-        "count": 1
+-      }
++        "service": "elasticsearch",
++        "task_type": "SPARSE_EMBEDDING",
++        "count": 1
++      },
++      {
++        "service": "elasticsearch",
++        "task_type": "TEXT_EMBEDDING",
++        "count": 1
++      },
+     ]
+   },
+   "logstash" : {
+```
+
+I have validated this patch on the target ref and it applies successfully without conflicts. This completes the backport of the patch hunk you requested. If you need any more assistance, please let me know![0m
+
+[1m> Finished chain.[0m
+2026-04-27 08:49:44,805 - backport - WARNING - Traceback (most recent call last):
+  File "/Users/hasangaranasinghe/Documents/FYP/PORTGPT/patch-backporting/src/tools/utils.py", line 301, in revise_patch
+    block_lines, block_fixed = revise_block(lines[last_line:])
+                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/hasangaranasinghe/Documents/FYP/PORTGPT/patch-backporting/src/tools/utils.py", line 251, in revise_block
+    (file_path_a == file_path_b and fixed_file_path_a == fixed_file_path_b)
+AssertionError
+
+
+
+[1m> Entering new AgentExecutor chain...[0m
+
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': '50c02f414672e4e052abefb62d4f1b22eaa0c31c', 'path': 'x-pack/plugin/inference/qa/inference-service-tests/src/javaRestTest/java/org/elasticsearch/xpack/inference/DefaultElserIT.java', 'startline': 10, 'endline': 40}`
+
+
+[0m[36;1m[1;3mHere are lines 10 through 40.
+
+import org.elasticsearch.inference.TaskType;
+import org.elasticsearch.threadpool.TestThreadPool;
+import org.elasticsearch.xpack.inference.services.elasticsearch.ElasticsearchInternalService;
+import org.hamcrest.Matchers;
+import org.junit.After;
+import org.junit.Before;
+
+import java.io.IOException;
+import java.util.List;
+import java.util.Map;
+
+import static org.hamcrest.Matchers.hasSize;
+import static org.hamcrest.Matchers.is;
+import static org.hamcrest.Matchers.oneOf;
+
+public class DefaultElserIT extends InferenceBaseRestTest {
+
+    private TestThreadPool threadPool;
+
+    @Before
+    public void createThreadPool() {
+        threadPool = new TestThreadPool(DefaultElserIT.class.getSimpleName());
+    }
+
+    @After
+    public void tearDown() throws Exception {
+        threadPool.close();
+        super.tearDown();
+    }
+
+    @SuppressWarnings("unchecked")
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': '5babddff4d06c5090fb67073aeb40b28f095baf0', 'path': 'x-pack/plugin/inference/qa/inference-service-tests/src/javaRestTest/java/org/elasticsearch/xpack/inference/DefaultElserIT.java', 'startline': 10, 'endline': 40}`
+
+
+[0m[36;1m[1;3mHere are lines 10 through 40.
+
+import org.elasticsearch.inference.TaskType;
+import org.elasticsearch.threadpool.TestThreadPool;
+import org.elasticsearch.xpack.inference.services.elasticsearch.ElasticsearchInternalService;
+import org.hamcrest.Matchers;
+import org.junit.After;
+import org.junit.Before;
+
+import java.io.IOException;
+import java.util.List;
+import java.util.Map;
+
+import static org.hamcrest.Matchers.hasSize;
+import static org.hamcrest.Matchers.is;
+import static org.hamcrest.Matchers.oneOf;
+
+public class DefaultElserIT extends InferenceBaseRestTest {
+
+    private TestThreadPool threadPool;
+
+    @Before
+    public void createThreadPool() {
+        threadPool = new TestThreadPool(DefaultElserIT.class.getSimpleName());
+    }
+
+    @After
+    public void tearDown() throws Exception {
+        threadPool.close();
+        super.tearDown();
+    }
+
+    @SuppressWarnings("unchecked")
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `git_history` with `{}`
+responded: I have found the target code region in the older version ref 5babddff4d06c5090fb67073aeb40b28f095baf0. It is the class DefaultElserIT with the private member TestThreadPool threadPool, and the @Before method createThreadPool() which initializes the threadPool with the class name DefaultElserIT.
+
+The patch in the newer version changes the class name from DefaultElserIT to DefaultEndPointsIT and also changes the threadPool initialization to use DefaultEndPointsIT.class.getSimpleName().
+
+In the older version, the class is still named DefaultElserIT. So the patch for the older version should adapt the class name to DefaultEndPointsIT and change the threadPool initialization accordingly.
+
+I will validate if the class name DefaultEndPointsIT exists or needs to be created in the older version by checking the class declaration area.
+
+Next, I will check the git history of this file to see if there were any renaming or refactoring related to this class to understand if the class name change is new or existed in some form in the older version. This will help confirm how to patch this correctly.
+
+[0m[36;1m[1;3m4d5906422b6 [ML] Default inference endpoint for ELSER (#113873)
+
+diff --git a/x-pack/plugin/inference/qa/inference-service-tests/src/javaRestTest/java/org/elasticsearch/xpack/inference/DefaultElserIT.java b/x-pack/plugin/inference/qa/inference-service-tests/src/javaRestTest/java/org/elasticsearch/xpack/inference/DefaultElserIT.java
+--- /dev/null
++++ b/x-pack/plugin/inference/qa/inference-service-tests/src/javaRestTest/java/org/elasticsearch/xpack/inference/DefaultElserIT.java
+@@ -0,0 +22,13 @@
++import static org.hamcrest.Matchers.is;
++import static org.hamcrest.Matchers.oneOf;
++
++public class DefaultElserIT extends InferenceBaseRestTest {
++
++    private TestThreadPool threadPool;
++
++    @Before
++    public void createThreadPool() {
++        threadPool = new TestThreadPool(DefaultElserIT.class.getSimpleName());
++    }
++
++    @Afte
+You need to do the following analysis based on the information in the last commit:
+Analyze the code logic of the context of the patch to be ported in this commit step by step.
+If code logic already existed before this commit, the patch context can be assumed to remain in a similar location. Use `locate` and `viewcode` to check your results.
+If code logic were added in this commit, then you need to `git_show` for further details.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `git_show` with `{}`
+
+
+[0m[33;1m[1;3mcommit 4d5906422b6696f1e083fae716ac2b1486de39ea
+Author: David Kyle <david.kyle@elastic.co>
+Date:   Fri Oct 4 10:27:10 2024 +0100
+
+    [ML] Default inference endpoint for ELSER (#113873)
+    
+    Adds a default configuration for the ELSER model. The config uses
+    adaptive allocations to automatically scale. Min number of allocations
+    is set to 1 for this PR, a follow up with change that to 0 and enable
+    scale from 0.
+    
+    This end point is always visible in the GET API.
+    
+    ```
+    GET _inference
+    
+    {
+      "endpoints": [
+        {
+          "inference_id": ".elser-2",
+          "task_type": "sparse_embedding",
+          "service": "elser",
+          "service_settings": {
+            "num_threads": 1,
+            "model_id": ".elser_model_2",
+            "adaptive_allocations": {
+              "enabled": true,
+              "min_number_of_allocations": 1,
+              "max_number_of_allocations": 8
+            }
+          },
+          "task_settings": {}
+        }
+      ]
+    }
+    ```
+    
+    The default configuration can be used against without any prior setup.
+    If the model is not downloaded it is automatically downloaded. If it is
+    not deployed it is deployed
+    
+    ```
+    POST _inference/.elser-2
+    {
+      "input": "Automagically deploy and infer"
+    }
+     ...
+    
+    {
+      "sparse_embedding": [
+        {
+          "is_truncated": false,
+          "embedding": {
+            "##fer": 2.2107008,
+            "deployment": 2.1624098,
+            "deploy": 2.144009,
+            "auto": 1.9384763,
+    ```
+    
+    ### Follow up tasks - [ ] Add default config for the E5 text embedding
+    model - [ ] Select platform specific version - [ ] Scale from 0 - [ ]
+    Chunking settings - What happens when the end point is deleted, can it
+    be deleted? - Can the default config be modified - chunking settings for
+    example? Probably not
+
+ docs/changelog/113873.yaml                         |   5 +
+ docs/reference/rest-api/usage.asciidoc             |   7 +-
+ .../elasticsearch/inference/InferenceService.java  |   9 +
+ .../org/elasticsearch/inference/UnparsedModel.java |  24 +++
+ .../elasticsearch/test/cluster/FeatureFlag.java    |   3 +-
+ x-pack/plugin/build.gradle                         |   1 +
+ .../action/StartTrainedModelDeploymentAction.java  |   4 +-
+ .../assignment/AdaptiveAllocationsSettings.java    |   4 +-
+ .../AdaptiveAllocationSettingsTests.java           |   2 +-
+ .../xpack/inference/CustomElandModelIT.java        |   2 +-
+ .../xpack/inference/DefaultElserIT.java            |  70 +++++++
+ .../xpack/inference/InferenceBaseRestTest.java     |  21 +-
+ .../xpack/inference/InferenceCrudIT.java           |   8 +-
+ .../inference/MockDenseInferenceServiceIT.java     |  11 +-
+ .../inference/MockSparseInferenceServiceIT.java    |  15 +-
+ .../xpack/inference/TextEmbeddingCrudIT.java       |   4 +-
+ .../inference/integration/ModelRegistryIT.java     | 215 ++++++++++++++++++++-
+ .../xpack/inference/DefaultElserFeatu
+Because the commit's code change maybe too long, so I generate the abstract of the code change to show you how code changed in this commit.
+Commit shows that the patch code in old version maybe in the file x-pack/plugin/inference/src/main/java/org/elasticsearch/xpack/inference/registry/ModelRegistry.java around line number 60 to 73. The code is below
+
+    /**
+     * Semi parsed model where inference entity id, task type and service
+     * are known but the settings are not parsed.
+     */
+    public record UnparsedModel(
+        String inferenceEntityId,
+        TaskType taskType,
+        String service,
+        Map<String, Object> settings,
+        Map<String, Object> secrets
+    ) {
+
+You can call `viewcode` and `locate_symbol` to find the relevant code based on this information step by step.[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `locate_symbol` with `{'ref': '5babddff4d06c5090fb67073aeb40b28f095baf0', 'symbol': 'DefaultElserIT'}`
+
+
+[0m[33;1m[1;3mx-pack/plugin/inference/qa/inference-service-tests/src/javaRestTest/java/org/elasticsearch/xpack/inference/DefaultElserIT.java:25[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': '5babddff4d06c5090fb67073aeb40b28f095baf0', 'path': 'x-pack/plugin/inference/qa/inference-service-tests/src/javaRestTest/java/org/elasticsearch/xpack/inference/DefaultElserIT.java', 'startline': 20, 'endline': 40}`
+
+
+[0m[36;1m[1;3mHere are lines 20 through 40.
+
+
+import static org.hamcrest.Matchers.hasSize;
+import static org.hamcrest.Matchers.is;
+import static org.hamcrest.Matchers.oneOf;
+
+public class DefaultElserIT extends InferenceBaseRestTest {
+
+    private TestThreadPool threadPool;
+
+    @Before
+    public void createThreadPool() {
+        threadPool = new TestThreadPool(DefaultElserIT.class.getSimpleName());
+    }
+
+    @After
+    public void tearDown() throws Exception {
+        threadPool.close();
+        super.tearDown();
+    }
+
+    @SuppressWarnings("unchecked")
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `validate` with `{'ref': '5babddff4d06c5090fb67073aeb40b28f095baf0', 'patch': '--- a/x-pack/plugin/inference/qa/inference-service-tests/src/javaRestTest/java/org/elasticsearch/xpack/inference/DefaultElserIT.java\n+++ b/x-pack/plugin/inference/qa/inference-service-tests/src/javaRestTest/java/org/elasticsearch/xpack/inference/DefaultElserIT.java\n@@ -22,13 +22,13 @@\n-public class DefaultElserIT extends InferenceBaseRestTest {\n+public class DefaultEndPointsIT extends InferenceBaseRestTest {\n \n     private TestThreadPool threadPool;\n \n     @Before\n     public void createThreadPool() {\n-        threadPool = new TestThreadPool(DefaultElserIT.class.getSimpleName());\n+        threadPool = new TestThreadPool(DefaultEndPointsIT.class.getSimpleName());\n     }\n \n     @After\n     public void tearDown() throws Exception {\n         threadPool.close();\n         super.tearDown();\n     }\n\n     @SuppressWarnings("unchecked")\n'}`
+responded: I have found the target code block in the old version at the same location as the patch in the new version. The class name is DefaultElserIT in the old version, and the patch wants to rename it to DefaultEndPointsIT in the new version. The method createThreadPool uses the class name for the TestThreadPool instantiation, which also needs to be updated accordingly.
+
+The rest of the code in this snippet is the same, including the imports and the @After method tearDown.
+
+Since the patch only changes the class name and the reference to the class name in the createThreadPool method, and the rest of the code remains the same, the backport patch should just rename the class and update the reference in createThreadPool method.
+
+I will now generate the patch for the old version accordingly.
+
+[0m[38;5;200m[1;3mPatch applied successfully
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3mI have reviewed the patch in the newer version and the corresponding code in the older version. The main changes are renaming the class from DefaultElserIT to DefaultEndPointsIT and updating the TestThreadPool instantiation to use the new class name. The rest of the code remains the same.
+
+I have crafted the following patch for the older version to reflect these changes:
+
+```diff
+--- a/x-pack/plugin/inference/qa/inference-service-tests/src/javaRestTest/java/org/elasticsearch/xpack/inference/DefaultElserIT.java
++++ b/x-pack/plugin/inference/qa/inference-service-tests/src/javaRestTest/java/org/elasticsearch/xpack/inference/DefaultElserIT.java
+@@ -22,13 +22,13 @@
+-public class DefaultElserIT extends InferenceBaseRestTest {
++public class DefaultEndPointsIT extends InferenceBaseRestTest {
+ 
+     private TestThreadPool threadPool;
+ 
+     @Before
+     public void createThreadPool() {
+-        threadPool = new TestThreadPool(DefaultElserIT.class.getSimpleName());
++        threadPool = new TestThreadPool(DefaultEndPointsIT.class.getSimpleName());
+     }
+ 
+     @After
+     public void tearDown() throws Exception {
+         threadPool.close();
+         super.tearDown();
+     }
+ 
+     @SuppressWarnings("unchecked")
+```
+
+I have validated this patch on the older version, and it applies successfully without conflicts.
+
+If you want, I can provide the patch file for you.[0m
+
+[1m> Finished chain.[0m
+2026-04-27 08:50:07,924 - backport - WARNING - Traceback (most recent call last):
+  File "/Users/hasangaranasinghe/Documents/FYP/PORTGPT/patch-backporting/src/tools/utils.py", line 301, in revise_patch
+    block_lines, block_fixed = revise_block(lines[last_line:])
+                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/hasangaranasinghe/Documents/FYP/PORTGPT/patch-backporting/src/tools/utils.py", line 251, in revise_block
+    (file_path_a == file_path_b and fixed_file_path_a == fixed_file_path_b)
+AssertionError
+
+
+
+[1m> Entering new AgentExecutor chain...[0m
+
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `git_history` with `{}`
+
+
+[0m[36;1m[1;3m4d5906422b6 [ML] Default inference endpoint for ELSER (#113873)
+
+diff --git a/x-pack/plugin/inference/qa/inference-service-tests/src/javaRestTest/java/org/elasticsearch/xpack/inference/DefaultElserIT.java b/x-pack/plugin/inference/qa/inference-service-tests/src/javaRestTest/java/org/elasticsearch/xpack/inference/DefaultElserIT.java
+--- /dev/null
++++ b/x-pack/plugin/inference/qa/inference-service-tests/src/javaRestTest/java/org/elasticsearch/xpack/inference/DefaultElserIT.java
+@@ -0,0 +38,7 @@
++    }
++
++    @SuppressWarnings("unchecked")
++    public void testInferCreatesDefaultElser() throws IOException {
++        assumeTrue("Default config requires a feature flag", DefaultElserFeatureFlag.isEnabled());
++        var model = getModel(ElasticsearchInternalService.DEFAULT_ELSER_ID);
++        assertDefaultElserConfig(model)
+You need to do the following analysis based on the information in the last commit:
+Analyze the code logic of the context of the patch to be ported in this commit step by step.
+If code logic already existed before this commit, the patch context can be assumed to remain in a similar location. Use `locate` and `viewcode` to check your results.
+If code logic were added in this commit, then you need to `git_show` for further details.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `locate_symbol` with `{'ref': '5babddff4d06c5090fb67073aeb40b28f095baf0', 'symbol': 'DefaultElserIT'}`
+responded: The last commit in the history shows the addition of the method `testInferCreatesDefaultElser()` in the file `DefaultElserIT.java`. This means that the method being modified in the patch to be backported was introduced in this commit.
+
+The patch changes the method name from `testInferCreatesDefaultElser()` to `testInferDeploysDefaultElser()` and also changes the filename from `DefaultElserIT.java` to `DefaultEndPointsIT.java`.
+
+Since the method was added in this commit, it means the patch to be backported is modifying newly added code. Therefore, I need to check the older version if this method exists at all, and if it does, where it is located.
+
+Next, I will locate the class `DefaultElserIT` in the older version ref `5babddff4d06c5090fb67073aeb40b28f095baf0` to see if it exists and where it is located. This will help me find the file and line number to view the code and apply the patch accordingly.
+
+[0m[33;1m[1;3mx-pack/plugin/inference/qa/inference-service-tests/src/javaRestTest/java/org/elasticsearch/xpack/inference/DefaultElserIT.java:25[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': '5babddff4d06c5090fb67073aeb40b28f095baf0', 'path': 'x-pack/plugin/inference/qa/inference-service-tests/src/javaRestTest/java/org/elasticsearch/xpack/inference/DefaultElserIT.java', 'startline': 20, 'endline': 45}`
+
+
+[0m[36;1m[1;3mHere are lines 20 through 45.
+
+
+import static org.hamcrest.Matchers.hasSize;
+import static org.hamcrest.Matchers.is;
+import static org.hamcrest.Matchers.oneOf;
+
+public class DefaultElserIT extends InferenceBaseRestTest {
+
+    private TestThreadPool threadPool;
+
+    @Before
+    public void createThreadPool() {
+        threadPool = new TestThreadPool(DefaultElserIT.class.getSimpleName());
+    }
+
+    @After
+    public void tearDown() throws Exception {
+        threadPool.close();
+        super.tearDown();
+    }
+
+    @SuppressWarnings("unchecked")
+    public void testInferCreatesDefaultElser() throws IOException {
+        assumeTrue("Default config requires a feature flag", DefaultElserFeatureFlag.isEnabled());
+        var model = getModel(ElasticsearchInternalService.DEFAULT_ELSER_ID);
+        assertDefaultElserConfig(model);
+
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `validate` with `{'ref': '5babddff4d06c5090fb67073aeb40b28f095baf0', 'patch': '--- a/x-pack/plugin/inference/qa/inference-service-tests/src/javaRestTest/java/org/elasticsearch/xpack/inference/DefaultElserIT.java\n+++ b/x-pack/plugin/inference/qa/inference-service-tests/src/javaRestTest/java/org/elasticsearch/xpack/inference/DefaultElserIT.java\n@@ -33,7 +33,7 @@\n     @SuppressWarnings("unchecked")\n-    public void testInferCreatesDefaultElser() throws IOException {\n+    public void testInferDeploysDefaultElser() throws IOException {\n         assumeTrue("Default config requires a feature flag", DefaultElserFeatureFlag.isEnabled());\n         var model = getModel(ElasticsearchInternalService.DEFAULT_ELSER_ID);\n         assertDefaultElserConfig(model);\n'}`
+responded: I have found the target code block in the older version ref 5babddff4d06c5090fb67073aeb40b28f095baf0. The function "testInferCreatesDefaultElser" exists in the class DefaultElserIT and has the full content shown in the patch except for the function name change to "testInferDeploysDefaultElser".
+
+The patch is simple, just renaming the function testInferCreatesDefaultElser to testInferDeploysDefaultElser.
+
+Since the code logic and context are the same, only the function name is changed, I can create a patch that changes the function name accordingly.
+
+Next, I will generate the patch for this change.
+
+[0m[38;5;200m[1;3mPatch applied successfully
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3mI have reviewed the patch and the older version's code. The function testInferCreatesDefaultElser exists in the older version and the patch only renames the test method to testInferDeploysDefaultElser without other code changes.
+
+Here is the backported patch for the older version 5babddff4d06c5090fb67073aeb40b28f095baf0:
+
+```diff
+--- a/x-pack/plugin/inference/qa/inference-service-tests/src/javaRestTest/java/org/elasticsearch/xpack/inference/DefaultElserIT.java
++++ b/x-pack/plugin/inference/qa/inference-service-tests/src/javaRestTest/java/org/elasticsearch/xpack/inference/DefaultElserIT.java
+@@ -33,7 +33,7 @@
+     @SuppressWarnings("unchecked")
+-    public void testInferCreatesDefaultElser() throws IOException {
++    public void testInferDeploysDefaultElser() throws IOException {
+         assumeTrue("Default config requires a feature flag", DefaultElserFeatureFlag.isEnabled());
+         var model = getModel(ElasticsearchInternalService.DEFAULT_ELSER_ID);
+         assertDefaultElserConfig(model);
+```
+
+I validated this patch on the target ref and it applies cleanly without conflicts. This patch preserves the original logic and only updates the method name as in the newer version.
+
+If you want, I can assist you further with any other backports or explanations.[0m
+
+[1m> Finished chain.[0m
+2026-04-27 08:50:27,179 - backport - WARNING - Traceback (most recent call last):
+  File "/Users/hasangaranasinghe/Documents/FYP/PORTGPT/patch-backporting/src/tools/utils.py", line 301, in revise_patch
+    block_lines, block_fixed = revise_block(lines[last_line:])
+                               ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/hasangaranasinghe/Documents/FYP/PORTGPT/patch-backporting/src/tools/utils.py", line 251, in revise_block
+    (file_path_a == file_path_b and fixed_file_path_a == fixed_file_path_b)
+AssertionError
+
+
+
+[1m> Entering new AgentExecutor chain...[0m
+
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `git_history` with `{}`
+
+
+[0m[36;1m[1;3m4d5906422b6 [ML] Default inference endpoint for ELSER (#113873)
+
+diff --git a/x-pack/plugin/inference/qa/inference-service-tests/src/javaRestTest/java/org/elasticsearch/xpack/inference/DefaultElserIT.java b/x-pack/plugin/inference/qa/inference-service-tests/src/javaRestTest/java/org/elasticsearch/xpack/inference/DefaultElserIT.java
+--- /dev/null
++++ b/x-pack/plugin/inference/qa/inference-service-tests/src/javaRestTest/java/org/elasticsearch/xpack/inference/DefaultElserIT.java
+@@ -0,0 +67,4 @@
++            Matchers.is(Map.of("enabled", true, "min_number_of_allocations", 1, "max_number_of_allocations", 8))
++        );
++    }
++
+You need to do the following analysis based on the information in the last commit:
+Analyze the code logic of the context of the patch to be ported in this commit step by step.
+If code logic already existed before this commit, the patch context can be assumed to remain in a similar location. Use `locate` and `viewcode` to check your results.
+If code logic were added in this commit, then you need to `git_show` for further details.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `git_show` with `{}`
+
+
+[0m[33;1m[1;3mcommit 4d5906422b6696f1e083fae716ac2b1486de39ea
+Author: David Kyle <david.kyle@elastic.co>
+Date:   Fri Oct 4 10:27:10 2024 +0100
+
+    [ML] Default inference endpoint for ELSER (#113873)
+    
+    Adds a default configuration for the ELSER model. The config uses
+    adaptive allocations to automatically scale. Min number of allocations
+    is set to 1 for this PR, a follow up with change that to 0 and enable
+    scale from 0.
+    
+    This end point is always visible in the GET API.
+    
+    ```
+    GET _inference
+    
+    {
+      "endpoints": [
+        {
+          "inference_id": ".elser-2",
+          "task_type": "sparse_embedding",
+          "service": "elser",
+          "service_settings": {
+            "num_threads": 1,
+            "model_id": ".elser_model_2",
+            "adaptive_allocations": {
+              "enabled": true,
+              "min_number_of_allocations": 1,
+              "max_number_of_allocations": 8
+            }
+          },
+          "task_settings": {}
+        }
+      ]
+    }
+    ```
+    
+    The default configuration can be used against without any prior setup.
+    If the model is not downloaded it is automatically downloaded. If it is
+    not deployed it is deployed
+    
+    ```
+    POST _inference/.elser-2
+    {
+      "input": "Automagically deploy and infer"
+    }
+     ...
+    
+    {
+      "sparse_embedding": [
+        {
+          "is_truncated": false,
+          "embedding": {
+            "##fer": 2.2107008,
+            "deployment": 2.1624098,
+            "deploy": 2.144009,
+            "auto": 1.9384763,
+    ```
+    
+    ### Follow up tasks - [ ] Add default config for the E5 text embedding
+    model - [ ] Select platform specific version - [ ] Scale from 0 - [ ]
+    Chunking settings - What happens when the end point is deleted, can it
+    be deleted? - Can the default config be modified - chunking settings for
+    example? Probably not
+
+ docs/changelog/113873.yaml                         |   5 +
+ docs/reference/rest-api/usage.asciidoc             |   7 +-
+ .../elasticsearch/inference/InferenceService.java  |   9 +
+ .../org/elasticsearch/inference/UnparsedModel.java |  24 +++
+ .../elasticsearch/test/cluster/FeatureFlag.java    |   3 +-
+ x-pack/plugin/build.gradle                         |   1 +
+ .../action/StartTrainedModelDeploymentAction.java  |   4 +-
+ .../assignment/AdaptiveAllocationsSettings.java    |   4 +-
+ .../AdaptiveAllocationSettingsTests.java           |   2 +-
+ .../xpack/inference/CustomElandModelIT.java        |   2 +-
+ .../xpack/inference/DefaultElserIT.java            |  70 +++++++
+ .../xpack/inference/InferenceBaseRestTest.java     |  21 +-
+ .../xpack/inference/InferenceCrudIT.java           |   8 +-
+ .../inference/MockDenseInferenceServiceIT.java     |  11 +-
+ .../inference/MockSparseInferenceServiceIT.java    |  15 +-
+ .../xpack/inference/TextEmbeddingCrudIT.java       |   4 +-
+ .../inference/integration/ModelRegistryIT.java     | 215 ++++++++++++++++++++-
+ .../xpack/inference/DefaultElserFeatu
+Because the commit's code change maybe too long, so I generate the abstract of the code change to show you how code changed in this commit.
+Commit shows that the patch code in old version maybe in the file x-pack/plugin/inference/src/main/java/org/elasticsearch/xpack/inference/action/TransportInferenceAction.java around line number 77 to 81. The code is below
+                );
+                return;
+            }
+
+You can call `viewcode` and `locate_symbol` to find the relevant code based on this information step by step.[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `locate_symbol` with `{'ref': '5babddff4d06c5090fb67073aeb40b28f095baf0', 'symbol': 'DefaultElserIT'}`
+
+
+[0m[33;1m[1;3mx-pack/plugin/inference/qa/inference-service-tests/src/javaRestTest/java/org/elasticsearch/xpack/inference/DefaultElserIT.java:25[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': '5babddff4d06c5090fb67073aeb40b28f095baf0', 'path': 'x-pack/plugin/inference/qa/inference-service-tests/src/javaRestTest/java/org/elasticsearch/xpack/inference/DefaultElserIT.java', 'startline': 20, 'endline': 50}`
+
+
+[0m[36;1m[1;3mHere are lines 20 through 50.
+
+
+import static org.hamcrest.Matchers.hasSize;
+import static org.hamcrest.Matchers.is;
+import static org.hamcrest.Matchers.oneOf;
+
+public class DefaultElserIT extends InferenceBaseRestTest {
+
+    private TestThreadPool threadPool;
+
+    @Before
+    public void createThreadPool() {
+        threadPool = new TestThreadPool(DefaultElserIT.class.getSimpleName());
+    }
+
+    @After
+    public void tearDown() throws Exception {
+        threadPool.close();
+        super.tearDown();
+    }
+
+    @SuppressWarnings("unchecked")
+    public void testInferCreatesDefaultElser() throws IOException {
+        assumeTrue("Default config requires a feature flag", DefaultElserFeatureFlag.isEnabled());
+        var model = getModel(ElasticsearchInternalService.DEFAULT_ELSER_ID);
+        assertDefaultElserConfig(model);
+
+        var inputs = List.of("Hello World", "Goodnight moon");
+        var queryParams = Map.of("timeout", "120s");
+        var results = infer(ElasticsearchInternalService.DEFAULT_ELSER_ID, TaskType.SPARSE_EMBEDDING, inputs, queryParams);
+        var embeddings = (List<Map<String, Object>>) results.get("sparse_embedding");
+        assertThat(results.toString(), embeddings, hasSize(2));
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': '5babddff4d06c5090fb67073aeb40b28f095baf0', 'path': 'x-pack/plugin/inference/qa/inference-service-tests/src/javaRestTest/java/org/elasticsearch/xpack/inference/DefaultElserIT.java', 'startline': 51, 'endline': 70}`
+
+
+[0m[36;1m[1;3mHere are lines 51 through 70.
+
+    }
+
+    @SuppressWarnings("unchecked")
+    private static void assertDefaultElserConfig(Map<String, Object> modelConfig) {
+        assertEquals(modelConfig.toString(), ElasticsearchInternalService.DEFAULT_ELSER_ID, modelConfig.get("inference_id"));
+        assertEquals(modelConfig.toString(), ElasticsearchInternalService.NAME, modelConfig.get("service"));
+        assertEquals(modelConfig.toString(), TaskType.SPARSE_EMBEDDING.toString(), modelConfig.get("task_type"));
+
+        var serviceSettings = (Map<String, Object>) modelConfig.get("service_settings");
+        assertThat(modelConfig.toString(), serviceSettings.get("model_id"), is(oneOf(".elser_model_2", ".elser_model_2_linux-x86_64")));
+        assertEquals(modelConfig.toString(), 1, serviceSettings.get("num_threads"));
+
+        var adaptiveAllocations = (Map<String, Object>) serviceSettings.get("adaptive_allocations");
+        assertThat(
+            modelConfig.toString(),
+            adaptiveAllocations,
+            Matchers.is(Map.of("enabled", true, "min_number_of_allocations", 1, "max_number_of_allocations", 8))
+        );
+    }
+}
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3mThe code in the older version at ref 5babddff4d06c5090fb67073aeb40b28f095baf0 in the file `x-pack/plugin/inference/qa/inference-service-tests/src/javaRestTest/java/org/elasticsearch/xpack/inference/DefaultElserIT.java` already contains a similar test structure and helper function for the default ELSER model inference endpoint.
+
+The new patch adds a new test method `testInferDeploysDefaultE5` and a helper method `assertDefaultE5Config` for the multilingual-e5-small model default inference endpoint. The existing code structure for the ELSER model test and helper method can serve as a direct template for adding the new test and helper method for the E5 model.
+
+The changes required for backporting are:
+- Add the new test method `testInferDeploysDefaultE5` to the class.
+- Add the new helper method `assertDefaultE5Config` to the class.
+- Adjust class name in the patch header from `DefaultEndPointsIT` to `DefaultElserIT` (as per old version).
+- Keep the existing imports and class structure intact.
+
+Next, I will generate the patch for the old version based on this understanding and the code style of the old version.
+
+I will now generate the patch for the old version.[0m
+
+[1m> Finished chain.[0m
+2026-04-27 08:50:46,998 - backport - ERROR - Reach max_iterations for hunk 3

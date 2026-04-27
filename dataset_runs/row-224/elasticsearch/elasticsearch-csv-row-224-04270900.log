@@ -1,0 +1,37 @@
+2026-04-27 09:00:47,222 - backport - INFO - Using openrouter API: https://openrouter.ai/api/v1 (model: openai/gpt-4.1-mini)
+2026-04-27 09:00:48,433 - backport - INFO - Aplly all hunks in the patch      PASS
+2026-04-27 09:00:48,857 - backport - INFO - Successfully backport the patch to the target release e1e9e8363bf251ededcb92e52b45b0315317a3aa
+2026-04-27 09:00:48,859 - backport - INFO - --- a/server/src/main/java/org/elasticsearch/index/mapper/DocumentParser.java
++++ b/server/src/main/java/org/elasticsearch/index/mapper/DocumentParser.java
+@@ -646,7 +646,7 @@ public final class DocumentParser {
+                         context.addIgnoredField(
+                             IgnoredSourceFieldMapper.NameValue.fromContext(
+                                 context,
+-                                currentFieldName,
++                                context.path().pathAsText(currentFieldName),
+                                 XContentDataHelper.encodeToken(context.parser())
+                             )
+                         );
+
+--- a/server/src/test/java/org/elasticsearch/index/mapper/IgnoredSourceFieldMapperTests.java
++++ b/server/src/test/java/org/elasticsearch/index/mapper/IgnoredSourceFieldMapperTests.java
+@@ -221,6 +221,18 @@ public class IgnoredSourceFieldMapperTests extends MapperServiceTestCase {
+         );
+     }
+ 
++    public void testIgnoredDynamicArrayNestedInObject() throws IOException {
++        int intValue = randomInt();
++
++        String syntheticSource = getSyntheticSourceWithFieldLimit(b -> {
++            b.startObject("bar");
++            b.field("a", List.of(intValue, intValue));
++            b.endObject();
++        });
++        assertEquals(String.format(Locale.ROOT, """
++            {"bar":{"a":[%s,%s]}}""", intValue, intValue), syntheticSource);
++    }
++
+     public void testDisabledRootObjectSingleField() throws IOException {
+         String name = randomAlphaOfLength(20);
+         DocumentMapper documentMapper = createMapperService(topMapping(b -> {
+

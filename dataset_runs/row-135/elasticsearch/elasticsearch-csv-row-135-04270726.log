@@ -1,0 +1,436 @@
+2026-04-27 07:26:11,611 - backport - INFO - Using openrouter API: https://openrouter.ai/api/v1 (model: openai/gpt-4.1-mini)
+
+
+[1m> Entering new AgentExecutor chain...[0m
+
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `git_history` with `{}`
+
+
+[0m[36;1m[1;3m inside <>
+             clusterAndIndexAsIndexPattern(command, "cluster*:<logstash-{now/D}*>");
+             clusterAndIndexAsIndexPattern(command, "cluster*:*");
+             clusterAndIndexAsIndexPattern(command, "*:index*");
+             clusterAndIndexAsIndexPattern(command, "*:*");
++            if (EsqlCapabilities.Cap.INDEX_COMPONENT_SELECTORS.isEnabled()) {
++                assertStringAsIndexPattern("foo::data", command + " foo::data");
++                assertStringAsIndexPattern("foo::failures", command + " foo::failures");
++                assertStringAsIndexPattern("cluster:foo::failures", command + " cluster:\"foo::failures\"");
++                assertStringAsIndexPattern("*,-foo::data", command + " *, \"-foo\"::data");
+5ed47bed8b9 Better index pattern randomization (#120788)
+
+diff --git a/x-pack/plugin/esql/src/test/java/org/elasticsearch/xpack/esql/parser/StatementParserTests.java b/x-pack/plugin/esql/src/test/java/org/elasticsearch/xpack/esql/parser/StatementParserTests.java
+--- a/x-pack/plugin/esql/src/test/java/org/elasticsearch/xpack/esql/parser/StatementParserTests.java
++++ b/x-pack/plugin/esql/src/test/java/org/elasticsearch/xpack/esql/parser/StatementParserTests.java
+@@ -487,9 +487,10 @@
+             assertStringAsIndexPattern("cluster:index|pattern", command + " cluster:\"index|pattern\"");
+             assertStringAsIndexPattern("*:index|pattern", command + " \"*:index|pattern\"");
+             clusterAndIndexAsIndexPattern(command, "cluster:index");
+             clusterAndIndexAsIndexPattern(command, "cluster:.index");
+             clusterAndIndexAsIndexPattern(command, "cluster*:index*");
+-            clusterAndIndexAsIndexPattern(command, "cluster*:<logstash-{now/D}>*");
++            clusterAndIndexAsIndexPattern(command, "cluster*:<logstash-{now/D}>*");// this is not a valid pattern, * should be inside <>
++            clusterAndIndexAsIndexPattern(command, "cluster*:<logstash-{now/D}*>");
+             clusterAndIndexAsIndexPattern(command, "cluster*:*");
+             clusterAndIndexAsIndexPattern(command, "*:index*");
+             clusterAndIndexAsIndexPattern(command, "*:*");
+64ae0aea450 [ES|QL] Skip validating remote cluster index names in parser (#114271)
+
+diff --git a/x-pack/plugin/esql/src/test/java/org/elasticsearch/xpack/esql/parser/StatementParserTests.java b/x-pack/plugin/esql/src/test/java/org/elasticsearch/xpack/esql/parser/StatementParserTests.java
+--- a/x-pack/plugin/esql/src/test/java/org/elasticsearch/xpack/esql/parser/StatementParserTests.java
++++ b/x-pack/plugin/esql/src/test/java/org/elasticsearch/xpack/esql/parser/StatementParserTests.java
+@@ -460,6 +466,9 @@
+-            assertStringAsIndexPattern("cluster:index", command + " cluster:index");
+-            assertStringAsIndexPattern("cluster:.index", command + " cluster:.index");
+-            assertStringAsIndexPattern("cluster*:index*", command + " cluster*:index*");
+-            assertStringAsIndexPattern("cluster*:*", command + " cluster*:*");
+-            assertStringAsIndexPattern("*:index*", command + " *:index*");
+-            assertStringAsIndexPattern("*:*", command + " *:*");
++            assertStringAsIndexPattern("cluster:index|pattern", command + " cluster:\"index|pattern\"");
++            assertStringAsIndexPattern("*:index|pattern", command + " \"*:index|pattern\"");
++            clusterAndIndexAsIndexPattern(command, "cluster:index");
++            clusterAndIndexAsIndexPattern(command, "cluster:.index");
++            clusterAndIndexAsIndexPattern(command, "cluster*:index*");
++            clusterAndIndexAsIndexPattern(command, "cluster*:<logstash-{now/D}>*");
++            clusterAndIndexAsIndexPattern(command, "cluster*:*");
++            clusterAndIndexAsIndexPattern(command, "*:index*");
++            clusterAndIndexAsIndexPattern(command, "*:*");
+91dca8dab9f [ES|QL] Validate index name in parser (#112081)
+
+diff --git a/x-pack/plugin/esql/src/test/java/org/elasticsearch/xpack/esql/parser/StatementParserTests.java b/x-pack/plugin/esql/src/test/java/org/elasticsearch/xpack/esql/parser/StatementParserTests.java
+--- a/x-pack/plugin/esql/src/test/java/org/elasticsearch/xpack/esql/parser/StatementParserTests.java
++++ b/x-pack/plugin/esql/src/test/java/org/elasticsearch/xpack/esql/parser/StatementParserTests.java
+@@ -389,8 +392,6 @@
+             assertStringAsIndexPattern("cluster:index", command + " cluster:index");
+-            assertStringAsIndexPattern("cluster:index|pattern", command + " cluster:\"index|pattern\"");
+             assertStringAsIndexPattern("cluster:.index", command + " cluster:.index");
+             assertStringAsIndexPattern("cluster*:index*", command + " cluster*:index*");
+             assertStringAsIndexPattern("cluster*:*", command + " cluster*:*");
+             assertStringAsIndexPattern("*:index*", command + " *:index*");
+-            assertStringAsIndexPattern("*:index|pattern", command + " *:\"index|pattern\"");
+             assertStringAsIndexPattern("*:*", command + " *:*")
+You need to do the following analysis based on the information in the last commit:
+Analyze the code logic of the context of the patch to be ported in this commit step by step.
+If code logic already existed before this commit, the patch context can be assumed to remain in a similar location. Use `locate` and `viewcode` to check your results.
+If code logic were added in this commit, then you need to `git_show` for further details.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `locate_symbol` with `{'ref': '4c591f5dfa917bec7d65238499a6032751449197', 'symbol': 'StatementParserTests'}`
+responded: The git_history result shows several commits related to index pattern validation and changes in the test file StatementParserTests.java. It indicates that some of the code in the patch to be backported was introduced or modified in these commits.
+
+Key observations:
+- The patch we want to backport adds semantic validation for index patterns, such as checking for invalid characters and quoting rules.
+- The history shows that some assertions about index patterns with invalid characters and quoting were added in a commit with message "[ES|QL] Validate index name in parser (#112081)".
+- Another commit "[ES|QL] Skip validating remote cluster index names in parser (#114271)" adds some cluster and index pattern assertions.
+- The latest commit in the history "[ES|QL] Better index pattern randomization (#120788)" added more assertions related to index patterns, including those with "::" selectors.
+
+Since the patch we want to backport contains new assertions like expectError and expectErrorWithLineNumber for invalid index names and patterns, and these are not fully present in the older code snippet, it is likely that these assertions are new additions after the older commit 4c591f5dfa917bec7d65238499a6032751449197.
+
+To confirm, I will locate the method containing these assertions in the older commit to see how the test method looks in that commit. This will help me identify the exact place to add the new assertions and adapt the patch accordingly.
+
+I will locate the test method in the older commit 4c591f5dfa917bec7d65238499a6032751449197 by searching for the symbol "clusterAndIndexAsIndexPattern" or the test class "StatementParserTests" to find the relevant test method.
+
+I will start by locating the class "StatementParserTests" in the older commit.
+
+[0m[33;1m[1;3mx-pack/plugin/esql/src/test/java/org/elasticsearch/xpack/esql/parser/StatementParserTests.java:112[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': '4c591f5dfa917bec7d65238499a6032751449197', 'path': 'x-pack/plugin/esql/src/test/java/org/elasticsearch/xpack/esql/parser/StatementParserTests.java', 'startline': 490, 'endline': 530}`
+
+
+[0m[36;1m[1;3mHere are lines 490 through 530.
+
+            );
+            assertStringAsIndexPattern(
+                "-<logstash-{now/M{yyyy.MM}}>,-<-logstash-{now/M{yyyy.MM}}>,"
+                    + "-<logstash-{now/d{yyyy.MM.dd|+12:00}}>,-<-logstash-{now/d{yyyy.MM.dd|+12:00}}>",
+                command
+                    + " -<logstash-{now/M{yyyy.MM}}>, -<-logstash-{now/M{yyyy.MM}}>, "
+                    + "\"-<logstash-{now/d{yyyy.MM.dd|+12:00}}>\", \"-<-logstash-{now/d{yyyy.MM.dd|+12:00}}>\""
+            );
+            assertStringAsIndexPattern("foo,test,xyz", command + " \"\"\"foo\"\"\",   test,\"xyz\"");
+            assertStringAsIndexPattern("`backtick`,``multiple`back``ticks```", command + " `backtick`, ``multiple`back``ticks```");
+            assertStringAsIndexPattern("test,metadata,metaata,.metadata", command + " test,\"metadata\", metaata, .metadata");
+            assertStringAsIndexPattern(".dot", command + " .dot");
+
+            String lineNumber = command.equals("FROM") ? "line 1:14: " : "line 1:17: ";
+            expectErrorWithLineNumber(
+                command + " cluster:\"index|pattern\"",
+                " cluster:\"index|pattern\"",
+                lineNumber,
+                command.equals("FROM")
+                    ? "mismatched input '\"index|pattern\"' expecting UNQUOTED_SOURCE"
+                    : "missing UNQUOTED_SOURCE at '\"index|pattern\"'"
+            );
+            assertStringAsIndexPattern("*:index|pattern", command + " \"*:index|pattern\"");
+            clusterAndIndexAsIndexPattern(command, "cluster:index");
+            clusterAndIndexAsIndexPattern(command, "cluster:.index");
+            clusterAndIndexAsIndexPattern(command, "cluster*:index*");
+            clusterAndIndexAsIndexPattern(command, "cluster*:<logstash-{now/D}>*");// this is not a valid pattern, * should be inside <>
+            clusterAndIndexAsIndexPattern(command, "cluster*:<logstash-{now/D}*>");
+            clusterAndIndexAsIndexPattern(command, "cluster*:*");
+            clusterAndIndexAsIndexPattern(command, "*:index*");
+            clusterAndIndexAsIndexPattern(command, "*:*");
+            if (EsqlCapabilities.Cap.INDEX_COMPONENT_SELECTORS.isEnabled()) {
+                assertStringAsIndexPattern("foo::data", command + " foo::data");
+                assertStringAsIndexPattern("foo::failures", command + " foo::failures");
+                expectErrorWithLineNumber(
+                    command + " cluster:\"foo::data\"",
+                    " cluster:\"foo::data\"",
+                    lineNumber,
+                    command.equals("FROM")
+                        ? "mismatched input '\"foo::data\"' expecting UNQUOTED_SOURCE"
+                        : "missing UNQUOTED_SOURCE at '\"foo::data\""
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `git_history` with `{}`
+responded: The code snippet I viewed from the older version (ref 4c591f5dfa917bec7d65238499a6032751449197) at lines 490-530 of StatementParserTests.java contains most of the context lines from the patch in the newer version, including the call to expectErrorWithLineNumber for "cluster:\"foo::data\"".
+
+However, the new patch added some new assertions and expectError calls related to invalid index names containing '|' and some additional error expectations with line numbers that are not present in this older snippet.
+
+Given the close similarity but some additions, it suggests the patch in the newer version added new test cases and error expectations that don't exist in the older version, but the existing context is similar.
+
+Next, I want to check the git history of this file around these lines to confirm if these new test cases were added after the older ref or if they existed before. This will help me determine if the patch content needs to be backported as new additions or if they already exist in the older ref.
+
+I will run git_history on this file around these lines to check the change history.
+
+[0m[36;1m[1;3m inside <>
+             clusterAndIndexAsIndexPattern(command, "cluster*:<logstash-{now/D}*>");
+             clusterAndIndexAsIndexPattern(command, "cluster*:*");
+             clusterAndIndexAsIndexPattern(command, "*:index*");
+             clusterAndIndexAsIndexPattern(command, "*:*");
++            if (EsqlCapabilities.Cap.INDEX_COMPONENT_SELECTORS.isEnabled()) {
++                assertStringAsIndexPattern("foo::data", command + " foo::data");
++                assertStringAsIndexPattern("foo::failures", command + " foo::failures");
++                assertStringAsIndexPattern("cluster:foo::failures", command + " cluster:\"foo::failures\"");
++                assertStringAsIndexPattern("*,-foo::data", command + " *, \"-foo\"::data");
+5ed47bed8b9 Better index pattern randomization (#120788)
+
+diff --git a/x-pack/plugin/esql/src/test/java/org/elasticsearch/xpack/esql/parser/StatementParserTests.java b/x-pack/plugin/esql/src/test/java/org/elasticsearch/xpack/esql/parser/StatementParserTests.java
+--- a/x-pack/plugin/esql/src/test/java/org/elasticsearch/xpack/esql/parser/StatementParserTests.java
++++ b/x-pack/plugin/esql/src/test/java/org/elasticsearch/xpack/esql/parser/StatementParserTests.java
+@@ -487,9 +487,10 @@
+             assertStringAsIndexPattern("cluster:index|pattern", command + " cluster:\"index|pattern\"");
+             assertStringAsIndexPattern("*:index|pattern", command + " \"*:index|pattern\"");
+             clusterAndIndexAsIndexPattern(command, "cluster:index");
+             clusterAndIndexAsIndexPattern(command, "cluster:.index");
+             clusterAndIndexAsIndexPattern(command, "cluster*:index*");
+-            clusterAndIndexAsIndexPattern(command, "cluster*:<logstash-{now/D}>*");
++            clusterAndIndexAsIndexPattern(command, "cluster*:<logstash-{now/D}>*");// this is not a valid pattern, * should be inside <>
++            clusterAndIndexAsIndexPattern(command, "cluster*:<logstash-{now/D}*>");
+             clusterAndIndexAsIndexPattern(command, "cluster*:*");
+             clusterAndIndexAsIndexPattern(command, "*:index*");
+             clusterAndIndexAsIndexPattern(command, "*:*");
+64ae0aea450 [ES|QL] Skip validating remote cluster index names in parser (#114271)
+
+diff --git a/x-pack/plugin/esql/src/test/java/org/elasticsearch/xpack/esql/parser/StatementParserTests.java b/x-pack/plugin/esql/src/test/java/org/elasticsearch/xpack/esql/parser/StatementParserTests.java
+--- a/x-pack/plugin/esql/src/test/java/org/elasticsearch/xpack/esql/parser/StatementParserTests.java
++++ b/x-pack/plugin/esql/src/test/java/org/elasticsearch/xpack/esql/parser/StatementParserTests.java
+@@ -460,6 +466,9 @@
+-            assertStringAsIndexPattern("cluster:index", command + " cluster:index");
+-            assertStringAsIndexPattern("cluster:.index", command + " cluster:.index");
+-            assertStringAsIndexPattern("cluster*:index*", command + " cluster*:index*");
+-            assertStringAsIndexPattern("cluster*:*", command + " cluster*:*");
+-            assertStringAsIndexPattern("*:index*", command + " *:index*");
+-            assertStringAsIndexPattern("*:*", command + " *:*");
++            assertStringAsIndexPattern("cluster:index|pattern", command + " cluster:\"index|pattern\"");
++            assertStringAsIndexPattern("*:index|pattern", command + " \"*:index|pattern\"");
++            clusterAndIndexAsIndexPattern(command, "cluster:index");
++            clusterAndIndexAsIndexPattern(command, "cluster:.index");
++            clusterAndIndexAsIndexPattern(command, "cluster*:index*");
++            clusterAndIndexAsIndexPattern(command, "cluster*:<logstash-{now/D}>*");
++            clusterAndIndexAsIndexPattern(command, "cluster*:*");
++            clusterAndIndexAsIndexPattern(command, "*:index*");
++            clusterAndIndexAsIndexPattern(command, "*:*");
+91dca8dab9f [ES|QL] Validate index name in parser (#112081)
+
+diff --git a/x-pack/plugin/esql/src/test/java/org/elasticsearch/xpack/esql/parser/StatementParserTests.java b/x-pack/plugin/esql/src/test/java/org/elasticsearch/xpack/esql/parser/StatementParserTests.java
+--- a/x-pack/plugin/esql/src/test/java/org/elasticsearch/xpack/esql/parser/StatementParserTests.java
++++ b/x-pack/plugin/esql/src/test/java/org/elasticsearch/xpack/esql/parser/StatementParserTests.java
+@@ -389,8 +392,6 @@
+             assertStringAsIndexPattern("cluster:index", command + " cluster:index");
+-            assertStringAsIndexPattern("cluster:index|pattern", command + " cluster:\"index|pattern\"");
+             assertStringAsIndexPattern("cluster:.index", command + " cluster:.index");
+             assertStringAsIndexPattern("cluster*:index*", command + " cluster*:index*");
+             assertStringAsIndexPattern("cluster*:*", command + " cluster*:*");
+             assertStringAsIndexPattern("*:index*", command + " *:index*");
+-            assertStringAsIndexPattern("*:index|pattern", command + " *:\"index|pattern\"");
+             assertStringAsIndexPattern("*:*", command + " *:*")
+You need to do the following analysis based on the information in the last commit:
+Analyze the code logic of the context of the patch to be ported in this commit step by step.
+If code logic already existed before this commit, the patch context can be assumed to remain in a similar location. Use `locate` and `viewcode` to check your results.
+If code logic were added in this commit, then you need to `git_show` for further details.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `git_show` with `{}`
+
+
+[0m[33;1m[1;3mcommit 91dca8dab9f3478447de3b47a5a243a61bd68ee9
+Author: Fang Xing <155562079+fang-xing-esql@users.noreply.github.com>
+Date:   Wed Oct 2 16:27:03 2024 -0400
+
+    [ES|QL] Validate index name in parser (#112081)
+    
+    * validate index name in parser
+
+ docs/changelog/112081.yaml                         |   5 +
+ .../xpack/esql/core/util/StringUtils.java          |   1 +
+ .../xpack/esql/parser/IdentifierBuilder.java       |  50 +++++
+ .../esql/parser/AbstractStatementParserTests.java  |  13 ++
+ .../xpack/esql/parser/StatementParserTests.java    | 227 +++++++++++++++++++--
+ 5 files changed, 284 insertions(+), 12 deletions(-)
+[IMPORTANT] The relevant code shown by `git_history` is not fully `+` lines.
+[IMPORTANT] This means that the code in question was not added or migrated in this commit.
+[IMPORTANT] Please think step by step and check the abstract below carefully. If error exists in abstract, please ignore the info below.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3mThe patch we want to backport modifies a test file `StatementParserTests.java` adding more assertions and error expectations related to index pattern validation in ES|QL. 
+
+From the git history analysis and git show of the relevant commits, the code logic related to index pattern validation already existed before the target older ref (4c591f5dfa917bec7d65238499a6032751449197). The patch in the newer ref adds new assertions and error checks related to invalid index names and specific error messages.
+
+The similar code block in the older ref is located around lines 490-530 in `StatementParserTests.java` as confirmed by `locate_symbol` and `viewcode`.
+
+The main differences to be backported are:
+- Changing `assertStringAsIndexPattern("*:index|pattern", command + " \"*:index|pattern\"");` to an error expectation with message about invalid index name.
+- Adding error expectations for `"cluster:index|pattern"` and `*:"index|pattern"`.
+- Adding error expectations with line number for `*, "-foo"::data`.
+
+The context lines around these changes exist in the older version, so we can adapt the patch to the older codebase by changing the assertions and adding new error expectations accordingly.
+
+Next step is to craft the patch for the older ref based on the older version code snippet and the changes from the newer patch.[0m
+
+[1m> Finished chain.[0m
+2026-04-27 07:27:18,077 - backport - ERROR - Reach max_iterations for hunk 4

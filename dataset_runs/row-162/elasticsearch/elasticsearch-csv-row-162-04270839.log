@@ -1,0 +1,895 @@
+2026-04-27 08:39:07,042 - backport - INFO - Using openrouter API: https://openrouter.ai/api/v1 (model: openai/gpt-4.1-mini)
+
+
+[1m> Entering new AgentExecutor chain...[0m
+
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `git_history` with `{}`
+
+
+[0m[36;1m[1;3m1b1296ef54e Move scoring in ES|QL out of snapshot (#120354)
+
+diff --git a/x-pack/plugin/esql/src/main/java/org/elasticsearch/xpack/esql/parser/LogicalPlanBuilder.java b/x-pack/plugin/esql/src/main/java/org/elasticsearch/xpack/esql/parser/LogicalPlanBuilder.java
+--- a/x-pack/plugin/esql/src/main/java/org/elasticsearch/xpack/esql/parser/LogicalPlanBuilder.java
++++ b/x-pack/plugin/esql/src/main/java/org/elasticsearch/xpack/esql/parser/LogicalPlanBuilder.java
+@@ -11,11 +11,10 @@
+ import org.antlr.v4.runtime.Token;
+ import org.antlr.v4.runtime.tree.ParseTree;
+ import org.elasticsearch.Build;
+ import org.elasticsearch.core.Tuple;
+ import org.elasticsearch.dissect.DissectException;
+ import org.elasticsearch.dissect.DissectParser;
+ import org.elasticsearch.index.IndexMode;
+ import org.elasticsearch.xpack.esql.VerificationException;
+-import org.elasticsearch.xpack.esql.action.EsqlCapabilities;
+ import org.elasticsearch.xpack.esql.common.Failure;
+ import org.elasticsearch.xpack.esql.core.expression.Alias;
+146cb39143f ESQL - enabling scoring with METADATA _score (#113120)
+
+diff --git a/x-pack/plugin/esql/src/main/java/org/elasticsearch/xpack/esql/parser/LogicalPlanBuilder.java b/x-pack/plugin/esql/src/main/java/org/elasticsearch/xpack/esql/parser/LogicalPlanBuilder.java
+--- a/x-pack/plugin/esql/src/main/java/org/elasticsearch/xpack/esql/parser/LogicalPlanBuilder.java
++++ b/x-pack/plugin/esql/src/main/java/org/elasticsearch/xpack/esql/parser/LogicalPlanBuilder.java
+@@ -11,10 +11,11 @@
+ import org.antlr.v4.runtime.Token;
+ import org.antlr.v4.runtime.tree.ParseTree;
+ import org.elasticsearch.Build;
+ import org.elasticsearch.core.Tuple;
+ import org.elasticsearch.dissect.DissectException;
+ import org.elasticsearch.dissect.DissectParser;
+ import org.elasticsearch.index.IndexMode;
+ import org.elasticsearch.xpack.esql.VerificationException;
++import org.elasticsearch.xpack.esql.action.EsqlCapabilities;
+ import org.elasticsearch.xpack.esql.common.Failure;
+ import org.elasticsearch.xpack.esql.core.expression.Alias
+You need to do the following analysis based on the information in the last commit:
+Analyze the code logic of the context of the patch to be ported in this commit step by step.
+If code logic already existed before this commit, the patch context can be assumed to remain in a similar location. Use `locate` and `viewcode` to check your results.
+If code logic were added in this commit, then you need to `git_show` for further details.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `locate_symbol` with `{'ref': 'b074d13e722b650343c00581aa410257d3623d33', 'symbol': 'LogicalPlanBuilder'}`
+responded: From the git history, I see that the import lines in the older ref b074d13e722b650343c00581aa410257d3623d33 have some differences compared to the newer ref 52e0f21bdd0e6446c8de380b58d13d880b430dbd.
+
+Specifically:
+- The older ref has `import org.elasticsearch.xpack.esql.action.EsqlCapabilities;` which was removed in the newer ref.
+- The newer ref added `import org.elasticsearch.common.Strings;` and `import org.elasticsearch.transport.RemoteClusterAware;` which are not present in the older ref.
+
+The patch to be backported adds these two imports:
+```java
++import org.elasticsearch.common.Strings;
++import org.elasticsearch.transport.RemoteClusterAware;
+```
+
+Since the patch only changes imports, the main question is whether these classes exist in the older ref and where exactly in the import section they should be added.
+
+I want to verify if `Strings` and `RemoteClusterAware` exist in the older ref and confirm the exact file location of `LogicalPlanBuilder.java` in the older ref to accurately place these imports.
+
+Next, I will locate the `LogicalPlanBuilder` class in the older ref b074d13e722b650343c00581aa410257d3623d33 to confirm the file path and line numbers for the imports.
+
+[0m[33;1m[1;3mx-pack/plugin/eql/src/main/java/org/elasticsearch/xpack/eql/parser/LogicalPlanBuilder.java:70
+x-pack/plugin/eql/src/main/java/org/elasticsearch/xpack/eql/parser/LogicalPlanBuilder.java:80
+x-pack/plugin/esql/src/main/java/org/elasticsearch/xpack/esql/parser/LogicalPlanBuilder.java:89
+x-pack/plugin/esql/src/main/java/org/elasticsearch/xpack/esql/parser/LogicalPlanBuilder.java:98
+x-pack/plugin/sql/src/main/java/org/elasticsearch/xpack/sql/parser/LogicalPlanBuilder.java:72
+x-pack/plugin/sql/src/main/java/org/elasticsearch/xpack/sql/parser/LogicalPlanBuilder.java:85[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': 'b074d13e722b650343c00581aa410257d3623d33', 'path': 'x-pack/plugin/esql/src/main/java/org/elasticsearch/xpack/esql/parser/LogicalPlanBuilder.java', 'startline': 1, 'endline': 30}`
+
+
+[0m[36;1m[1;3mHere are lines 1 through 30.
+
+/*
+ * Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
+ * or more contributor license agreements. Licensed under the Elastic License
+ * 2.0; you may not use this file except in compliance with the Elastic License
+ * 2.0.
+ */
+
+package org.elasticsearch.xpack.esql.parser;
+
+import org.antlr.v4.runtime.ParserRuleContext;
+import org.antlr.v4.runtime.Token;
+import org.antlr.v4.runtime.tree.ParseTree;
+import org.elasticsearch.Build;
+import org.elasticsearch.core.Tuple;
+import org.elasticsearch.dissect.DissectException;
+import org.elasticsearch.dissect.DissectParser;
+import org.elasticsearch.index.IndexMode;
+import org.elasticsearch.xpack.esql.VerificationException;
+import org.elasticsearch.xpack.esql.action.EsqlCapabilities;
+import org.elasticsearch.xpack.esql.common.Failure;
+import org.elasticsearch.xpack.esql.core.expression.Alias;
+import org.elasticsearch.xpack.esql.core.expression.Attribute;
+import org.elasticsearch.xpack.esql.core.expression.EmptyAttribute;
+import org.elasticsearch.xpack.esql.core.expression.Expression;
+import org.elasticsearch.xpack.esql.core.expression.Expressions;
+import org.elasticsearch.xpack.esql.core.expression.FoldContext;
+import org.elasticsearch.xpack.esql.core.expression.Literal;
+import org.elasticsearch.xpack.esql.core.expression.MetadataAttribute;
+import org.elasticsearch.xpack.esql.core.expression.NamedExpression;
+import org.elasticsearch.xpack.esql.core.expression.UnresolvedAttribute;
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': 'b074d13e722b650343c00581aa410257d3623d33', 'path': 'x-pack/plugin/esql/src/main/java/org/elasticsearch/xpack/esql/parser/LogicalPlanBuilder.java', 'startline': 10, 'endline': 21}`
+
+
+[0m[36;1m[1;3mHere are lines 10 through 21.
+
+import org.antlr.v4.runtime.ParserRuleContext;
+import org.antlr.v4.runtime.Token;
+import org.antlr.v4.runtime.tree.ParseTree;
+import org.elasticsearch.Build;
+import org.elasticsearch.core.Tuple;
+import org.elasticsearch.dissect.DissectException;
+import org.elasticsearch.dissect.DissectParser;
+import org.elasticsearch.index.IndexMode;
+import org.elasticsearch.xpack.esql.VerificationException;
+import org.elasticsearch.xpack.esql.action.EsqlCapabilities;
+import org.elasticsearch.xpack.esql.common.Failure;
+import org.elasticsearch.xpack.esql.core.expression.Alias;
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `locate_symbol` with `{'ref': 'b074d13e722b650343c00581aa410257d3623d33', 'symbol': 'Strings'}`
+responded: The patch to be backported adds two import statements:
+
+```java
+import org.elasticsearch.common.Strings;
+import org.elasticsearch.transport.RemoteClusterAware;
+```
+
+In the older version (ref b074d13e7...), the current imports do not include these two imports. The rest of the imports are mostly the same, except the older version has one extra import:
+
+```java
+import org.elasticsearch.xpack.esql.action.EsqlCapabilities;
+```
+
+which is missing in the patch's newer version snippet.
+
+So, the patch's import changes are:
+
+- Add import org.elasticsearch.common.Strings;
+- Add import org.elasticsearch.transport.RemoteClusterAware;
+
+Given the imports are at the top of the file and the older version's imports are mostly the same except for these two missing imports, the patch for this hunk in the older version should be straightforward: add these two import lines after the existing imports, keeping the context lines intact.
+
+I will generate the patch accordingly.
+
+Before that, I will validate if the two packages/classes `Strings` and `RemoteClusterAware` exist in the older version. I will check if `org.elasticsearch.common.Strings` and `org.elasticsearch.transport.RemoteClusterAware` exist in the older version.
+
+I will locate `Strings` and `RemoteClusterAware` in the older version ref b074d13e7... to confirm their existence.
+
+I will start with `Strings`.
+
+[0m[33;1m[1;3mdocs/painless/painless-lang-spec/painless-literals.asciidoc:84
+docs/reference/eql/syntax.asciidoc:408
+libs/core/src/main/java/org/elasticsearch/core/Strings.java:17
+server/src/main/java/org/elasticsearch/common/Strings.java:43
+server/src/main/java/org/elasticsearch/common/Strings.java:698
+server/src/main/java/org/elasticsearch/index/fielddata/ScriptDocValues.java:471
+server/src/main/java/org/elasticsearch/index/fielddata/ScriptDocValues.java:473
+server/src/main/java/org/elasticsearch/injection/guice/internal/Strings.java:24
+server/src/main/java/org/elasticsearch/injection/guice/internal/Strings.java:25
+x-pack/plugin/watcher/src/main/java/org/elasticsearch/xpack/watcher/support/Strings.java:11
+x-pack/plugin/watcher/src/main/java/org/elasticsearch/xpack/watcher/support/Strings.java:12[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `locate_symbol` with `{'ref': 'b074d13e722b650343c00581aa410257d3623d33', 'symbol': 'RemoteClusterAware'}`
+
+
+[0m[33;1m[1;3mserver/src/main/java/org/elasticsearch/transport/RemoteClusterAware.java:34
+server/src/main/java/org/elasticsearch/transport/RemoteClusterAware.java:46[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `validate` with `{'ref': 'b074d13e722b650343c00581aa410257d3623d33', 'patch': '--- a/x-pack/plugin/esql/src/main/java/org/elasticsearch/xpack/esql/parser/LogicalPlanBuilder.java\n+++ b/x-pack/plugin/esql/src/main/java/org/elasticsearch/xpack/esql/parser/LogicalPlanBuilder.java\n@@ -10,11 +10,13 @@\n-import org.antlr.v4.runtime.ParserRuleContext;\n-import org.antlr.v4.runtime.Token;\n-import org.antlr.v4.runtime.tree.ParseTree;\n-import org.elasticsearch.Build;\n-import org.elasticsearch.core.Tuple;\n-import org.elasticsearch.dissect.DissectException;\n-import org.elasticsearch.dissect.DissectParser;\n-import org.elasticsearch.index.IndexMode;\n-import org.elasticsearch.xpack.esql.VerificationException;\n-import org.elasticsearch.xpack.esql.action.EsqlCapabilities;\n-import org.elasticsearch.xpack.esql.common.Failure;\n-import org.elasticsearch.xpack.esql.core.expression.Alias;\n+import org.antlr.v4.runtime.ParserRuleContext;\n+import org.antlr.v4.runtime.Token;\n+import org.antlr.v4.runtime.tree.ParseTree;\n+import org.elasticsearch.Build;\n+import org.elasticsearch.common.Strings;\n+import org.elasticsearch.core.Tuple;\n+import org.elasticsearch.dissect.DissectException;\n+import org.elasticsearch.dissect.DissectParser;\n+import org.elasticsearch.index.IndexMode;\n+import org.elasticsearch.transport.RemoteClusterAware;\n+import org.elasticsearch.xpack.esql.VerificationException;\n+import org.elasticsearch.xpack.esql.action.EsqlCapabilities;\n+import org.elasticsearch.xpack.esql.common.Failure;\n+import org.elasticsearch.xpack.esql.core.expression.Alias;\n'}`
+responded: The patch adds two imports in the LogicalPlanBuilder.java file:
+- import org.elasticsearch.common.Strings;
+- import org.elasticsearch.transport.RemoteClusterAware;
+
+In the older version at ref b074d13e7, these imports are absent, and the rest of the imports are mostly the same except for some minor differences.
+
+Since the patch only modifies imports in this hunk, I need to check if these two classes (Strings and RemoteClusterAware) exist and are applicable for import in the older version.
+
+From locate_symbol, both Strings and RemoteClusterAware exist in the older version:
+- Strings can be found in server/src/main/java/org/elasticsearch/common/Strings.java
+- RemoteClusterAware can be found in server/src/main/java/org/elasticsearch/transport/RemoteClusterAware.java
+
+Therefore, the patch in the older version should add these two imports in the same place as in the newer version.
+
+No other code changes are indicated in this hunk, so the backport patch for this hunk is simply adding these two imports.
+
+I will generate the patch accordingly.
+
+Next, I will validate the patch on the older ref to ensure it applies cleanly and does not cause conflicts.
+
+[0m[38;5;200m[1;3mThis patch does not apply because of CONTEXT MISMATCH. Context are patch lines that already exist in the file, that is, lines starting with ` ` and `-`. You should modify the error patch according to the context of older version.
+Here are lines 9 through 22 of file x-pack/plugin/esql/src/main/java/org/elasticsearch/xpack/esql/parser/LogicalPlanBuilder.java for commit b074d13e722b650343c00581aa410257d3623d33.
+```code snippet
+import org.antlr.v4.runtime.ParserRuleContext;
+import org.antlr.v4.runtime.Token;
+import org.antlr.v4.runtime.tree.ParseTree;
+import org.elasticsearch.Build;
+import org.elasticsearch.core.Tuple;
+import org.elasticsearch.dissect.DissectException;
+import org.elasticsearch.dissect.DissectParser;
+import org.elasticsearch.index.IndexMode;
+import org.elasticsearch.xpack.esql.VerificationException;
+import org.elasticsearch.xpack.esql.action.EsqlCapabilities;
+import org.elasticsearch.xpack.esql.common.Failure;
+import org.elasticsearch.xpack.esql.core.expression.Alias;
+import org.elasticsearch.xpack.esql.core.expression.Attribute;
+```
+Besides, here is detailed info about how the context differs between the patch and the old version.
+Here it shows that there is no difference between your context and the original code, the reason for the failure is that you didn't keep at least three lines of source code at the beginning and end of the patch, please follow this to fix it.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `validate` with `{'ref': 'b074d13e722b650343c00581aa410257d3623d33', 'patch': '--- a/x-pack/plugin/esql/src/main/java/org/elasticsearch/xpack/esql/parser/LogicalPlanBuilder.java\n+++ b/x-pack/plugin/esql/src/main/java/org/elasticsearch/xpack/esql/parser/LogicalPlanBuilder.java\n@@ -7,13 +7,16 @@\n import org.antlr.v4.runtime.ParserRuleContext;\n import org.antlr.v4.runtime.Token;\n import org.antlr.v4.runtime.tree.ParseTree;\n import org.elasticsearch.Build;\n+import org.elasticsearch.common.Strings;\n import org.elasticsearch.core.Tuple;\n import org.elasticsearch.dissect.DissectException;\n import org.elasticsearch.dissect.DissectParser;\n import org.elasticsearch.index.IndexMode;\n+import org.elasticsearch.transport.RemoteClusterAware;\n import org.elasticsearch.xpack.esql.VerificationException;\n import org.elasticsearch.xpack.esql.action.EsqlCapabilities;\n import org.elasticsearch.xpack.esql.common.Failure;\n import org.elasticsearch.xpack.esql.core.expression.Alias;\n+import org.elasticsearch.xpack.esql.core.expression.Attribute;\n+import org.elasticsearch.xpack.esql.core.expression.EmptyAttribute;\n'}`
+responded: The patch for this hunk only adds two import statements:
+- import org.elasticsearch.common.Strings;
+- import org.elasticsearch.transport.RemoteClusterAware;
+
+The rest of the imports remain the same. The old version has two additional imports after Alias, but that should not affect the patch.
+
+I will generate the patch with at least three lines of context before and after the change, keeping the original imports intact and adding the new imports in the appropriate place.
+
+The patch will look like this:
+
+```diff
+--- a/x-pack/plugin/esql/src/main/java/org/elasticsearch/xpack/esql/parser/LogicalPlanBuilder.java
++++ b/x-pack/plugin/esql/src/main/java/org/elasticsearch/xpack/esql/parser/LogicalPlanBuilder.java
+@@ -7,13 +7,15 @@
+ import org.antlr.v4.runtime.ParserRuleContext;
+ import org.antlr.v4.runtime.Token;
+ import org.antlr.v4.runtime.tree.ParseTree;
+ import org.elasticsearch.Build;
++import org.elasticsearch.common.Strings;
+ import org.elasticsearch.core.Tuple;
+ import org.elasticsearch.dissect.DissectException;
+ import org.elasticsearch.dissect.DissectParser;
+ import org.elasticsearch.index.IndexMode;
++import org.elasticsearch.transport.RemoteClusterAware;
+ import org.elasticsearch.xpack.esql.VerificationException;
+ import org.elasticsearch.xpack.esql.action.EsqlCapabilities;
+ import org.elasticsearch.xpack.esql.common.Failure;
+ import org.elasticsearch.xpack.esql.core.expression.Alias;
++import org.elasticsearch.xpack.esql.core.expression.Attribute;
++import org.elasticsearch.xpack.esql.core.expression.EmptyAttribute;
+```
+
+I will validate this patch now.
+
+[0m[38;5;200m[1;3mThis patch does not apply because of CONTEXT MISMATCH. Context are patch lines that already exist in the file, that is, lines starting with ` ` and `-`. You should modify the error patch according to the context of older version.
+Here are lines 9 through 22 of file x-pack/plugin/esql/src/main/java/org/elasticsearch/xpack/esql/parser/LogicalPlanBuilder.java for commit b074d13e722b650343c00581aa410257d3623d33.
+```code snippet
+import org.antlr.v4.runtime.ParserRuleContext;
+import org.antlr.v4.runtime.Token;
+import org.antlr.v4.runtime.tree.ParseTree;
+import org.elasticsearch.Build;
+import org.elasticsearch.core.Tuple;
+import org.elasticsearch.dissect.DissectException;
+import org.elasticsearch.dissect.DissectParser;
+import org.elasticsearch.index.IndexMode;
+import org.elasticsearch.xpack.esql.VerificationException;
+import org.elasticsearch.xpack.esql.action.EsqlCapabilities;
+import org.elasticsearch.xpack.esql.common.Failure;
+import org.elasticsearch.xpack.esql.core.expression.Alias;
+import org.elasticsearch.xpack.esql.core.expression.Attribute;
+```
+Besides, here is detailed info about how the context differs between the patch and the old version.
+Here it shows that there is no difference between your context and the original code, the reason for the failure is that you didn't keep at least three lines of source code at the beginning and end of the patch, please follow this to fix it.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `validate` with `{'ref': 'b074d13e722b650343c00581aa410257d3623d33', 'patch': '--- a/x-pack/plugin/esql/src/main/java/org/elasticsearch/xpack/esql/parser/LogicalPlanBuilder.java\n+++ b/x-pack/plugin/esql/src/main/java/org/elasticsearch/xpack/esql/parser/LogicalPlanBuilder.java\n@@ -7,15 +7,17 @@\n import org.antlr.v4.runtime.ParserRuleContext;\n import org.antlr.v4.runtime.Token;\n import org.antlr.v4.runtime.tree.ParseTree;\n import org.elasticsearch.Build;\n+import org.elasticsearch.common.Strings;\n import org.elasticsearch.core.Tuple;\n import org.elasticsearch.dissect.DissectException;\n import org.elasticsearch.dissect.DissectParser;\n import org.elasticsearch.index.IndexMode;\n+import org.elasticsearch.transport.RemoteClusterAware;\n import org.elasticsearch.xpack.esql.VerificationException;\n import org.elasticsearch.xpack.esql.action.EsqlCapabilities;\n import org.elasticsearch.xpack.esql.common.Failure;\n import org.elasticsearch.xpack.esql.core.expression.Alias;\n import org.elasticsearch.xpack.esql.core.expression.Attribute;\n'}`
+responded: The patch context requires at least three lines before and after the changed lines to be kept intact. The original file's imports go beyond the lines shown in the patch snippet, so I need to include the surrounding lines exactly as in the old version and only insert the two new imports:
+
+- import org.elasticsearch.common.Strings;
+- import org.elasticsearch.transport.RemoteClusterAware;
+
+at the appropriate place without removing any existing imports.
+
+I will generate a patch that keeps three or more lines of context before and after the added imports, matching the old version's import block exactly except for the two added lines.
+
+The old version import block snippet is:
+
+```
+import org.antlr.v4.runtime.ParserRuleContext;
+import org.antlr.v4.runtime.Token;
+import org.antlr.v4.runtime.tree.ParseTree;
+import org.elasticsearch.Build;
+import org.elasticsearch.core.Tuple;
+import org.elasticsearch.dissect.DissectException;
+import org.elasticsearch.dissect.DissectParser;
+import org.elasticsearch.index.IndexMode;
+import org.elasticsearch.xpack.esql.VerificationException;
+import org.elasticsearch.xpack.esql.action.EsqlCapabilities;
+import org.elasticsearch.xpack.esql.common.Failure;
+import org.elasticsearch.xpack.esql.core.expression.Alias;
+import org.elasticsearch.xpack.esql.core.expression.Attribute;
+```
+
+I will insert the two new imports after `import org.elasticsearch.Build;` to keep the order consistent with the new patch.
+
+Now I will generate the patch.
+
+[0m[38;5;200m[1;3mPatch applied successfully
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3mI have backported the import changes in the patch to the older version ref b074d13e722b650343c00581aa410257d3623d33. The patch adds the following imports:
+
+```java
+import org.elasticsearch.common.Strings;
+import org.elasticsearch.transport.RemoteClusterAware;
+```
+
+These imports were added after the existing imports in the old version, keeping the original imports intact.
+
+Here is the generated patch for the backport:
+
+```diff
+--- a/x-pack/plugin/esql/src/main/java/org/elasticsearch/xpack/esql/parser/LogicalPlanBuilder.java
++++ b/x-pack/plugin/esql/src/main/java/org/elasticsearch/xpack/esql/parser/LogicalPlanBuilder.java
+@@ -7,15 +7,17 @@
+ import org.antlr.v4.runtime.ParserRuleContext;
+ import org.antlr.v4.runtime.Token;
+ import org.antlr.v4.runtime.tree.ParseTree;
+ import org.elasticsearch.Build;
++import org.elasticsearch.common.Strings;
+ import org.elasticsearch.core.Tuple;
+ import org.elasticsearch.dissect.DissectException;
+ import org.elasticsearch.dissect.DissectParser;
+ import org.elasticsearch.index.IndexMode;
++import org.elasticsearch.transport.RemoteClusterAware;
+ import org.elasticsearch.xpack.esql.VerificationException;
+ import org.elasticsearch.xpack.esql.action.EsqlCapabilities;
+ import org.elasticsearch.xpack.esql.common.Failure;
+ import org.elasticsearch.xpack.esql.core.expression.Alias;
+ import org.elasticsearch.xpack.esql.core.expression.Attribute;
+```
+
+I have validated this patch on the old ref and it applies cleanly without conflicts. If you want, I can assist you further with other hunks or any additional backports.[0m
+
+[1m> Finished chain.[0m
+2026-04-27 08:40:10,927 - backport - INFO - Aplly all hunks in the patch      PASS
+2026-04-27 08:40:12,312 - backport - INFO - Successfully backport the patch to the target release b074d13e722b650343c00581aa410257d3623d33
+2026-04-27 08:40:12,313 - backport - INFO - --- a/x-pack/plugin/esql/src/main/java/org/elasticsearch/xpack/esql/parser/LogicalPlanBuilder.java
++++ b/x-pack/plugin/esql/src/main/java/org/elasticsearch/xpack/esql/parser/LogicalPlanBuilder.java
+@@ -7,13 +7,15 @@
+ import org.antlr.v4.runtime.ParserRuleContext;
+ import org.antlr.v4.runtime.Token;
+ import org.antlr.v4.runtime.tree.ParseTree;
+ import org.elasticsearch.Build;
++import org.elasticsearch.common.Strings;
+ import org.elasticsearch.core.Tuple;
+ import org.elasticsearch.dissect.DissectException;
+ import org.elasticsearch.dissect.DissectParser;
+ import org.elasticsearch.index.IndexMode;
++import org.elasticsearch.transport.RemoteClusterAware;
+ import org.elasticsearch.xpack.esql.VerificationException;
+ import org.elasticsearch.xpack.esql.action.EsqlCapabilities;
+ import org.elasticsearch.xpack.esql.common.Failure;
+ import org.elasticsearch.xpack.esql.core.expression.Alias;
+ import org.elasticsearch.xpack.esql.core.expression.Attribute;
+
+--- a/x-pack/plugin/esql/src/main/java/org/elasticsearch/xpack/esql/parser/LogicalPlanBuilder.java
++++ b/x-pack/plugin/esql/src/main/java/org/elasticsearch/xpack/esql/parser/LogicalPlanBuilder.java
+@@ -527,6 +529,13 @@ public class LogicalPlanBuilder extends ExpressionBuilder {
+         if (rightPattern.contains(WILDCARD)) {
+             throw new ParsingException(source(target), "invalid index pattern [{}], * is not allowed in LOOKUP JOIN", rightPattern);
+         }
++        if (RemoteClusterAware.isRemoteIndexName(rightPattern)) {
++            throw new ParsingException(
++                source(target),
++                "invalid index pattern [{}], remote clusters are not supported in LOOKUP JOIN",
++                rightPattern
++            );
++        }
+ 
+         UnresolvedRelation right = new UnresolvedRelation(
+             source(target),
+
+--- a/x-pack/plugin/esql/src/main/java/org/elasticsearch/xpack/esql/parser/LogicalPlanBuilder.java
++++ b/x-pack/plugin/esql/src/main/java/org/elasticsearch/xpack/esql/parser/LogicalPlanBuilder.java
+@@ -557,6 +566,20 @@ public class LogicalPlanBuilder extends ExpressionBuilder {
+             throw new ParsingException(source, "JOIN ON clause only supports one field at the moment, found [{}]", matchFieldsCount);
+         }
+ 
+-        return p -> new LookupJoin(source, p, right, joinFields);
++        return p -> {
++            p.forEachUp(UnresolvedRelation.class, r -> {
++                for (var leftPattern : Strings.splitStringByCommaToArray(r.indexPattern().indexPattern())) {
++                    if (RemoteClusterAware.isRemoteIndexName(leftPattern)) {
++                        throw new ParsingException(
++                            source(target),
++                            "invalid index pattern [{}], remote clusters are not supported in LOOKUP JOIN",
++                            r.indexPattern().indexPattern()
++                        );
++                    }
++                }
++            });
++
++            return new LookupJoin(source, p, right, joinFields);
++        };
+     }
+ }
+
+--- a/x-pack/plugin/esql/src/test/java/org/elasticsearch/xpack/esql/parser/StatementParserTests.java
++++ b/x-pack/plugin/esql/src/test/java/org/elasticsearch/xpack/esql/parser/StatementParserTests.java
+@@ -78,6 +78,7 @@ import static org.elasticsearch.xpack.esql.EsqlTestUtils.paramAsConstant;
+ import static org.elasticsearch.xpack.esql.EsqlTestUtils.paramAsIdentifier;
+ import static org.elasticsearch.xpack.esql.EsqlTestUtils.paramAsPattern;
+ import static org.elasticsearch.xpack.esql.EsqlTestUtils.referenceAttribute;
++import static org.elasticsearch.xpack.esql.IdentifierGenerator.Features.CROSS_CLUSTER;
+ import static org.elasticsearch.xpack.esql.IdentifierGenerator.Features.WILDCARD_PATTERN;
+ import static org.elasticsearch.xpack.esql.IdentifierGenerator.randomIndexPattern;
+ import static org.elasticsearch.xpack.esql.IdentifierGenerator.randomIndexPatterns;
+
+--- a/x-pack/plugin/esql/src/test/java/org/elasticsearch/xpack/esql/parser/StatementParserTests.java
++++ b/x-pack/plugin/esql/src/test/java/org/elasticsearch/xpack/esql/parser/StatementParserTests.java
+@@ -307,18 +308,18 @@ public class StatementParserTests extends AbstractStatementParserTests {
+         );
+     }
+ 
+-    public void testStatsWithoutAggs() throws Exception {
++    public void testStatsWithoutAggs() {
+         assertEquals(
+             new Aggregate(EMPTY, PROCESSING_CMD_INPUT, Aggregate.AggregateType.STANDARD, List.of(attribute("a")), List.of(attribute("a"))),
+             processingCommand("stats by a")
+         );
+     }
+ 
+-    public void testStatsWithoutAggsOrGroup() throws Exception {
++    public void testStatsWithoutAggsOrGroup() {
+         expectError("from text | stats", "At least one aggregation or grouping expression required in [stats]");
+     }
+ 
+-    public void testAggsWithGroupKeyAsAgg() throws Exception {
++    public void testAggsWithGroupKeyAsAgg() {
+         var queries = new String[] { """
+             row a = 1, b = 2
+             | stats a by a
+
+--- a/x-pack/plugin/esql/src/test/java/org/elasticsearch/xpack/esql/parser/StatementParserTests.java
++++ b/x-pack/plugin/esql/src/test/java/org/elasticsearch/xpack/esql/parser/StatementParserTests.java
+@@ -339,7 +340,7 @@ public class StatementParserTests extends AbstractStatementParserTests {
+         }
+     }
+ 
+-    public void testStatsWithGroupKeyAndAggFilter() throws Exception {
++    public void testStatsWithGroupKeyAndAggFilter() {
+         var a = attribute("a");
+         var f = new UnresolvedFunction(EMPTY, "min", DEFAULT, List.of(a));
+         var filter = new Alias(EMPTY, "min(a) where a > 1", new FilteredExpression(EMPTY, f, new GreaterThan(EMPTY, a, integer(1))));
+
+--- a/x-pack/plugin/esql/src/test/java/org/elasticsearch/xpack/esql/parser/StatementParserTests.java
++++ b/x-pack/plugin/esql/src/test/java/org/elasticsearch/xpack/esql/parser/StatementParserTests.java
+@@ -349,7 +350,7 @@ public class StatementParserTests extends AbstractStatementParserTests {
+         );
+     }
+ 
+-    public void testStatsWithGroupKeyAndMixedAggAndFilter() throws Exception {
++    public void testStatsWithGroupKeyAndMixedAggAndFilter() {
+         var a = attribute("a");
+         var min = new UnresolvedFunction(EMPTY, "min", DEFAULT, List.of(a));
+         var max = new UnresolvedFunction(EMPTY, "max", DEFAULT, List.of(a));
+
+--- a/x-pack/plugin/esql/src/test/java/org/elasticsearch/xpack/esql/parser/StatementParserTests.java
++++ b/x-pack/plugin/esql/src/test/java/org/elasticsearch/xpack/esql/parser/StatementParserTests.java
+@@ -384,7 +385,7 @@ public class StatementParserTests extends AbstractStatementParserTests {
+         );
+     }
+ 
+-    public void testStatsWithoutGroupKeyMixedAggAndFilter() throws Exception {
++    public void testStatsWithoutGroupKeyMixedAggAndFilter() {
+         var a = attribute("a");
+         var f = new UnresolvedFunction(EMPTY, "min", DEFAULT, List.of(a));
+         var filter = new Alias(EMPTY, "min(a) where a > 1", new FilteredExpression(EMPTY, f, new GreaterThan(EMPTY, a, integer(1))));
+
+--- a/x-pack/plugin/esql/src/test/java/org/elasticsearch/xpack/esql/parser/StatementParserTests.java
++++ b/x-pack/plugin/esql/src/test/java/org/elasticsearch/xpack/esql/parser/StatementParserTests.java
+@@ -2067,41 +2068,41 @@ public class StatementParserTests extends AbstractStatementParserTests {
+         assertThat(tableName.fold(FoldContext.small()), equalTo(string));
+     }
+ 
+-    public void testIdPatternUnquoted() throws Exception {
++    public void testIdPatternUnquoted() {
+         var string = "regularString";
+         assertThat(breakIntoFragments(string), contains(string));
+     }
+ 
+-    public void testIdPatternQuoted() throws Exception {
++    public void testIdPatternQuoted() {
+         var string = "`escaped string`";
+         assertThat(breakIntoFragments(string), contains(string));
+     }
+ 
+-    public void testIdPatternQuotedWithDoubleBackticks() throws Exception {
++    public void testIdPatternQuotedWithDoubleBackticks() {
+         var string = "`escaped``string`";
+         assertThat(breakIntoFragments(string), contains(string));
+     }
+ 
+-    public void testIdPatternUnquotedAndQuoted() throws Exception {
++    public void testIdPatternUnquotedAndQuoted() {
+         var string = "this`is`a`mix`of`ids`";
+         assertThat(breakIntoFragments(string), contains("this", "`is`", "a", "`mix`", "of", "`ids`"));
+     }
+ 
+-    public void testIdPatternQuotedTraling() throws Exception {
++    public void testIdPatternQuotedTraling() {
+         var string = "`foo`*";
+         assertThat(breakIntoFragments(string), contains("`foo`", "*"));
+     }
+ 
+-    public void testIdPatternWithDoubleQuotedStrings() throws Exception {
++    public void testIdPatternWithDoubleQuotedStrings() {
+         var string = "`this``is`a`quoted `` string``with`backticks";
+         assertThat(breakIntoFragments(string), contains("`this``is`", "a", "`quoted `` string``with`", "backticks"));
+     }
+ 
+-    public void testSpaceNotAllowedInIdPattern() throws Exception {
++    public void testSpaceNotAllowedInIdPattern() {
+         expectError("ROW a = 1| RENAME a AS this is `not okay`", "mismatched input 'is' expecting {<EOF>, '|', ',', '.'}");
+     }
+ 
+-    public void testSpaceNotAllowedInIdPatternKeep() throws Exception {
++    public void testSpaceNotAllowedInIdPatternKeep() {
+         expectError("ROW a = 1, b = 1| KEEP a b", "extraneous input 'b'");
+     }
+ 
+
+--- a/x-pack/plugin/esql/src/test/java/org/elasticsearch/xpack/esql/parser/StatementParserTests.java
++++ b/x-pack/plugin/esql/src/test/java/org/elasticsearch/xpack/esql/parser/StatementParserTests.java
+@@ -2939,13 +2940,20 @@ public class StatementParserTests extends AbstractStatementParserTests {
+         }
+     }
+ 
+-    public void testValidJoinPattern() {
++    public void testValidFromPattern() {
+         var basePattern = randomIndexPatterns();
+-        var joinPattern = randomIndexPattern(without(WILDCARD_PATTERN));
++
++        var plan = statement("FROM " + basePattern);
++
++        assertThat(as(plan, UnresolvedRelation.class).indexPattern().indexPattern(), equalTo(unquoteIndexPattern(basePattern)));
++    }
++
++    public void testValidJoinPattern() {
++        var basePattern = randomIndexPatterns(without(CROSS_CLUSTER));
++        var joinPattern = randomIndexPattern(without(WILDCARD_PATTERN), without(CROSS_CLUSTER));
+         var onField = randomIdentifier();
+-        var type = randomFrom("", "LOOKUP ");
+ 
+-        var plan = statement("FROM " + basePattern + " | " + type + " JOIN " + joinPattern + " ON " + onField);
++        var plan = statement("FROM " + basePattern + " | LOOKUP JOIN " + joinPattern + " ON " + onField);
+ 
+         var join = as(plan, LookupJoin.class);
+         assertThat(as(join.left(), UnresolvedRelation.class).indexPattern().indexPattern(), equalTo(unquoteIndexPattern(basePattern)));
+
+--- a/x-pack/plugin/esql/src/test/java/org/elasticsearch/xpack/esql/parser/StatementParserTests.java
++++ b/x-pack/plugin/esql/src/test/java/org/elasticsearch/xpack/esql/parser/StatementParserTests.java
+@@ -2958,10 +2966,31 @@ public class StatementParserTests extends AbstractStatementParserTests {
+     }
+ 
+     public void testInvalidJoinPatterns() {
+-        var joinPattern = randomIndexPattern(WILDCARD_PATTERN);
+-        expectError(
+-            "FROM " + randomIndexPatterns() + " | JOIN " + joinPattern + " ON " + randomIdentifier(),
+-            "invalid index pattern [" + unquoteIndexPattern(joinPattern) + "], * is not allowed in LOOKUP JOIN"
+-        );
++        {
++            // wildcard
++            var joinPattern = randomIndexPattern(WILDCARD_PATTERN, without(CROSS_CLUSTER));
++            expectError(
++                "FROM " + randomIndexPatterns() + " | LOOKUP JOIN " + joinPattern + " ON " + randomIdentifier(),
++                "invalid index pattern [" + unquoteIndexPattern(joinPattern) + "], * is not allowed in LOOKUP JOIN"
++            );
++        }
++        {
++            // remote cluster on the right
++            var fromPatterns = randomIndexPatterns(without(CROSS_CLUSTER));
++            var joinPattern = randomIndexPattern(CROSS_CLUSTER, without(WILDCARD_PATTERN));
++            expectError(
++                "FROM " + fromPatterns + " | LOOKUP JOIN " + joinPattern + " ON " + randomIdentifier(),
++                "invalid index pattern [" + unquoteIndexPattern(joinPattern) + "], remote clusters are not supported in LOOKUP JOIN"
++            );
++        }
++        {
++            // remote cluster on the left
++            var fromPatterns = randomIndexPatterns(CROSS_CLUSTER);
++            var joinPattern = randomIndexPattern(without(CROSS_CLUSTER), without(WILDCARD_PATTERN));
++            expectError(
++                "FROM " + fromPatterns + " | LOOKUP JOIN " + joinPattern + " ON " + randomIdentifier(),
++                "invalid index pattern [" + unquoteIndexPattern(fromPatterns) + "], remote clusters are not supported in LOOKUP JOIN"
++            );
++        }
+     }
+ }
+

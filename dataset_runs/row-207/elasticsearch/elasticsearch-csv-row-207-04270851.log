@@ -1,0 +1,1286 @@
+2026-04-27 08:51:36,851 - backport - INFO - Using openrouter API: https://openrouter.ai/api/v1 (model: openai/gpt-4.1-mini)
+
+
+[1m> Entering new AgentExecutor chain...[0m
+
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `git_history` with `{}`
+
+
+[0m[36;1m[1;3m4ff4384550b Retrieve the source for objects and arrays within arrays in a separate parsing phase (#113027)
+
+diff --git a/server/src/main/java/org/elasticsearch/index/mapper/DocumentParser.java b/server/src/main/java/org/elasticsearch/index/mapper/DocumentParser.java
+--- a/server/src/main/java/org/elasticsearch/index/mapper/DocumentParser.java
++++ b/server/src/main/java/org/elasticsearch/index/mapper/DocumentParser.java
+@@ -158,0 +217,11 @@
++                        parser.skipChildren();
++                    } else {
++                        path.add(fieldName);
++                    }
++                    fieldName = null;
++                } else if (currentToken == XContentParser.Token.END_OBJECT || currentToken == XContentParser.Token.END_ARRAY) {
++                    if (currentToken == XContentParser.Token.END_OBJECT && path.isEmpty() == false) {
++                        path.removeLast();
++                    }
++                    fieldName = null;
++                
+You need to do the following analysis based on the information in the last commit:
+Analyze the code logic of the context of the patch to be ported in this commit step by step.
+If code logic already existed before this commit, the patch context can be assumed to remain in a similar location. Use `locate` and `viewcode` to check your results.
+If code logic were added in this commit, then you need to `git_show` for further details.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `locate_symbol` with `{'ref': '1aed889d3a670f5fc2b6fd7c4139227ce131eb58', 'symbol': 'DocumentParser'}`
+responded: The git history shows a commit with hash 4ff4384550b that added the code block starting with "parser.skipChildren();" and the handling of path for END_OBJECT and END_ARRAY tokens. This indicates that the code block we want to patch already existed in the target older version ref 1aed889d3a670f5fc2b6fd7c4139227ce131eb58, or at least it is from a commit before the target ref.
+
+The code logic to handle path and fieldName in the presence of END_OBJECT and END_ARRAY tokens was introduced in this commit, which is earlier than the patch commit f3cd890f3ea08e40d4cb49482bdea0f6e4afb13a.
+
+Therefore, the patch we want to backport is likely an enhancement to this existing logic, where it adds tracking of whether the current token is a START_OBJECT or not, and uses that to decide when to remove from the path and the new isObjectInPath list.
+
+Next, I should locate the function containing this code in the older ref 1aed889d3a670f5fc2b6fd7c4139227ce131eb58 to view the full context and generate the patch accordingly.
+
+I will use locate_symbol to find the location of the function that contains this code. The patch is inside the class DocumentParser, so the function is likely a method of DocumentParser. The patch is around line 218, so I will try to locate the function in the older ref by symbol "DocumentParser" or a known method name if available.
+
+I will try to locate the symbol "DocumentParser" in the older ref first.
+
+[0m[33;1m[1;3mserver/src/main/java/org/elasticsearch/index/mapper/DocumentParser.java:56
+server/src/main/java/org/elasticsearch/index/mapper/DocumentParser.java:63[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': '1aed889d3a670f5fc2b6fd7c4139227ce131eb58', 'path': 'server/src/main/java/org/elasticsearch/index/mapper/DocumentParser.java', 'startline': 210, 'endline': 230}`
+
+
+[0m[36;1m[1;3mHere are lines 210 through 230.
+
+        List<String> path = new ArrayList<>();
+        String fieldName = null;
+        while (currentToken != null) {
+            while (currentToken != XContentParser.Token.FIELD_NAME) {
+                if (fieldName != null
+                    && (currentToken == XContentParser.Token.START_OBJECT || currentToken == XContentParser.Token.START_ARRAY)) {
+                    if (parentNames.contains(getCurrentPath(path, fieldName)) == false) {
+                        // No missing value under this parsing subtree, skip it.
+                        parser.skipChildren();
+                    } else {
+                        path.add(fieldName);
+                    }
+                    fieldName = null;
+                } else if (currentToken == XContentParser.Token.END_OBJECT || currentToken == XContentParser.Token.END_ARRAY) {
+                    if (currentToken == XContentParser.Token.END_OBJECT && path.isEmpty() == false) {
+                        path.remove(path.size() - 1);
+                    }
+                    fieldName = null;
+                }
+                currentToken = parser.nextToken();
+                if (currentToken == null) {
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': '1aed889d3a670f5fc2b6fd7c4139227ce131eb58', 'path': 'server/src/main/java/org/elasticsearch/index/mapper/DocumentParser.java', 'startline': 200, 'endline': 250}`
+responded: I have found the code block in the older version at the same location as the similar lines provided. 
+
+The code handles parsing tokens and maintains a path stack. The patch in the newer version adds tracking of whether the current path element is an object or an array with a new list `isObjectInPath`. Then it uses this list to decide when to remove elements from the path on encountering END_OBJECT or END_ARRAY tokens.
+
+The older version only tracks the path but does not track the type of the path element (object or array). The patch in the newer version adds this tracking and changes the condition for removing elements from path accordingly.
+
+So, the patch to backport should:
+- Add a new list `isObjectInPath` similar to `path`.
+- When adding to `path`, also add a boolean to `isObjectInPath` indicating if the current token is START_OBJECT.
+- When removing from `path`, also remove from `isObjectInPath` only if the token type matches the stored type (object or array).
+
+Before generating the patch, I want to check around this code block to see if `isObjectInPath` or similar was introduced later or if any other context changes exist.
+
+I will view more lines before and after lines 210-230 to get better context.
+
+[0m[36;1m[1;3mHere are lines 200 through 250.
+
+        DocumentParserContext context,
+        Map<String, IgnoredSourceFieldMapper.NameValue> fields
+    ) throws IOException {
+        // Generate all possible parent names for the given fields.
+        // This is used to skip processing objects that can't generate missing values.
+        Set<String> parentNames = getPossibleParentNames(fields.keySet());
+        List<IgnoredSourceFieldMapper.NameValue> result = new ArrayList<>();
+
+        XContentParser parser = context.parser();
+        XContentParser.Token currentToken = parser.nextToken();
+        List<String> path = new ArrayList<>();
+        String fieldName = null;
+        while (currentToken != null) {
+            while (currentToken != XContentParser.Token.FIELD_NAME) {
+                if (fieldName != null
+                    && (currentToken == XContentParser.Token.START_OBJECT || currentToken == XContentParser.Token.START_ARRAY)) {
+                    if (parentNames.contains(getCurrentPath(path, fieldName)) == false) {
+                        // No missing value under this parsing subtree, skip it.
+                        parser.skipChildren();
+                    } else {
+                        path.add(fieldName);
+                    }
+                    fieldName = null;
+                } else if (currentToken == XContentParser.Token.END_OBJECT || currentToken == XContentParser.Token.END_ARRAY) {
+                    if (currentToken == XContentParser.Token.END_OBJECT && path.isEmpty() == false) {
+                        path.remove(path.size() - 1);
+                    }
+                    fieldName = null;
+                }
+                currentToken = parser.nextToken();
+                if (currentToken == null) {
+                    return result;
+                }
+            }
+            fieldName = parser.currentName();
+            String fullName = getCurrentPath(path, fieldName);
+            var leaf = fields.get(fullName);  // There may be multiple matches for array elements, don't use #remove.
+            if (leaf != null) {
+                parser.nextToken();  // Advance the parser to the value to be read.
+                result.add(leaf.cloneWithValue(context.encodeFlattenedToken()));
+                parser.nextToken();  // Skip the token ending the value.
+                fieldName = null;
+            }
+            currentToken = parser.nextToken();
+        }
+        return result;
+    }
+
+    private static String getCurrentPath(List<String> path, String fieldName) {
+        assert fieldName != null;
+        return path.isEmpty() ? fieldName : String.join(".", path) + "." + fieldName;
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `locate_symbol` with `{'ref': '1aed889d3a670f5fc2b6fd7c4139227ce131eb58', 'symbol': 'parse'}`
+responded: I have found the code block in the older version (ref 1aed889d3a670f5fc2b6fd7c4139227ce131eb58) that corresponds to the patch area in the newer version (ref f77611c109b470759f50ccff3630d4b3d118cfa0). The main difference is that the older version does not track whether the current path element is an object or array (the isObjectInPath list and its related logic are missing).
+
+The patch in the newer version adds this tracking using a boolean list (isObjectInPath) to properly handle array scopes during parsing, changing the logic of removing the last path element to check both the type of the scope and the token type.
+
+In the older version:
+- The path is removed only if the current token is END_OBJECT and path is not empty.
+- The removal uses path.remove(path.size() - 1).
+
+In the newer version:
+- The path is removed if the last added path element corresponds to the same scope type (object or array) as the current token's END_OBJECT or END_ARRAY.
+- It uses a boolean list isObjectInPath to track whether the path element is an object or array.
+
+To backport this patch, I need to:
+1. Introduce a similar boolean list isObjectInPath in the older version.
+2. Add tracking of whether the current token is START_OBJECT or START_ARRAY when adding to the path.
+3. Change the logic of removing the path element to check the last element of isObjectInPath and the current token type before removing the path and the corresponding boolean.
+
+Next, I will check the surrounding code to confirm the best place to declare and use isObjectInPath in the older version and confirm the exact method name and signature. I will locate the full method in the older version for a complete view.
+
+I will use locate_symbol to find the method name that contains this code in the older version.
+
+[0m[33;1m[1;3mbuild-tools-internal/src/main/java/org/elasticsearch/gradle/internal/doc/ParsingUtils.java:35
+build-tools-internal/src/main/java/org/elasticsearch/gradle/internal/release/ChangelogEntry.java:53
+distribution/tools/server-cli/src/main/java/org/elasticsearch/server/cli/JvmOptionsParser.java:292
+docs/src/yamlRestTest/java/org/elasticsearch/smoketest/DocsClientYamlTestSuiteIT.java:312
+libs/core/src/main/java/org/elasticsearch/core/TimeValue.java:408
+libs/dissect/src/main/java/org/elasticsearch/dissect/DissectParser.java:173
+libs/ssl-config/src/main/java/org/elasticsearch/common/ssl/SslClientAuthenticationMode.java:82
+libs/ssl-config/src/main/java/org/elasticsearch/common/ssl/SslVerificationMode.java:84
+libs/x-content/src/main/java/org/elasticsearch/xcontent/ConstructingObjectParser.java:166
+libs/x-content/src/main/java/org/elasticsearch/xcontent/ContextParser.java:19
+libs/x-content/src/main/java/org/elasticsearch/xcontent/InstantiatingObjectParser.java:240
+libs/x-content/src/main/java/org/elasticsearch/xcontent/ObjectParser.java:259
+libs/x-content/src/main/java/org/elasticsearch/xcontent/ObjectParser.java:271
+libs/x-content/src/main/java/org/elasticsearch/xcontent/ObjectParser.java:390
+libs/x-content/src/main/java/org/elasticsearch/xcontent/ObjectParser.java:576
+modules/aggregations/src/main/java/org/elasticsearch/aggregations/bucket/adjacency/AdjacencyMatrixAggregationBuilder.java:59
+modules/aggregations/src/main/java/org/elasticsearch/aggregations/metric/ArrayValuesSourceParser.java:62
+modules/aggregations/src/main/java/org/elasticsearch/aggregations/pipeline/BucketSelectorPipelineAggregationBuilder.java:96
+modules/aggregations/src/main/java/org/elasticsearch/aggregations/pipeline/BucketSortPipelineAggregationBuilder.java:166
+modules/aggregations/src/main/java/org/elasticsearch/aggregations/pipeline/DerivativePipelineAggregationBuilder.java:169
+modules/ingest-attachment/src/main/java/org/elasticsearch/ingest/attachment/AttachmentProcessor.java:322
+modules/ingest-attachment/src/main/java/org/elasticsearch/ingest/attachment/TikaImpl.java:92
+modules/ingest-user-agent/src/main/java/org/elasticsearch/ingest/useragent/UserAgentParser.java:180
+modules/lang-painless/spi/src/main/java/org/elasticsearch/painless/spi/annotation/AliasAnnotationParser.java:23
+modules/lang-painless/spi/src/main/java/org/elasticsearch/painless/spi/annotation/AugmentedAnnotationParser.java:25
+modules/lang-painless/spi/src/main/java/org/elasticsearch/painless/spi/annotation/CompileTimeOnlyAnnotationParser.java:26
+modules/lang-painless/spi/src/main/java/org/elasticsearch/painless/spi/annotation/DeprecatedAnnotationParser.java:25
+modules/lang-painless/spi/src/main/java/org/elasticsearch/painless/spi/annotation/DynamicTypeAnnotationParser.java:21
+modules/lang-painless/spi/src/main/java/org/elasticsearch/painless/spi/annotation/InjectConstantAnnotationParser.java:22
+modules/lang-painless/spi/src/main/java/org/elasticsearch/painless/spi/annotation/NoImportAnnotationParser.java:23
+modules/lang-painless/spi/src/main/java/org/elasticsearch/painless/spi/annotation/NonDeterministicAnnotationParser.java:21
+modules/lang-painless/spi/src/main/java/org/elasticsearch/painless/spi/annotation/WhitelistAnnotationParser.java:37
+modules/lang-painless/spi/src/test/java/org/elasticsearch/painless/AnnotationTestObject.java:31
+modules/lang-painless/src/main/java/org/elasticsearch/painless/CompilerSettings.java:207
+modules/lang-painless/src/main/java/org/elasticsearch/painless/action/PainlessExecuteAction.java:200
+modules/lang-painless/src/main/java/org/elasticsearch/painless/action/PainlessExecuteAction.java:353
+modules/legacy-geo/src/main/java/org/elasticsearch/legacygeo/mapper/LegacyGeoShapeFieldMapper.java:379
+modules/legacy-geo/src/main/java/org/elasticsearch/legacygeo/parsers/GeoJsonParser.java:34
+modules/legacy-geo/src/main/java/org/elasticsearch/legacygeo/parsers/GeoWKTParser.java:56
+modules/legacy-geo/src/main/java/org/elasticsearch/legacygeo/parsers/ShapeParser.java:40
+modules/legacy-geo/src/main/java/org/elasticsearch/legacygeo/parsers/ShapeParser.java:66
+modules/legacy-geo/src/test/java/org/elasticsearch/legacygeo/GeoJsonShapeParserTests.java:2283
+modules/mapper-extras/src/main/java/org/elasticsearch/index/mapper/extras/RankFeaturesFieldMapper.java:153
+modules/parent-join/src/main/java/org/elasticsearch/join/aggregations/ChildrenAggregationBuilder.java:127
+modules/parent-join/src/main/java/org/elasticsearch/join/aggregations/ParentAggregationBuilder.java:131
+modules/parent-join/src/main/java/org/elasticsearch/join/mapper/ParentJoinFieldMapper.java:252
+modules/percolator/src/main/java/org/elasticsearch/percolator/PercolatorFieldMapper.java:217
+modules/percolator/src/main/java/org/elasticsearch/percolator/PercolatorFieldMapper.java:405
+modules/rank-eval/src/main/java/org/elasticsearch/index/rankeval/RankEvalSpec.java:162
+modules/repository-s3/src/main/java/org/elasticsearch/repositories/s3/S3BlobStore.java:477
+plugins/examples/painless-whitelist/src/main/java/org/elasticsearch/example/painlesswhitelist/ExampleWhitelistAnnotationParser.java:25
+qa/evil-tests/src/test/java/org/elasticsearch/bootstrap/PolicyUtilTests.java:154
+qa/repository-multi-version/src/test/java/org/elasticsearch/upgrades/MultiVersionRepositoryAccessIT.java:68
+qa/rolling-upgrade-legacy/src/test/java/org/elasticsearch/upgrades/AbstractRollingTestCase.java:21
+server/src/main/java/org/elasticsearch/action/admin/cluster/allocation/ClusterAllocationExplainRequest.java:235
+server/src/main/java/org/elasticsearch/action/admin/indices/rollover/RolloverInfo.java:68
+server/src/main/java/org/elasticsearch/action/bulk/BulkRequestParser.java:125
+server/src/main/java/org/elasticsearch/action/ingest/SimulatePipelineRequest.java:146
+server/src/main/java/org/elasticsearch/action/support/WriteRequest.java:82
+server/src/main/java/org/elasticsearch/cluster/metadata/ComponentTemplate.java:68
+server/src/main/java/org/elasticsearch/cluster/metadata/ComposableIndexTemplate.java:107
+server/src/main/java/org/elasticsearch/cluster/metadata/SingleNodeShutdownMetadata.java:463
+server/src/main/java/org/elasticsearch/cluster/metadata/SingleNodeShutdownMetadata.java:87
+server/src/main/java/org/elasticsearch/cluster/routing/Preference.java:54
+server/src/main/java/org/elasticsearch/cluster/routing/allocation/command/AllocateEmptyPrimaryAllocationCommand.java:78
+server/src/main/java/org/elasticsearch/cluster/routing/allocation/command/AllocateReplicaAllocationCommand.java:68
+server/src/main/java/org/elasticsearch/cluster/routing/allocation/command/AllocateStalePrimaryAllocationCommand.java:75
+server/src/main/java/org/elasticsearch/common/blobstore/OperationPurpose.java:36
+server/src/main/java/org/elasticsearch/common/geo/GeometryParser.java:48
+server/src/main/java/org/elasticsearch/common/geo/SimpleVectorTileFormatter.java:64
+server/src/main/java/org/elasticsearch/common/lucene/Lucene.java:668
+server/src/main/java/org/elasticsearch/common/time/DateFormatter.java:34
+server/src/main/java/org/elasticsearch/common/time/DateMathParser.java:26
+server/src/main/java/org/elasticsearch/common/time/DateMathParser.java:58
+server/src/main/java/org/elasticsearch/common/time/DateTimeParser.java:36
+server/src/main/java/org/elasticsearch/common/time/Iso8601DateTimeParser.java:82
+server/src/main/java/org/elasticsearch/common/time/Iso8601Parser.java:202
+server/src/main/java/org/elasticsearch/common/time/JavaDateFormatter.java:192
+server/src/main/java/org/elasticsearch/common/time/JavaDateMathParser.java:50
+server/src/main/java/org/elasticsearch/common/time/JavaTimeDateTimeParser.java:63
+server/src/main/java/org/elasticsearch/common/unit/ByteSizeValue.java:281
+server/src/main/java/org/elasticsearch/common/unit/DistanceUnit.java:133
+server/src/main/java/org/elasticsearch/common/unit/DistanceUnit.java:145
+server/src/main/java/org/elasticsearch/common/unit/Fuzziness.java:151
+server/src/main/java/org/elasticsearch/common/util/LocaleUtils.java:30
+server/src/main/java/org/elasticsearch/common/util/PageCacheRecycler.java:184
+server/src/main/java/org/elasticsearch/index/SlowLogLevel.java:31
+server/src/main/java/org/elasticsearch/index/mapper/AbstractGeometryFieldMapper.java:240
+server/src/main/java/org/elasticsearch/index/mapper/AbstractGeometryFieldMapper.java:65
+server/src/main/java/org/elasticsearch/index/mapper/AbstractPointGeometryFieldMapper.java:88
+server/src/main/java/org/elasticsearch/index/mapper/CompletionFieldMapper.java:399
+server/src/main/java/org/elasticsearch/index/mapper/CompletionFieldMapper.java:454
+server/src/main/java/org/elasticsearch/index/mapper/DateFieldMapper.java:518
+server/src/main/java/org/elasticsearch/index/mapper/DocumentMapper.java:112
+server/src/main/java/org/elasticsearch/index/mapper/DynamicTemplate.java:258
+server/src/main/java/org/elasticsearch/index/mapper/FieldAliasMapper.java:124
+server/src/main/java/org/elasticsearch/index/mapper/FieldMapper.java:1453
+server/src/main/java/org/elasticsearch/index/mapper/FieldMapper.java:1671
+server/src/main/java/org/elasticsearch/index/mapper/FieldMapper.java:187
+server/src/main/java/org/elasticsearch/index/mapper/FieldMapper.java:650
+server/src/main/java/org/elasticsearch/index/mapper/FieldMapper.java:950
+server/src/main/java/org/elasticsearch/index/mapper/GeoShapeParser.java:33
+server/src/main/java/org/elasticsearch/index/mapper/IpFieldMapper.java:273
+server/src/main/java/org/elasticsearch/index/mapper/Mapper.java:128
+server/src/main/java/org/elasticsearch/index/mapper/MappingParser.java:102
+server/src/main/java/org/elasticsearch/index/mapper/MappingParser.java:83
+server/src/main/java/org/elasticsearch/index/mapper/MappingParser.java:87
+server/src/main/java/org/elasticsearch/index/mapper/MetadataFieldMapper.java:106
+server/src/main/java/org/elasticsearch/index/mapper/MetadataFieldMapper.java:32
+server/src/main/java/org/elasticsearch/index/mapper/MetadataFieldMapper.java:82
+server/src/main/java/org/elasticsearch/index/mapper/NestedObjectMapper.java:143
+server/src/main/java/org/elasticsearch/index/mapper/NumberFieldMapper.java:1422
+server/src/main/java/org/elasticsearch/index/mapper/NumberFieldMapper.java:1424
+server/src/main/java/org/elasticsearch/index/mapper/ObjectMapper.java:268
+server/src/main/java/org/elasticsearch/index/mapper/PassThroughObjectMapper.java:202
+server/src/main/java/org/elasticsearch/index/mapper/RootObjectMapper.java:450
+server/src/main/java/org/elasticsearch/index/mapper/RuntimeField.java:112
+server/src/main/java/org/elasticsearch/index/mapper/RuntimeField.java:71
+server/src/main/java/org/elasticsearch/index/mapper/SeqNoFieldMapper.java:147
+server/src/main/java/org/elasticsearch/index/mapper/flattened/FlattenedFieldParser.java:64
+server/src/main/java/org/elasticsearch/index/mapper/vectors/DenseVectorFieldMapper.java:1981
+server/src/main/java/org/elasticsearch/index/mapper/vectors/SparseVectorFieldMapper.java:159
+server/src/main/java/org/elasticsearch/index/query/MoreLikeThisQueryBuilder.java:346
+server/src/main/java/org/elasticsearch/index/query/MultiMatchQueryBuilder.java:154
+server/src/main/java/org/elasticsearch/index/search/MatchQueryParser.java:198
+server/src/main/java/org/elasticsearch/index/search/MultiMatchQueryParser.java:51
+server/src/main/java/org/elasticsearch/index/search/QueryStringQueryParser.java:830
+server/src/main/java/org/elasticsearch/reservedstate/service/ReservedClusterStateService.java:109
+server/src/main/java/org/elasticsearch/script/DateFieldScript.java:131
+server/src/main/java/org/elasticsearch/script/Script.java:292
+server/src/main/java/org/elasticsearch/script/Script.java:299
+server/src/main/java/org/elasticsearch/script/Script.java:389
+server/src/main/java/org/elasticsearch/script/Script.java:412
+server/src/main/java/org/elasticsearch/script/StoredScriptSource.java:187
+server/src/main/java/org/elasticsearch/search/aggregations/Aggregator.java:214
+server/src/main/java/org/elasticsearch/search/aggregations/Aggregator.java:52
+server/src/main/java/org/elasticsearch/search/aggregations/bucket/composite/GeoTileGridValuesSourceBuilder.java:73
+server/src/main/java/org/elasticsearch/search/aggregations/bucket/composite/HistogramValuesSourceBuilder.java:66
+server/src/main/java/org/elasticsearch/search/aggregations/bucket/composite/TermsValuesSourceBuilder.java:67
+server/src/main/java/org/elasticsearch/search/aggregations/bucket/filter/FilterAggregationBuilder.java:126
+server/src/main/java/org/elasticsearch/search/aggregations/bucket/filter/FiltersAggregationBuilder.java:276
+server/src/main/java/org/elasticsearch/search/aggregations/bucket/geogrid/GeoGridAggregationBuilder.java:49
+server/src/main/java/org/elasticsearch/search/aggregations/bucket/global/GlobalAggregationBuilder.java:28
+server/src/main/java/org/elasticsearch/search/aggregations/bucket/nested/NestedAggregationBuilder.java:103
+server/src/main/java/org/elasticsearch/search/aggregations/bucket/nested/ReverseNestedAggregationBuilder.java:125
+server/src/main/java/org/elasticsearch/search/aggregations/bucket/range/GeoDistanceAggregationBuilder.java:90
+server/src/main/java/org/elasticsearch/search/aggregations/bucket/sampler/SamplerAggregationBuilder.java:91
+server/src/main/java/org/elasticsearch/search/aggregations/bucket/terms/SignificantTermsAggregationBuilder.java:94
+server/src/main/java/org/elasticsearch/search/aggregations/bucket/terms/SignificantTextAggregationBuilder.java:97
+server/src/main/java/org/elasticsearch/search/aggregations/metrics/TDigestExecutionHint.java:46
+server/src/main/java/org/elasticsearch/search/aggregations/metrics/TopHitsAggregationBuilder.java:624
+server/src/main/java/org/elasticsearch/search/aggregations/pipeline/BucketHelpers.java:87
+server/src/main/java/org/elasticsearch/search/aggregations/pipeline/BucketMetricsParser.java:35
+server/src/main/java/org/elasticsearch/search/aggregations/pipeline/PipelineAggregator.java:46
+server/src/main/java/org/elasticsearch/search/aggregations/pipeline/SerialDiffPipelineAggregationBuilder.java:124
+server/src/main/java/org/elasticsearch/search/aggregations/support/AggregationPath.java:99
+server/src/main/java/org/elasticsearch/search/suggest/completion/FuzzyOptions.java:58
+server/src/main/java/org/elasticsearch/search/suggest/completion/RegexOptions.java:61
+server/src/main/java/org/elasticsearch/search/vectors/KnnSearchRequestParser.java:221
+server/src/main/java/org/elasticsearch/snapshots/RegisteredPolicySnapshots.java:120
+server/src/main/java/org/elasticsearch/snapshots/RegisteredPolicySnapshots.java:251
+server/src/main/java/org/elasticsearch/snapshots/SnapshotId.java:72
+server/src/main/java/org/elasticsearch/transport/TcpTransport.java:616
+server/src/test/java/org/elasticsearch/common/xcontent/CompatibleNamedXContentRegistryTests.java:113
+server/src/test/java/org/elasticsearch/common/xcontent/CompatibleNamedXContentRegistryTests.java:62
+server/src/test/java/org/elasticsearch/common/xcontent/CompatibleNamedXContentRegistryTests.java:88
+server/src/test/java/org/elasticsearch/gateway/MetadataStateFormatTests.java:764
+server/src/test/java/org/elasticsearch/index/mapper/ParametrizedMapperTests.java:187
+server/src/test/java/org/elasticsearch/index/mapper/TsidExtractingIdFieldMapperTests.java:707
+server/src/test/java/org/elasticsearch/index/mapper/TsidExtractingIdFieldMapperTests.java:711
+server/src/test/java/org/elasticsearch/index/query/InnerHitBuilderTests.java:440
+server/src/test/java/org/elasticsearch/indices/IndicesModuleTests.java:63
+server/src/test/java/org/elasticsearch/search/sort/GeoDistanceSortBuilderTests.java:350
+test/fixtures/gcs-fixture/src/main/java/fixture/gcs/GoogleCloudStorageHttpHandler.java:371
+test/framework/src/main/java/org/elasticsearch/search/aggregations/BaseAggregationTestCase.java:144
+test/framework/src/main/java/org/elasticsearch/search/aggregations/BasePipelineAggregationTestCase.java:134
+test/yaml-rest-runner/src/main/java/org/elasticsearch/test/rest/yaml/restspec/ClientYamlSuiteRestApiParser.java:34
+test/yaml-rest-runner/src/main/java/org/elasticsearch/test/rest/yaml/section/ClientYamlTestSection.java:25
+test/yaml-rest-runner/src/main/java/org/elasticsearch/test/rest/yaml/section/ClientYamlTestSuite.java:118
+test/yaml-rest-runner/src/main/java/org/elasticsearch/test/rest/yaml/section/ClientYamlTestSuite.java:44
+test/yaml-rest-runner/src/main/java/org/elasticsearch/test/rest/yaml/section/ClientYamlTestSuite.java:89
+test/yaml-rest-runner/src/main/java/org/elasticsearch/test/rest/yaml/section/CloseToAssertion.java:30
+test/yaml-rest-runner/src/main/java/org/elasticsearch/test/rest/yaml/section/ContainsAssertion.java:31
+test/yaml-rest-runner/src/main/java/org/elasticsearch/test/rest/yaml/section/DoSection.java:86
+test/yaml-rest-runner/src/main/java/org/elasticsearch/test/rest/yaml/section/DoSection.java:96
+test/yaml-rest-runner/src/main/java/org/elasticsearch/test/rest/yaml/section/ExecutableSection.java:52
+test/yaml-rest-runner/src/main/java/org/elasticsearch/test/rest/yaml/section/ExistsAssertion.java:32
+test/yaml-rest-runner/src/main/java/org/elasticsearch/test/rest/yaml/section/GreaterThanAssertion.java:29
+test/yaml-rest-runner/src/main/java/org/elasticsearch/test/rest/yaml/section/GreaterThanEqualToAssertion.java:30
+test/yaml-rest-runner/src/main/java/org/elasticsearch/test/rest/yaml/section/IsAfterAssertion.java:33
+test/yaml-rest-runner/src/main/java/org/elasticsearch/test/rest/yaml/section/IsFalseAssertion.java:30
+test/yaml-rest-runner/src/main/java/org/elasticsearch/test/rest/yaml/section/IsTrueAssertion.java:31
+test/yaml-rest-runner/src/main/java/org/elasticsearch/test/rest/yaml/section/LengthAssertion.java:31
+test/yaml-rest-runner/src/main/java/org/elasticsearch/test/rest/yaml/section/LessThanAssertion.java:30
+test/yaml-rest-runner/src/main/java/org/elasticsearch/test/rest/yaml/section/LessThanOrEqualToAssertion.java:30
+test/yaml-rest-runner/src/main/java/org/elasticsearch/test/rest/yaml/section/MatchAssertion.java:39
+test/yaml-rest-runner/src/main/java/org/elasticsearch/test/rest/yaml/section/NotExistsAssertion.java:31
+test/yaml-rest-runner/src/main/java/org/elasticsearch/test/rest/yaml/section/SetSection.java:27
+test/yaml-rest-runner/src/main/java/org/elasticsearch/test/rest/yaml/section/SetupSection.java:39
+test/yaml-rest-runner/src/main/java/org/elasticsearch/test/rest/yaml/section/TeardownSection.java:38
+test/yaml-rest-runner/src/main/java/org/elasticsearch/test/rest/yaml/section/TransformAndSetSection.java:33
+x-pack/plugin/analytics/src/main/java/org/elasticsearch/xpack/analytics/mapper/HistogramFieldMapper.java:279
+x-pack/plugin/analytics/src/main/java/org/elasticsearch/xpack/analytics/rate/RateAggregationBuilder.java:181
+x-pack/plugin/autoscaling/src/main/java/org/elasticsearch/xpack/autoscaling/AutoscalingMetadata.java:64
+x-pack/plugin/autoscaling/src/main/java/org/elasticsearch/xpack/autoscaling/action/PutAutoscalingPolicyAction.java:80
+x-pack/plugin/autoscaling/src/main/java/org/elasticsearch/xpack/autoscaling/policy/AutoscalingPolicy.java:60
+x-pack/plugin/autoscaling/src/main/java/org/elasticsearch/xpack/autoscaling/policy/AutoscalingPolicyMetadata.java:36
+x-pack/plugin/core/src/main/java/org/elasticsearch/license/License.java:223
+x-pack/plugin/core/src/main/java/org/elasticsearch/license/License.java:56
+x-pack/plugin/core/src/main/java/org/elasticsearch/xpack/cluster/action/MigrateToDataTiersRequest.java:51
+x-pack/plugin/core/src/main/java/org/elasticsearch/xpack/core/action/AbstractTransportGetResourcesAction.java:199
+x-pack/plugin/core/src/main/java/org/elasticsearch/xpack/core/ilm/AllocateAction.java:64
+x-pack/plugin/core/src/main/java/org/elasticsearch/xpack/core/ilm/DeleteAction.java:44
+x-pack/plugin/core/src/main/java/org/elasticsearch/xpack/core/ilm/DownsampleAction.java:79
+x-pack/plugin/core/src/main/java/org/elasticsearch/xpack/core/ilm/ForceMergeAction.java:62
+x-pack/plugin/core/src/main/java/org/elasticsearch/xpack/core/ilm/FreezeAction.java:37
+x-pack/plugin/core/src/main/java/org/elasticsearch/xpack/core/ilm/LifecyclePolicy.java:149
+x-pack/plugin/core/src/main/java/org/elasticsearch/xpack/core/ilm/LifecyclePolicyMetadata.java:51
+x-pack/plugin/core/src/main/java/org/elasticsearch/xpack/core/ilm/MigrateAction.java:54
+x-pack/plugin/core/src/main/java/org/elasticsearch/xpack/core/ilm/Phase.java:77
+x-pack/plugin/core/src/main/java/org/elasticsearch/xpack/core/ilm/PhaseExecutionInfo.java:45
+x-pack/plugin/core/src/main/java/org/elasticsearch/xpack/core/ilm/ReadOnlyAction.java:31
+x-pack/plugin/core/src/main/java/org/elasticsearch/xpack/core/ilm/RolloverAction.java:46
+x-pack/plugin/core/src/main/java/org/elasticsearch/xpack/core/ilm/SearchableSnapshotAction.java:72
+x-pack/plugin/core/src/main/java/org/elasticsearch/xpack/core/ilm/SetPriorityAction.java:56
+x-pack/plugin/core/src/main/java/org/elasticsearch/xpack/core/ilm/ShrinkAction.java:76
+x-pack/plugin/core/src/main/java/org/elasticsearch/xpack/core/ilm/UnfollowAction.java:94
+x-pack/plugin/core/src/main/java/org/elasticsearch/xpack/core/ilm/WaitForSnapshotAction.java:43
+x-pack/plugin/core/src/main/java/org/elasticsearch/xpack/core/security/action/apikey/ApiKey.java:58
+x-pack/plugin/core/src/main/java/org/elasticsearch/xpack/core/security/action/apikey/CreateApiKeyRequestBuilder.java:100
+x-pack/plugin/core/src/main/java/org/elasticsearch/xpack/core/security/action/apikey/CreateApiKeyRequestBuilder.java:112
+x-pack/plugin/core/src/main/java/org/elasticsearch/xpack/core/security/action/apikey/CrossClusterApiKeyRoleDescriptorBuilder.java:101
+x-pack/plugin/core/src/main/java/org/elasticsearch/xpack/core/security/action/settings/UpdateSecuritySettingsAction.java:152
+x-pack/plugin/core/src/main/java/org/elasticsearch/xpack/core/security/authc/jwt/JwtRealmSettings.java:104
+x-pack/plugin/core/src/main/java/org/elasticsearch/xpack/core/security/authc/jwt/JwtRealmSettings.java:72
+x-pack/plugin/core/src/main/java/org/elasticsearch/xpack/core/security/authc/support/mapper/ExpressionRoleMapping.java:232
+x-pack/plugin/core/src/main/java/org/elasticsearch/xpack/core/security/authc/support/mapper/ExpressionRoleMapping.java:247
+x-pack/plugin/core/src/main/java/org/elasticsearch/xpack/core/security/authc/support/mapper/TemplateRoleName.java:160
+x-pack/plugin/core/src/main/java/org/elasticsearch/xpack/core/security/authc/support/mapper/expressiondsl/ExpressionParser.java:57
+x-pack/plugin/core/src/main/java/org/elasticsearch/xpack/core/security/authc/support/mapper/expressiondsl/ExpressionParser.java:69
+x-pack/plugin/core/src/main/java/org/elasticsearch/xpack/core/security/authz/RoleDescriptor.java:1811
+x-pack/plugin/core/src/main/java/org/elasticsearch/xpack/core/security/authz/privilege/ApplicationPrivilegeDescriptor.java:125
+x-pack/plugin/core/src/main/java/org/elasticsearch/xpack/core/security/authz/privilege/ConfigurableClusterPrivileges.java:123
+x-pack/plugin/core/src/main/java/org/elasticsearch/xpack/core/security/authz/privilege/ConfigurableClusterPrivileges.java:240
+x-pack/plugin/core/src/main/java/org/elasticsearch/xpack/core/security/authz/privilege/ConfigurableClusterPrivileges.java:349
+x-pack/plugin/core/src/main/java/org/elasticsearch/xpack/core/security/authz/privilege/ConfigurableClusterPrivileges.java:518
+x-pack/plugin/core/src/main/java/org/elasticsearch/xpack/core/slm/SnapshotInvocationRecord.java:55
+x-pack/plugin/core/src/main/java/org/elasticsearch/xpack/core/slm/SnapshotLifecyclePolicy.java:330
+x-pack/plugin/core/src/main/java/org/elasticsearch/xpack/core/slm/SnapshotLifecyclePolicyMetadata.java:88
+x-pack/plugin/core/src/main/java/org/elasticsearch/xpack/core/slm/SnapshotLifecycleStats.java:109
+x-pack/plugin/core/src/main/java/org/elasticsearch/xpack/core/slm/SnapshotRetentionConfiguration.java:111
+x-pack/plugin/core/src/main/java/org/elasticsearch/xpack/core/transform/transforms/TimeRetentionPolicyConfig.java:139
+x-pack/plugin/core/src/main/java/org/elasticsearch/xpack/core/transform/transforms/TimeSyncConfig.java:119
+x-pack/plugin/core/src/main/java/org/elasticsearch/xpack/core/watcher/actions/ActionStatus.java:168
+x-pack/plugin/core/src/main/java/org/elasticsearch/xpack/core/watcher/actions/ActionStatus.java:270
+x-pack/plugin/core/src/main/java/org/elasticsearch/xpack/core/watcher/actions/ActionWrapper.java:298
+x-pack/plugin/core/src/main/java/org/elasticsearch/xpack/core/watcher/condition/ConditionFactory.java:24
+x-pack/plugin/core/src/main/java/org/elasticsearch/xpack/core/watcher/input/none/NoneInput.java:34
+x-pack/plugin/core/src/main/java/org/elasticsearch/xpack/core/watcher/transform/TransformRegistry.java:38
+x-pack/plugin/core/src/main/java/org/elasticsearch/xpack/core/watcher/transform/TransformRegistry.java:53
+x-pack/plugin/core/src/main/java/org/elasticsearch/xpack/core/watcher/transform/chain/ChainTransform.java:70
+x-pack/plugin/core/src/main/java/org/elasticsearch/xpack/core/watcher/watch/WatchStatus.java:284
+x-pack/plugin/core/src/main/java/org/elasticsearch/xpack/core/watcher/watch/WatchStatus.java:418
+x-pack/plugin/core/src/test/java/org/elasticsearch/xpack/core/ilm/MockAction.java:30
+x-pack/plugin/core/src/test/java/org/elasticsearch/xpack/core/security/authc/support/mapper/TemplateRoleNameTests.java:113
+x-pack/plugin/core/src/test/java/org/elasticsearch/xpack/core/security/authc/support/mapper/expressiondsl/ExpressionParserTests.java:150
+x-pack/plugin/enrich/src/main/java/org/elasticsearch/xpack/enrich/EnrichPlugin.java:309
+x-pack/plugin/ent-search/src/main/java/org/elasticsearch/xpack/application/analytics/action/PostAnalyticsEventAction.java:387
+x-pack/plugin/ent-search/src/main/java/org/elasticsearch/xpack/application/connector/action/DeleteConnectorAction.java:121
+x-pack/plugin/ent-search/src/main/java/org/elasticsearch/xpack/application/connector/action/GetConnectorAction.java:105
+x-pack/plugin/ent-search/src/main/java/org/elasticsearch/xpack/application/connector/action/ListConnectorAction.java:162
+x-pack/plugin/ent-search/src/main/java/org/elasticsearch/xpack/application/connector/syncjob/action/CancelConnectorSyncJobAction.java:102
+x-pack/plugin/ent-search/src/main/java/org/elasticsearch/xpack/application/connector/syncjob/action/CheckInConnectorSyncJobAction.java:104
+x-pack/plugin/ent-search/src/main/java/org/elasticsearch/xpack/application/connector/syncjob/action/DeleteConnectorSyncJobAction.java:106
+x-pack/plugin/ent-search/src/main/java/org/elasticsearch/xpack/application/connector/syncjob/action/GetConnectorSyncJobAction.java:106
+x-pack/plugin/ent-search/src/main/java/org/elasticsearch/xpack/application/connector/syncjob/action/ListConnectorSyncJobsAction.java:136
+x-pack/plugin/ent-search/src/main/java/org/elasticsearch/xpack/application/rules/action/DeleteQueryRuleAction.java:116
+x-pack/plugin/ent-search/src/main/java/org/elasticsearch/xpack/application/rules/action/DeleteQueryRulesetAction.java:103
+x-pack/plugin/ent-search/src/main/java/org/elasticsearch/xpack/application/rules/action/GetQueryRuleAction.java:118
+x-pack/plugin/ent-search/src/main/java/org/elasticsearch/xpack/application/rules/action/GetQueryRulesetAction.java:106
+x-pack/plugin/ent-search/src/main/java/org/elasticsearch/xpack/application/rules/action/ListQueryRulesetsAction.java:90
+x-pack/plugin/ent-search/src/main/java/org/elasticsearch/xpack/application/rules/action/PutQueryRuleAction.java:134
+x-pack/plugin/ent-search/src/main/java/org/elasticsearch/xpack/application/search/SearchApplicationTemplate.java:89
+x-pack/plugin/ent-search/src/main/java/org/elasticsearch/xpack/application/search/action/DeleteSearchApplicationAction.java:101
+x-pack/plugin/ent-search/src/main/java/org/elasticsearch/xpack/application/search/action/GetSearchApplicationAction.java:94
+x-pack/plugin/ent-search/src/main/java/org/elasticsearch/xpack/application/search/action/ListSearchApplicationAction.java:118
+x-pack/plugin/ent-search/src/main/java/org/elasticsearch/xpack/application/search/action/PutSearchApplicationAction.java:118
+x-pack/plugin/ent-search/src/main/java/org/elasticsearch/xpack/application/search/action/SearchApplicationSearchRequest.java:143
+x-pack/plugin/esql/qa/testFixtures/src/main/java/org/elasticsearch/xpack/esql/CsvSpecReader.java:39
+x-pack/plugin/esql/qa/testFixtures/src/main/java/org/elasticsearch/xpack/esql/SpecReader.java:98
+x-pack/plugin/esql/src/main/java/org/elasticsearch/xpack/esql/session/EsqlSession.java:202
+x-pack/plugin/esql/src/test/java/org/elasticsearch/xpack/esql/parser/ExpressionTests.java:659
+x-pack/plugin/esql/src/test/java/org/elasticsearch/xpack/esql/parser/GrammarInDevelopmentParsingTests.java:33
+x-pack/plugin/esql/src/test/java/org/elasticsearch/xpack/esql/plugin/DataNodeRequestTests.java:263
+x-pack/plugin/identity-provider/src/main/java/org/elasticsearch/xpack/idp/saml/sp/WildcardServiceProvider.java:82
+x-pack/plugin/identity-provider/src/main/java/org/elasticsearch/xpack/idp/saml/sp/WildcardServiceProviderResolver.java:226
+x-pack/plugin/ilm/src/main/java/org/elasticsearch/xpack/ilm/action/TransportMoveToStepAction.java:347
+x-pack/plugin/inference/src/main/java/org/elasticsearch/xpack/inference/external/openai/OpenAiStreamingProcessor.java:141
+x-pack/plugin/inference/src/main/java/org/elasticsearch/xpack/inference/external/response/streaming/ServerSentEventParser.java:30
+x-pack/plugin/ml/src/main/java/org/elasticsearch/xpack/ml/action/TransportGetDataFrameAnalyticsAction.java:68
+x-pack/plugin/ml/src/main/java/org/elasticsearch/xpack/ml/action/TransportGetFiltersAction.java:72
+x-pack/plugin/ml/src/main/java/org/elasticsearch/xpack/ml/aggs/inference/InferencePipelineAggregationBuilder.java:137
+x-pack/plugin/ml/src/main/java/org/elasticsearch/xpack/ml/utils/persistence/MlParserUtils.java:33
+x-pack/plugin/ql/test-fixtures/src/main/java/org/elasticsearch/xpack/ql/CsvSpecReader.java:40
+x-pack/plugin/ql/test-fixtures/src/main/java/org/elasticsearch/xpack/ql/SpecReader.java:99
+x-pack/plugin/security/lib/nimbus-jose-jwt-modified/src/main/java/com/nimbusds/jose/util/JSONObjectUtils.java:27
+x-pack/plugin/security/lib/nimbus-jose-jwt-modified/src/main/java/com/nimbusds/jose/util/JSONObjectUtils.java:37
+x-pack/plugin/security/src/main/java/org/elasticsearch/xpack/security/audit/AuditLevel.java:30
+x-pack/plugin/security/src/main/java/org/elasticsearch/xpack/security/audit/AuditLevel.java:55
+x-pack/plugin/security/src/main/java/org/elasticsearch/xpack/security/ingest/SetSecurityUserProcessor.java:260
+x-pack/plugin/security/src/main/java/org/elasticsearch/xpack/security/support/FileLineParser.java:20
+x-pack/plugin/security/src/test/java/org/elasticsearch/xpack/security/authc/support/mapper/ExpressionRoleMappingTests.java:448
+x-pack/plugin/security/src/test/java/org/elasticsearch/xpack/security/authc/support/mapper/ExpressionRoleMappingTests.java:452
+x-pack/plugin/shutdown/qa/rolling-upgrade/src/test/java/org/elasticsearch/upgrades/AbstractUpgradeTestCase.java:29
+x-pack/plugin/slm/src/main/java/org/elasticsearch/xpack/slm/history/SnapshotHistoryItem.java:93
+x-pack/plugin/spatial/src/main/java/org/elasticsearch/xpack/spatial/index/mapper/GeoShapeWithDocValuesFieldMapper.java:313
+x-pack/plugin/spatial/src/main/java/org/elasticsearch/xpack/spatial/index/mapper/ShapeParser.java:28
+x-pack/plugin/spatial/src/main/java/org/elasticsearch/xpack/spatial/ingest/CircleProcessor.java:160
+x-pack/plugin/spatial/src/main/java/org/elasticsearch/xpack/spatial/ingest/GeoGridProcessor.java:360
+x-pack/plugin/sql/qa/server/src/main/java/org/elasticsearch/xpack/sql/qa/geo/GeoSqlSpecTestCase.java:71
+x-pack/plugin/sql/qa/server/src/main/java/org/elasticsearch/xpack/sql/qa/jdbc/SqlSpecTestCase.java:53
+x-pack/plugin/sql/sql-client/src/test/java/org/elasticsearch/xpack/sql/client/RemoteFailureTests.java:252
+x-pack/plugin/sql/sql-proto/src/main/java/org/elasticsearch/xpack/sql/proto/content/AbstractObjectParser.java:101
+x-pack/plugin/sql/sql-proto/src/main/java/org/elasticsearch/xpack/sql/proto/content/AbstractObjectParser.java:46
+x-pack/plugin/sql/sql-proto/src/main/java/org/elasticsearch/xpack/sql/proto/content/ConstructingObjectParser.java:117
+x-pack/plugin/sql/sql-proto/src/main/java/org/elasticsearch/xpack/sql/proto/content/ObjectParser.java:126
+x-pack/plugin/sql/sql-proto/src/main/java/org/elasticsearch/xpack/sql/proto/content/ObjectParser.java:130
+x-pack/plugin/sql/sql-proto/src/main/java/org/elasticsearch/xpack/sql/proto/content/ObjectParser.java:42
+x-pack/plugin/sql/src/main/java/org/elasticsearch/xpack/sql/expression/function/scalar/datetime/DateTimeParseProcessor.java:54
+x-pack/plugin/sql/src/main/java/org/elasticsearch/xpack/sql/expression/literal/geo/GeoShape.java:211
+x-pack/plugin/sql/src/main/java/org/elasticsearch/xpack/sql/expression/literal/interval/Intervals.java:260
+x-pack/plugin/sql/src/test/java/org/elasticsearch/xpack/sql/parser/ParamLiteralTests.java:32
+x-pack/plugin/text-structure/src/main/java/org/elasticsearch/xpack/textstructure/rest/RestFindStructureArgumentsParser.java:25
+x-pack/plugin/transform/src/main/java/org/elasticsearch/xpack/transform/action/TransportGetTransformAction.java:108
+x-pack/plugin/watcher/src/main/java/org/elasticsearch/xpack/watcher/actions/email/EmailAction.java:139
+x-pack/plugin/watcher/src/main/java/org/elasticsearch/xpack/watcher/actions/index/IndexAction.java:143
+x-pack/plugin/watcher/src/main/java/org/elasticsearch/xpack/watcher/actions/jira/JiraAction.java:75
+x-pack/plugin/watcher/src/main/java/org/elasticsearch/xpack/watcher/actions/logging/LoggingAction.java:73
+x-pack/plugin/watcher/src/main/java/org/elasticsearch/xpack/watcher/actions/pagerduty/PagerDutyAction.java:53
+x-pack/plugin/watcher/src/main/java/org/elasticsearch/xpack/watcher/actions/slack/SlackAction.java:71
+x-pack/plugin/watcher/src/main/java/org/elasticsearch/xpack/watcher/actions/webhook/WebhookAction.java:59
+x-pack/plugin/watcher/src/main/java/org/elasticsearch/xpack/watcher/common/http/BasicAuth.java:102
+x-pack/plugin/watcher/src/main/java/org/elasticsearch/xpack/watcher/common/http/HttpMethod.java:29
+x-pack/plugin/watcher/src/main/java/org/elasticsearch/xpack/watcher/common/http/HttpProxy.java:81
+x-pack/plugin/watcher/src/main/java/org/elasticsearch/xpack/watcher/common/http/HttpRequest.java:303
+x-pack/plugin/watcher/src/main/java/org/elasticsearch/xpack/watcher/common/http/HttpRequestTemplate.java:278
+x-pack/plugin/watcher/src/main/java/org/elasticsearch/xpack/watcher/common/http/HttpResponse.java:180
+x-pack/plugin/watcher/src/main/java/org/elasticsearch/xpack/watcher/common/http/Scheme.java:33
+x-pack/plugin/watcher/src/main/java/org/elasticsearch/xpack/watcher/common/text/TextTemplate.java:127
+x-pack/plugin/watcher/src/main/java/org/elasticsearch/xpack/watcher/condition/ArrayCompareCondition.java:62
+x-pack/plugin/watcher/src/main/java/org/elasticsearch/xpack/watcher/condition/CompareCondition.java:50
+x-pack/plugin/watcher/src/main/java/org/elasticsearch/xpack/watcher/condition/InternalAlwaysCondition.java:24
+x-pack/plugin/watcher/src/main/java/org/elasticsearch/xpack/watcher/condition/NeverCondition.java:25
+x-pack/plugin/watcher/src/main/java/org/elasticsearch/xpack/watcher/condition/ScriptCondition.java:44
+x-pack/plugin/watcher/src/main/java/org/elasticsearch/xpack/watcher/execution/TriggeredWatch.java:58
+x-pack/plugin/watcher/src/main/java/org/elasticsearch/xpack/watcher/execution/TriggeredWatch.java:69
+x-pack/plugin/watcher/src/main/java/org/elasticsearch/xpack/watcher/input/InputRegistry.java:37
+x-pack/plugin/watcher/src/main/java/org/elasticsearch/xpack/watcher/input/chain/ChainInput.java:58
+x-pack/plugin/watcher/src/main/java/org/elasticsearch/xpack/watcher/input/http/HttpInput.java:79
+x-pack/plugin/watcher/src/main/java/org/elasticsearch/xpack/watcher/input/search/SearchInput.java:120
+x-pack/plugin/watcher/src/main/java/org/elasticsearch/xpack/watcher/input/simple/SimpleInput.java:56
+x-pack/plugin/watcher/src/main/java/org/elasticsearch/xpack/watcher/notification/email/DataAttachment.java:73
+x-pack/plugin/watcher/src/main/java/org/elasticsearch/xpack/watcher/notification/email/Email.java:189
+x-pack/plugin/watcher/src/main/java/org/elasticsearch/xpack/watcher/notification/email/Email.java:439
+x-pack/plugin/watcher/src/main/java/org/elasticsearch/xpack/watcher/notification/email/Email.java:461
+x-pack/plugin/watcher/src/main/java/org/elasticsearch/xpack/watcher/notification/email/Email.java:509
+x-pack/plugin/watcher/src/main/java/org/elasticsearch/xpack/watcher/notification/email/Email.java:560
+x-pack/plugin/watcher/src/main/java/org/elasticsearch/xpack/watcher/notification/email/Email.java:569
+x-pack/plugin/watcher/src/main/java/org/elasticsearch/xpack/watcher/notification/email/Email.java:585
+x-pack/plugin/watcher/src/main/java/org/elasticsearch/xpack/watcher/notification/email/attachment/DataAttachmentParser.java:37
+x-pack/plugin/watcher/src/main/java/org/elasticsearch/xpack/watcher/notification/email/attachment/EmailAttachmentParser.java:56
+x-pack/plugin/watcher/src/main/java/org/elasticsearch/xpack/watcher/notification/email/attachment/EmailAttachmentsParser.java:26
+x-pack/plugin/watcher/src/main/java/org/elasticsearch/xpack/watcher/notification/email/attachment/HttpEmailAttachementParser.java:51
+x-pack/plugin/watcher/src/main/java/org/elasticsearch/xpack/watcher/notification/email/attachment/ReportingAttachmentParser.java:180
+x-pack/plugin/watcher/src/main/java/org/elasticsearch/xpack/watcher/notification/pagerduty/IncidentEvent.java:343
+x-pack/plugin/watcher/src/main/java/org/elasticsearch/xpack/watcher/notification/pagerduty/IncidentEventContext.java:191
+x-pack/plugin/watcher/src/main/java/org/elasticsearch/xpack/watcher/notification/slack/message/Attachment.java:383
+x-pack/plugin/watcher/src/main/java/org/elasticsearch/xpack/watcher/notification/slack/message/DynamicAttachments.java:70
+x-pack/plugin/watcher/src/main/java/org/elasticsearch/xpack/watcher/notification/slack/message/Field.java:111
+x-pack/plugin/watcher/src/main/java/org/elasticsearch/xpack/watcher/notification/slack/message/SlackMessage.java:258
+x-pack/plugin/watcher/src/main/java/org/elasticsearch/xpack/watcher/support/XContentFilterKeysUtils.java:41
+x-pack/plugin/watcher/src/main/java/org/elasticsearch/xpack/watcher/support/XContentFilterKeysUtils.java:45
+x-pack/plugin/watcher/src/main/java/org/elasticsearch/xpack/watcher/transform/script/ScriptTransform.java:57
+x-pack/plugin/watcher/src/main/java/org/elasticsearch/xpack/watcher/transform/search/SearchTransform.java:98
+x-pack/plugin/watcher/src/main/java/org/elasticsearch/xpack/watcher/trigger/manual/ManualTrigger.java:28
+x-pack/plugin/watcher/src/main/java/org/elasticsearch/xpack/watcher/trigger/manual/ManualTriggerEvent.java:45
+x-pack/plugin/watcher/src/main/java/org/elasticsearch/xpack/watcher/trigger/schedule/CronSchedule.java:43
+x-pack/plugin/watcher/src/main/java/org/elasticsearch/xpack/watcher/trigger/schedule/DailySchedule.java:82
+x-pack/plugin/watcher/src/main/java/org/elasticsearch/xpack/watcher/trigger/schedule/HourlySchedule.java:94
+x-pack/plugin/watcher/src/main/java/org/elasticsearch/xpack/watcher/trigger/schedule/IntervalSchedule.java:138
+x-pack/plugin/watcher/src/main/java/org/elasticsearch/xpack/watcher/trigger/schedule/IntervalSchedule.java:205
+x-pack/plugin/watcher/src/main/java/org/elasticsearch/xpack/watcher/trigger/schedule/IntervalSchedule.java:87
+x-pack/plugin/watcher/src/main/java/org/elasticsearch/xpack/watcher/trigger/schedule/MonthlySchedule.java:76
+x-pack/plugin/watcher/src/main/java/org/elasticsearch/xpack/watcher/trigger/schedule/Schedule.java:30
+x-pack/plugin/watcher/src/main/java/org/elasticsearch/xpack/watcher/trigger/schedule/ScheduleRegistry.java:28
+x-pack/plugin/watcher/src/main/java/org/elasticsearch/xpack/watcher/trigger/schedule/ScheduleRegistry.java:50
+x-pack/plugin/watcher/src/main/java/org/elasticsearch/xpack/watcher/trigger/schedule/ScheduleTriggerEvent.java:59
+x-pack/plugin/watcher/src/main/java/org/elasticsearch/xpack/watcher/trigger/schedule/WeeklySchedule.java:76
+x-pack/plugin/watcher/src/main/java/org/elasticsearch/xpack/watcher/trigger/schedule/YearlySchedule.java:76
+x-pack/plugin/watcher/src/main/java/org/elasticsearch/xpack/watcher/trigger/schedule/support/DayTimes.java:190
+x-pack/plugin/watcher/src/main/java/org/elasticsearch/xpack/watcher/trigger/schedule/support/DayTimes.java:62
+x-pack/plugin/watcher/src/main/java/org/elasticsearch/xpack/watcher/trigger/schedule/support/MonthTimes.java:141
+x-pack/plugin/watcher/src/main/java/org/elasticsearch/xpack/watcher/trigger/schedule/support/WeekTimes.java:102
+x-pack/plugin/watcher/src/main/java/org/elasticsearch/xpack/watcher/trigger/schedule/support/YearTimes.java:134
+x-pack/plugin/watcher/src/main/java/org/elasticsearch/xpack/watcher/watch/WatchParser.java:130
+x-pack/plugin/watcher/src/main/java/org/elasticsearch/xpack/watcher/watch/WatchParser.java:160
+x-pack/plugin/watcher/src/main/java/org/elasticsearch/xpack/watcher/watch/WatchParser.java:81
+x-pack/plugin/watcher/src/test/java/org/elasticsearch/xpack/watcher/notification/email/attachment/EmailAttachmentParsersTests.java:128
+x-pack/qa/rolling-upgrade-basic/src/test/java/org/elasticsearch/upgrades/AbstractUpgradeTestCase.java:43
+x-pack/qa/rolling-upgrade-multi-cluster/src/test/java/org/elasticsearch/upgrades/AbstractMultiClusterUpgradeTestCase.java:41
+x-pack/qa/rolling-upgrade-multi-cluster/src/test/java/org/elasticsearch/upgrades/AbstractMultiClusterUpgradeTestCase.java:58
+x-pack/qa/rolling-upgrade/src/test/java/org/elasticsearch/upgrades/AbstractUpgradeTestCase.java:112[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': '1aed889d3a670f5fc2b6fd7c4139227ce131eb58', 'path': 'server/src/main/java/org/elasticsearch/index/mapper/DocumentParser.java', 'startline': 210, 'endline': 230}`
+
+
+[0m[36;1m[1;3mHere are lines 210 through 230.
+
+        List<String> path = new ArrayList<>();
+        String fieldName = null;
+        while (currentToken != null) {
+            while (currentToken != XContentParser.Token.FIELD_NAME) {
+                if (fieldName != null
+                    && (currentToken == XContentParser.Token.START_OBJECT || currentToken == XContentParser.Token.START_ARRAY)) {
+                    if (parentNames.contains(getCurrentPath(path, fieldName)) == false) {
+                        // No missing value under this parsing subtree, skip it.
+                        parser.skipChildren();
+                    } else {
+                        path.add(fieldName);
+                    }
+                    fieldName = null;
+                } else if (currentToken == XContentParser.Token.END_OBJECT || currentToken == XContentParser.Token.END_ARRAY) {
+                    if (currentToken == XContentParser.Token.END_OBJECT && path.isEmpty() == false) {
+                        path.remove(path.size() - 1);
+                    }
+                    fieldName = null;
+                }
+                currentToken = parser.nextToken();
+                if (currentToken == null) {
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': '1aed889d3a670f5fc2b6fd7c4139227ce131eb58', 'path': 'server/src/main/java/org/elasticsearch/index/mapper/DocumentParser.java', 'startline': 1, 'endline': 30}`
+responded: The code block in the older version at ref 1aed889d3a670f5fc2b6fd7c4139227ce131eb58 is very similar to the code block in the newer patch ref f77611c109b470759f50ccff3630d4b3d118cfa0. The main difference is that the newer patch adds tracking for whether the current token is an object or an array by using the isObjectInPath list, and it modifies the removal of elements from the path list accordingly.
+
+Summary of differences:
+- The older version only tracks the path of field names.
+- The newer version tracks both the path and whether the current token is an object or array.
+- The newer version conditionally removes from path and isObjectInPath based on the token type matching the stored type.
+
+To backport this patch, I need to:
+1. Add a data structure to track if the current token is an object or array (similar to isObjectInPath).
+2. Modify the removal logic to check this data structure before removing from path.
+3. Adapt the removal method from `path.remove(path.size() - 1)` to `path.removeLast()` if the older version supports LinkedList, otherwise keep the original removal method.
+
+Next, I want to confirm the type of the `path` variable in the older version (ArrayList or LinkedList) and check if it supports `removeLast()` or not. I will locate the declaration of `path` in the older version.
+
+I have already seen that `path` is declared as `List<String> path = new ArrayList<>();` in the older version, so it does not support `removeLast()`. I will need to adapt the patch to use `path.remove(path.size() - 1)` instead of `path.removeLast()`.
+
+I also need to check what type `isObjectInPath` should be. In the newer patch, it is a `LinkedList<Boolean>`. I will check if I can use a similar type in the older version or if I need to adapt it.
+
+I will view the imports and the top of the class to check if `LinkedList` is imported or can be imported in the older version.
+
+[0m[36;1m[1;3mHere are lines 1 through 30.
+
+/*
+ * Copyright Elasticsearch B.V. and/or licensed to Elasticsearch B.V. under one
+ * or more contributor license agreements. Licensed under the "Elastic License
+ * 2.0", the "GNU Affero General Public License v3.0 only", and the "Server Side
+ * Public License v 1"; you may not use this file except in compliance with, at
+ * your election, the "Elastic License 2.0", the "GNU Affero General Public
+ * License v3.0 only", or the "Server Side Public License, v 1".
+ */
+
+package org.elasticsearch.index.mapper;
+
+import org.apache.lucene.index.IndexableField;
+import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.search.Query;
+import org.elasticsearch.common.Explicit;
+import org.elasticsearch.common.regex.Regex;
+import org.elasticsearch.common.xcontent.XContentHelper;
+import org.elasticsearch.core.Nullable;
+import org.elasticsearch.index.IndexVersion;
+import org.elasticsearch.index.IndexVersions;
+import org.elasticsearch.index.fielddata.FieldDataContext;
+import org.elasticsearch.index.fielddata.IndexFieldDataCache;
+import org.elasticsearch.index.mapper.vectors.DenseVectorFieldMapper;
+import org.elasticsearch.index.query.SearchExecutionContext;
+import org.elasticsearch.indices.breaker.NoneCircuitBreakerService;
+import org.elasticsearch.plugins.internal.XContentMeteringParserDecorator;
+import org.elasticsearch.search.lookup.SearchLookup;
+import org.elasticsearch.search.lookup.Source;
+import org.elasticsearch.xcontent.XContentBuilder;
+import org.elasticsearch.xcontent.XContentLocation;
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': '1aed889d3a670f5fc2b6fd7c4139227ce131eb58', 'path': 'server/src/main/java/org/elasticsearch/index/mapper/DocumentParser.java', 'startline': 200, 'endline': 260}`
+
+
+[0m[36;1m[1;3mHere are lines 200 through 260.
+
+        DocumentParserContext context,
+        Map<String, IgnoredSourceFieldMapper.NameValue> fields
+    ) throws IOException {
+        // Generate all possible parent names for the given fields.
+        // This is used to skip processing objects that can't generate missing values.
+        Set<String> parentNames = getPossibleParentNames(fields.keySet());
+        List<IgnoredSourceFieldMapper.NameValue> result = new ArrayList<>();
+
+        XContentParser parser = context.parser();
+        XContentParser.Token currentToken = parser.nextToken();
+        List<String> path = new ArrayList<>();
+        String fieldName = null;
+        while (currentToken != null) {
+            while (currentToken != XContentParser.Token.FIELD_NAME) {
+                if (fieldName != null
+                    && (currentToken == XContentParser.Token.START_OBJECT || currentToken == XContentParser.Token.START_ARRAY)) {
+                    if (parentNames.contains(getCurrentPath(path, fieldName)) == false) {
+                        // No missing value under this parsing subtree, skip it.
+                        parser.skipChildren();
+                    } else {
+                        path.add(fieldName);
+                    }
+                    fieldName = null;
+                } else if (currentToken == XContentParser.Token.END_OBJECT || currentToken == XContentParser.Token.END_ARRAY) {
+                    if (currentToken == XContentParser.Token.END_OBJECT && path.isEmpty() == false) {
+                        path.remove(path.size() - 1);
+                    }
+                    fieldName = null;
+                }
+                currentToken = parser.nextToken();
+                if (currentToken == null) {
+                    return result;
+                }
+            }
+            fieldName = parser.currentName();
+            String fullName = getCurrentPath(path, fieldName);
+            var leaf = fields.get(fullName);  // There may be multiple matches for array elements, don't use #remove.
+            if (leaf != null) {
+                parser.nextToken();  // Advance the parser to the value to be read.
+                result.add(leaf.cloneWithValue(context.encodeFlattenedToken()));
+                parser.nextToken();  // Skip the token ending the value.
+                fieldName = null;
+            }
+            currentToken = parser.nextToken();
+        }
+        return result;
+    }
+
+    private static String getCurrentPath(List<String> path, String fieldName) {
+        assert fieldName != null;
+        return path.isEmpty() ? fieldName : String.join(".", path) + "." + fieldName;
+    }
+
+    /**
+     * Generates all possible parent object names for the given full names.
+     * For instance, for input ['path.to.foo', 'another.path.to.bar'], it returns:
+     * [ 'path', 'path.to', 'another', 'another.path', 'another.path.to' ]
+     */
+    private static Set<String> getPossibleParentNames(Set<String> fullPaths) {
+        if (fullPaths.isEmpty()) {
+            return Collections.emptySet();
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': '1aed889d3a670f5fc2b6fd7c4139227ce131eb58', 'path': 'server/src/main/java/org/elasticsearch/index/mapper/DocumentParser.java', 'startline': 30, 'endline': 70}`
+responded: The code block in the older version (ref 1aed889d3a670f5fc2b6fd7c4139227ce131eb58) is similar to the code block in the newer version (ref f77611c109b470759f50ccff3630d4b3d118cfa0) except it does not have the tracking of array scopes using the isObjectInPath list.
+
+The patch in the newer version adds a new list isObjectInPath to track whether the current path element is an object or an array. It adds an element to this list when a field name is added to the path, and removes an element when the path is removed, but only if the current token matches the scope type (END_OBJECT for object, END_ARRAY for array).
+
+In the older version, only path is tracked and removed on END_OBJECT tokens, but arrays are not tracked with a corresponding removal from path on END_ARRAY.
+
+To backport this patch, I will:
+- Add a new list isObjectInPath to track whether the current path element is an object or an array.
+- Add to isObjectInPath when adding to path, based on whether the current token is START_OBJECT or START_ARRAY.
+- Modify the removal of path elements on END_OBJECT or END_ARRAY tokens to conditionally remove from path and isObjectInPath only if the scope type matches the type stored in isObjectInPath.
+
+I need to check the exact declaration and initialization of path and fieldName in the older version to correctly add isObjectInPath. I have seen that path is declared as List<String> path = new ArrayList<>(); and fieldName as String fieldName = null; in the older version.
+
+I will now check the imports in the older version to see if I need to add an import for a Deque or LinkedList for isObjectInPath or if I can use ArrayList. The newer version uses isObjectInPath.getLast() and removeLast(), which are methods of Deque/LinkedList, not List.
+
+I will view the first 40 lines of the file in the older version to check the imports and class declaration to see if LinkedList or Deque is imported or used.
+
+[0m[36;1m[1;3mHere are lines 30 through 70.
+
+import org.elasticsearch.xcontent.XContentLocation;
+import org.elasticsearch.xcontent.XContentParseException;
+import org.elasticsearch.xcontent.XContentParser;
+import org.elasticsearch.xcontent.XContentParserConfiguration;
+import org.elasticsearch.xcontent.XContentType;
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.Iterator;
+import java.util.LinkedList;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
+import java.util.function.Consumer;
+
+import static org.elasticsearch.index.mapper.vectors.DenseVectorFieldMapper.MAX_DIMS_COUNT;
+import static org.elasticsearch.index.mapper.vectors.DenseVectorFieldMapper.MIN_DIMS_FOR_DYNAMIC_FLOAT_MAPPING;
+
+/**
+ * A parser for documents
+ */
+public final class DocumentParser {
+
+    public static final IndexVersion DYNAMICALLY_MAP_DENSE_VECTORS_INDEX_VERSION = IndexVersions.FIRST_DETACHED_INDEX_VERSION;
+
+    private final XContentParserConfiguration parserConfiguration;
+    private final MappingParserContext mappingParserContext;
+
+    DocumentParser(XContentParserConfiguration parserConfiguration, MappingParserContext mappingParserContext) {
+        this.mappingParserContext = mappingParserContext;
+        this.parserConfiguration = parserConfiguration;
+    }
+
+    /**
+     * Parse a document
+     *
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': '1aed889d3a670f5fc2b6fd7c4139227ce131eb58', 'path': 'server/src/main/java/org/elasticsearch/index/mapper/DocumentParser.java', 'startline': 180, 'endline': 210}`
+
+
+[0m[36;1m[1;3mHere are lines 180 through 210.
+
+                context.sourceToParse().getXContentType()
+            )
+        ) {
+            DocumentParserContext newContext = new RootDocumentParserContext(
+                context.mappingLookup(),
+                mappingParserContext,
+                context.sourceToParse(),
+                parser
+            );
+            var nameValues = parseDocForMissingValues(newContext, fields);
+            for (var nameValue : nameValues) {
+                context.addIgnoredField(nameValue);
+            }
+        }
+    }
+
+    /**
+     * Simplified parsing version for retrieving the source of a given set of fields.
+     */
+    private static List<IgnoredSourceFieldMapper.NameValue> parseDocForMissingValues(
+        DocumentParserContext context,
+        Map<String, IgnoredSourceFieldMapper.NameValue> fields
+    ) throws IOException {
+        // Generate all possible parent names for the given fields.
+        // This is used to skip processing objects that can't generate missing values.
+        Set<String> parentNames = getPossibleParentNames(fields.keySet());
+        List<IgnoredSourceFieldMapper.NameValue> result = new ArrayList<>();
+
+        XContentParser parser = context.parser();
+        XContentParser.Token currentToken = parser.nextToken();
+        List<String> path = new ArrayList<>();
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': '1aed889d3a670f5fc2b6fd7c4139227ce131eb58', 'path': 'server/src/main/java/org/elasticsearch/index/mapper/DocumentParser.java', 'startline': 190, 'endline': 220}`
+responded: Analysis:
+1. The patch to be backported adds tracking of array scopes using a new list `isObjectInPath` which keeps track of whether the current path element is an object or an array. This is used to correctly pop path elements when encountering END_OBJECT or END_ARRAY tokens.
+2. The old code at the same location (lines 200-250) does not have this `isObjectInPath` logic. It only tracks the path with a List<String> path.
+3. The patch adds these lines inside the inner while loop that processes tokens until FIELD_NAME is found:
+   - When adding to path, also add a boolean to `isObjectInPath` indicating if the token is START_OBJECT.
+   - When removing from path, only remove if the scope matches the type recorded in `isObjectInPath` (object vs array), then remove from both lists.
+4. The old code only removes from path on END_OBJECT tokens, and does not track arrays.
+
+Conclusion:
+- The patch logic is an enhancement to correctly track array scopes.
+- The older version does not have this logic, so it needs to be added.
+- The new list `isObjectInPath` needs to be declared and used similarly in the older version.
+- The removal condition needs to be adapted to check both END_OBJECT and END_ARRAY tokens, and check the type in `isObjectInPath`.
+- The rest of the code remains the same.
+
+Next steps:
+- View the surrounding lines in the old version to find the exact place to add the new list declaration `isObjectInPath`.
+- Confirm the variable declaration style and imports if needed.
+- Craft the patch for the old version by inserting the new list and modifying the inner while loop as per the patch, adapting to the old code style (e.g. path.remove(path.size() - 1) vs path.removeLast()).
+
+I will view more lines around line 200 in the old version to check for variable declarations and context.
+
+[0m[36;1m[1;3mHere are lines 190 through 220.
+
+            for (var nameValue : nameValues) {
+                context.addIgnoredField(nameValue);
+            }
+        }
+    }
+
+    /**
+     * Simplified parsing version for retrieving the source of a given set of fields.
+     */
+    private static List<IgnoredSourceFieldMapper.NameValue> parseDocForMissingValues(
+        DocumentParserContext context,
+        Map<String, IgnoredSourceFieldMapper.NameValue> fields
+    ) throws IOException {
+        // Generate all possible parent names for the given fields.
+        // This is used to skip processing objects that can't generate missing values.
+        Set<String> parentNames = getPossibleParentNames(fields.keySet());
+        List<IgnoredSourceFieldMapper.NameValue> result = new ArrayList<>();
+
+        XContentParser parser = context.parser();
+        XContentParser.Token currentToken = parser.nextToken();
+        List<String> path = new ArrayList<>();
+        String fieldName = null;
+        while (currentToken != null) {
+            while (currentToken != XContentParser.Token.FIELD_NAME) {
+                if (fieldName != null
+                    && (currentToken == XContentParser.Token.START_OBJECT || currentToken == XContentParser.Token.START_ARRAY)) {
+                    if (parentNames.contains(getCurrentPath(path, fieldName)) == false) {
+                        // No missing value under this parsing subtree, skip it.
+                        parser.skipChildren();
+                    } else {
+                        path.add(fieldName);
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3mThe target code to be patched is located inside the method named `parseDocForMissingValues` in the file `server/src/main/java/org/elasticsearch/index/mapper/DocumentParser.java` at the old ref 1aed889d3a670f5fc2b6fd7c4139227ce131eb58.
+
+The old code snippet is:
+```java
+if (fieldName != null
+    && (currentToken == XContentParser.Token.START_OBJECT || currentToken == XContentParser.Token.START_ARRAY)) {
+    if (parentNames.contains(getCurrentPath(path, fieldName)) == false) {
+        // No missing value under this parsing subtree, skip it.
+        parser.skipChildren();
+    } else {
+        path.add(fieldName);
+    }
+    fieldName = null;
+} else if (currentToken == XContentParser.Token.END_OBJECT || currentToken == XContentParser.Token.END_ARRAY) {
+    if (currentToken == XContentParser.Token.END_OBJECT && path.isEmpty() == false) {
+        path.remove(path.size() - 1);
+    }
+    fieldName = null;
+}
+```
+
+The patch from the newer ref introduces a new list `isObjectInPath` to track whether the current path element is an object or an array, and then uses this list to correctly remove the path element when encountering an END_OBJECT or END_ARRAY token.
+
+The old version only tracks the path elements but does not track if they are objects or arrays, and only removes path elements on END_OBJECT tokens.
+
+To backport this patch, I need to:
+- Add a new list `isObjectInPath` of Boolean type to track whether each element in `path` is an object (true) or an array (false).
+- When adding a new path element, also add a corresponding boolean to `isObjectInPath` indicating if the current token is START_OBJECT (true) or START_ARRAY (false).
+- When encountering an END_OBJECT or END_ARRAY token, check `isObjectInPath` to see if the last element matches the token type (true for END_OBJECT, false for END_ARRAY), and only then remove the last element from both `path` and `isObjectInPath`.
+- Adjust the removal code accordingly.
+
+I will now prepare the patch for the old version with these changes, adapting the code style and context to the old version.
+
+The new variable `isObjectInPath` needs to be declared alongside `path` and initialized as a LinkedList or ArrayList of Boolean.
+
+I will generate the patch now.[0m
+
+[1m> Finished chain.[0m
+2026-04-27 08:52:48,159 - backport - ERROR - Reach max_iterations for hunk 1

@@ -1,0 +1,1109 @@
+2026-04-27 08:56:30,659 - backport - INFO - Using openrouter API: https://openrouter.ai/api/v1 (model: openai/gpt-4.1-mini)
+
+
+[1m> Entering new AgentExecutor chain...[0m
+
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `git_history` with `{}`
+
+
+[0m[36;1m[1;3med until #112092 gets backported to 8.x"
+-    )
+-    task.skipTest(
+-      "indices.put_index_template/15_composition/Composable index templates that include subobjects: auto on arbitrary field",
+-      "Tentantively disabled until #112092 gets backported to 8.x"
+-    )
+-    task.skipTest("index/92_metrics_auto_subobjects/Metrics object indexing", "Tentantively disabled until #112092 gets backported to 8.x")
+-    task.skipTest("index/92_metrics_auto_subobjects/Root with metrics", "Tentantively disabled until #112092 gets backported to 8.x")
+-    task.skipTest("search/330_fetch_fields/Test with subobjects: auto", "Tentantively disabled until #112092 gets backported to 8.x")
+ })
+fffe8844e92 Apply auto-flattening to `subobjects: auto` (#112092)
+
+diff --git a/rest-api-spec/build.gradle b/rest-api-spec/build.gradle
+--- a/rest-api-spec/build.gradle
++++ b/rest-api-spec/build.gradle
+@@ -57,6 +59,24 @@
+-tasks.named("yamlRestCompatTestTransform").configure({ task ->
+-  task.skipTest("tsdb/140_routing_path/multi-value routing path field", "Multi-value routing paths are allowed now. See #112645")
+-  task.skipTest("indices.sort/10_basic/Index Sort", "warning does not exist for compatibility")
+-  task.skipTest("search/330_fetch_fields/Test search rewrite", "warning does not exist for compatibility")
+-  task.skipTest("search/540_ignore_above_synthetic_source/ignore_above mapping level setting on arrays", "Temporary mute while backporting to 8.x")
++    task.skipTest("indices.sort/10_basic/Index Sort", "warning does not exist for compatibility")
++    task.skipTest("search/330_fetch_fields/Test search rewrite", "warning does not exist for compatibility")
++    task.skipTest("search/540_ignore_above_synthetic_source/ignore_above mapping level setting on arrays", "Temporary mute while backporting to 8.x")
++    task.skipTest("indices.create/20_synthetic_source/subobjects auto", "Tentantively disabled until #112092 gets backported to 8.x")
++    task.skipTest(
++      "index/92_metrics_auto_subobjects/Metrics object indexing with synthetic source",
++      "Tentantively disabled until #112092 gets backported to 8.x"
++    )
++    task.skipTest(
++      "index/92_metrics_auto_subobjects/Root without subobjects with synthetic source",
++      "Tentantively disabled until #112092 gets backported to 8.x"
++    )
++    task.skipTest(
++      "indices.put_index_template/15_composition/Composable index templates that include subobjects: auto at root",
++      "Tentantively disabled until #112092 gets backported to 8.x"
++    )
++    task.skipTest(
++      "indices.put_index_template/15_composition/Composable index templates that include subobjects: auto on arbitrary field",
++      "Tentantively disabled until #112092 gets backported to 8.x"
++    )
++    task.skipTest("index/92_metrics_auto_subobjects/Metrics object indexing", "Tentantively disabled until #112092 gets backported to 8.x")
++    task.skipTest("index/92_metrics_auto_subobjects/Root with metrics", "Tentantively disabled until #112092 gets backported to 8.x")
++    task.skipTest("search/330_fetch_fields/Test with subobjects: auto", "Tentantively disabled until #112092 gets backported to 8.x")
+ })
+35fbbec46ab Fix synthetic source for flattened field when used with ignore_above (#113499)
+
+diff --git a/rest-api-spec/build.gradle b/rest-api-spec/build.gradle
+--- a/rest-api-spec/build.gradle
++++ b/rest-api-spec/build.gradle
+@@ -57,5 +57,6 @@
+ tasks.named("yamlRestCompatTestTransform").configure({ task ->
+   task.skipTest("tsdb/140_routing_path/multi-value routing path field", "Multi-value routing paths are allowed now. See #112645")
+   task.skipTest("indices.sort/10_basic/Index Sort", "warning does not exist for compatibility")
+   task.skipTest("search/330_fetch_fields/Test search rewrite", "warning does not exist for compatibility")
++  task.skipTest("search/540_ignore_above_synthetic_source/ignore_above mapping level setting on arrays", "Temporary mute while backporting to 8.x")
+ })
+c18c531d720 Deprecate legacy params from range query (#113286)
+
+diff --git a/rest-api-spec/build.gradle b/rest-api-spec/build.gradle
+--- a/rest-api-spec/build.gradle
++++ b/rest-api-spec/build.gradle
+@@ -57,3 +57,5 @@
+ tasks.named("yamlRestCompatTestTransform").configure({ task ->
+   task.skipTest("tsdb/140_routing_path/multi-value routing path field", "Multi-value routing paths are allowed now. See #112645")
++  task.skipTest("indices.sort/10_basic/Index Sort", "warning does not exist for compatibility")
++  task.skipTest("search/330_fetch_fields/Test search rewrite", "warning does not exist for compatibility")
+ })
+8d223cbf7a0 Add support for multi-value dimensions (#112645)
+
+diff --git a/rest-api-spec/build.gradle b/rest-api-spec/build.gradle
+--- a/rest-api-spec/build.gradle
++++ b/rest-api-spec/build.gradle
+@@ -56,0 +57,3 @@
++tasks.named("yamlRestCompatTestTransform").configure({ task ->
++  task.skipTest("tsdb/140_routing_path/multi-value routing path field", "Multi-value routing paths are allowed now. See #112645")
++}
+You need to do the following analysis based on the information in the last commit:
+Analyze the code logic of the context of the patch to be ported in this commit step by step.
+If code logic already existed before this commit, the patch context can be assumed to remain in a similar location. Use `locate` and `viewcode` to check your results.
+If code logic were added in this commit, then you need to `git_show` for further details.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `locate_symbol` with `{'ref': 'faaf4ba7fdf013c1e1e739c7a5964fed2f3cad14', 'symbol': 'yamlRestCompatTestTransform'}`
+responded: The patch to be backported adds multiple `task.skipTest` calls inside the `yamlRestCompatTestTransform` task configuration in the file `rest-api-spec/build.gradle`. These skip tests are related to "indices.create/20_synthetic_source" and mention "temporary until backported".
+
+From the provided history snippet, we see that in the older ref faaf4ba7fdf013c1e1e739c7a5964fed2f3cad14, the `yamlRestCompatTestTransform` task configuration exists and has some `task.skipTest` calls, but the new skip tests added in the patch are not present.
+
+The existing code snippet from the older ref is:
+```groovy
+  task.skipTest("indices.sort/10_basic/Index Sort", "warning does not exist for compatibility")
+  task.skipTest("search/330_fetch_fields/Test search rewrite", "warning does not exist for compatibility")
+  task.skipTest("range/20_synthetic_source/Date range", "date range breaking change causes tests to produce incorrect values for compatibility")
+})
+```
+
+In the newer patch, the last three lines are replaced by additional skipTest lines for indices.create/20_synthetic_source tests.
+
+Step 1: I want to confirm the location of this task configuration in the older version. I will locate the symbol `yamlRestCompatTestTransform` in the older ref faaf4ba7fdf013c1e1e739c7a5964fed2f3cad14 to see the exact file and line number.
+
+This will help me to view a larger snippet around the task configuration to confirm the context and where to add the new skipTest lines.
+
+I will proceed with the locate_symbol call.
+
+[0m[33;1m[1;3mThe symbol yamlRestCompatTestTransform you are looking for does not exist in the current ref.
+But here is a symbol similar to it. It's `RestCompatTestTransformTask`.
+The file where this symbol is located is: 
+build-tools-internal/src/main/java/org/elasticsearch/gradle/internal/test/rest/compat/compat/RestCompatTestTransformTask.java:106
+build-tools-internal/src/main/java/org/elasticsearch/gradle/internal/test/rest/compat/compat/RestCompatTestTransformTask.java:80
+Please be careful to check that this symbol indicates the same thing as the previous symbol.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': 'faaf4ba7fdf013c1e1e739c7a5964fed2f3cad14', 'path': 'rest-api-spec/build.gradle', 'startline': 240, 'endline': 260}`
+
+
+[0m[36;1m[1;3mThis file only has 252 lines. Here are lines 240 through 252.
+
+  }
+}
+
+tasks.named("precommit").configure {
+  dependsOn 'enforceYamlTestConvention'
+}
+
+tasks.named("yamlRestTestV7CompatTransform").configure({ task ->
+  task.skipTest("indices.sort/10_basic/Index Sort", "warning does not exist for compatibility")
+  task.skipTest("search/330_fetch_fields/Test search rewrite", "warning does not exist for compatibility")
+  task.skipTest("range/20_synthetic_source/Date range", "date range breaking change causes tests to produce incorrect values for compatibility")
+})
+
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': 'faaf4ba7fdf013c1e1e739c7a5964fed2f3cad14', 'path': 'rest-api-spec/build.gradle', 'startline': 245, 'endline': 252}`
+
+
+[0m[36;1m[1;3mHere are lines 245 through 252.
+
+}
+
+tasks.named("yamlRestTestV7CompatTransform").configure({ task ->
+  task.skipTest("indices.sort/10_basic/Index Sort", "warning does not exist for compatibility")
+  task.skipTest("search/330_fetch_fields/Test search rewrite", "warning does not exist for compatibility")
+  task.skipTest("range/20_synthetic_source/Date range", "date range breaking change causes tests to produce incorrect values for compatibility")
+})
+
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': 'faaf4ba7fdf013c1e1e739c7a5964fed2f3cad14', 'path': 'rest-api-spec/build.gradle', 'startline': 230, 'endline': 245}`
+
+
+[0m[36;1m[1;3mHere are lines 230 through 245.
+
+  task.replaceKeyInMatch("nodes.\$node_id.settings.client\\.type", "nodes.\$node_id.settings.node\\.attr\\.testattr")
+  task.replaceValueInMatch("nodes.\$node_id.settings.node\\.attr\\.testattr", "test")
+}
+
+tasks.register('enforceYamlTestConvention').configure {
+  def tree = fileTree('src/main/resources/rest-api-spec/test')
+  doLast {
+    if (tree.files) {
+      throw new GradleException("There are YAML tests in src/main source set. These should be moved to src/yamlRestTest.")
+    }
+  }
+}
+
+tasks.named("precommit").configure {
+  dependsOn 'enforceYamlTestConvention'
+}
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': 'faaf4ba7fdf013c1e1e739c7a5964fed2f3cad14', 'path': 'rest-api-spec/build.gradle', 'startline': 253, 'endline': 260}`
+
+
+[0m[36;1m[1;3mThis file only has 252 lines. Showing full file.
+
+apply plugin: 'elasticsearch.build'
+apply plugin: 'elasticsearch.publish'
+apply plugin: 'elasticsearch.rest-resources'
+apply plugin: 'elasticsearch.validate-rest-spec'
+apply plugin: 'elasticsearch.internal-yaml-rest-test'
+apply plugin: 'elasticsearch.yaml-rest-compat-test'
+apply plugin: 'elasticsearch.internal-test-artifact'
+
+restResources {
+  restTests {
+    includeCore '*'
+  }
+}
+
+// REST API specifications are published under the Apache 2.0 License
+ext.projectLicenses.set(['The Apache Software License, Version 2.0': 'http://www.apache.org/licenses/LICENSE-2.0'])
+licenseFile.set(rootProject.file('licenses/APACHE-LICENSE-2.0.txt'))
+
+configurations {
+  // configuration to make use by external yaml rest test plugin in our examples
+  // easy and efficient
+  basicRestSpecs {
+    attributes {
+      attribute(ArtifactTypeDefinition.ARTIFACT_TYPE_ATTRIBUTE, ArtifactTypeDefinition.DIRECTORY_TYPE)
+    }
+  }
+}
+
+artifacts {
+  basicRestSpecs(new File(projectDir, "src/main/resources"))
+  restSpecs(new File(projectDir, "src/main/resources/rest-api-spec/api"))
+  restTests(new File(projectDir, "src/yamlRestTest/resources/rest-api-spec/test"))
+}
+
+dependencies {
+  clusterModules project(":modules:mapper-extras")
+  clusterModules project(":modules:rest-root")
+  clusterModules project(":modules:reindex")
+  clusterModules project(':modules:analysis-common')
+  clusterModules project(':modules:health-shards-availability')
+  clusterModules project(':modules:data-streams')
+}
+
+tasks.named("yamlRestTestV7CompatTransform").configure { task ->
+
+  task.skipTestsByFilePattern("**/cat*/*.yml", "Cat API are meant to be consumed by humans, so will not be supported by Compatible REST API")
+  task.skipTestsByFilePattern("**/indices.upgrade/*.yml", "upgrade api will only get a dummy endpoint returning an exception suggesting to use _reindex")
+  task.skipTestsByFilePattern("**/indices.stats/60_field_usage/*/*.yml", "field usage results will be different between lucene versions")
+  task.skipTestsByFilePattern("**/search.aggregation/*.yml", "run by the aggregation module")
+  task.skipTestsByFilePattern("**/indices.get_mapping/11_basic_with_types.yml", "Empty mapping creation has changed")
+
+  task.skipTest("bulk/11_dynamic_templates/Dynamic templates", "Error message has changed")
+  task.skipTest("index/80_date_nanos/date_nanos requires dates after 1970 and before 2262", "Error message has changed")
+  task.skipTest("indices.create/20_mix_typeless_typeful/Implicitly create a typed index while there is a typeless template", "Type information about the type is removed and not passed down. The logic to check for this is also removed.")
+  task.skipTest("indices.create/20_mix_typeless_typeful/Implicitly create a typeless index while there is a typed template", "Type information about the type is removed and not passed down. The logic to check for this is also removed.")
+  task.skipTest("delete/70_mix_typeless_typeful/DELETE with typeless API on an index that has types", "Type information about the type is removed and not passed down. The logic to check for this is also removed.");
+  task.skipTest("get/100_mix_typeless_typeful/GET with typeless API on an index that has types", "Failing due to not recognising missing type (the type path param is ignored, will no be fixed");
+  task.skipTest("indices.get_field_mapping/21_missing_field_with_types/Return empty object if field doesn't exist, but type and index do", "This test returns test_index.mappings:{} when {} was expected. difference between 20_missing_field and 21_missing_field_with_types?")
+  task.skipTest("indices.get_field_mapping/30_missing_type/Raise 404 when type doesn't exist", "The information about the type is not present in the index. hence it cannot know if the type exist or not.")
+  task.skipTest("indices.get_mapping/20_missing_type/Existent and non-existent type returns 404 and the existing type", " The information about the type is not present in the index. hence it cannot know if the type exist or not")
+  task.skipTest("indices.get_mapping/20_missing_type/Existent and non-existent types returns 404 and the existing type", "The information about the type is not present in the index. hence it cannot know if the type exist or not.")
+  task.skipTest("indices.get_mapping/20_missing_type/No type matching pattern returns 404", "The information about the type is not present in the index. hence it cannot know if the type exist or not.")
+  task.skipTest("indices.get_mapping/20_missing_type/Non-existent type returns 404", "The information about the type is not present in the index. hence it cannot know if the type exist or not.")
+  task.skipTest("indices.get_mapping/20_missing_type/Type missing when no types exist", "The information about the type is not present in the index. hence it cannot know if the type exist or not.")
+  task.skipTest("indices.put_mapping/20_mix_typeless_typeful/PUT mapping with _doc on an index that has types", "The information about the type is not present in the index. hence it cannot know if the type was already used or not")
+  task.skipTest("indices.put_mapping/20_mix_typeless_typeful/PUT mapping with typeless API on an index that has types", "The information about the type is not present in the index. hence it cannot know if the type was already used or not")
+  task.skipTest("search/160_exists_query/Test exists query on _type field", "There is a small distinction between empty mappings and no mappings at all. The code to implement this test was refactored #54003; field search on _type field- not implementing. The data for _type is considered incorrect in this search")
+  task.skipTest("termvectors/50_mix_typeless_typeful/Term vectors with typeless API on an index that has types", "type information is not stored, hence the the index will be found")
+  task.skipTest("mget/11_default_index_type/Default index/type", "mget - these use cases are no longer valid because we always default to _doc.;  This mean test cases where there is assertion on not finding by type won't work")
+  task.skipTest("mget/16_basic_with_types/Basic multi-get", "mget - these use cases are no longer valid, because we always default to _doc.;  This mean test cases where there is assertion on not finding by type won't work")
+  task.skipTest("explain/40_mix_typeless_typeful/Explain with typeless API on an index that has types", "asserting about type not found won't work as we ignore the type information")
+  task.skipTest("indices.stats/20_translog/Translog retention settings are deprecated", "translog settings removal is not supported under compatible api")
+  task.skipTest("indices.stats/20_translog/Translog retention without soft_deletes", "translog settings removal is not supported under compatible api")
+  task.skipTest("indices.stats/20_translog/Translog stats on closed indices without soft-deletes", "translog settings removal is not supported under compatible api")
+  task.skipTest("indices.create/10_basic/Create index without soft deletes", "Make soft-deletes mandatory in 8.0 #51122 - settings changes are note supported in Rest Api compatibility")
+  task.skipTest("field_caps/30_filter/Field caps with index filter", "behaviour change after #63692 4digits dates are parsed as epoch and in quotes as year")
+  task.skipTest("indices.forcemerge/10_basic/Check deprecation warning when incompatible only_expunge_deletes and max_num_segments values are both set", "#44761 bug fix")
+  task.skipTest("search/340_type_query/type query", "#47207 type query throws exception in compatible mode")
+  task.skipTest("search/310_match_bool_prefix/multi_match multiple fields with cutoff_frequency throws exception", "#42654 cutoff_frequency, common terms are not supported. Throwing an exception")
+  task.skipTest("search_shards/10_basic/Search shards aliases with and without filters", "Filter representation no longer outputs default boosts")
+  task.skipTest("migration/10_get_feature_upgrade_status/Get feature upgrade status", "Awaits backport")
+  task.skipTest("search/330_fetch_fields/Test disable source", "Error no longer thrown")
+  task.skipTest("search/370_profile/fetch fields", "profile output has changed")
+  task.skipTest("search/370_profile/fetch source", "profile output has changed")
+  task.skipTest("search/370_profile/fetch nested source", "profile output has changed")
+  task.skipTest("search/240_date_nanos/doc value fields are working as expected across date and date_nanos fields", "Fetching docvalues field multiple times is no longer allowed")
+  task.skipTest("search/110_field_collapsing/field collapsing and rescore", "#107779 Field collapsing is compatible with rescore in 8.15")
+  task.skipTest("indices.create/11_basic_with_types/Create index with mappings", "Empty mapping creation has changed")
+
+  task.replaceValueInMatch("_type", "_doc")
+  task.addAllowedWarningRegex("\\[types removal\\].*")
+  task.replaceValueInMatch("nodes.\$node_id.roles.8", "ml", "node_info role test")
+  task.replaceValueInMatch("nodes.\$node_id.roles.9", "remote_cluster_client", "node_info role test")
+  task.removeMatch("nodes.\$node_id.roles.10", "node_info role test")
+  task.replaceIsTrue("test_index.mappings.type_1", "test_index.mappings._doc")
+  //override for indices.get and indices.create
+  //task.replaceIsFalse("test_index.mappings.type_1", "test_index.mappings._doc")
+  //overrides for indices.create/20_mix_typeless_typeful
+  task.replaceIsFalse("test-1.mappings._doc","false",  "Create a typed index while there is a typeless template")
+  task.replaceIsFalse("test-1.mappings._doc","false", "Create a typeless index while there is a typed template")
+
+  task.replaceIsTrue("test-1.mappings.my_type", "test-1.mappings._doc")
+  task.replaceIsTrue("test-1.mappings.my_type.properties.foo", "test-1.mappings._doc.properties.foo")
+  task.replaceIsTrue("test-1.mappings.my_type.properties.bar", "test-1.mappings._doc.properties.bar")
+
+  // overrides for indices.get_field_mapping
+  task.replaceKeyInLength("test_index.mappings.test_type.text.mapping.text.type",
+    "test_index.mappings._doc.text.mapping.text.type"
+  )
+  task.replaceKeyInMatch("test_index.mappings.test_type.text.mapping.text.analyzer",
+    "test_index.mappings._doc.text.mapping.text.analyzer"
+  )
+  task.replaceKeyInMatch("test_index.mappings.test_type.t1.full_name",
+    "test_index.mappings._doc.t1.full_name"
+  )
+  task.replaceKeyInMatch("test_index.mappings.test_type.t2.full_name",
+    "test_index.mappings._doc.t2.full_name"
+  )
+  task.replaceKeyInMatch("test_index.mappings.test_type.obj\\.t1.full_name",
+    "test_index.mappings._doc.obj\\.t1.full_name"
+  )
+  task.replaceKeyInMatch("test_index.mappings.test_type.obj\\.i_t1.full_name",
+    "test_index.mappings._doc.obj\\.i_t1.full_name"
+  )
+  task.replaceKeyInMatch("test_index.mappings.test_type.obj\\.i_t3.full_name",
+    "test_index.mappings._doc.obj\\.i_t3.full_name"
+  )
+  task.replaceKeyInLength("test_index.mappings.test_type",
+    "test_index.mappings._doc"
+  )
+  task.replaceKeyInMatch("test_index_2.mappings.test_type_2.t1.full_name",
+    "test_index.mappings._doc.t1.full_name"
+  )
+  task.replaceKeyInMatch("test_index_2.mappings.test_type_2.t2.full_name",
+    "test_index.mappings._doc.t2.full_name"
+  )
+  task.replaceKeyInLength("test_index_2.mappings.test_type_2",
+    "test_index.mappings._doc"
+  )
+  task.replaceKeyInMatch("test_index.mappings.test_type.text.mapping.text.type",
+    "test_index.mappings._doc.text.mapping.text.type"
+  )
+  // overrides for indices.put_mapping/11_basic_with_types
+  task.replaceKeyInMatch("test_index.mappings.test_type.properties.text1.type",
+    "test_index.mappings._doc.properties.text1.type"
+  )
+  task.replaceKeyInMatch("test_index.mappings.test_type.properties.text1.analyzer",
+    "test_index.mappings._doc.properties.text1.analyzer"
+  )
+  task.replaceKeyInMatch("test_index.mappings.test_type.properties.text2.type",
+    "test_index.mappings._doc.properties.text2.type"
+  )
+  task.replaceKeyInMatch("test_index.mappings.test_type.properties.text2.analyzer",
+    "test_index.mappings._doc.properties.text2.analyzer"
+  )
+  task.replaceKeyInMatch("test_index.mappings.test_type.properties.subfield.properties.text3.type",
+    "test_index.mappings._doc.properties.subfield.properties.text3.type"
+  )
+  task.replaceKeyInMatch("test_index.mappings.test_type.properties.text1.fields.text_raw.type",
+    "test_index.mappings._doc.properties.text1.fields.text_raw.type"
+  )
+  // overrides for indices.put_mapping/all_path_options_with_types
+  task.replaceKeyInMatch("test_index1.mappings.test_type.properties.text.type",
+    "test_index1.mappings._doc.properties.text.type"
+  )
+  task.replaceKeyInMatch("test_index1.mappings.test_type.properties.text.analyzer",
+    "test_index1.mappings._doc.properties.text.analyzer"
+  )
+  task.replaceKeyInMatch("test_index2.mappings.test_type.properties.text.type",
+    "test_index2.mappings._doc.properties.text.type"
+  )
+  task.replaceKeyInMatch("test_index2.mappings.test_type.properties.text.analyzer",
+    "test_index2.mappings._doc.properties.text.analyzer"
+  )
+  task.replaceKeyInMatch("foo.mappings.test_type.properties.text.type",
+    "foo.mappings._doc.properties.text.type"
+  )
+  task.replaceKeyInMatch("foo.mappings.test_type.properties.text.analyzer",
+    "foo.mappings._doc.properties.text.analyzer"
+  )
+  // overrides for indices.get_mapping
+  task.replaceIsTrue("test_1.mappings.doc", "test_1.mappings._doc")
+  task.replaceIsTrue("test_2.mappings.doc", "test_2.mappings._doc")
+  // overrides for mget
+  task.replaceValueInMatch("docs.0._type", "_doc" , "Basic multi-get") // index found, but no doc
+  task.replaceValueInMatch("docs.0._type", "_doc", "Default index/type")
+  task.replaceValueInMatch("docs.0._type", "_doc", "Non-existent index")
+  task.replaceValueInMatch("docs.0._type", "_doc", "Missing metadata")
+  task.replaceValueInMatch("docs.0._type", "_doc", "Multi Get with alias that resolves to multiple indices")
+  task.replaceValueInMatch("docs.1._type", "_doc", "Multi Get with alias that resolves to multiple indices")
+  task.replaceValueInMatch("docs.2._type", "_doc", "Multi Get with alias that resolves to multiple indices")
+  task.replaceValueInMatch("docs.0._type", "_doc", "IDs")
+  task.replaceValueInMatch("docs.1._type", "_doc", "IDs")
+  task.replaceValueInMatch("docs.2._type", "_doc", "Routing")
+
+  //overrides for indices.stats
+  //TODO fix to remove the below match
+  task.replaceKeyInMatch("_all.primaries.indexing.types.baz.index_total",
+    "_all.primaries.indexing.types._doc.index_total"
+  )
+  task.replaceKeyInMatch("_all.primaries.indexing.types.bar.index_total",
+    "_all.primaries.indexing.types._doc.index_total"
+  )
+  task.replaceValueInMatch("_all.primaries.indexing.types._doc.index_total", 2)
+  // points get touched by sorting in ES 8
+  task.replaceValueInMatch("testindex.shards.0.stats.fields.price.points", 1)
+
+  //override for "indices.open/10_basic/?wait_for_active_shards default is deprecated" and "indices.open/10_basic/?wait_for_active_shards=index-setting"
+  task.addAllowedWarningRegexForTest("\\?wait_for_active_shards=index-setting is now the default behaviour.*", "?wait_for_active_shards=index-setting")
+  task.removeWarningForTest("the default value for the ?wait_for_active_shards parameter will change from '0' to 'index-setting' in version 8; " +
+    "specify '?wait_for_active_shards=index-setting' to adopt the future default behaviour, or '?wait_for_active_shards=0' to preserve today's behaviour"
+    , "?wait_for_active_shards default is deprecated")
+
+  // override for exception message change in #55291 tests cluster.voting_config_exclusions/10_basic/
+  // 'Throw exception when adding voting config exclusion and specifying both node_ids and node_names',
+  // 'Throw exception when adding voting config exclusion without specifying nodes',
+  task.replaceValueTextByKeyValue("catch",
+    '/Please set node identifiers correctly. One and only one of \\[node_name\\], \\[node_names\\] and \\[node_ids\\] has to be set/',
+    '/You must set \\[node_names\\] or \\[node_ids\\] but not both/')
+
+  // sync_id is no longer available in SegmentInfos.userData // "indices.flush/10_basic/Index synced flush rest test"
+  task.replaceIsTrue("indices.testing.shards.0.0.commit.user_data.sync_id", "indices.testing.shards.0.0.commit.user_data")
+
+  // we can now search using doc values only
+  task.replaceValueInMatch("fields.object\\.nested1.long.searchable", true)
+
+  //client.type no longer exists #101214
+  task.replaceKeyInMatch("nodes.\$node_id.settings.client.type", "nodes.\$node_id.settings.node.attr.testattr")
+  task.replaceValueInMatch("nodes.\$node_id.settings.node.attr.testattr", "test")
+  task.replaceKeyInMatch("nodes.\$node_id.settings.client\\.type", "nodes.\$node_id.settings.node\\.attr\\.testattr")
+  task.replaceValueInMatch("nodes.\$node_id.settings.node\\.attr\\.testattr", "test")
+}
+
+tasks.register('enforceYamlTestConvention').configure {
+  def tree = fileTree('src/main/resources/rest-api-spec/test')
+  doLast {
+    if (tree.files) {
+      throw new GradleException("There are YAML tests in src/main source set. These should be moved to src/yamlRestTest.")
+    }
+  }
+}
+
+tasks.named("precommit").configure {
+  dependsOn 'enforceYamlTestConvention'
+}
+
+tasks.named("yamlRestTestV7CompatTransform").configure({ task ->
+  task.skipTest("indices.sort/10_basic/Index Sort", "warning does not exist for compatibility")
+  task.skipTest("search/330_fetch_fields/Test search rewrite", "warning does not exist for compatibility")
+  task.skipTest("range/20_synthetic_source/Date range", "date range breaking change causes tests to produce incorrect values for compatibility")
+})
+
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': 'faaf4ba7fdf013c1e1e739c7a5964fed2f3cad14', 'path': 'rest-api-spec/build.gradle', 'startline': 230, 'endline': 252}`
+responded: The target patch adds four skipTest entries inside the configuration block for the task named "yamlRestCompatTestTransform" in the rest-api-spec/build.gradle file.
+
+In the older version (ref faaf4ba7fdf013c1e1e739c7a5964fed2f3cad14), there is no "yamlRestCompatTestTransform" task configuration block. Instead, there is a "yamlRestTestV7CompatTransform" task configuration block that contains some skipTest calls, but none of the additional skipTest entries from the patch are present.
+
+This indicates that the task "yamlRestCompatTestTransform" either does not exist in this older version or is named differently. The closest existing task is "yamlRestTestV7CompatTransform".
+
+Given this, the patch cannot be applied directly as is. I need to check if the task "yamlRestCompatTestTransform" exists under a different name or if the patch's skipTest entries should be added to the "yamlRestTestV7CompatTransform" task instead.
+
+Since "yamlRestCompatTestTransform" does not exist, the patch likely needs to be applied to "yamlRestTestV7CompatTransform" in the older version.
+
+I will now validate if adding these skipTest entries to "yamlRestTestV7CompatTransform" task block is the correct approach by checking the context of this task configuration block and its usage.
+
+I will view more lines around the "yamlRestTestV7CompatTransform" task configuration block to confirm its structure and if it accepts skipTest calls similarly.
+
+[0m[36;1m[1;3mHere are lines 230 through 252.
+
+  task.replaceKeyInMatch("nodes.\$node_id.settings.client\\.type", "nodes.\$node_id.settings.node\\.attr\\.testattr")
+  task.replaceValueInMatch("nodes.\$node_id.settings.node\\.attr\\.testattr", "test")
+}
+
+tasks.register('enforceYamlTestConvention').configure {
+  def tree = fileTree('src/main/resources/rest-api-spec/test')
+  doLast {
+    if (tree.files) {
+      throw new GradleException("There are YAML tests in src/main source set. These should be moved to src/yamlRestTest.")
+    }
+  }
+}
+
+tasks.named("precommit").configure {
+  dependsOn 'enforceYamlTestConvention'
+}
+
+tasks.named("yamlRestTestV7CompatTransform").configure({ task ->
+  task.skipTest("indices.sort/10_basic/Index Sort", "warning does not exist for compatibility")
+  task.skipTest("search/330_fetch_fields/Test search rewrite", "warning does not exist for compatibility")
+  task.skipTest("range/20_synthetic_source/Date range", "date range breaking change causes tests to produce incorrect values for compatibility")
+})
+
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `validate` with `{'ref': 'faaf4ba7fdf013c1e1e739c7a5964fed2f3cad14', 'patch': '--- a/rest-api-spec/build.gradle\n+++ b/rest-api-spec/build.gradle\n@@ -244,7 +244,15 @@\n tasks.named("yamlRestTestV7CompatTransform").configure({ task ->\n-  task.skipTest("indices.sort/10_basic/Index Sort", "warning does not exist for compatibility")\n-  task.skipTest("search/330_fetch_fields/Test search rewrite", "warning does not exist for compatibility")\n-  task.skipTest("range/20_synthetic_source/Date range", "date range breaking change causes tests to produce incorrect values for compatibility")\n+  task.skipTest("indices.sort/10_basic/Index Sort", "warning does not exist for compatibility")\n+  task.skipTest("search/330_fetch_fields/Test search rewrite", "warning does not exist for compatibility")\n+  task.skipTest("range/20_synthetic_source/Date range", "date range breaking change causes tests to produce incorrect values for compatibility")\n+  task.skipTest("indices.create/20_synthetic_source/disabled object", "temporary until backported")\n+  task.skipTest("indices.create/20_synthetic_source/disabled object contains array", "temporary until backported")\n+  task.skipTest("indices.create/20_synthetic_source/object with dynamic override", "temporary until backported")\n+  task.skipTest("indices.create/20_synthetic_source/disabled root object", "temporary until backported")\n })\n'}`
+responded: The target code in the new patch is modifying the "yamlRestCompatTestTransform" task configuration to add several skipTest calls for specific tests related to "indices.create/20_synthetic_source" with various descriptions.
+
+In the older version, the similar task is named "yamlRestTestV7CompatTransform". It already has some skipTest calls but does not include the new ones from the patch.
+
+The difference in task names ("yamlRestCompatTestTransform" vs "yamlRestTestV7CompatTransform") indicates that the task was renamed or changed between versions. The configuration style and existing skipTest calls are similar, so it is reasonable to backport the patch by adding the new skipTest calls to the "yamlRestTestV7CompatTransform" task in the older version.
+
+I will now generate a patch that adds the following lines to the existing "yamlRestTestV7CompatTransform" task in the older version:
+```
+task.skipTest("indices.create/20_synthetic_source/disabled object", "temporary until backported")
+task.skipTest("indices.create/20_synthetic_source/disabled object contains array", "temporary until backported")
+task.skipTest("indices.create/20_synthetic_source/object with dynamic override", "temporary until backported")
+task.skipTest("indices.create/20_synthetic_source/disabled root object", "temporary until backported")
+```
+
+This will be consistent with the older version's style and context.
+
+I will now prepare the patch for validation.
+
+[0m[38;5;200m[1;3mPatch applied successfully
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3mI have analyzed the patch and the code context in the older version at ref faaf4ba7fdf013c1e1e739c7a5964fed2f3cad14. The patch is a modification in the rest-api-spec/build.gradle file, specifically adding some skipTest calls in the yamlRestTestV7CompatTransform task configuration.
+
+The older version has a similar task named yamlRestTestV7CompatTransform configured with some skipTest calls. The patch can be backported by adding the new skipTest calls with the same context lines present in the older version.
+
+Here is the backported patch:
+
+```diff
+--- a/rest-api-spec/build.gradle
++++ b/rest-api-spec/build.gradle
+@@ -244,7 +244,15 @@
+ tasks.named("yamlRestTestV7CompatTransform").configure({ task ->
+-  task.skipTest("indices.sort/10_basic/Index Sort", "warning does not exist for compatibility")
+-  task.skipTest("search/330_fetch_fields/Test search rewrite", "warning does not exist for compatibility")
+-  task.skipTest("range/20_synthetic_source/Date range", "date range breaking change causes tests to produce incorrect values for compatibility")
++  task.skipTest("indices.sort/10_basic/Index Sort", "warning does not exist for compatibility")
++  task.skipTest("search/330_fetch_fields/Test search rewrite", "warning does not exist for compatibility")
++  task.skipTest("range/20_synthetic_source/Date range", "date range breaking change causes tests to produce incorrect values for compatibility")
++  task.skipTest("indices.create/20_synthetic_source/disabled object", "temporary until backported")
++  task.skipTest("indices.create/20_synthetic_source/disabled object contains array", "temporary until backported")
++  task.skipTest("indices.create/20_synthetic_source/object with dynamic override", "temporary until backported")
++  task.skipTest("indices.create/20_synthetic_source/disabled root object", "temporary until backported")
+ })
+```
+
+I have validated this patch on the target ref faaf4ba7fdf013c1e1e739c7a5964fed2f3cad14 and it applies successfully without conflicts.
+
+Would you like me to assist you with anything else?[0m
+
+[1m> Finished chain.[0m
+2026-04-27 08:57:28,598 - backport - INFO - Aplly all hunks in the patch      PASS
+2026-04-27 08:57:29,489 - backport - INFO - Successfully backport the patch to the target release faaf4ba7fdf013c1e1e739c7a5964fed2f3cad14
+2026-04-27 08:57:29,490 - backport - INFO - --- a/rest-api-spec/build.gradle
++++ b/rest-api-spec/build.gradle
+@@ -244,5 +244,9 @@
+ tasks.named("yamlRestTestV7CompatTransform").configure({ task ->
+-  task.skipTest("indices.sort/10_basic/Index Sort", "warning does not exist for compatibility")
+-  task.skipTest("search/330_fetch_fields/Test search rewrite", "warning does not exist for compatibility")
+-  task.skipTest("range/20_synthetic_source/Date range", "date range breaking change causes tests to produce incorrect values for compatibility")
++  task.skipTest("indices.sort/10_basic/Index Sort", "warning does not exist for compatibility")
++  task.skipTest("search/330_fetch_fields/Test search rewrite", "warning does not exist for compatibility")
++  task.skipTest("range/20_synthetic_source/Date range", "date range breaking change causes tests to produce incorrect values for compatibility")
++  task.skipTest("indices.create/20_synthetic_source/disabled object", "temporary until backported")
++  task.skipTest("indices.create/20_synthetic_source/disabled object contains array", "temporary until backported")
++  task.skipTest("indices.create/20_synthetic_source/object with dynamic override", "temporary until backported")
++  task.skipTest("indices.create/20_synthetic_source/disabled root object", "temporary until backported")
+ })
+
+--- a/server/src/main/java/org/elasticsearch/index/mapper/DocumentParser.java
++++ b/server/src/main/java/org/elasticsearch/index/mapper/DocumentParser.java
+@@ -135,7 +135,7 @@ public final class DocumentParser {
+                         new IgnoredSourceFieldMapper.NameValue(
+                             MapperService.SINGLE_MAPPING_NAME,
+                             0,
+-                            XContentDataHelper.encodeToken(context.parser()),
++                            context.encodeFlattenedToken(),
+                             context.doc()
+                         )
+                     );
+
+--- a/server/src/main/java/org/elasticsearch/index/mapper/DocumentParser.java
++++ b/server/src/main/java/org/elasticsearch/index/mapper/DocumentParser.java
+@@ -236,7 +236,7 @@ public final class DocumentParser {
+             var leaf = fields.get(fullName);  // There may be multiple matches for array elements, don't use #remove.
+             if (leaf != null) {
+                 parser.nextToken();  // Advance the parser to the value to be read.
+-                result.add(leaf.cloneWithValue(XContentDataHelper.encodeToken(parser)));
++                result.add(leaf.cloneWithValue(context.encodeFlattenedToken()));
+                 parser.nextToken();  // Skip the token ending the value.
+                 fieldName = null;
+             }
+
+--- a/server/src/main/java/org/elasticsearch/index/mapper/DocumentParser.java
++++ b/server/src/main/java/org/elasticsearch/index/mapper/DocumentParser.java
+@@ -402,7 +402,7 @@ public final class DocumentParser {
+                     new IgnoredSourceFieldMapper.NameValue(
+                         context.parent().fullPath(),
+                         context.parent().fullPath().lastIndexOf(context.parent().leafName()),
+-                        XContentDataHelper.encodeToken(parser),
++                        context.encodeFlattenedToken(),
+                         context.doc()
+                     )
+                 );
+
+--- a/server/src/main/java/org/elasticsearch/index/mapper/DocumentParser.java
++++ b/server/src/main/java/org/elasticsearch/index/mapper/DocumentParser.java
+@@ -652,12 +652,11 @@ public final class DocumentParser {
+         if (context.dynamic() == ObjectMapper.Dynamic.FALSE) {
+             failIfMatchesRoutingPath(context, currentFieldName);
+             if (context.canAddIgnoredField()) {
+-                // read everything up to end object and store it
+                 context.addIgnoredField(
+                     IgnoredSourceFieldMapper.NameValue.fromContext(
+                         context,
+                         context.path().pathAsText(currentFieldName),
+-                        XContentDataHelper.encodeToken(context.parser())
++                        context.encodeFlattenedToken()
+                     )
+                 );
+             } else {
+
+--- a/server/src/main/java/org/elasticsearch/index/mapper/DocumentParser.java
++++ b/server/src/main/java/org/elasticsearch/index/mapper/DocumentParser.java
+@@ -743,7 +742,7 @@ public final class DocumentParser {
+                     IgnoredSourceFieldMapper.NameValue.fromContext(
+                         context,
+                         context.path().pathAsText(currentFieldName),
+-                        XContentDataHelper.encodeToken(context.parser())
++                        context.encodeFlattenedToken()
+                     )
+                 );
+             } else {
+
+--- a/server/src/main/java/org/elasticsearch/index/mapper/DocumentParser.java
++++ b/server/src/main/java/org/elasticsearch/index/mapper/DocumentParser.java
+@@ -761,7 +760,7 @@ public final class DocumentParser {
+                             IgnoredSourceFieldMapper.NameValue.fromContext(
+                                 context,
+                                 context.path().pathAsText(currentFieldName),
+-                                XContentDataHelper.encodeToken(context.parser())
++                                context.encodeFlattenedToken()
+                             )
+                         );
+                     } catch (IOException e) {
+
+--- a/server/src/main/java/org/elasticsearch/index/mapper/DocumentParser.java
++++ b/server/src/main/java/org/elasticsearch/index/mapper/DocumentParser.java
+@@ -818,9 +817,7 @@ public final class DocumentParser {
+             } else if (mapper instanceof ObjectMapper objectMapper && (objectMapper.isEnabled() == false)) {
+                 // No need to call #addIgnoredFieldFromContext as both singleton and array instances of this object
+                 // get tracked through ignored source.
+-                context.addIgnoredField(
+-                    IgnoredSourceFieldMapper.NameValue.fromContext(context, fullPath, XContentDataHelper.encodeToken(context.parser()))
+-                );
++                context.addIgnoredField(IgnoredSourceFieldMapper.NameValue.fromContext(context, fullPath, context.encodeFlattenedToken()));
+                 return;
+             }
+         }
+
+--- a/server/src/main/java/org/elasticsearch/index/mapper/DocumentParser.java
++++ b/server/src/main/java/org/elasticsearch/index/mapper/DocumentParser.java
+@@ -934,7 +931,7 @@ public final class DocumentParser {
+                     IgnoredSourceFieldMapper.NameValue.fromContext(
+                         context,
+                         context.path().pathAsText(currentFieldName),
+-                        XContentDataHelper.encodeToken(context.parser())
++                        context.encodeFlattenedToken()
+                     )
+                 );
+             }
+
+--- a/server/src/main/java/org/elasticsearch/index/mapper/DocumentParser.java
++++ b/server/src/main/java/org/elasticsearch/index/mapper/DocumentParser.java
+@@ -945,7 +942,7 @@ public final class DocumentParser {
+                 IgnoredSourceFieldMapper.NameValue.fromContext(
+                     context,
+                     context.path().pathAsText(currentFieldName),
+-                    XContentDataHelper.encodeToken(context.parser())
++                    context.encodeFlattenedToken()
+                 )
+             );
+         }
+
+--- a/server/src/main/java/org/elasticsearch/index/mapper/DocumentParser.java
++++ b/server/src/main/java/org/elasticsearch/index/mapper/DocumentParser.java
+@@ -1044,7 +1041,7 @@ public final class DocumentParser {
+                 if (context.dynamic() == ObjectMapper.Dynamic.RUNTIME && context.canAddIgnoredField()) {
+                     try {
+                         context.addIgnoredField(
+-                            IgnoredSourceFieldMapper.NameValue.fromContext(context, path, XContentDataHelper.encodeToken(context.parser()))
++                            IgnoredSourceFieldMapper.NameValue.fromContext(context, path, context.encodeFlattenedToken())
+                         );
+                     } catch (IOException e) {
+                         throw new IllegalArgumentException(
+
+--- a/server/src/main/java/org/elasticsearch/index/mapper/DocumentParserContext.java
++++ b/server/src/main/java/org/elasticsearch/index/mapper/DocumentParserContext.java
+@@ -12,6 +12,7 @@ package org.elasticsearch.index.mapper;
+ import org.apache.lucene.document.Field;
+ import org.apache.lucene.document.StringField;
+ import org.apache.lucene.index.IndexableField;
++import org.apache.lucene.util.BytesRef;
+ import org.elasticsearch.common.time.DateFormatter;
+ import org.elasticsearch.core.Tuple;
+ import org.elasticsearch.index.IndexMode;
+
+--- a/server/src/main/java/org/elasticsearch/index/mapper/DocumentParserContext.java
++++ b/server/src/main/java/org/elasticsearch/index/mapper/DocumentParserContext.java
+@@ -338,6 +339,20 @@ public abstract class DocumentParserContext {
+         return this;
+     }
+ 
++    /**
++     * Wraps {@link XContentDataHelper#encodeToken}, disabling dot expansion from {@link DotExpandingXContentParser}.
++     * This helps avoid producing duplicate names in the same scope, due to expanding dots to objects.
++     * For instance: { "a.b": "b", "a.c": "c" } => { "a": { "b": "b" }, "a": { "c": "c" } }
++     * This can happen when storing parts of document source that are not indexed (e.g. disabled objects).
++     */
++    BytesRef encodeFlattenedToken() throws IOException {
++        boolean old = path().isWithinLeafObject();
++        path().setWithinLeafObject(true);
++        BytesRef encoded = XContentDataHelper.encodeToken(parser());
++        path().setWithinLeafObject(old);
++        return encoded;
++    }
++
+     /**
+      * Return the collection of fields that are missing their source values.
+      */
+
+--- a/server/src/main/java/org/elasticsearch/index/mapper/IgnoredSourceFieldMapper.java
++++ b/server/src/main/java/org/elasticsearch/index/mapper/IgnoredSourceFieldMapper.java
+@@ -57,6 +57,7 @@ public class IgnoredSourceFieldMapper extends MetadataFieldMapper {
+     public static final TypeParser PARSER = new FixedTypeParser(context -> new IgnoredSourceFieldMapper(context.getIndexSettings()));
+ 
+     static final NodeFeature TRACK_IGNORED_SOURCE = new NodeFeature("mapper.track_ignored_source");
++    static final NodeFeature DONT_EXPAND_DOTS_IN_IGNORED_SOURCE = new NodeFeature("mapper.ignored_source.dont_expand_dots");
+ 
+     /*
+         Setting to disable encoding and writing values for this field.
+
+--- a/server/src/main/java/org/elasticsearch/index/mapper/MapperFeatures.java
++++ b/server/src/main/java/org/elasticsearch/index/mapper/MapperFeatures.java
+@@ -58,6 +58,6 @@ public class MapperFeatures implements FeatureSpecification {
+ 
+     @Override
+     public Set<NodeFeature> getTestFeatures() {
+-        return Set.of(RangeFieldMapper.DATE_RANGE_INDEXING_FIX);
++        return Set.of(RangeFieldMapper.DATE_RANGE_INDEXING_FIX, IgnoredSourceFieldMapper.DONT_EXPAND_DOTS_IN_IGNORED_SOURCE);
+     }
+ }
+
+--- a/server/src/test/java/org/elasticsearch/index/mapper/IgnoredSourceFieldMapperTests.java
++++ b/server/src/test/java/org/elasticsearch/index/mapper/IgnoredSourceFieldMapperTests.java
+@@ -1793,6 +1793,107 @@ public class IgnoredSourceFieldMapperTests extends MapperServiceTestCase {
+         assertEquals("{\"path\":{\"at\":\"A\"}}", syntheticSource);
+     }
+ 
++    public void testDynamicIgnoredObjectWithFlatFields() throws IOException {
++        DocumentMapper documentMapper = createMapperService(topMapping(b -> {
++            b.startObject("_source").field("mode", "synthetic").endObject();
++            b.field("dynamic", false);
++        })).documentMapper();
++
++        CheckedConsumer<XContentBuilder, IOException> document = b -> {
++            b.startObject("top");
++            b.field("file.name", "A");
++            b.field("file.line", 10);
++            b.endObject();
++        };
++
++        var syntheticSource = syntheticSource(documentMapper, document);
++        assertEquals("{\"top\":{\"file.name\":\"A\",\"file.line\":10}}", syntheticSource);
++
++        CheckedConsumer<XContentBuilder, IOException> documentWithArray = b -> {
++            b.startArray("top");
++            b.startObject();
++            b.field("file.name", "A");
++            b.field("file.line", 10);
++            b.endObject();
++            b.startObject();
++            b.field("file.name", "B");
++            b.field("file.line", 20);
++            b.endObject();
++            b.endArray();
++        };
++
++        var syntheticSourceWithArray = syntheticSource(documentMapper, documentWithArray);
++        assertEquals("""
++            {"top":[{"file.name":"A","file.line":10},{"file.name":"B","file.line":20}]}""", syntheticSourceWithArray);
++    }
++
++    public void testDisabledRootObjectWithFlatFields() throws IOException {
++        DocumentMapper documentMapper = createMapperService(topMapping(b -> {
++            b.startObject("_source").field("mode", "synthetic").endObject();
++            b.field("enabled", false);
++        })).documentMapper();
++
++        CheckedConsumer<XContentBuilder, IOException> document = b -> {
++            b.startObject("top");
++            b.field("file.name", "A");
++            b.field("file.line", 10);
++            b.endObject();
++        };
++
++        var syntheticSource = syntheticSource(documentMapper, document);
++        assertEquals("{\"top\":{\"file.name\":\"A\",\"file.line\":10}}", syntheticSource);
++
++        CheckedConsumer<XContentBuilder, IOException> documentWithArray = b -> {
++            b.startArray("top");
++            b.startObject();
++            b.field("file.name", "A");
++            b.field("file.line", 10);
++            b.endObject();
++            b.startObject();
++            b.field("file.name", "B");
++            b.field("file.line", 20);
++            b.endObject();
++            b.endArray();
++        };
++
++        var syntheticSourceWithArray = syntheticSource(documentMapper, documentWithArray);
++        assertEquals("""
++            {"top":[{"file.name":"A","file.line":10},{"file.name":"B","file.line":20}]}""", syntheticSourceWithArray);
++    }
++
++    public void testDisabledObjectWithFlatFields() throws IOException {
++        DocumentMapper documentMapper = createMapperService(syntheticSourceMapping(b -> {
++            b.startObject("top").field("type", "object").field("enabled", false).endObject();
++        })).documentMapper();
++
++        CheckedConsumer<XContentBuilder, IOException> document = b -> {
++            b.startObject("top");
++            b.field("file.name", "A");
++            b.field("file.line", 10);
++            b.endObject();
++        };
++
++        var syntheticSource = syntheticSource(documentMapper, document);
++        assertEquals("{\"top\":{\"file.name\":\"A\",\"file.line\":10}}", syntheticSource);
++
++        CheckedConsumer<XContentBuilder, IOException> documentWithArray = b -> {
++            b.startArray("top");
++            b.startObject();
++            b.field("file.name", "A");
++            b.field("file.line", 10);
++            b.endObject();
++            b.startObject();
++            b.field("file.name", "B");
++            b.field("file.line", 20);
++            b.endObject();
++            b.endArray();
++        };
++
++        var syntheticSourceWithArray = syntheticSource(documentMapper, documentWithArray);
++        assertEquals("""
++            {"top":[{"file.name":"A","file.line":10},{"file.name":"B","file.line":20}]}""", syntheticSourceWithArray);
++    }
++
+     protected void validateRoundTripReader(String syntheticSource, DirectoryReader reader, DirectoryReader roundTripReader)
+         throws IOException {
+         // We exclude ignored source field since in some cases it contains an exact copy of a part of document source.
+
