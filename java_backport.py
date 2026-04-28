@@ -145,6 +145,20 @@ def _is_java_source_file(file_path: str) -> bool:
     return True
 
 
+def _split_diff_blocks(patch_text: str) -> list[str]:
+    """Split a multi-file patch into individual per-file diff blocks."""
+    parts = re.split(r"(?=^diff --git )", patch_text, flags=re.MULTILINE)
+    return [p for p in parts if p.startswith("diff --git ")]
+
+
+def _block_file_path(block: str) -> str | None:
+    """Return the file path for a diff block, or None if unparseable."""
+    m = re.search(r"^--- a/(.+?)(?:\t|\n|$)", block, re.MULTILINE)
+    if not m:
+        m = re.search(r"^\+\+\+ b/(.+?)(?:\t|\n|$)", block, re.MULTILINE)
+    return m.group(1).strip() if m else None
+
+
 def _filter_source_only_patch(patch_text: str) -> str:
     """
     Strip a git-show patch down to core Java source changes only.
@@ -156,23 +170,28 @@ def _filter_source_only_patch(patch_text: str) -> str:
 
     Returns the filtered diff text (may be empty if nothing survives).
     """
-    # Split at every "diff --git" boundary (lookahead keeps the delimiter)
-    parts = re.split(r"(?=^diff --git )", patch_text, flags=re.MULTILINE)
     result = []
-    for part in parts:
-        if not part.startswith("diff --git "):
-            continue  # commit message / binary metadata — skip
-        # Resolve the affected file path
-        # Primary: "--- a/<path>"
-        m = re.search(r"^--- a/(.+?)(?:\t|\n|$)", part, re.MULTILINE)
-        if not m:
-            # New-file creation: no "--- a/", only "+++ b/<path>"
-            m = re.search(r"^\+\+\+ b/(.+?)(?:\t|\n|$)", part, re.MULTILINE)
-        if not m:
-            continue
-        file_path = m.group(1).strip()
-        if _is_java_source_file(file_path):
-            result.append(part)
+    for block in _split_diff_blocks(patch_text):
+        fp = _block_file_path(block)
+        if fp and _is_java_source_file(fp):
+            result.append(block)
+    return "".join(result)
+
+
+def _filter_non_source_patch(patch_text: str) -> str:
+    """
+    Return the parts of a patch that are NOT core Java source files:
+    test files and any non-Java files (.xml, .rst, .yaml, resources, etc.).
+
+    This is the complement of _filter_source_only_patch and is used to
+    extract the developer's test + non-Java changes so they can be merged
+    with the model-generated Java changes before build/test validation.
+    """
+    result = []
+    for block in _split_diff_blocks(patch_text):
+        fp = _block_file_path(block)
+        if fp and not _is_java_source_file(fp):
+            result.append(block)
     return "".join(result)
 
 
@@ -672,6 +691,8 @@ def process_row(
         "num_hunks_original":  0,   # hunks in full original.patch
         "num_hunks_filtered":  0,   # hunks after removing tests/non-Java
         "num_hunks_succeeded": 0,
+        "num_non_source_hunks_developer": 0,  # test+non-Java hunks from developer.patch
+        "dev_non_source_applied": False,      # whether those were merged into working tree
         "hunk_details":        [],
         "test_targets":        {},   # detected from developer.patch
         "portgpt_validation":  {},
@@ -796,14 +817,64 @@ def process_row(
         )
         _save_text(os.path.join(sample_dir, "generated.patch"), generated_text)
 
+        # ── 8.5. Merge: generated (Java source) + developer non-source ───────
+        # The model only sees and generates Java source changes.  To run a
+        # meaningful build+test we re-attach the developer's test files and
+        # non-Java changes on top of the model's output.  Those files are
+        # taken verbatim from the ground-truth developer.patch and applied
+        # to the working tree after the generated patch is already in place.
+        dev_non_source_text = _filter_non_source_patch(developer_patch_text)
+        _save_text(
+            os.path.join(sample_dir, "developer_non_source.patch"),
+            dev_non_source_text,
+        )
+        num_non_source_hunks = _count_hunks(dev_non_source_text)
+        metadata["num_non_source_hunks_developer"] = num_non_source_hunks
+
+        # Build the merged artifact (what actually goes into the working tree)
+        merged_text = (generated_text.rstrip("\n") + "\n" + dev_non_source_text
+                       if generated_text and dev_non_source_text
+                       else generated_text or dev_non_source_text)
+        _save_text(os.path.join(sample_dir, "merged.patch"), merged_text)
+
+        # Apply developer non-source changes on top of already-applied generated patch
+        dev_non_source_applied = False
+        if portgpt_success and dev_non_source_text:
+            patch_tmp = None
+            try:
+                import tempfile as _tmpmod
+                with _tmpmod.NamedTemporaryFile(
+                    mode="w", suffix=".patch", delete=False, encoding="utf-8"
+                ) as f:
+                    f.write(dev_non_source_text)
+                    patch_tmp = f.name
+                portgpt_project.repo.git.apply(patch_tmp)
+                dev_non_source_applied = True
+                logger.info(
+                    f"Row {row_num}: merged {num_non_source_hunks} non-source "
+                    f"hunk(s) from developer.patch into working tree"
+                )
+            except Exception as exc:
+                logger.warning(
+                    f"Row {row_num}: could not apply developer non-source changes "
+                    f"— {exc}"
+                )
+            finally:
+                if patch_tmp:
+                    try:
+                        os.unlink(patch_tmp)
+                    except OSError:
+                        pass
+        metadata["dev_non_source_applied"] = dev_non_source_applied
+
         # ── 9. Build + test validation via helpers/ ──────────────────────────
-        # After _do_backport_java succeeds, PortGPT's _compile_patch has applied
-        # the complete patch to the working tree at target_release. The working
-        # tree is ready for Docker-based compile + test without re-applying.
+        # Working tree now holds: target_release + generated (Java source) +
+        # developer non-source (tests + non-Java).  Docker build/test runs
+        # against this merged state.
         if portgpt_success and not skip_validation:
             logger.info(f"Row {row_num}: running build/test validation via helpers/")
             build_meta, test_meta = _run_build_and_tests(
-                repo_path, project_name, target_info, sample_dir
+                repo_path, project_name, target_info
             )
             metadata["build_validation"] = build_meta
             metadata["test_validation"]  = test_meta
@@ -827,10 +898,13 @@ def process_row(
                 metadata["test_validation"]  = {"result": "skipped_by_flag"}
             final_success = portgpt_success
 
-        # ── 10. Similarity vs developer patch ────────────────────────────────
-        if generated_text and developer_patch_text:
+        # ── 10. Similarity vs developer patch (source changes only) ──────────
+        # Compare the model's Java output against the developer's Java source
+        # changes only — not against tests/non-Java that the model never sees.
+        developer_source_text = _filter_source_only_patch(developer_patch_text)
+        if generated_text and developer_source_text:
             metadata["patch_similarity"] = _compute_similarity(
-                generated_text, developer_patch_text
+                generated_text, developer_source_text
             )
 
         # ── 11. Record outcome ───────────────────────────────────────────────
