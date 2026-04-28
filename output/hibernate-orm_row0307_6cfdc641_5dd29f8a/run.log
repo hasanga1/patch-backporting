@@ -488,3 +488,986 @@ I will now prepare a patch for the older version with these changes.[0m
 [1m> Finished chain.[0m
 2026-04-28 12:22:53,655 - backport - ERROR - Hunk 1: agent failed (max iterations or error)
 2026-04-28 12:22:53,656 - backport - WARNING - Row 307: PARTIAL — 0/2 hunk(s) succeeded
+2026-04-28 14:56:05,740 - backport - INFO - Row 307 [hibernate-orm]: extracting original.patch
+2026-04-28 14:56:05,748 - backport - INFO - Row 307: 3 total hunks, 2 after filtering (test/non-Java removed)
+2026-04-28 14:56:05,750 - backport - INFO - Row 307 [hibernate-orm]: extracting developer.patch
+2026-04-28 14:56:05,797 - backport - INFO - Row 307: detected 1 test target(s) from developer.patch
+2026-04-28 14:56:05,997 - backport - INFO - Row 307: starting PortGPT backport agent
+
+
+[1m> Entering new AgentExecutor chain...[0m
+
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `git_history` with `{}`
+
+
+[0m[36;1m[1;3ma
++++ b/hibernate-core/src/main/java/org/hibernate/metamodel/mapping/internal/PluralAttributeMappingImpl.java
+@@ -227,11 +225,11 @@
+ 	@Override
+ 	public boolean isBidirectionalAttributeName(NavigablePath fetchablePath, ToOneAttributeMapping modelPart) {
+-		if ( bidirectionalAttributeName == null ) {
+-			// If the FK-target of the to-one mapping is the same as the FK-target of this plural mapping,
+-			// then we say this is bidirectional, given that this is only invoked for model parts of the collection elements
+-			return fkDescriptor.getTargetPart() == modelPart.getForeignKeyDescriptor().getTargetPart();
+-		}
+-		return fetchablePath.getLocalName().endsWith( bidirectionalAttributeName );
++		return bidirectionalAttributeName == null
++				// If the FK-target of the to-one mapping is the same as the FK-target of this plural mapping,
++				// then we say this is bidirectional, given that this is only invoked for model parts of the
++				// collection elements
++				? fkDescriptor.getTargetPart() == modelPart.getForeignKeyDescriptor().getTargetPart()
++				: fetchablePath.getLocalName().endsWith( bidirectionalAttributeName );
+ 	}
+ 
+ 	public void finishInitialization(
+e1c6f49890 remove unnecessary logging
+
+diff --git a/hibernate-core/src/main/java/org/hibernate/metamodel/mapping/internal/PluralAttributeMappingImpl.java b/hibernate-core/src/main/java/org/hibernate/metamodel/mapping/internal/PluralAttributeMappingImpl.java
+--- a/hibernate-core/src/main/java/org/hibernate/metamodel/mapping/internal/PluralAttributeMappingImpl.java
++++ b/hibernate-core/src/main/java/org/hibernate/metamodel/mapping/internal/PluralAttributeMappingImpl.java
+@@ -230,12 +227,11 @@
+ 	@Override
+ 	public boolean isBidirectionalAttributeName(NavigablePath fetchablePath, ToOneAttributeMapping modelPart) {
+ 		if ( bidirectionalAttributeName == null ) {
+ 			// If the FK-target of the to-one mapping is the same as the FK-target of this plural mapping,
+ 			// then we say this is bidirectional, given that this is only invoked for model parts of the collection elements
+ 			return fkDescriptor.getTargetPart() == modelPart.getForeignKeyDescriptor().getTargetPart();
+ 		}
+ 		return fetchablePath.getLocalName().endsWith( bidirectionalAttributeName );
+ 	}
+ 
+-	@SuppressWarnings("unused")
+ 	public void finishInitialization
+You need to do the following analysis based on the information in the last commit:
+Analyze the code logic of the context of the patch to be ported in this commit step by step.
+If code logic already existed before this commit, the patch context can be assumed to remain in a similar location. Use `locate` and `viewcode` to check your results.
+If code logic were added in this commit, then you need to `git_show` for further details.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `locate_symbol` with `{'ref': '1ad46ec4c41800eb814da5f386ec9b12dd474eff', 'symbol': 'isBidirectionalAttributeName'}`
+responded: The git_history shows that the logic in the older version (ref 1ad46ec4c41800eb814da5f386ec9b12dd474eff) for the method `isBidirectionalAttributeName` is simpler and only checks if `bidirectionalAttributeName` is null and then compares the foreign key target parts, otherwise checks if the fetchable path's local name ends with the bidirectional attribute name.
+
+The patch to be backported introduces additional checks:
+- It checks if the side nature of the model part is `KEY`.
+- It checks if the collection descriptor is one-to-many.
+- It compares the key parts of the foreign key descriptors using a new helper method `areEqual`.
+
+The older version does not have this additional logic, so this is an enhancement added after the older ref.
+
+Next, I will locate the method `isBidirectionalAttributeName` in the older ref to confirm its exact location and surrounding code context for accurate patching. This will help me see if the helper method `areEqual` can be added and how the method `isBidirectionalAttributeName` can be adapted in the older codebase.
+
+I will use `locate_symbol` for `isBidirectionalAttributeName` at ref 1ad46ec4c41800eb814da5f386ec9b12dd474eff.
+
+[0m[33;1m[1;3mhibernate-core/src/main/java/org/hibernate/metamodel/mapping/PluralAttributeMapping.java:146
+hibernate-core/src/main/java/org/hibernate/metamodel/mapping/internal/PluralAttributeMappingImpl.java:254
+hibernate-core/src/main/java/org/hibernate/metamodel/mapping/internal/ToOneAttributeMapping.java:1132[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': '1ad46ec4c41800eb814da5f386ec9b12dd474eff', 'path': 'hibernate-core/src/main/java/org/hibernate/metamodel/mapping/internal/PluralAttributeMappingImpl.java', 'startline': 240, 'endline': 270}`
+
+
+[0m[36;1m[1;3mHere are lines 240 through 270.
+
+		if ( collectionDescriptor instanceof Aware ) {
+			( (Aware) collectionDescriptor ).injectAttributeMapping( mapping );
+		}
+
+		if ( elementDescriptor instanceof Aware ) {
+			( (Aware) elementDescriptor ).injectAttributeMapping( mapping );
+		}
+
+		if ( indexDescriptor instanceof Aware ) {
+			( (Aware) indexDescriptor ).injectAttributeMapping( mapping );
+		}
+	}
+
+	@Override
+	public boolean isBidirectionalAttributeName(NavigablePath fetchablePath, ToOneAttributeMapping modelPart) {
+		if ( bidirectionalAttributeName == null ) {
+			// If the FK-target of the to-one mapping is the same as the FK-target of this plural mapping,
+			// then we say this is bidirectional, given that this is only invoked for model parts of the collection elements
+			return fkDescriptor.getTargetPart() == modelPart.getForeignKeyDescriptor().getTargetPart();
+		}
+		return fetchablePath.getLocalName().endsWith( bidirectionalAttributeName );
+	}
+
+	@SuppressWarnings("unused")
+	public void finishInitialization(
+			Property bootProperty,
+			Collection bootDescriptor,
+			MappingModelCreationProcess creationProcess) {
+		final boolean hasOrder = bootDescriptor.getOrderBy() != null;
+		final boolean hasManyToManyOrder = bootDescriptor.getManyToManyOrdering() != null;
+
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': '1ad46ec4c41800eb814da5f386ec9b12dd474eff', 'path': 'hibernate-core/src/main/java/org/hibernate/metamodel/mapping/internal/PluralAttributeMappingImpl.java', 'startline': 270, 'endline': 310}`
+responded: The code snippet from the older version at ref 1ad46ec4c41800eb814da5f386ec9b12dd474eff shows the method isBidirectionalAttributeName with the following logic:
+
+```java
+@Override
+public boolean isBidirectionalAttributeName(NavigablePath fetchablePath, ToOneAttributeMapping modelPart) {
+	if ( bidirectionalAttributeName == null ) {
+		// If the FK-target of the to-one mapping is the same as the FK-target of this plural mapping,
+		// then we say this is bidirectional, given that this is only invoked for model parts of the collection elements
+		return fkDescriptor.getTargetPart() == modelPart.getForeignKeyDescriptor().getTargetPart();
+	}
+	return fetchablePath.getLocalName().endsWith( bidirectionalAttributeName );
+}
+```
+
+The patch for the newer version changes this method significantly by adding additional checks and a new helper method areEqual.
+
+Since the older version has this method but with simpler logic, it confirms that the patch is modifying existing logic rather than adding a completely new method.
+
+Next, I need to check the context around this method to see if the helper method areEqual exists or if it needs to be added.
+
+I will view more lines around this method in the older version to check for the presence of areEqual or similar methods.
+
+I will view lines 270 to 310 to see if areEqual or related methods exist.
+
+[0m[36;1m[1;3mHere are lines 270 through 310.
+
+
+		if ( hasOrder || hasManyToManyOrder ) {
+			final TranslationContext context = collectionDescriptor::getFactory;
+
+			if ( hasOrder ) {
+				if ( log.isDebugEnabled() ) {
+					log.debugf(
+							"Translating order-by fragment [%s] for collection role : %s",
+							bootDescriptor.getOrderBy(),
+							collectionDescriptor.getRole()
+					);
+				}
+				orderByFragment = OrderByFragmentTranslator.translate(
+						bootDescriptor.getOrderBy(),
+						this,
+						context
+				);
+			}
+
+			if ( hasManyToManyOrder ) {
+				if ( log.isDebugEnabled() ) {
+					log.debugf(
+							"Translating many-to-many order-by fragment [%s] for collection role : %s",
+							bootDescriptor.getOrderBy(),
+							collectionDescriptor.getRole()
+					);
+				}
+				manyToManyOrderByFragment = OrderByFragmentTranslator.translate(
+						bootDescriptor.getManyToManyOrdering(),
+						this,
+						context
+				);
+			}
+		}
+	}
+
+	@Override
+	public NavigableRole getNavigableRole() {
+		return getCollectionDescriptor().getNavigableRole();
+	}
+
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `locate_symbol` with `{'ref': '1ad46ec4c41800eb814da5f386ec9b12dd474eff', 'symbol': 'areEqual'}`
+responded: I have found the method isBidirectionalAttributeName in the older version at the expected location. The method implementation is simpler in the older version:
+
+```java
+@Override
+public boolean isBidirectionalAttributeName(NavigablePath fetchablePath, ToOneAttributeMapping modelPart) {
+    if ( bidirectionalAttributeName == null ) {
+        // If the FK-target of the to-one mapping is the same as the FK-target of this plural mapping,
+        // then we say this is bidirectional, given that this is only invoked for model parts of the collection elements
+        return fkDescriptor.getTargetPart() == modelPart.getForeignKeyDescriptor().getTargetPart();
+    }
+    return fetchablePath.getLocalName().endsWith( bidirectionalAttributeName );
+}
+```
+
+While the patch in the newer version changes the logic to add more conditions and a new helper method areEqual to compare ValuedModelPart objects.
+
+So the patch is indeed changing existing code in this method and adding a new private method.
+
+Next, I need to locate the new method areEqual in the newer version to see how to add it in the older version, and also see the context of this method in the older version.
+
+I will locate the symbol areEqual in the older version to see if it exists or where to add it.
+
+[0m[33;1m[1;3mhibernate-core/src/main/java/org/hibernate/boot/model/naming/Identifier.java:256
+hibernate-core/src/main/java/org/hibernate/graph/EntityGraphs.java:188
+hibernate-core/src/main/java/org/hibernate/graph/EntityGraphs.java:223
+hibernate-core/src/main/java/org/hibernate/graph/EntityGraphs.java:242
+hibernate-core/src/main/java/org/hibernate/graph/EntityGraphs.java:275
+hibernate-core/src/main/java/org/hibernate/metamodel/mapping/ModelPart.java:209
+hibernate-core/src/main/java/org/hibernate/metamodel/mapping/internal/CompoundNaturalIdMapping.java:249
+hibernate-core/src/main/java/org/hibernate/metamodel/mapping/internal/InverseNonAggregatedIdentifierMapping.java:137
+hibernate-core/src/main/java/org/hibernate/metamodel/mapping/internal/NonAggregatedIdentifierMappingImpl.java:170
+hibernate-core/src/main/java/org/hibernate/metamodel/mapping/internal/VirtualIdEmbeddable.java:253
+hibernate-core/src/main/java/org/hibernate/metamodel/model/domain/BasicDomainType.java:29
+hibernate-core/src/main/java/org/hibernate/query/derived/AnonymousTupleNonAggregatedEntityIdentifierMapping.java:145
+hibernate-core/src/main/java/org/hibernate/type/descriptor/java/AbstractClassJavaType.java:97
+hibernate-core/src/main/java/org/hibernate/type/descriptor/java/AbstractJavaType.java:74
+hibernate-core/src/main/java/org/hibernate/type/descriptor/java/ArrayJavaType.java:113
+hibernate-core/src/main/java/org/hibernate/type/descriptor/java/BigDecimalJavaType.java:38
+hibernate-core/src/main/java/org/hibernate/type/descriptor/java/BlobJavaType.java:96
+hibernate-core/src/main/java/org/hibernate/type/descriptor/java/BooleanPrimitiveArrayJavaType.java:47
+hibernate-core/src/main/java/org/hibernate/type/descriptor/java/ByteArrayJavaType.java:38
+hibernate-core/src/main/java/org/hibernate/type/descriptor/java/CalendarDateJavaType.java:71
+hibernate-core/src/main/java/org/hibernate/type/descriptor/java/CalendarJavaType.java:80
+hibernate-core/src/main/java/org/hibernate/type/descriptor/java/CalendarTimeJavaType.java:71
+hibernate-core/src/main/java/org/hibernate/type/descriptor/java/CharacterArrayJavaType.java:49
+hibernate-core/src/main/java/org/hibernate/type/descriptor/java/ClobJavaType.java:70
+hibernate-core/src/main/java/org/hibernate/type/descriptor/java/DateJavaType.java:98
+hibernate-core/src/main/java/org/hibernate/type/descriptor/java/DoublePrimitiveArrayJavaType.java:47
+hibernate-core/src/main/java/org/hibernate/type/descriptor/java/FloatPrimitiveArrayJavaType.java:47
+hibernate-core/src/main/java/org/hibernate/type/descriptor/java/IntegerPrimitiveArrayJavaType.java:47
+hibernate-core/src/main/java/org/hibernate/type/descriptor/java/JavaType.java:222
+hibernate-core/src/main/java/org/hibernate/type/descriptor/java/JdbcDateJavaType.java:75
+hibernate-core/src/main/java/org/hibernate/type/descriptor/java/JdbcTimeJavaType.java:95
+hibernate-core/src/main/java/org/hibernate/type/descriptor/java/JdbcTimestampJavaType.java:76
+hibernate-core/src/main/java/org/hibernate/type/descriptor/java/LongPrimitiveArrayJavaType.java:47
+hibernate-core/src/main/java/org/hibernate/type/descriptor/java/NClobJavaType.java:79
+hibernate-core/src/main/java/org/hibernate/type/descriptor/java/ObjectArrayJavaType.java:53
+hibernate-core/src/main/java/org/hibernate/type/descriptor/java/PrimitiveByteArrayJavaType.java:39
+hibernate-core/src/main/java/org/hibernate/type/descriptor/java/PrimitiveCharacterArrayJavaType.java:41
+hibernate-core/src/main/java/org/hibernate/type/descriptor/java/RowVersionJavaType.java:41
+hibernate-core/src/main/java/org/hibernate/type/descriptor/java/SerializableJavaType.java:81
+hibernate-core/src/main/java/org/hibernate/type/descriptor/java/ShortPrimitiveArrayJavaType.java:47
+hibernate-core/src/main/java/org/hibernate/type/descriptor/java/spi/BasicCollectionJavaType.java:172
+hibernate-core/src/main/java/org/hibernate/type/descriptor/java/spi/CollectionJavaType.java:112
+hibernate-core/src/main/java/org/hibernate/type/descriptor/java/spi/EntityJavaType.java:43
+hibernate-core/src/main/java/org/hibernate/type/internal/CompositeUserTypeJavaTypeWrapper.java:95
+hibernate-core/src/main/java/org/hibernate/type/internal/UserTypeJavaTypeWrapper.java:114
+hibernate-core/src/test/java/org/hibernate/orm/test/id/usertype/inet/InetJavaType.java:40
+hibernate-core/src/test/java/org/hibernate/orm/test/id/usertype/json/JsonJavaType.java:32
+hibernate-core/src/test/java/org/hibernate/orm/test/mapping/type/java/JavaTypeRegistryTest.java:81
+hibernate-core/src/test/java/org/hibernate/orm/test/query/hql/QueryParametersValidationArrayTest.java:154
+hibernate-envers/src/main/java/org/hibernate/envers/internal/entities/mapper/SinglePropertyMapper.java:177
+hibernate-spatial/src/main/java/org/hibernate/spatial/JTSGeometryJavaType.java:88[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': '1ad46ec4c41800eb814da5f386ec9b12dd474eff', 'path': 'hibernate-core/src/main/java/org/hibernate/metamodel/mapping/internal/PluralAttributeMappingImpl.java', 'startline': 250, 'endline': 280}`
+
+
+[0m[36;1m[1;3mHere are lines 250 through 280.
+
+		}
+	}
+
+	@Override
+	public boolean isBidirectionalAttributeName(NavigablePath fetchablePath, ToOneAttributeMapping modelPart) {
+		if ( bidirectionalAttributeName == null ) {
+			// If the FK-target of the to-one mapping is the same as the FK-target of this plural mapping,
+			// then we say this is bidirectional, given that this is only invoked for model parts of the collection elements
+			return fkDescriptor.getTargetPart() == modelPart.getForeignKeyDescriptor().getTargetPart();
+		}
+		return fetchablePath.getLocalName().endsWith( bidirectionalAttributeName );
+	}
+
+	@SuppressWarnings("unused")
+	public void finishInitialization(
+			Property bootProperty,
+			Collection bootDescriptor,
+			MappingModelCreationProcess creationProcess) {
+		final boolean hasOrder = bootDescriptor.getOrderBy() != null;
+		final boolean hasManyToManyOrder = bootDescriptor.getManyToManyOrdering() != null;
+
+		if ( hasOrder || hasManyToManyOrder ) {
+			final TranslationContext context = collectionDescriptor::getFactory;
+
+			if ( hasOrder ) {
+				if ( log.isDebugEnabled() ) {
+					log.debugf(
+							"Translating order-by fragment [%s] for collection role : %s",
+							bootDescriptor.getOrderBy(),
+							collectionDescriptor.getRole()
+					);
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': '1ad46ec4c41800eb814da5f386ec9b12dd474eff', 'path': 'hibernate-core/src/main/java/org/hibernate/metamodel/mapping/internal/PluralAttributeMappingImpl.java', 'startline': 240, 'endline': 280}`
+responded: The target code to be backported is the method `isBidirectionalAttributeName` and the newly added private method `areEqual` in `PluralAttributeMappingImpl.java`.
+
+From the older version (ref 1ad46ec4c41800eb814da5f386ec9b12dd474eff), the method `isBidirectionalAttributeName` exists but has simpler logic. It does not have the additional checks for FK key nature, one-to-many collection descriptor, and key part equality that are introduced in the newer patch.
+
+The private method `areEqual` does not exist in the older version.
+
+The patch modifies the logic of `isBidirectionalAttributeName` to add more precise checks for bidirectionality and adds the helper method `areEqual` to compare `ValuedModelPart` instances.
+
+Next, I will:
+- View more lines around the `isBidirectionalAttributeName` method to get a complete context for the method and class in the older version.
+- Check the imports or any related declarations that might be needed for the patch.
+
+I will view lines 240-280 in the older version to get the full method context and surroundings.
+
+[0m[36;1m[1;3mHere are lines 240 through 280.
+
+		if ( collectionDescriptor instanceof Aware ) {
+			( (Aware) collectionDescriptor ).injectAttributeMapping( mapping );
+		}
+
+		if ( elementDescriptor instanceof Aware ) {
+			( (Aware) elementDescriptor ).injectAttributeMapping( mapping );
+		}
+
+		if ( indexDescriptor instanceof Aware ) {
+			( (Aware) indexDescriptor ).injectAttributeMapping( mapping );
+		}
+	}
+
+	@Override
+	public boolean isBidirectionalAttributeName(NavigablePath fetchablePath, ToOneAttributeMapping modelPart) {
+		if ( bidirectionalAttributeName == null ) {
+			// If the FK-target of the to-one mapping is the same as the FK-target of this plural mapping,
+			// then we say this is bidirectional, given that this is only invoked for model parts of the collection elements
+			return fkDescriptor.getTargetPart() == modelPart.getForeignKeyDescriptor().getTargetPart();
+		}
+		return fetchablePath.getLocalName().endsWith( bidirectionalAttributeName );
+	}
+
+	@SuppressWarnings("unused")
+	public void finishInitialization(
+			Property bootProperty,
+			Collection bootDescriptor,
+			MappingModelCreationProcess creationProcess) {
+		final boolean hasOrder = bootDescriptor.getOrderBy() != null;
+		final boolean hasManyToManyOrder = bootDescriptor.getManyToManyOrdering() != null;
+
+		if ( hasOrder || hasManyToManyOrder ) {
+			final TranslationContext context = collectionDescriptor::getFactory;
+
+			if ( hasOrder ) {
+				if ( log.isDebugEnabled() ) {
+					log.debugf(
+							"Translating order-by fragment [%s] for collection role : %s",
+							bootDescriptor.getOrderBy(),
+							collectionDescriptor.getRole()
+					);
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `locate_symbol` with `{'ref': '1ad46ec4c41800eb814da5f386ec9b12dd474eff', 'symbol': 'PluralAttributeMappingImpl'}`
+responded: The target code to be backported is the method isBidirectionalAttributeName and the new private method areEqual added in the newer version. In the older version, the method isBidirectionalAttributeName exists but is simpler and does not contain the additional logic or the areEqual method.
+
+The patch to backport changes the logic of isBidirectionalAttributeName significantly and adds a new method areEqual.
+
+Since the older version has the method isBidirectionalAttributeName but lacks the new logic and the helper method, I need to add the new logic to isBidirectionalAttributeName and add the areEqual method in the older version.
+
+I will now check if the class contains the new method areEqual or if I need to add it entirely to the older version. I will locate the class PluralAttributeMappingImpl in the older version to know where to place the new method. I will locate the class header or main structure in the older version.
+
+I will locate the class PluralAttributeMappingImpl in the older version to find a good place for the new method areEqual.
+
+[0m[33;1m[1;3mhibernate-core/src/main/java/org/hibernate/metamodel/mapping/internal/PluralAttributeMappingImpl.java:133
+hibernate-core/src/main/java/org/hibernate/metamodel/mapping/internal/PluralAttributeMappingImpl.java:212
+hibernate-core/src/main/java/org/hibernate/metamodel/mapping/internal/PluralAttributeMappingImpl.java:87[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': '1ad46ec4c41800eb814da5f386ec9b12dd474eff', 'path': 'hibernate-core/src/main/java/org/hibernate/metamodel/mapping/internal/PluralAttributeMappingImpl.java', 'startline': 200, 'endline': 240}`
+
+
+[0m[36;1m[1;3mHere are lines 200 through 240.
+
+			}
+		};
+
+		softDeleteMapping = resolveSoftDeleteMapping( this, bootDescriptor, getSeparateCollectionTable(), creationProcess.getCreationContext().getDialect() );
+
+		injectAttributeMapping( elementDescriptor, indexDescriptor, collectionDescriptor, this );
+	}
+
+
+	/**
+	 * For Hibernate Reactive
+	 */
+	protected PluralAttributeMappingImpl(PluralAttributeMappingImpl original) {
+		super( original );
+		this.collectionMappingType = original.collectionMappingType;
+		this.elementDescriptor = original.elementDescriptor;
+		this.indexDescriptor = original.indexDescriptor;
+		this.identifierDescriptor = original.identifierDescriptor;
+		this.fetchTiming = original.fetchTiming;
+		this.fetchStyle = original.fetchStyle;
+		this.softDeleteMapping = original.softDeleteMapping;
+		this.hasSoftDelete = original.hasSoftDelete;
+		this.collectionDescriptor = original.collectionDescriptor;
+		this.referencedPropertyName = original.referencedPropertyName;
+		this.mapKeyPropertyName = original.mapKeyPropertyName;
+		this.bidirectionalAttributeName = original.bidirectionalAttributeName;
+		this.sqlAliasStem = original.sqlAliasStem;
+		this.separateCollectionTable = original.separateCollectionTable;
+		this.indexMetadata = original.indexMetadata;
+		this.fkDescriptor = original.fkDescriptor;
+		this.orderByFragment = original.orderByFragment;
+		this.manyToManyOrderByFragment = original.manyToManyOrderByFragment;
+		injectAttributeMapping( elementDescriptor, indexDescriptor, collectionDescriptor, this );
+	}
+
+	private static void injectAttributeMapping(
+			CollectionPart elementDescriptor,
+			CollectionPart indexDescriptor,
+			CollectionPersister collectionDescriptor,
+			PluralAttributeMapping mapping) {
+		if ( collectionDescriptor instanceof Aware ) {
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': '1ad46ec4c41800eb814da5f386ec9b12dd474eff', 'path': 'hibernate-core/src/main/java/org/hibernate/metamodel/mapping/internal/PluralAttributeMappingImpl.java', 'startline': 210, 'endline': 230}`
+
+
+[0m[36;1m[1;3mHere are lines 210 through 230.
+
+	 * For Hibernate Reactive
+	 */
+	protected PluralAttributeMappingImpl(PluralAttributeMappingImpl original) {
+		super( original );
+		this.collectionMappingType = original.collectionMappingType;
+		this.elementDescriptor = original.elementDescriptor;
+		this.indexDescriptor = original.indexDescriptor;
+		this.identifierDescriptor = original.identifierDescriptor;
+		this.fetchTiming = original.fetchTiming;
+		this.fetchStyle = original.fetchStyle;
+		this.softDeleteMapping = original.softDeleteMapping;
+		this.hasSoftDelete = original.hasSoftDelete;
+		this.collectionDescriptor = original.collectionDescriptor;
+		this.referencedPropertyName = original.referencedPropertyName;
+		this.mapKeyPropertyName = original.mapKeyPropertyName;
+		this.bidirectionalAttributeName = original.bidirectionalAttributeName;
+		this.sqlAliasStem = original.sqlAliasStem;
+		this.separateCollectionTable = original.separateCollectionTable;
+		this.indexMetadata = original.indexMetadata;
+		this.fkDescriptor = original.fkDescriptor;
+		this.orderByFragment = original.orderByFragment;
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': '1ad46ec4c41800eb814da5f386ec9b12dd474eff', 'path': 'hibernate-core/src/main/java/org/hibernate/metamodel/mapping/internal/PluralAttributeMappingImpl.java', 'startline': 240, 'endline': 280}`
+responded: The target method `isBidirectionalAttributeName` exists in the older version at a similar location (line ~254) but it has a simpler implementation compared to the newer version. The newer version adds more complex logic checking the nature of the foreign key and comparing key parts for equality, including a new helper method `areEqual`.
+
+The older version only checks if `bidirectionalAttributeName` is null and compares FK target parts or checks if the fetchablePath's local name ends with `bidirectionalAttributeName`. The newer version refines this logic by checking if the FK key refers to the same column and uses an equality check on the key parts, and changes the string match from `endsWith` to `equals`.
+
+The helper method `areEqual` is completely new in the newer version and does not exist in the older version.
+
+Given this, the patch needs to:
+- Replace the older `isBidirectionalAttributeName` with the newer logic.
+- Add the new helper method `areEqual`.
+
+Next, I will view the surrounding lines of `PluralAttributeMappingImpl.java` in the older version around line 254 to get full context for the method and where to insert the new helper method. I will also check if `ValuedModelPart` and `SelectableMapping` classes/interfaces exist or if their imports or usages differ in the older version, as they appear in the new helper method.
+
+I will start by viewing lines 240-280 in the older version to get the full method and context for insertion of the helper method.
+
+[0m[36;1m[1;3mHere are lines 240 through 280.
+
+		if ( collectionDescriptor instanceof Aware ) {
+			( (Aware) collectionDescriptor ).injectAttributeMapping( mapping );
+		}
+
+		if ( elementDescriptor instanceof Aware ) {
+			( (Aware) elementDescriptor ).injectAttributeMapping( mapping );
+		}
+
+		if ( indexDescriptor instanceof Aware ) {
+			( (Aware) indexDescriptor ).injectAttributeMapping( mapping );
+		}
+	}
+
+	@Override
+	public boolean isBidirectionalAttributeName(NavigablePath fetchablePath, ToOneAttributeMapping modelPart) {
+		if ( bidirectionalAttributeName == null ) {
+			// If the FK-target of the to-one mapping is the same as the FK-target of this plural mapping,
+			// then we say this is bidirectional, given that this is only invoked for model parts of the collection elements
+			return fkDescriptor.getTargetPart() == modelPart.getForeignKeyDescriptor().getTargetPart();
+		}
+		return fetchablePath.getLocalName().endsWith( bidirectionalAttributeName );
+	}
+
+	@SuppressWarnings("unused")
+	public void finishInitialization(
+			Property bootProperty,
+			Collection bootDescriptor,
+			MappingModelCreationProcess creationProcess) {
+		final boolean hasOrder = bootDescriptor.getOrderBy() != null;
+		final boolean hasManyToManyOrder = bootDescriptor.getManyToManyOrdering() != null;
+
+		if ( hasOrder || hasManyToManyOrder ) {
+			final TranslationContext context = collectionDescriptor::getFactory;
+
+			if ( hasOrder ) {
+				if ( log.isDebugEnabled() ) {
+					log.debugf(
+							"Translating order-by fragment [%s] for collection role : %s",
+							bootDescriptor.getOrderBy(),
+							collectionDescriptor.getRole()
+					);
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': '1ad46ec4c41800eb814da5f386ec9b12dd474eff', 'path': 'hibernate-core/src/main/java/org/hibernate/metamodel/mapping/internal/PluralAttributeMappingImpl.java', 'startline': 280, 'endline': 320}`
+responded: Analysis:
+1. The target method `isBidirectionalAttributeName` exists in the older version at line 254 with a simpler logic:
+   - It checks if `bidirectionalAttributeName` is null, then compares FK targets.
+   - Otherwise, it checks if the `fetchablePath.getLocalName()` ends with `bidirectionalAttributeName`.
+2. The patch in the newer version changes the logic:
+   - It adds more conditions to check FK nature, one-to-many collection, and key equality using a new helper method `areEqual`.
+   - It changes the string check from `endsWith` to `equals`.
+3. The helper method `areEqual` is a new private method in the newer version.
+4. The context around the method (such as class fields and other methods) appears similar enough to place the patch in the same location in the older version.
+5. The helper method `areEqual` does not exist in the older version and needs to be added.
+
+Next step:
+- View more lines around the method in the older version to confirm the right place to add the `areEqual` method.
+- Check imports or other dependencies if needed.
+- Prepare the backport patch by replacing the method logic and adding the helper method.
+
+I will now view more lines after line 280 to find a good place to add the `areEqual` method.
+
+[0m[36;1m[1;3mHere are lines 280 through 320.
+
+					);
+				}
+				orderByFragment = OrderByFragmentTranslator.translate(
+						bootDescriptor.getOrderBy(),
+						this,
+						context
+				);
+			}
+
+			if ( hasManyToManyOrder ) {
+				if ( log.isDebugEnabled() ) {
+					log.debugf(
+							"Translating many-to-many order-by fragment [%s] for collection role : %s",
+							bootDescriptor.getOrderBy(),
+							collectionDescriptor.getRole()
+					);
+				}
+				manyToManyOrderByFragment = OrderByFragmentTranslator.translate(
+						bootDescriptor.getManyToManyOrdering(),
+						this,
+						context
+				);
+			}
+		}
+	}
+
+	@Override
+	public NavigableRole getNavigableRole() {
+		return getCollectionDescriptor().getNavigableRole();
+	}
+
+	@Override
+	@SuppressWarnings("rawtypes")
+	public CollectionMappingType getMappedType() {
+		return collectionMappingType;
+	}
+
+	@Override
+	public ForeignKeyDescriptor getKeyDescriptor() {
+		return fkDescriptor;
+	}
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3mAnalysis:
+- The older version at ref 1ad46ec4c41800eb814da5f386ec9b12dd474eff has the method isBidirectionalAttributeName with the simpler logic:
+  - If bidirectionalAttributeName is null, it checks if fkDescriptor.getTargetPart() == modelPart.getForeignKeyDescriptor().getTargetPart()
+  - Otherwise, it returns fetchablePath.getLocalName().endsWith(bidirectionalAttributeName)
+- The newer patch changes this logic to:
+  - If bidirectionalAttributeName is null, it checks additional conditions including the FK key part equality and that the collectionDescriptor is one-to-many, and that the modelPart's ForeignKeyDescriptor side nature is KEY.
+  - Otherwise, it returns fetchablePath.getLocalName().equals(bidirectionalAttributeName) (note the change from endsWith to equals)
+- The patch also adds a new private method areEqual(ValuedModelPart part1, ValuedModelPart part2) to compare the key parts in detail.
+- The older version does not have this areEqual method.
+- The patch comments also differ slightly to reflect the new logic.
+
+Conclusion:
+- The patch adds new logic and a new helper method.
+- We need to backport the new logic of isBidirectionalAttributeName and add the new areEqual method in the older version.
+- The class context and method location are verified.
+- We will adapt the patch to the older version code style and context.
+
+Next step:
+- We will generate the patch for the older version file hibernate-core/src/main/java/org/hibernate/metamodel/mapping/internal/PluralAttributeMappingImpl.java
+- The patch will replace the isBidirectionalAttributeName method and add the private areEqual method after it.
+- We will keep the original indentation and context lines from the older version.
+- Then we will validate the patch on the older version.
+
+I will now generate the patch.[0m
+
+[1m> Finished chain.[0m
+2026-04-28 14:57:38,099 - backport - ERROR - Hunk 1: agent failed (max iterations or error)
+2026-04-28 14:57:38,101 - backport - WARNING - Row 307: PARTIAL — 0/2 hunk(s) succeeded

@@ -1,0 +1,1136 @@
+2026-04-28 15:25:05,539 - backport - INFO - Row 312 [hibernate-orm]: extracting original.patch
+2026-04-28 15:25:05,557 - backport - INFO - Row 312: 6 total hunks, 4 after filtering (test/non-Java removed)
+2026-04-28 15:25:05,559 - backport - INFO - Row 312 [hibernate-orm]: extracting developer.patch
+2026-04-28 15:25:05,610 - backport - INFO - Row 312: detected 1 test target(s) from developer.patch
+2026-04-28 15:25:06,133 - backport - INFO - Row 312: starting PortGPT backport agent
+
+
+[1m> Entering new AgentExecutor chain...[0m
+
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `git_history` with `{}`
+
+
+[0m[36;1m[1;3m1a5db3bf42 HHH-18892 add hex() function
+
+diff --git a/hibernate-core/src/main/java/org/hibernate/dialect/OracleDialect.java b/hibernate-core/src/main/java/org/hibernate/dialect/OracleDialect.java
+--- a/hibernate-core/src/main/java/org/hibernate/dialect/OracleDialect.java
++++ b/hibernate-core/src/main/java/org/hibernate/dialect/OracleDialect.java
+@@ -444,5 +444,6 @@
++		functionFactory.hex( "rawtohex(?1)" );
+ 		functionFactory.sha( "standard_hash(?1, 'SHA256')" );
+ 		functionFactory.md5( "standard_hash(?1, 'MD5')" );
+ 	}
+ 
+ 	/**
+b36ee674ca HHH-18892 add sha() and md5() functions to HQL
+
+diff --git a/hibernate-core/src/main/java/org/hibernate/dialect/OracleDialect.java b/hibernate-core/src/main/java/org/hibernate/dialect/OracleDialect.java
+--- a/hibernate-core/src/main/java/org/hibernate/dialect/OracleDialect.java
++++ b/hibernate-core/src/main/java/org/hibernate/dialect/OracleDialect.java
+@@ -443,3 +444,5 @@
++		functionFactory.sha( "standard_hash(?1, 'SHA256')" );
++		functionFactory.md5( "standard_hash(?1, 'MD5')" );
+ 	}
+ 
+ 	/**
+82b20a0e90 HHH-18731 Add generate_series() set-returning function
+
+diff --git a/hibernate-core/src/main/java/org/hibernate/dialect/OracleDialect.java b/hibernate-core/src/main/java/org/hibernate/dialect/OracleDialect.java
+--- a/hibernate-core/src/main/java/org/hibernate/dialect/OracleDialect.java
++++ b/hibernate-core/src/main/java/org/hibernate/dialect/OracleDialect.java
+@@ -426,0 +427,3 @@
++	}
++
++	/*
+You need to do the following analysis based on the information in the last commit:
+Analyze the code logic of the context of the patch to be ported in this commit step by step.
+If code logic already existed before this commit, the patch context can be assumed to remain in a similar location. Use `locate` and `viewcode` to check your results.
+If code logic were added in this commit, then you need to `git_show` for further details.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `locate_symbol` with `{'ref': 'b4b2a20707f22aec5ce9c6e7d50c54267fddbad3', 'symbol': 'initializeFunctionRegistry'}`
+responded: The git_history shows that the functions hex, sha, and md5 were added in commits after the target ref b4b2a20707f22aec5ce9c6e7d50c54267fddbad3. The patch we want to backport adds a registration of the "extract" function using OracleExtractFunction.
+
+The patch to add the extract function is in the same method as the hex, sha, and md5 functions. Since hex, sha, and md5 functions were added after the target ref, it is likely that the registration of the "extract" function is also new and does not exist in the older version.
+
+I will locate the method "initializeFunctionRegistry" in the older version to see if it exists and what it looks like. This will help to determine where to add the new registration for the "extract" function.
+
+I will use the locate_symbol tool for "initializeFunctionRegistry" in the older ref b4b2a20707f22aec5ce9c6e7d50c54267fddbad3.
+
+[0m[33;1m[1;3mhibernate-community-dialects/src/main/java/org/hibernate/community/dialect/AltibaseDialect.java:193
+hibernate-community-dialects/src/main/java/org/hibernate/community/dialect/CUBRIDDialect.java:213
+hibernate-community-dialects/src/main/java/org/hibernate/community/dialect/CacheDialect.java:152
+hibernate-community-dialects/src/main/java/org/hibernate/community/dialect/CockroachLegacyDialect.java:415
+hibernate-community-dialects/src/main/java/org/hibernate/community/dialect/DB2LegacyDialect.java:285
+hibernate-community-dialects/src/main/java/org/hibernate/community/dialect/DB2iLegacyDialect.java:61
+hibernate-community-dialects/src/main/java/org/hibernate/community/dialect/DB2zLegacyDialect.java:69
+hibernate-community-dialects/src/main/java/org/hibernate/community/dialect/DerbyLegacyDialect.java:327
+hibernate-community-dialects/src/main/java/org/hibernate/community/dialect/FirebirdDialect.java:255
+hibernate-community-dialects/src/main/java/org/hibernate/community/dialect/H2LegacyDialect.java:314
+hibernate-community-dialects/src/main/java/org/hibernate/community/dialect/HSQLLegacyDialect.java:191
+hibernate-community-dialects/src/main/java/org/hibernate/community/dialect/InformixDialect.java:282
+hibernate-community-dialects/src/main/java/org/hibernate/community/dialect/IngresDialect.java:240
+hibernate-community-dialects/src/main/java/org/hibernate/community/dialect/MariaDBLegacyDialect.java:81
+hibernate-community-dialects/src/main/java/org/hibernate/community/dialect/MaxDBDialect.java:138
+hibernate-community-dialects/src/main/java/org/hibernate/community/dialect/MimerSQLDialect.java:163
+hibernate-community-dialects/src/main/java/org/hibernate/community/dialect/MySQLLegacyDialect.java:547
+hibernate-community-dialects/src/main/java/org/hibernate/community/dialect/OracleLegacyDialect.java:206
+hibernate-community-dialects/src/main/java/org/hibernate/community/dialect/PostgreSQLLegacyDialect.java:552
+hibernate-community-dialects/src/main/java/org/hibernate/community/dialect/PostgresPlusLegacyDialect.java:55
+hibernate-community-dialects/src/main/java/org/hibernate/community/dialect/RDMSOS2200Dialect.java:208
+hibernate-community-dialects/src/main/java/org/hibernate/community/dialect/SQLServerLegacyDialect.java:316
+hibernate-community-dialects/src/main/java/org/hibernate/community/dialect/SQLiteDialect.java:282
+hibernate-community-dialects/src/main/java/org/hibernate/community/dialect/SingleStoreDialect.java:536
+hibernate-community-dialects/src/main/java/org/hibernate/community/dialect/SybaseAnywhereDialect.java:96
+hibernate-community-dialects/src/main/java/org/hibernate/community/dialect/SybaseLegacyDialect.java:287
+hibernate-community-dialects/src/main/java/org/hibernate/community/dialect/TeradataDialect.java:261
+hibernate-community-dialects/src/main/java/org/hibernate/community/dialect/TimesTenDialect.java:157
+hibernate-core/src/main/java/org/hibernate/dialect/AbstractHANADialect.java:406
+hibernate-core/src/main/java/org/hibernate/dialect/AbstractTransactSQLDialect.java:125
+hibernate-core/src/main/java/org/hibernate/dialect/CockroachDialect.java:418
+hibernate-core/src/main/java/org/hibernate/dialect/DB2Dialect.java:272
+hibernate-core/src/main/java/org/hibernate/dialect/DB2iDialect.java:67
+hibernate-core/src/main/java/org/hibernate/dialect/DB2zDialect.java:70
+hibernate-core/src/main/java/org/hibernate/dialect/DerbyDialect.java:319
+hibernate-core/src/main/java/org/hibernate/dialect/Dialect.java:1047
+hibernate-core/src/main/java/org/hibernate/dialect/DialectDelegateWrapper.java:244
+hibernate-core/src/main/java/org/hibernate/dialect/H2Dialect.java:263
+hibernate-core/src/main/java/org/hibernate/dialect/HSQLDialect.java:135
+hibernate-core/src/main/java/org/hibernate/dialect/MariaDBDialect.java:85
+hibernate-core/src/main/java/org/hibernate/dialect/MySQLDialect.java:596
+hibernate-core/src/main/java/org/hibernate/dialect/OracleDialect.java:282
+hibernate-core/src/main/java/org/hibernate/dialect/PostgreSQLDialect.java:607
+hibernate-core/src/main/java/org/hibernate/dialect/PostgresPlusDialect.java:56
+hibernate-core/src/main/java/org/hibernate/dialect/SQLServerDialect.java:360
+hibernate-core/src/main/java/org/hibernate/dialect/SpannerDialect.java:196
+hibernate-core/src/main/java/org/hibernate/dialect/SybaseDialect.java:267[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': 'b4b2a20707f22aec5ce9c6e7d50c54267fddbad3', 'path': 'hibernate-core/src/main/java/org/hibernate/dialect/OracleDialect.java', 'startline': 270, 'endline': 300}`
+
+
+[0m[36;1m[1;3mHere are lines 270 through 300.
+
+
+	@Override
+	protected DatabaseVersion getMinimumSupportedVersion() {
+		return MINIMUM_VERSION;
+	}
+
+	@Override
+	public int getPreferredSqlTypeCodeForBoolean() {
+		return getVersion().isSameOrAfter( 23 ) ? super.getPreferredSqlTypeCodeForBoolean() : Types.BIT;
+	}
+
+	@Override
+	public void initializeFunctionRegistry(FunctionContributions functionContributions) {
+		super.initializeFunctionRegistry(functionContributions);
+		final TypeConfiguration typeConfiguration = functionContributions.getTypeConfiguration();
+
+		CommonFunctionFactory functionFactory = new CommonFunctionFactory(functionContributions);
+		functionFactory.ascii();
+		functionFactory.char_chr();
+		functionFactory.cosh();
+		functionFactory.sinh();
+		functionFactory.tanh();
+		functionFactory.log();
+		functionFactory.log10_log();
+		functionFactory.soundex();
+		functionFactory.trim2();
+		functionFactory.initcap();
+		functionFactory.instr();
+		functionFactory.substr();
+		functionFactory.substring_substr();
+		functionFactory.leftRight_substr();
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': 'b4b2a20707f22aec5ce9c6e7d50c54267fddbad3', 'path': 'hibernate-core/src/main/java/org/hibernate/dialect/OracleDialect.java', 'startline': 301, 'endline': 320}`
+
+
+[0m[36;1m[1;3mHere are lines 301 through 320.
+
+		functionFactory.translate();
+		functionFactory.bitand();
+		functionFactory.lastDay();
+		functionFactory.toCharNumberDateTimestamp();
+		functionFactory.ceiling_ceil();
+		functionFactory.concat_pipeOperator();
+		functionFactory.rownumRowid();
+		functionFactory.sysdate();
+		functionFactory.systimestamp();
+		functionFactory.addMonths();
+		functionFactory.monthsBetween();
+		functionFactory.everyAny_minMaxCase();
+		functionFactory.repeat_rpad();
+
+		functionFactory.radians_acos();
+		functionFactory.degrees_acos();
+
+		functionFactory.median();
+		functionFactory.stddev();
+		functionFactory.stddevPopSamp();
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': 'b4b2a20707f22aec5ce9c6e7d50c54267fddbad3', 'path': 'hibernate-core/src/main/java/org/hibernate/dialect/OracleDialect.java', 'startline': 321, 'endline': 340}`
+
+
+[0m[36;1m[1;3mHere are lines 321 through 340.
+
+		functionFactory.variance();
+		functionFactory.varPopSamp();
+		functionFactory.covarPopSamp();
+		functionFactory.corr();
+		functionFactory.regrLinearRegressionAggregates();
+		functionFactory.characterLength_length( "dbms_lob.getlength(?1)" );
+		// Approximate octet and bit length for clobs since exact size determination would require a custom function
+		functionFactory.octetLength_pattern( "lengthb(?1)", "dbms_lob.getlength(?1)*2" );
+		functionFactory.bitLength_pattern( "lengthb(?1)*8", "dbms_lob.getlength(?1)*16" );
+
+		//Oracle has had coalesce() since 9.0.1
+		functionFactory.coalesce();
+
+		functionContributions.getFunctionRegistry()
+				.patternDescriptorBuilder( "bitor", "(?1+?2-bitand(?1,?2))")
+				.setExactArgumentCount( 2 )
+				.setArgumentTypeResolver( StandardFunctionArgumentTypeResolvers.ARGUMENT_OR_IMPLIED_RESULT_TYPE )
+				.register();
+		functionContributions.getFunctionRegistry()
+				.patternDescriptorBuilder( "bitxor", "(?1+?2-2*bitand(?1,?2))")
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': 'b4b2a20707f22aec5ce9c6e7d50c54267fddbad3', 'path': 'hibernate-core/src/main/java/org/hibernate/dialect/OracleDialect.java', 'startline': 341, 'endline': 360}`
+
+
+[0m[36;1m[1;3mHere are lines 341 through 360.
+
+				.setExactArgumentCount( 2 )
+				.setArgumentTypeResolver( StandardFunctionArgumentTypeResolvers.ARGUMENT_OR_IMPLIED_RESULT_TYPE )
+				.register();
+
+		functionContributions.getFunctionRegistry().registerBinaryTernaryPattern(
+				"locate",
+				typeConfiguration.getBasicTypeRegistry().resolve( StandardBasicTypes.INTEGER ),
+				"instr(?2,?1)",
+				"instr(?2,?1,?3)",
+				FunctionParameterType.STRING, FunctionParameterType.STRING, FunctionParameterType.INTEGER,
+				typeConfiguration
+		).setArgumentListSignature("(pattern, string[, start])");
+
+		// The within group clause became optional in 18
+		functionFactory.listagg( null );
+		functionFactory.windowFunctions();
+		functionFactory.hypotheticalOrderedSetAggregates();
+		functionFactory.inverseDistributionOrderedSetAggregates();
+		// Oracle has a regular aggregate function named stats_mode
+		functionContributions.getFunctionRegistry().register(
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': 'b4b2a20707f22aec5ce9c6e7d50c54267fddbad3', 'path': 'hibernate-core/src/main/java/org/hibernate/dialect/OracleDialect.java', 'startline': 361, 'endline': 385}`
+
+
+[0m[36;1m[1;3mHere are lines 361 through 385.
+
+				"mode",
+				new ModeStatsModeEmulation( typeConfiguration )
+		);
+		functionContributions.getFunctionRegistry().register(
+				"trunc",
+				new OracleTruncFunction( functionContributions.getTypeConfiguration() )
+		);
+		functionContributions.getFunctionRegistry().registerAlternateKey( "truncate", "trunc" );
+
+		functionFactory.array_oracle();
+		functionFactory.arrayAggregate_jsonArrayagg();
+		functionFactory.arrayPosition_oracle();
+		functionFactory.arrayPositions_oracle();
+		functionFactory.arrayLength_oracle();
+		functionFactory.arrayConcat_oracle();
+		functionFactory.arrayPrepend_oracle();
+		functionFactory.arrayAppend_oracle();
+		functionFactory.arrayContains_oracle();
+		functionFactory.arrayIntersects_oracle();
+		functionFactory.arrayGet_oracle();
+		functionFactory.arraySet_oracle();
+		functionFactory.arrayRemove_oracle();
+		functionFactory.arrayRemoveIndex_oracle();
+		functionFactory.arraySlice_oracle();
+		functionFactory.arrayReplace_oracle();
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `locate_symbol` with `{'ref': 'b4b2a20707f22aec5ce9c6e7d50c54267fddbad3', 'symbol': 'OracleExtractFunction'}`
+responded: I have found the method initializeFunctionRegistry in the old version at a similar location (around line 282) in OracleDialect.java. The method contains many functionFactory calls registering various functions, but the patch addition for registering the "extract" function with OracleExtractFunction is not present in this old version.
+
+The patch in the new version adds this registration:
+
+```java
+functionContributions.getFunctionRegistry().register(
+    "extract",
+    new OracleExtractFunction( this, typeConfiguration )
+);
+```
+
+I need to add this snippet in the corresponding place in the old version's initializeFunctionRegistry method.
+
+Next, I will check if the class OracleExtractFunction exists in the old version or if it needs to be imported or backported. I will locate "OracleExtractFunction" in the old version to check its presence and location.
+
+[0m[33;1m[1;3mThe symbol OracleExtractFunction you are looking for does not exist in the current ref.
+But here is a symbol similar to it. It's `handleExtractFunction`.
+The file where this symbol is located is: 
+hibernate-core/src/main/java/org/hibernate/sql/Template.java:413
+Please be careful to check that this symbol indicates the same thing as the previous symbol.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `locate_symbol` with `{'ref': '6c36e8c5b3dc3f99dee2883e30add21512c331c3', 'symbol': 'OracleExtractFunction'}`
+responded: Analysis:
+
+1. The patch to be backported adds a registration for the "extract" function using a new OracleExtractFunction class in the initializeFunctionRegistry method of OracleDialect.java in the newer ref.
+
+2. In the older ref, the initializeFunctionRegistry method exists and has a similar structure, but the "extract" function registration is not present.
+
+3. The class OracleExtractFunction does not exist in the older ref, so it might be a new class introduced after the older ref. This means the class itself might need to be backported or there might be an alternative approach in the older ref.
+
+4. The patch only adds the following lines:
+   ```
+   functionContributions.getFunctionRegistry().register(
+       "extract",
+       new OracleExtractFunction( this, typeConfiguration )
+   );
+   ```
+
+5. Since OracleExtractFunction does not exist in the older ref, I need to confirm if this class was introduced after the older ref or if there's an equivalent class or function.
+
+Next steps:
+
+- Check if OracleExtractFunction exists in the newer ref for its content and origin.
+- Check if there's any related extract function handling in the older ref.
+- If OracleExtractFunction is a new class, I may need to port that class as well or find a workaround.
+
+I will locate OracleExtractFunction in the newer ref 6c36e8c5b3dc3f99dee2883e30add21512c331c3 to check its code and origin.
+
+[0m[33;1m[1;3mThe symbol OracleExtractFunction you are looking for does not exist in the current ref.
+But here is a symbol similar to it. It's `ExtractFunction`.
+The file where this symbol is located is: 
+hibernate-core/src/main/java/org/hibernate/dialect/function/ExtractFunction.java:49
+hibernate-core/src/main/java/org/hibernate/dialect/function/ExtractFunction.java:53
+Please be careful to check that this symbol indicates the same thing as the previous symbol.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': '6c36e8c5b3dc3f99dee2883e30add21512c331c3', 'path': 'hibernate-core/src/main/java/org/hibernate/dialect/function/ExtractFunction.java', 'startline': 40, 'endline': 70}`
+
+
+[0m[36;1m[1;3mHere are lines 40 through 70.
+
+import static org.hibernate.usertype.internal.AbstractTimeZoneStorageCompositeUserType.ZONE_OFFSET_NAME;
+
+/**
+ * ANSI SQL-inspired {@code extract()} function, where the date/time fields
+ * are enumerated by {@link TemporalUnit}, and portability is achieved
+ * by delegating to {@link Dialect#extractPattern(TemporalUnit)}.
+ *
+ * @author Gavin King
+ */
+public class ExtractFunction extends AbstractSqmFunctionDescriptor implements FunctionRenderer {
+
+	private final Dialect dialect;
+
+	public ExtractFunction(Dialect dialect, TypeConfiguration typeConfiguration) {
+		super(
+				"extract",
+				new ArgumentTypesValidator(
+						StandardArgumentsValidators.exactly( 2 ),
+						TEMPORAL_UNIT, TEMPORAL
+				),
+				StandardFunctionReturnTypeResolvers.useArgType( 1 ),
+				StandardFunctionArgumentTypeResolvers.invariant( typeConfiguration, TEMPORAL_UNIT, TEMPORAL )
+		);
+		this.dialect = dialect;
+	}
+
+	@Override
+	public void render(
+			SqlAppender sqlAppender,
+			List<? extends SqlAstNode> sqlAstArguments,
+			ReturnableType<?> returnType,
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': '6c36e8c5b3dc3f99dee2883e30add21512c331c3', 'path': 'hibernate-core/src/main/java/org/hibernate/dialect/function/ExtractFunction.java', 'startline': 71, 'endline': 100}`
+
+
+[0m[36;1m[1;3mHere are lines 71 through 100.
+
+			SqlAstTranslator<?> walker) {
+		final ExtractUnit field = (ExtractUnit) sqlAstArguments.get( 0 );
+		final TemporalUnit unit = field.getUnit();
+		final String pattern = dialect.extractPattern( unit );
+		new PatternRenderer( pattern ).render( sqlAppender, sqlAstArguments, walker );
+	}
+
+	@Override
+	protected <T> SelfRenderingSqmFunction generateSqmFunctionExpression(
+			List<? extends SqmTypedNode<?>> arguments,
+			ReturnableType<T> impliedResultType,
+			QueryEngine queryEngine) {
+		final SqmExtractUnit<?> field = (SqmExtractUnit<?>) arguments.get( 0 );
+		final SqmExpression<?> originalExpression = (SqmExpression<?>) arguments.get( 1 );
+		final boolean compositeTemporal = SqmExpressionHelper.isCompositeTemporal( originalExpression );
+		final SqmExpression<?> expression = SqmExpressionHelper.getOffsetAdjustedExpression( originalExpression );
+
+		switch ( field.getUnit() ) {
+			case NANOSECOND:
+				return extractNanoseconds( expression, queryEngine );
+			case NATIVE:
+				throw new SemanticException("NATIVE is not a legal field for extract()");
+			case OFFSET:
+				if ( compositeTemporal ) {
+					final SqmPath<Object> offsetPath = ( (SqmPath<?>) originalExpression ).get(
+							ZONE_OFFSET_NAME
+					);
+					return new SelfRenderingSqmFunction<>(
+							this,
+							(sqlAppender, sqlAstArguments, returnType, walker) -> sqlAstArguments.get( 0 ).accept( walker ),
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': 'b4b2a20707f22aec5ce9c6e7d50c54267fddbad3', 'path': 'hibernate-core/src/main/java/org/hibernate/dialect/OracleDialect.java', 'startline': 386, 'endline': 395}`
+
+
+[0m[36;1m[1;3mHere are lines 386 through 395.
+
+		functionFactory.arrayTrim_oracle();
+		functionFactory.arrayFill_oracle();
+		functionFactory.arrayToString_oracle();
+	}
+
+	@Override
+	public int getMaxVarcharLength() {
+		//with MAX_STRING_SIZE=EXTENDED, changes to 32_767
+		return extended ? Length.LONG16 : 4000;
+	}
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': 'b4b2a20707f22aec5ce9c6e7d50c54267fddbad3', 'path': 'hibernate-core/src/main/java/org/hibernate/dialect/OracleDialect.java', 'startline': 1, 'endline': 100}`
+responded: I have found the method initializeFunctionRegistry in the older version at around line 280, and it contains many functionFactory calls similar to the patch context in the newer version. The patch in the newer version adds a registration of the "extract" function with an OracleExtractFunction instance. 
+
+I also confirmed that the class OracleExtractFunction does not exist in the older version. Instead, in the newer version, a class named ExtractFunction is used for the "extract" function. This class is not present in the older version, so this might be a new addition in the newer version.
+
+Given this, the patch to register the "extract" function with OracleExtractFunction in the newer version cannot be directly applied to the older version because the class OracleExtractFunction does not exist there.
+
+To backport this patch, I need to check if there is any equivalent function or existing extract function registration in the older version or if this functionality needs to be added as a new class and registration.
+
+Next, I will check if the "extract" function is registered in the older version's initializeFunctionRegistry method or anywhere else in the OracleDialect class. I will search for "extract" keyword in the OracleDialect.java file in the older version to see if it is mentioned anywhere.
+
+[0m[36;1m[1;3mHere are lines 1 through 100.
+
+/*
+ * Hibernate, Relational Persistence for Idiomatic Java
+ *
+ * License: GNU Lesser General Public License (LGPL), version 2.1 or later.
+ * See the lgpl.txt file in the root directory or <http://www.gnu.org/licenses/lgpl-2.1.html>.
+ */
+package org.hibernate.dialect;
+
+import java.sql.CallableStatement;
+import java.sql.DatabaseMetaData;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Types;
+import java.time.temporal.ChronoField;
+import java.time.temporal.TemporalAccessor;
+import java.util.TimeZone;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
+
+import org.hibernate.Length;
+import org.hibernate.QueryTimeoutException;
+import org.hibernate.boot.model.FunctionContributions;
+import org.hibernate.boot.model.TypeContributions;
+import org.hibernate.dialect.aggregate.AggregateSupport;
+import org.hibernate.dialect.aggregate.OracleAggregateSupport;
+import org.hibernate.dialect.function.CommonFunctionFactory;
+import org.hibernate.dialect.function.ModeStatsModeEmulation;
+import org.hibernate.dialect.function.OracleTruncFunction;
+import org.hibernate.dialect.identity.IdentityColumnSupport;
+import org.hibernate.dialect.identity.Oracle12cIdentityColumnSupport;
+import org.hibernate.dialect.pagination.LimitHandler;
+import org.hibernate.dialect.pagination.Oracle12LimitHandler;
+import org.hibernate.dialect.sequence.OracleSequenceSupport;
+import org.hibernate.dialect.sequence.SequenceSupport;
+import org.hibernate.dialect.temptable.TemporaryTable;
+import org.hibernate.dialect.temptable.TemporaryTableKind;
+import org.hibernate.dialect.unique.CreateTableUniqueDelegate;
+import org.hibernate.dialect.unique.UniqueDelegate;
+import org.hibernate.engine.config.spi.ConfigurationService;
+import org.hibernate.engine.config.spi.StandardConverters;
+import org.hibernate.engine.jdbc.dialect.spi.DialectResolutionInfo;
+import org.hibernate.engine.jdbc.env.spi.IdentifierHelper;
+import org.hibernate.engine.jdbc.env.spi.IdentifierHelperBuilder;
+import org.hibernate.engine.spi.SessionFactoryImplementor;
+import org.hibernate.exception.ConstraintViolationException;
+import org.hibernate.exception.LockAcquisitionException;
+import org.hibernate.exception.LockTimeoutException;
+import org.hibernate.exception.spi.SQLExceptionConversionDelegate;
+import org.hibernate.exception.spi.TemplatedViolatedConstraintNameExtractor;
+import org.hibernate.exception.spi.ViolatedConstraintNameExtractor;
+import org.hibernate.internal.util.JdbcExceptionHelper;
+import org.hibernate.internal.util.config.ConfigurationHelper;
+import org.hibernate.mapping.UserDefinedType;
+import org.hibernate.metamodel.mapping.EntityMappingType;
+import org.hibernate.metamodel.spi.RuntimeModelCreationContext;
+import org.hibernate.persister.entity.mutation.EntityMutationTarget;
+import org.hibernate.procedure.internal.OracleCallableStatementSupport;
+import org.hibernate.procedure.spi.CallableStatementSupport;
+import org.hibernate.query.SemanticException;
+import org.hibernate.query.spi.QueryOptions;
+import org.hibernate.query.sqm.CastType;
+import org.hibernate.query.sqm.FetchClauseType;
+import org.hibernate.query.sqm.IntervalType;
+import org.hibernate.query.sqm.TemporalUnit;
+import org.hibernate.query.sqm.mutation.internal.temptable.GlobalTemporaryTableInsertStrategy;
+import org.hibernate.query.sqm.mutation.internal.temptable.GlobalTemporaryTableMutationStrategy;
+import org.hibernate.query.sqm.mutation.spi.SqmMultiTableInsertStrategy;
+import org.hibernate.query.sqm.mutation.spi.SqmMultiTableMutationStrategy;
+import org.hibernate.query.sqm.produce.function.FunctionParameterType;
+import org.hibernate.query.sqm.produce.function.StandardFunctionArgumentTypeResolvers;
+import org.hibernate.service.ServiceRegistry;
+import org.hibernate.sql.ast.SqlAstTranslator;
+import org.hibernate.sql.ast.SqlAstTranslatorFactory;
+import org.hibernate.sql.ast.spi.SqlAppender;
+import org.hibernate.sql.ast.spi.StandardSqlAstTranslatorFactory;
+import org.hibernate.sql.ast.tree.Statement;
+import org.hibernate.sql.exec.spi.JdbcOperation;
+import org.hibernate.sql.model.MutationOperation;
+import org.hibernate.sql.model.internal.OptionalTableUpdate;
+import org.hibernate.tool.schema.extract.internal.SequenceInformationExtractorOracleDatabaseImpl;
+import org.hibernate.tool.schema.extract.spi.ColumnTypeInformation;
+import org.hibernate.tool.schema.extract.spi.SequenceInformationExtractor;
+import org.hibernate.tool.schema.spi.Exporter;
+import org.hibernate.type.JavaObjectType;
+import org.hibernate.type.NullType;
+import org.hibernate.type.StandardBasicTypes;
+import org.hibernate.type.descriptor.java.PrimitiveByteArrayJavaType;
+import org.hibernate.type.descriptor.jdbc.ArrayJdbcType;
+import org.hibernate.type.descriptor.jdbc.BlobJdbcType;
+import org.hibernate.type.descriptor.jdbc.JdbcType;
+import org.hibernate.type.descriptor.jdbc.NullJdbcType;
+import org.hibernate.type.descriptor.jdbc.ObjectJdbcType;
+import org.hibernate.type.descriptor.jdbc.ObjectNullAsNullTypeJdbcType;
+import org.hibernate.type.descriptor.jdbc.OracleJsonBlobJdbcType;
+import org.hibernate.type.descriptor.jdbc.SqlTypedJdbcType;
+import org.hibernate.type.descriptor.jdbc.spi.JdbcTypeRegistry;
+import org.hibernate.type.descriptor.sql.internal.ArrayDdlTypeImpl;
+import org.hibernate.type.descriptor.sql.internal.DdlTypeImpl;
+import org.hibernate.type.descriptor.sql.internal.NamedNativeEnumDdlTypeImpl;
+import org.hibernate.type.descriptor.sql.internal.NamedNativeOrdinalEnumDdlTypeImpl;
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': 'b4b2a20707f22aec5ce9c6e7d50c54267fddbad3', 'path': 'hibernate-core/src/main/java/org/hibernate/dialect/OracleDialect.java', 'startline': 400, 'endline': 420}`
+
+
+[0m[36;1m[1;3mHere are lines 400 through 420.
+
+		return extended ? Length.LONG16 : 2000;
+	}
+
+	@Override
+	public SqlAstTranslatorFactory getSqlAstTranslatorFactory() {
+		return new StandardSqlAstTranslatorFactory() {
+			@Override
+			protected <T extends JdbcOperation> SqlAstTranslator<T> buildTranslator(
+					SessionFactoryImplementor sessionFactory, Statement statement) {
+				return new OracleSqlAstTranslator<>( sessionFactory, statement );
+			}
+		};
+	}
+
+	@Override
+	public String currentDate() {
+		return "current_date";
+	}
+
+	@Override
+	public String currentTime() {
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `locate_symbol` with `{'ref': 'b4b2a20707f22aec5ce9c6e7d50c54267fddbad3', 'symbol': 'ExtractFunction'}`
+responded: The target patch modifies the method `initializeFunctionRegistry` in `OracleDialect.java` by adding a registration of the "extract" function using `OracleExtractFunction`.
+
+From the investigation of the old ref b4b2a20707f22aec5ce9c6e7d50c54267fddbad3:
+- The method `initializeFunctionRegistry` exists in OracleDialect.java and has many function registrations.
+- The "extract" function registration with `OracleExtractFunction` does not exist in the old ref.
+- The class `OracleExtractFunction` does not exist in the old ref, but a class `ExtractFunction` exists in the newer ref.
+- The patch in the newer ref registers `"extract"` with `new OracleExtractFunction(this, typeConfiguration)`.
+- The older version has a similar function registration pattern, so the patch can be adapted by registering `"extract"` with `new ExtractFunction(this, typeConfiguration)` if the `ExtractFunction` class exists or if it can be backported.
+
+Next, I will:
+1. Check if `ExtractFunction` class exists in the old ref b4b2a20707f22aec5ce9c6e7d50c54267fddbad3.
+2. Check the imports in `OracleDialect.java` in the old ref to see if `ExtractFunction` or equivalent is imported or needs to be imported.
+3. Prepare a patch to add the `"extract"` function registration in the old ref's `initializeFunctionRegistry` method, adapting for the older context.
+
+I will first locate `ExtractFunction` in the old ref.
+
+[0m[33;1m[1;3mhibernate-core/src/main/java/org/hibernate/dialect/function/ExtractFunction.java:51
+hibernate-core/src/main/java/org/hibernate/dialect/function/ExtractFunction.java:55[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': 'b4b2a20707f22aec5ce9c6e7d50c54267fddbad3', 'path': 'hibernate-core/src/main/java/org/hibernate/dialect/function/ExtractFunction.java', 'startline': 40, 'endline': 80}`
+
+
+[0m[36;1m[1;3mHere are lines 40 through 80.
+
+import static org.hibernate.query.sqm.produce.function.FunctionParameterType.TEMPORAL;
+import static org.hibernate.query.sqm.produce.function.FunctionParameterType.TEMPORAL_UNIT;
+import static org.hibernate.usertype.internal.AbstractTimeZoneStorageCompositeUserType.ZONE_OFFSET_NAME;
+
+/**
+ * ANSI SQL-inspired {@code extract()} function, where the date/time fields
+ * are enumerated by {@link TemporalUnit}, and portability is achieved
+ * by delegating to {@link Dialect#extractPattern(TemporalUnit)}.
+ *
+ * @author Gavin King
+ */
+public class ExtractFunction extends AbstractSqmFunctionDescriptor implements FunctionRenderer {
+
+	private final Dialect dialect;
+
+	public ExtractFunction(Dialect dialect, TypeConfiguration typeConfiguration) {
+		super(
+				"extract",
+				new ArgumentTypesValidator(
+						StandardArgumentsValidators.exactly( 2 ),
+						TEMPORAL_UNIT, TEMPORAL
+				),
+				StandardFunctionReturnTypeResolvers.useArgType( 1 ),
+				StandardFunctionArgumentTypeResolvers.invariant( typeConfiguration, TEMPORAL_UNIT, TEMPORAL )
+		);
+		this.dialect = dialect;
+	}
+
+	@Override
+	public void render(
+			SqlAppender sqlAppender,
+			List<? extends SqlAstNode> sqlAstArguments,
+			ReturnableType<?> returnType,
+			SqlAstTranslator<?> walker) {
+		final ExtractUnit field = (ExtractUnit) sqlAstArguments.get( 0 );
+		final TemporalUnit unit = field.getUnit();
+		final String pattern = dialect.extractPattern( unit );
+		new PatternRenderer( pattern ).render( sqlAppender, sqlAstArguments, walker );
+	}
+
+	@Override
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3mI have identified the location of the method initializeFunctionRegistry in the older version (ref b4b2a20707f22aec5ce9c6e7d50c54267fddbad3) in the file hibernate-core/src/main/java/org/hibernate/dialect/OracleDialect.java. The method body is quite long and contains many functionFactory calls.
+
+I also found that the class OracleExtractFunction in the newer patch corresponds to ExtractFunction class in the older version, located in hibernate-core/src/main/java/org/hibernate/dialect/function/ExtractFunction.java. This class is already present in the older version.
+
+The patch to be backported adds registration of the "extract" function with OracleExtractFunction in the newer version. In the older version, the equivalent class is ExtractFunction.
+
+Hence, the patch to backport should add the registration of the function "extract" with the new ExtractFunction instance in the initializeFunctionRegistry method of OracleDialect in the older version, adapting the class name and constructor parameters accordingly.
+
+Next, I will craft the patch for the older version based on the code context and the above analysis.[0m
+
+[1m> Finished chain.[0m
+2026-04-28 15:26:26,457 - backport - ERROR - Hunk 1: agent failed (max iterations or error)
+2026-04-28 15:26:26,459 - backport - WARNING - Row 312: PARTIAL — 0/4 hunk(s) succeeded

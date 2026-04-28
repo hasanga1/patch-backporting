@@ -1,0 +1,25 @@
+--- a/hibernate-core/src/main/java/org/hibernate/query/sqm/mutation/internal/cte/CteUpdateHandler.java
++++ b/hibernate-core/src/main/java/org/hibernate/query/sqm/mutation/internal/cte/CteUpdateHandler.java
+@@ -153,8 +153,8 @@ protected void addDmlCtes(
+ 						tableExpression,
+ 						true
+ 				);
+-				final List<Assignment> assignmentList = assignmentsByTable.get( updatingTableReference );
+-				if ( assignmentList == null ) {
++				final List<Assignment> assignmentsForInsert = assignmentsByTable.get( updatingTableReference );
++				if ( assignmentsForInsert == null ) {
+ 					continue;
+ 				}
+ 				final String insertCteTableName = getInsertCteTableName( tableExpression );
+
+--- a/hibernate-core/src/main/java/org/hibernate/query/sqm/mutation/internal/cte/CteUpdateHandler.java
++++ b/hibernate-core/src/main/java/org/hibernate/query/sqm/mutation/internal/cte/CteUpdateHandler.java
+@@ -229,7 +229,7 @@ protected void addDmlCtes(
+ 				// Collect the target column references from the key expressions
+ 				final List<ColumnReference> targetColumnReferences = new ArrayList<>( existsKeyColumns );
+ 				// And transform assignments to target column references and selections
+-				for ( Assignment assignment : assignments ) {
++				for ( Assignment assignment : assignmentsForInsert ) {
+ 					targetColumnReferences.addAll( assignment.getAssignable().getColumnReferences() );
+ 					querySpec.getSelectClause().addSqlSelection(
+ 							new SqlSelectionImpl(
