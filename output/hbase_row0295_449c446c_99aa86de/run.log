@@ -1,0 +1,1125 @@
+2026-04-28 13:15:29,112 - backport - INFO - Row 295 [hbase]: extracting original.patch
+2026-04-28 13:15:29,124 - backport - INFO - Row 295: 14 total hunks, 10 after filtering (test/non-Java removed)
+2026-04-28 13:15:29,126 - backport - INFO - Row 295 [hbase]: extracting developer.patch
+2026-04-28 13:15:29,177 - backport - INFO - Row 295: detected 2 test target(s) from developer.patch
+2026-04-28 13:15:29,216 - backport - INFO - Row 295: starting PortGPT backport agent
+
+
+[1m> Entering new AgentExecutor chain...[0m
+
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `git_history` with `{}`
+
+
+[0m[36;1m[1;3m20c9e4ba5f HBASE-26867 Introduce a FlushProcedure (#5256)
+
+diff --git a/hbase-server/src/main/java/org/apache/hadoop/hbase/procedure/flush/MasterFlushTableProcedureManager.java b/hbase-server/src/main/java/org/apache/hadoop/hbase/procedure/flush/MasterFlushTableProcedureManager.java
+--- a/hbase-server/src/main/java/org/apache/hadoop/hbase/procedure/flush/MasterFlushTableProcedureManager.java
++++ b/hbase-server/src/main/java/org/apache/hadoop/hbase/procedure/flush/MasterFlushTableProcedureManager.java
+@@ -148,7 +152,7 @@
+-        family = nsp;
++        families = nsp;
+       }
+     }
+-    byte[] procArgs = family != null ? family.toByteArray() : new byte[0];
++    byte[] procArgs = families != null ? families.toByteArray() : new byte[0];
+ 
+     // Kick of the global procedure from the master coordinator to the region servers.
+     // We rely on the existing Distributed Procedure framework to prevent any concurrent
+485e0d2fa4 HBASE-24694 Support flush a single column family of table (#2179)
+
+diff --git a/hbase-server/src/main/java/org/apache/hadoop/hbase/procedure/flush/MasterFlushTableProcedureManager.java b/hbase-server/src/main/java/org/apache/hadoop/hbase/procedure/flush/MasterFlushTableProcedureManager.java
+--- a/hbase-server/src/main/java/org/apache/hadoop/hbase/procedure/flush/MasterFlushTableProcedureManager.java
++++ b/hbase-server/src/main/java/org/apache/hadoop/hbase/procedure/flush/MasterFlushTableProcedureManager.java
+@@ -152,2 +157,7 @@
++        family = nsp;
++      }
++    }
++    byte[] procArgs = family != null ? family.toByteArray() : new byte[0];
++
+     // Kick of the global procedure from the master coordinator to the region servers.
+     // We rely on the existing Distributed Procedure framework to prevent any concurren
+You need to do the following analysis based on the information in the last commit:
+Analyze the code logic of the context of the patch to be ported in this commit step by step.
+If code logic already existed before this commit, the patch context can be assumed to remain in a similar location. Use `locate` and `viewcode` to check your results.
+If code logic were added in this commit, then you need to `git_show` for further details.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `locate_symbol` with `{'ref': 'dce52920c7fe7a93a1f20bf3a99c3f77e6779ea3', 'symbol': 'MasterFlushTableProcedureManager'}`
+responded: The git_history results show two commits related to the file and the code context:
+
+1. Commit 485e0d2fa4 (HBASE-24694) added support for flushing a single column family of a table. This commit introduced the variable `family` and the logic to assign `family = nsp` and then set `procArgs` based on `family`.
+
+2. Commit 20c9e4ba5f (HBASE-26867) changed the variable name from `family` to `families` and updated the code accordingly. This commit is more recent and closer to the patch we want to backport.
+
+The patch to be backported adds validation for column families existing in the table descriptor before setting `procArgs`.
+
+Since the patch is related to the same code block introduced and modified in these commits, it is likely that the patch context remains in a similar location in the older version, but with the variable named `family` instead of `families`.
+
+Next, I will locate the function containing this code in the older version `dce52920c7fe7a93a1f20bf3a99c3f77e6779ea3` to get the full context and verify how to integrate the patch.
+
+I will use `locate_symbol` to find the function containing this code snippet. Judging by the file path and class name, this code is likely in the class `MasterFlushTableProcedureManager`. I will locate the main function handling the flush procedure in this class. The patch is around line 151, so I will locate the function around this line.
+
+I will locate symbol "MasterFlushTableProcedureManager" first to find the file and then locate the method that contains this snippet.
+
+[0m[33;1m[1;3mhbase-server/src/main/java/org/apache/hadoop/hbase/procedure/flush/MasterFlushTableProcedureManager.java:57
+hbase-server/src/main/java/org/apache/hadoop/hbase/procedure/flush/MasterFlushTableProcedureManager.java:80[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': 'dce52920c7fe7a93a1f20bf3a99c3f77e6779ea3', 'path': 'hbase-server/src/main/java/org/apache/hadoop/hbase/procedure/flush/MasterFlushTableProcedureManager.java', 'startline': 140, 'endline': 160}`
+
+
+[0m[36;1m[1;3mHere are lines 140 through 160.
+
+      if (region != null && region.getFirst() != null && region.getSecond() != null) {
+        RegionInfo hri = region.getFirst();
+        if (hri.isOffline() && (hri.isSplit() || hri.isSplitParent())) continue;
+        regionServers.add(region.getSecond().toString());
+      }
+    }
+
+    ForeignExceptionDispatcher monitor = new ForeignExceptionDispatcher(desc.getInstance());
+
+    HBaseProtos.NameStringPair family = null;
+    for (HBaseProtos.NameStringPair nsp : desc.getConfigurationList()) {
+      if (HConstants.FAMILY_KEY_STR.equals(nsp.getName())) {
+        family = nsp;
+      }
+    }
+    byte[] procArgs = family != null ? family.toByteArray() : new byte[0];
+
+    // Kick of the global procedure from the master coordinator to the region servers.
+    // We rely on the existing Distributed Procedure framework to prevent any concurrent
+    // procedure with the same name.
+    Procedure proc = coordinator.startProcedure(monitor, desc.getInstance(), procArgs,
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': 'dce52920c7fe7a93a1f20bf3a99c3f77e6779ea3', 'path': 'hbase-server/src/main/java/org/apache/hadoop/hbase/procedure/flush/MasterFlushTableProcedureManager.java', 'startline': 150, 'endline': 170}`
+
+
+[0m[36;1m[1;3mHere are lines 150 through 170.
+
+    for (HBaseProtos.NameStringPair nsp : desc.getConfigurationList()) {
+      if (HConstants.FAMILY_KEY_STR.equals(nsp.getName())) {
+        family = nsp;
+      }
+    }
+    byte[] procArgs = family != null ? family.toByteArray() : new byte[0];
+
+    // Kick of the global procedure from the master coordinator to the region servers.
+    // We rely on the existing Distributed Procedure framework to prevent any concurrent
+    // procedure with the same name.
+    Procedure proc = coordinator.startProcedure(monitor, desc.getInstance(), procArgs,
+      Lists.newArrayList(regionServers));
+    monitor.rethrowException();
+    if (proc == null) {
+      String msg = "Failed to submit distributed procedure " + desc.getSignature() + " for '"
+        + desc.getInstance() + "'. " + "Another flush procedure is running?";
+      LOG.error(msg);
+      throw new IOException(msg);
+    }
+
+    procMap.put(tableName, proc);
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `locate_symbol` with `{'ref': 'dce52920c7fe7a93a1f20bf3a99c3f77e6779ea3', 'symbol': 'master'}`
+responded: The old code uses the variable `family` instead of `families` and does not have the validation logic for non-existent column families that is present in the newer patch. The context around the `byte[] procArgs` assignment is mostly the same except for the variable name change.
+
+The patch in the newer version adds the following logic:
+- Gets the table descriptor from the master
+- Checks if the column families specified in `families` exist in the table descriptor
+- Throws `NoSuchColumnFamilyException` if any specified column families do not exist
+- Assigns `procArgs` accordingly
+
+This logic does not exist in the older version, so we need to add it in the backport.
+
+Next, I want to check the availability and location of the `master` and `tableName` variables in the older version to ensure the patch can be applied similarly.
+
+I will locate the `master` symbol in the older version.
+
+[0m[33;1m[1;3mdev-support/checkstyle_report.py:46
+hbase-backup/src/main/java/org/apache/hadoop/hbase/backup/master/LogRollMasterProcedureManager.java:67
+hbase-client/src/main/java/org/apache/hadoop/hbase/client/MasterCallable.java:47
+hbase-protocol-shaded/src/main/protobuf/ClusterStatus.proto:346
+hbase-protocol-shaded/src/main/protobuf/ZooKeeper.proto:54
+hbase-protocol/src/main/protobuf/ClusterStatus.proto:268
+hbase-protocol/src/main/protobuf/ZooKeeper.proto:55
+hbase-rsgroup/src/main/java/org/apache/hadoop/hbase/rsgroup/RSGroupAdminEndpoint.java:103
+hbase-rsgroup/src/main/java/org/apache/hadoop/hbase/rsgroup/RSGroupAdminServer.java:71
+hbase-rsgroup/src/test/java/org/apache/hadoop/hbase/rsgroup/TestDetermineRSGroupInfoForTable.java:63
+hbase-rsgroup/src/test/java/org/apache/hadoop/hbase/rsgroup/TestRSGroupUtil.java:53
+hbase-rsgroup/src/test/java/org/apache/hadoop/hbase/rsgroup/TestRSGroupsBase.java:81
+hbase-rsgroup/src/test/java/org/apache/hadoop/hbase/rsgroup/TestRSGroupsOfflineMode.java:67
+hbase-server/src/main/java/org/apache/hadoop/hbase/coordination/SplitLogManagerCoordination.java:49
+hbase-server/src/main/java/org/apache/hadoop/hbase/master/ActiveMasterManager.java:69
+hbase-server/src/main/java/org/apache/hadoop/hbase/master/ClusterStatusPublisher.java:95
+hbase-server/src/main/java/org/apache/hadoop/hbase/master/MasterInitializationMonitor.java:46
+hbase-server/src/main/java/org/apache/hadoop/hbase/master/MasterRpcServices.java:402
+hbase-server/src/main/java/org/apache/hadoop/hbase/master/MetricsMasterWrapperImpl.java:39
+hbase-server/src/main/java/org/apache/hadoop/hbase/master/OldWALsDirSizeChore.java:35
+hbase-server/src/main/java/org/apache/hadoop/hbase/master/ServerManager.java:132
+hbase-server/src/main/java/org/apache/hadoop/hbase/master/SplitWALManager.java:70
+hbase-server/src/main/java/org/apache/hadoop/hbase/master/TableStateManager.java:66
+hbase-server/src/main/java/org/apache/hadoop/hbase/master/WorkerAssigner.java:39
+hbase-server/src/main/java/org/apache/hadoop/hbase/master/assignment/AssignmentManager.java:183
+hbase-server/src/main/java/org/apache/hadoop/hbase/master/assignment/RegionStateStore.java:72
+hbase-server/src/main/java/org/apache/hadoop/hbase/master/balancer/BalancerChore.java:36
+hbase-server/src/main/java/org/apache/hadoop/hbase/master/balancer/ClusterStatusChore.java:34
+hbase-server/src/main/java/org/apache/hadoop/hbase/master/hbck/HbckChore.java:57
+hbase-server/src/main/java/org/apache/hadoop/hbase/master/locking/LockManager.java:39
+hbase-server/src/main/java/org/apache/hadoop/hbase/master/normalizer/RegionNormalizerChore.java:37
+hbase-server/src/main/java/org/apache/hadoop/hbase/master/procedure/MasterProcedureEnv.java:50
+hbase-server/src/main/java/org/apache/hadoop/hbase/master/procedure/MasterProcedureEnv.java:75
+hbase-server/src/main/java/org/apache/hadoop/hbase/master/procedure/MasterProcedureUtil.java:70
+hbase-server/src/main/java/org/apache/hadoop/hbase/master/procedure/RSProcedureDispatcher.java:70
+hbase-server/src/main/java/org/apache/hadoop/hbase/master/procedure/RecoverMetaProcedure.java:55
+hbase-server/src/main/java/org/apache/hadoop/hbase/master/snapshot/SnapshotHFileCleaner.java:66
+hbase-server/src/main/java/org/apache/hadoop/hbase/master/snapshot/SnapshotManager.java:173
+hbase-server/src/main/java/org/apache/hadoop/hbase/master/snapshot/TakeSnapshotHandler.java:78
+hbase-server/src/main/java/org/apache/hadoop/hbase/mob/MobFileCleanerChore.java:42
+hbase-server/src/main/java/org/apache/hadoop/hbase/mob/MobFileCompactionChore.java:55
+hbase-server/src/main/java/org/apache/hadoop/hbase/namespace/NamespaceStateManager.java:45
+hbase-server/src/main/java/org/apache/hadoop/hbase/procedure/flush/MasterFlushTableProcedureManager.java:75
+hbase-server/src/main/java/org/apache/hadoop/hbase/security/access/SnapshotScannerHDFSAclCleaner.java:44
+hbase-server/src/main/java/org/apache/hadoop/hbase/util/JVMClusterUtil.java:100
+hbase-server/src/test/java/org/apache/hadoop/hbase/TestClusterBootOrder.java:48
+hbase-server/src/test/java/org/apache/hadoop/hbase/TestNamespace.java:61
+hbase-server/src/test/java/org/apache/hadoop/hbase/client/TestAsyncNamespaceAdminApi.java:60
+hbase-server/src/test/java/org/apache/hadoop/hbase/client/TestFailedMetaReplicaAssigment.java:139
+hbase-server/src/test/java/org/apache/hadoop/hbase/client/locking/TestEntityLocks.java:72
+hbase-server/src/test/java/org/apache/hadoop/hbase/master/AbstractTestDLS.java:92
+hbase-server/src/test/java/org/apache/hadoop/hbase/master/TestGetReplicationLoad.java:58
+hbase-server/src/test/java/org/apache/hadoop/hbase/master/TestHMasterRPCException.java:63
+hbase-server/src/test/java/org/apache/hadoop/hbase/master/TestMasterMetrics.java:67
+hbase-server/src/test/java/org/apache/hadoop/hbase/master/TestMasterNotCarryTable.java:47
+hbase-server/src/test/java/org/apache/hadoop/hbase/master/TestOldWALsDirSizeChore.java:50
+hbase-server/src/test/java/org/apache/hadoop/hbase/master/TestSplitLogManager.java:87
+hbase-server/src/test/java/org/apache/hadoop/hbase/master/TestSplitWALManager.java:75
+hbase-server/src/test/java/org/apache/hadoop/hbase/master/assignment/TestAssignmentManagerBase.java:105
+hbase-server/src/test/java/org/apache/hadoop/hbase/master/assignment/TestRogueRSAssignment.java:90
+hbase-server/src/test/java/org/apache/hadoop/hbase/master/balancer/TestBalancerStatusTagInJMXMetrics.java:52
+hbase-server/src/test/java/org/apache/hadoop/hbase/master/balancer/TestBaseLoadBalancer.java:75
+hbase-server/src/test/java/org/apache/hadoop/hbase/master/balancer/TestFavoredStochasticLoadBalancer.java:89
+hbase-server/src/test/java/org/apache/hadoop/hbase/master/cleaner/TestSnapshotFromMaster.java:105
+hbase-server/src/test/java/org/apache/hadoop/hbase/master/http/TestMasterStatusServlet.java:68
+hbase-server/src/test/java/org/apache/hadoop/hbase/master/normalizer/TestSimpleRegionNormalizerOnCluster.java:94
+hbase-server/src/test/java/org/apache/hadoop/hbase/master/procedure/TestServerRemoteProcedure.java:75
+hbase-server/src/test/java/org/apache/hadoop/hbase/master/procedure/TestSnapshotProcedure.java:69
+hbase-server/src/test/java/org/apache/hadoop/hbase/master/procedure/TestSnapshotProcedureWithLockTimeout.java:65
+hbase-server/src/test/java/org/apache/hadoop/hbase/master/procedure/TestSnapshotRegionProcedure.java:67
+hbase-server/src/test/java/org/apache/hadoop/hbase/master/procedure/TestSplitWALProcedure.java:54
+hbase-server/src/test/java/org/apache/hadoop/hbase/procedure/SimpleMasterProcedureManager.java:45
+hbase-server/src/test/java/org/apache/hadoop/hbase/quotas/TestMasterQuotasObserverWithMocks.java:52
+hbase-server/src/test/java/org/apache/hadoop/hbase/quotas/TestQuotaObserverChoreWithMiniCluster.java:81
+hbase-server/src/test/java/org/apache/hadoop/hbase/quotas/TestSnapshotQuotaObserverChore.java:97
+hbase-server/src/test/java/org/apache/hadoop/hbase/regionserver/TestRegionServerReportForDuty.java:78
+hbase-zookeeper/src/test/java/org/apache/hadoop/hbase/zookeeper/TestZKLeaderManager.java:76[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': 'dce52920c7fe7a93a1f20bf3a99c3f77e6779ea3', 'path': 'hbase-server/src/main/java/org/apache/hadoop/hbase/procedure/flush/MasterFlushTableProcedureManager.java', 'startline': 70, 'endline': 90}`
+
+
+[0m[36;1m[1;3mHere are lines 70 through 90.
+
+  private static final String FLUSH_PROC_POOL_THREADS_KEY = "hbase.flush.procedure.master.threads";
+  private static final int FLUSH_PROC_POOL_THREADS_DEFAULT = 1;
+
+  private static final Logger LOG = LoggerFactory.getLogger(MasterFlushTableProcedureManager.class);
+
+  private MasterServices master;
+  private ProcedureCoordinator coordinator;
+  private Map<TableName, Procedure> procMap = new HashMap<>();
+  private boolean stopped;
+
+  public MasterFlushTableProcedureManager() {
+  };
+
+  @Override
+  public void stop(String why) {
+    LOG.info("stop: " + why);
+    this.stopped = true;
+  }
+
+  @Override
+  public boolean isStopped() {
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': 'dce52920c7fe7a93a1f20bf3a99c3f77e6779ea3', 'path': 'hbase-server/src/main/java/org/apache/hadoop/hbase/procedure/flush/MasterFlushTableProcedureManager.java', 'startline': 90, 'endline': 110}`
+
+
+[0m[36;1m[1;3mHere are lines 90 through 110.
+
+  public boolean isStopped() {
+    return this.stopped;
+  }
+
+  @Override
+  public void initialize(MasterServices master, MetricsMaster metricsMaster)
+    throws KeeperException, IOException, UnsupportedOperationException {
+    this.master = master;
+
+    // get the configuration for the coordinator
+    Configuration conf = master.getConfiguration();
+    long wakeFrequency = conf.getInt(FLUSH_WAKE_MILLIS_KEY, FLUSH_WAKE_MILLIS_DEFAULT);
+    long timeoutMillis = conf.getLong(FLUSH_TIMEOUT_MILLIS_KEY, FLUSH_TIMEOUT_MILLIS_DEFAULT);
+    int threads = conf.getInt(FLUSH_PROC_POOL_THREADS_KEY, FLUSH_PROC_POOL_THREADS_DEFAULT);
+
+    // setup the procedure coordinator
+    String name = master.getServerName().toString();
+    ThreadPoolExecutor tpool = ProcedureCoordinator.defaultPool(name, threads);
+    ProcedureCoordinatorRpcs comms =
+      new ZKProcedureCoordinator(master.getZooKeeper(), getProcedureSignature(), name);
+
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': 'dce52920c7fe7a93a1f20bf3a99c3f77e6779ea3', 'path': 'hbase-server/src/main/java/org/apache/hadoop/hbase/procedure/flush/MasterFlushTableProcedureManager.java', 'startline': 110, 'endline': 140}`
+
+
+[0m[36;1m[1;3mHere are lines 110 through 140.
+
+
+    this.coordinator = new ProcedureCoordinator(comms, tpool, timeoutMillis, wakeFrequency);
+  }
+
+  @Override
+  public String getProcedureSignature() {
+    return FLUSH_TABLE_PROCEDURE_SIGNATURE;
+  }
+
+  @Override
+  public void execProcedure(ProcedureDescription desc) throws IOException {
+
+    TableName tableName = TableName.valueOf(desc.getInstance());
+
+    // call pre coproc hook
+    MasterCoprocessorHost cpHost = master.getMasterCoprocessorHost();
+    if (cpHost != null) {
+      cpHost.preTableFlush(tableName);
+    }
+
+    // Get the list of region servers that host the online regions for table.
+    // We use the procedure instance name to carry the table name from the client.
+    // It is possible that regions may move after we get the region server list.
+    // Each region server will get its own online regions for the table.
+    // We may still miss regions that need to be flushed.
+    List<Pair<RegionInfo, ServerName>> regionsAndLocations =
+      master.getAssignmentManager().getTableRegionsAndLocations(tableName, false);
+
+    Set<String> regionServers = new HashSet<>(regionsAndLocations.size());
+    for (Pair<RegionInfo, ServerName> region : regionsAndLocations) {
+      if (region != null && region.getFirst() != null && region.getSecond() != null) {
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `locate_symbol` with `{'ref': 'dce52920c7fe7a93a1f20bf3a99c3f77e6779ea3', 'symbol': 'getTableDescriptors'}`
+responded: I have found the relevant code block in the older version around line 150 in the file `hbase-server/src/main/java/org/apache/hadoop/hbase/procedure/flush/MasterFlushTableProcedureManager.java` in ref dce52920c7fe7a93a1f20bf3a99c3f77e6779ea3. 
+
+The older version uses the variable `family` instead of `families` in this block:
+```java
+HBaseProtos.NameStringPair family = null;
+for (HBaseProtos.NameStringPair nsp : desc.getConfigurationList()) {
+  if (HConstants.FAMILY_KEY_STR.equals(nsp.getName())) {
+    family = nsp;
+  }
+}
+byte[] procArgs = family != null ? family.toByteArray() : new byte[0];
+```
+
+The newer patch changes this to `families` and adds validation of the column families in the `families` variable against the table descriptor, throwing `NoSuchColumnFamilyException` if any do not exist.
+
+I need to check if the `master` object in this older version has the method `getTableDescriptors()` and if `TableDescriptor` and `NoSuchColumnFamilyException` exist in this older version for the backport.
+
+Next, I will locate `getTableDescriptors` in the older ref to confirm its existence and understand its usage. This is crucial because the patch uses `master.getTableDescriptors().get(tableName)`.
+
+I will proceed with `locate_symbol` for `getTableDescriptors` in the older ref.
+
+[0m[33;1m[1;3mhbase-client/src/main/java/org/apache/hadoop/hbase/client/Admin.java:1955
+hbase-client/src/main/java/org/apache/hadoop/hbase/client/HBaseAdmin.java:2597
+hbase-client/src/main/java/org/apache/hadoop/hbase/client/RawAsyncHBaseAdmin.java:528
+hbase-client/src/main/java/org/apache/hadoop/hbase/client/ShortCircuitMasterConnection.java:464
+hbase-examples/src/main/python/thrift2/gen-py/hbase/THBaseService.py:1501
+hbase-examples/src/main/python/thrift2/gen-py/hbase/THBaseService.py:316
+hbase-server/src/main/java/org/apache/hadoop/hbase/master/HMaster.java:3731
+hbase-server/src/main/java/org/apache/hadoop/hbase/master/MasterRpcServices.java:1100
+hbase-server/src/main/java/org/apache/hadoop/hbase/master/MasterServices.java:246
+hbase-server/src/main/java/org/apache/hadoop/hbase/regionserver/HRegionServer.java:3901
+hbase-server/src/main/java/org/apache/hadoop/hbase/regionserver/RegionServerServices.java:261
+hbase-server/src/main/java/org/apache/hadoop/hbase/replication/ReplicationEndpoint.java:111
+hbase-server/src/main/java/org/apache/hadoop/hbase/util/HBaseFsck.java:2539
+hbase-server/src/test/java/org/apache/hadoop/hbase/MockRegionServerServices.java:343
+hbase-server/src/test/java/org/apache/hadoop/hbase/master/MockNoopMasterServices.java:217
+hbase-server/src/test/java/org/apache/hadoop/hbase/master/MockRegionServer.java:722
+hbase-server/src/test/java/org/apache/hadoop/hbase/master/assignment/MockMasterServices.java:320
+hbase-thrift/src/main/java/org/apache/hadoop/hbase/thrift2/ThriftHBaseServiceHandler.java:565
+hbase-thrift/src/main/java/org/apache/hadoop/hbase/thrift2/client/ThriftAdmin.java:600
+hbase-thrift/src/main/java/org/apache/hadoop/hbase/thrift2/generated/THBaseService.java:1236
+hbase-thrift/src/main/java/org/apache/hadoop/hbase/thrift2/generated/THBaseService.java:2742
+hbase-thrift/src/main/java/org/apache/hadoop/hbase/thrift2/generated/THBaseService.java:274
+hbase-thrift/src/main/java/org/apache/hadoop/hbase/thrift2/generated/THBaseService.java:4369
+hbase-thrift/src/main/java/org/apache/hadoop/hbase/thrift2/generated/THBaseService.java:4370
+hbase-thrift/src/main/java/org/apache/hadoop/hbase/thrift2/generated/THBaseService.java:586
+hbase-thrift/src/main/java/org/apache/hadoop/hbase/thrift2/generated/THBaseService.java:6646
+hbase-thrift/src/main/java/org/apache/hadoop/hbase/thrift2/generated/THBaseService.java:6647[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `locate_symbol` with `{'ref': 'dce52920c7fe7a93a1f20bf3a99c3f77e6779ea3', 'symbol': 'getTableDescriptors'}`
+
+
+[0m[33;1m[1;3mhbase-client/src/main/java/org/apache/hadoop/hbase/client/Admin.java:1955
+hbase-client/src/main/java/org/apache/hadoop/hbase/client/HBaseAdmin.java:2597
+hbase-client/src/main/java/org/apache/hadoop/hbase/client/RawAsyncHBaseAdmin.java:528
+hbase-client/src/main/java/org/apache/hadoop/hbase/client/ShortCircuitMasterConnection.java:464
+hbase-examples/src/main/python/thrift2/gen-py/hbase/THBaseService.py:1501
+hbase-examples/src/main/python/thrift2/gen-py/hbase/THBaseService.py:316
+hbase-server/src/main/java/org/apache/hadoop/hbase/master/HMaster.java:3731
+hbase-server/src/main/java/org/apache/hadoop/hbase/master/MasterRpcServices.java:1100
+hbase-server/src/main/java/org/apache/hadoop/hbase/master/MasterServices.java:246
+hbase-server/src/main/java/org/apache/hadoop/hbase/regionserver/HRegionServer.java:3901
+hbase-server/src/main/java/org/apache/hadoop/hbase/regionserver/RegionServerServices.java:261
+hbase-server/src/main/java/org/apache/hadoop/hbase/replication/ReplicationEndpoint.java:111
+hbase-server/src/main/java/org/apache/hadoop/hbase/util/HBaseFsck.java:2539
+hbase-server/src/test/java/org/apache/hadoop/hbase/MockRegionServerServices.java:343
+hbase-server/src/test/java/org/apache/hadoop/hbase/master/MockNoopMasterServices.java:217
+hbase-server/src/test/java/org/apache/hadoop/hbase/master/MockRegionServer.java:722
+hbase-server/src/test/java/org/apache/hadoop/hbase/master/assignment/MockMasterServices.java:320
+hbase-thrift/src/main/java/org/apache/hadoop/hbase/thrift2/ThriftHBaseServiceHandler.java:565
+hbase-thrift/src/main/java/org/apache/hadoop/hbase/thrift2/client/ThriftAdmin.java:600
+hbase-thrift/src/main/java/org/apache/hadoop/hbase/thrift2/generated/THBaseService.java:1236
+hbase-thrift/src/main/java/org/apache/hadoop/hbase/thrift2/generated/THBaseService.java:2742
+hbase-thrift/src/main/java/org/apache/hadoop/hbase/thrift2/generated/THBaseService.java:274
+hbase-thrift/src/main/java/org/apache/hadoop/hbase/thrift2/generated/THBaseService.java:4369
+hbase-thrift/src/main/java/org/apache/hadoop/hbase/thrift2/generated/THBaseService.java:4370
+hbase-thrift/src/main/java/org/apache/hadoop/hbase/thrift2/generated/THBaseService.java:586
+hbase-thrift/src/main/java/org/apache/hadoop/hbase/thrift2/generated/THBaseService.java:6646
+hbase-thrift/src/main/java/org/apache/hadoop/hbase/thrift2/generated/THBaseService.java:6647[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': 'dce52920c7fe7a93a1f20bf3a99c3f77e6779ea3', 'path': 'hbase-server/src/main/java/org/apache/hadoop/hbase/master/MasterServices.java', 'startline': 240, 'endline': 260}`
+
+
+[0m[36;1m[1;3mHere are lines 240 through 260.
+
+   * @return procedure Id
+   */
+  long splitRegion(final RegionInfo regionInfo, final byte[] splitRow, final long nonceGroup,
+    final long nonce) throws IOException;
+
+  /** Returns Return table descriptors implementation. */
+  TableDescriptors getTableDescriptors();
+
+  /**
+   * Registers a new protocol buffer {@link Service} subclass as a master coprocessor endpoint.
+   * <p/>
+   * Only a single instance may be registered for a given {@link Service} subclass (the instances
+   * are keyed on
+   * {@link org.apache.hbase.thirdparty.com.google.protobuf.Descriptors.ServiceDescriptor#getFullName()}.
+   * After the first registration, subsequent calls with the same service name will fail with a
+   * return value of {@code false}.
+   * @param instance the {@code Service} subclass instance to expose as a coprocessor endpoint
+   * @return {@code true} if the registration was successful, {@code false} otherwise
+   */
+  boolean registerService(Service instance);
+
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': 'dce52920c7fe7a93a1f20bf3a99c3f77e6779ea3', 'path': 'hbase-server/src/main/java/org/apache/hadoop/hbase/master/TableDescriptors.java', 'startline': 10, 'endline': 50}`
+
+
+[0m[36;1m[1;3mThis file doesn't exist in this commit.[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': 'dce52920c7fe7a93a1f20bf3a99c3f77e6779ea3', 'path': 'hbase-server/src/main/java/org/apache/hadoop/hbase/master/MasterServices.java', 'startline': 245, 'endline': 280}`
+
+
+[0m[36;1m[1;3mHere are lines 245 through 280.
+
+  /** Returns Return table descriptors implementation. */
+  TableDescriptors getTableDescriptors();
+
+  /**
+   * Registers a new protocol buffer {@link Service} subclass as a master coprocessor endpoint.
+   * <p/>
+   * Only a single instance may be registered for a given {@link Service} subclass (the instances
+   * are keyed on
+   * {@link org.apache.hbase.thirdparty.com.google.protobuf.Descriptors.ServiceDescriptor#getFullName()}.
+   * After the first registration, subsequent calls with the same service name will fail with a
+   * return value of {@code false}.
+   * @param instance the {@code Service} subclass instance to expose as a coprocessor endpoint
+   * @return {@code true} if the registration was successful, {@code false} otherwise
+   */
+  boolean registerService(Service instance);
+
+  /** Returns true if master is the active one */
+  boolean isActiveMaster();
+
+  /** Returns timestamp in millis when this master became the active one. */
+  long getMasterActiveTime();
+
+  /** Returns true if master is initialized */
+  boolean isInitialized();
+
+  /**
+   * @return true if master is in maintanceMode
+   * @throws IOException if the inquiry failed due to an IO problem
+   */
+  boolean isInMaintenanceMode();
+
+  /**
+   * Checks master state before initiating action over region topology.
+   * @param action the name of the action under consideration, for logging.
+   * @return {@code true} when the caller should exit early, {@code false} otherwise.
+   */
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': 'dce52920c7fe7a93a1f20bf3a99c3f77e6779ea3', 'path': 'hbase-server/src/main/java/org/apache/hadoop/hbase/procedure/flush/MasterFlushTableProcedureManager.java', 'startline': 140, 'endline': 160}`
+
+
+[0m[36;1m[1;3mHere are lines 140 through 160.
+
+      if (region != null && region.getFirst() != null && region.getSecond() != null) {
+        RegionInfo hri = region.getFirst();
+        if (hri.isOffline() && (hri.isSplit() || hri.isSplitParent())) continue;
+        regionServers.add(region.getSecond().toString());
+      }
+    }
+
+    ForeignExceptionDispatcher monitor = new ForeignExceptionDispatcher(desc.getInstance());
+
+    HBaseProtos.NameStringPair family = null;
+    for (HBaseProtos.NameStringPair nsp : desc.getConfigurationList()) {
+      if (HConstants.FAMILY_KEY_STR.equals(nsp.getName())) {
+        family = nsp;
+      }
+    }
+    byte[] procArgs = family != null ? family.toByteArray() : new byte[0];
+
+    // Kick of the global procedure from the master coordinator to the region servers.
+    // We rely on the existing Distributed Procedure framework to prevent any concurrent
+    // procedure with the same name.
+    Procedure proc = coordinator.startProcedure(monitor, desc.getInstance(), procArgs,
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': 'dce52920c7fe7a93a1f20bf3a99c3f77e6779ea3', 'path': 'hbase-server/src/main/java/org/apache/hadoop/hbase/procedure/flush/MasterFlushTableProcedureManager.java', 'startline': 160, 'endline': 180}`
+
+
+[0m[36;1m[1;3mHere are lines 160 through 180.
+
+    Procedure proc = coordinator.startProcedure(monitor, desc.getInstance(), procArgs,
+      Lists.newArrayList(regionServers));
+    monitor.rethrowException();
+    if (proc == null) {
+      String msg = "Failed to submit distributed procedure " + desc.getSignature() + " for '"
+        + desc.getInstance() + "'. " + "Another flush procedure is running?";
+      LOG.error(msg);
+      throw new IOException(msg);
+    }
+
+    procMap.put(tableName, proc);
+
+    try {
+      // wait for the procedure to complete. A timer thread is kicked off that should cancel this
+      // if it takes too long.
+      proc.waitForCompleted();
+      LOG.info("Done waiting - exec procedure " + desc.getSignature() + " for '"
+        + desc.getInstance() + "'");
+      LOG.info("Master flush table procedure is successful!");
+    } catch (InterruptedException e) {
+      ForeignException ee =
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `locate_symbol` with `{'ref': 'dce52920c7fe7a93a1f20bf3a99c3f77e6779ea3', 'symbol': 'NoSuchColumnFamilyException'}`
+responded: Analysis:
+
+1. The old version (ref dce52920c7fe7a93a1f20bf3a99c3f77e6779ea3) uses a variable named `family` instead of `families` in the newer version.
+2. The old version does not have the logic to check if the column families exist in the table descriptor before converting to byte array.
+3. The method `master.getTableDescriptors()` exists in the old version, so we can access the table descriptor from it.
+4. The patch adds a validation step for the column families present in the `families` object, throwing `NoSuchColumnFamilyException` if any family does not exist in the table descriptor.
+5. The context around the `procArgs` assignment is largely the same except for the variable name difference (`family` vs `families`).
+
+Plan for backporting:
+- Change the variable name `families` to `family` to match the old version.
+- Add the validation logic for column families before assigning `procArgs`.
+- Keep the rest of the context unchanged.
+- Use the same exception class `NoSuchColumnFamilyException` if it exists in the old version (to be confirmed).
+- Import or handle any missing imports or classes if necessary.
+
+Next step:
+- Check if `NoSuchColumnFamilyException` exists in the old version or if it needs to be backported or replaced.
+- View the surrounding code to confirm the usage of `family` and the handling of `procArgs`.
+
+I will check if `NoSuchColumnFamilyException` exists in the old version.
+
+[0m[33;1m[1;3mhbase-client/src/main/java/org/apache/hadoop/hbase/regionserver/NoSuchColumnFamilyException.java:27
+hbase-client/src/main/java/org/apache/hadoop/hbase/regionserver/NoSuchColumnFamilyException.java:31
+hbase-client/src/main/java/org/apache/hadoop/hbase/regionserver/NoSuchColumnFamilyException.java:38[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': 'dce52920c7fe7a93a1f20bf3a99c3f77e6779ea3', 'path': 'hbase-client/src/main/java/org/apache/hadoop/hbase/regionserver/NoSuchColumnFamilyException.java', 'startline': 20, 'endline': 40}`
+
+
+[0m[36;1m[1;3mHere are lines 20 through 40.
+
+import org.apache.hadoop.hbase.DoNotRetryIOException;
+import org.apache.yetus.audience.InterfaceAudience;
+
+/**
+ * Thrown if request for nonexistent column family.
+ */
+@InterfaceAudience.Public
+public class NoSuchColumnFamilyException extends DoNotRetryIOException {
+  private static final long serialVersionUID = -6569952730832331274L;
+
+  /** default constructor */
+  public NoSuchColumnFamilyException() {
+    super();
+  }
+
+  /**
+   * @param message exception message
+   */
+  public NoSuchColumnFamilyException(String message) {
+    super(message);
+  }
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3mThe patch in the newer version adds a check to verify if the specified column families exist in the table descriptor before proceeding. If any column families do not exist, it throws a NoSuchColumnFamilyException.
+
+In the older version (dce52920c7fe7a93a1f20bf3a99c3f77e6779ea3), the similar code block is present but it only converts the family to bytes without the validation check.
+
+The `master.getTableDescriptors()` method exists in the older version as shown by the `locate_symbol` and `viewcode` results. The `NoSuchColumnFamilyException` class also exists in the older version.
+
+The patch can be backported by:
+- Changing the variable name from `family` to `families` to match the newer version context.
+- Adding the validation logic of checking column families against the table descriptor.
+- Throwing `NoSuchColumnFamilyException` if any column family does not exist.
+- Keeping the rest of the code unchanged to maintain compatibility with the older version.
+
+Now, I will generate the patch for the older version with these changes.[0m
+
+[1m> Finished chain.[0m
+2026-04-28 13:16:47,687 - backport - ERROR - Hunk 8: agent failed (max iterations or error)
+2026-04-28 13:16:47,689 - backport - WARNING - Row 295: PARTIAL — 0/10 hunk(s) succeeded

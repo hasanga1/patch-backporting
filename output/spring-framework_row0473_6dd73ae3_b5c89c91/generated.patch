@@ -1,0 +1,33 @@
+--- a/spring-test/src/main/java/org/springframework/mock/web/MockHttpServletResponse.java
++++ b/spring-test/src/main/java/org/springframework/mock/web/MockHttpServletResponse.java
+@@ -686,7 +686,12 @@ public class MockHttpServletResponse implements HttpServletResponse {
+ 
+ 	@Override
+ 	public void setHeader(String name, @Nullable String value) {
+-		setHeaderValue(name, value);
++		if (value == null) {
++			this.headers.remove(name);
++		}
++		else {
++			setHeaderValue(name, value);
++		}
+ 	}
+ 
+ 	@Override
+
+--- a/spring-web/src/testFixtures/java/org/springframework/web/testfixture/servlet/MockHttpServletResponse.java
++++ b/spring-web/src/testFixtures/java/org/springframework/web/testfixture/servlet/MockHttpServletResponse.java
+@@ -686,7 +686,12 @@ public class MockHttpServletResponse implements HttpServletResponse {
+ 
+ 	@Override
+ 	public void setHeader(String name, @Nullable String value) {
+-		setHeaderValue(name, value);
++		if (value == null) {
++			this.headers.remove(name);
++		}
++		else {
++			setHeaderValue(name, value);
++		}
+ 	}
+ 
+ 	@Override
