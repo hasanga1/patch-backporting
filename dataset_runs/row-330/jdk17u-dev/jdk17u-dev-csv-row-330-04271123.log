@@ -1,0 +1,1106 @@
+2026-04-27 11:23:23,139 - backport - INFO - Using openrouter API: https://openrouter.ai/api/v1 (model: openai/gpt-4.1-mini)
+2026-04-27 11:23:53,704 - backport - INFO - Aplly all hunks in the patch      PASS
+2026-04-27 11:23:54,995 - backport - INFO - Successfully backport the patch to the target release 6b156585e70a639930f6965c0b3871de8b1a874b
+2026-04-27 11:23:54,996 - backport - INFO - --- a/src/java.net.http/share/classes/jdk/internal/net/http/Http1Exchange.java
++++ b/src/java.net.http/share/classes/jdk/internal/net/http/Http1Exchange.java
+@@ -39,6 +39,7 @@
+ import java.util.concurrent.ConcurrentLinkedDeque;
+ import java.util.concurrent.Executor;
+ import java.util.concurrent.Flow;
++import java.util.concurrent.Flow.Subscription;
+ 
+ import jdk.internal.net.http.common.Demand;
+ import jdk.internal.net.http.common.HttpBodySubscriberWrapper;
+
+--- a/src/java.net.http/share/classes/jdk/internal/net/http/Http1Exchange.java
++++ b/src/java.net.http/share/classes/jdk/internal/net/http/Http1Exchange.java
+@@ -210,11 +211,19 @@ static final class Http1ResponseBodySubscriber<U> extends HttpBodySubscriberWrap
+         @Override
+         protected void complete(Throwable t) {
+             try {
+-                exchange.responseSubscriberCompleted(this);
++                exchange.unregisterResponseSubscriber(this);
+             } finally {
+                 super.complete(t);
+             }
+         }
++
++        @Override
++        protected void onCancel() {
++            // If the subscription is cancelled the
++            // subscriber may or may not get completed.
++            // Therefore we need to unregister it
++            exchange.unregisterResponseSubscriber(this);
++        }
+     }
+ 
+     @Override
+
+--- a/src/java.net.http/share/classes/jdk/internal/net/http/Http1Exchange.java
++++ b/src/java.net.http/share/classes/jdk/internal/net/http/Http1Exchange.java
+@@ -264,7 +273,7 @@ private void connectFlows(HttpConnection connection) {
+     // The Http1ResponseBodySubscriber is registered with the HttpClient
+     // to ensure that it gets completed if the SelectorManager aborts due
+     // to unexpected exceptions.
+-    void registerResponseSubscriber(Http1ResponseBodySubscriber<T> subscriber) {
++    private void registerResponseSubscriber(Http1ResponseBodySubscriber<T> subscriber) {
+         Throwable failed = null;
+         synchronized (lock) {
+             failed = this.failed;
+
+--- a/src/java.net.http/share/classes/jdk/internal/net/http/Http1Exchange.java
++++ b/src/java.net.http/share/classes/jdk/internal/net/http/Http1Exchange.java
+@@ -279,8 +288,8 @@ void registerResponseSubscriber(Http1ResponseBodySubscriber<T> subscriber) {
+         }
+     }
+ 
+-    void responseSubscriberCompleted(HttpBodySubscriberWrapper<T> subscriber) {
+-        client.subscriberCompleted(subscriber);
++    private void unregisterResponseSubscriber(Http1ResponseBodySubscriber<T> subscriber) {
++        client.unregisterSubscriber(subscriber);
+     }
+ 
+     @Override
+
+--- a/src/java.net.http/share/classes/jdk/internal/net/http/HttpClientImpl.java
++++ b/src/java.net.http/share/classes/jdk/internal/net/http/HttpClientImpl.java
+@@ -396,6 +396,7 @@ static void abortPendingRequests(HttpClientImpl client, Throwable reason) {
+     private final AtomicLong pendingHttpRequestCount = new AtomicLong();
+     private final AtomicLong pendingHttp2StreamCount = new AtomicLong();
+     private final AtomicLong pendingTCPConnectionCount = new AtomicLong();
++    private final AtomicLong pendingSubscribersCount = new AtomicLong();
+     private final AtomicBoolean isAlive = new AtomicBoolean();
+ 
+     /** A Set of, deadline first, ordered timeout events. */
+
+--- a/src/java.net.http/share/classes/jdk/internal/net/http/HttpClientImpl.java
++++ b/src/java.net.http/share/classes/jdk/internal/net/http/HttpClientImpl.java
+@@ -548,7 +549,12 @@ public void registerSubscriber(HttpBodySubscriberWrapper<?> subscriber) {
+         if (!selmgr.isClosed()) {
+             synchronized (selmgr) {
+                 if (!selmgr.isClosed()) {
+-                    subscribers.add(subscriber);
++                    if (subscribers.add(subscriber)) {
++                        long count = pendingSubscribersCount.incrementAndGet();
++                        if (debug.on()) {
++                            debug.log("body subscriber registered: " + count);
++                        }
++                    }
+                     return;
+                 }
+             }
+
+--- a/src/java.net.http/share/classes/jdk/internal/net/http/HttpClientImpl.java
++++ b/src/java.net.http/share/classes/jdk/internal/net/http/HttpClientImpl.java
+@@ -556,8 +562,13 @@ public void registerSubscriber(HttpBodySubscriberWrapper<?> subscriber) {
+         subscriber.onError(selmgr.selectorClosedException());
+     }
+ 
+-    public void subscriberCompleted(HttpBodySubscriberWrapper<?> subscriber) {
+-        subscribers.remove(subscriber);
++    public void unregisterSubscriber(HttpBodySubscriberWrapper<?> subscriber) {
++        if (subscribers.remove(subscriber)) {
++            long count = pendingSubscribersCount.decrementAndGet();
++            if (debug.on()) {
++                debug.log("body subscriber unregistered: " + count);
++            }
++        }
+     }
+ 
+     private void closeConnection(HttpConnection conn) {
+
+--- a/src/java.net.http/share/classes/jdk/internal/net/http/HttpClientImpl.java
++++ b/src/java.net.http/share/classes/jdk/internal/net/http/HttpClientImpl.java
+@@ -627,7 +638,7 @@ final long unreference() {
+         final long httpCount = pendingHttpOperationsCount.decrementAndGet();
+         final long http2Count = pendingHttp2StreamCount.get();
+         final long webSocketCount = pendingWebSocketCount.get();
+-        if (count == 0 && facade() == null) {
++        if (count == 0 && facadeRef.refersTo(null)) {
+             selmgr.wakeupSelector();
+         }
+         assert httpCount >= 0 : "count of HTTP/1.1 operations < 0";
+
+--- a/src/java.net.http/share/classes/jdk/internal/net/http/HttpClientImpl.java
++++ b/src/java.net.http/share/classes/jdk/internal/net/http/HttpClientImpl.java
+@@ -649,7 +660,7 @@ final long streamUnreference() {
+         final long http2Count = pendingHttp2StreamCount.decrementAndGet();
+         final long httpCount = pendingHttpOperationsCount.get();
+         final long webSocketCount = pendingWebSocketCount.get();
+-        if (count == 0 && facade() == null) {
++        if (count == 0 && facadeRef.refersTo(null)) {
+             selmgr.wakeupSelector();
+         }
+         assert httpCount >= 0 : "count of HTTP/1.1 operations < 0";
+
+--- a/src/java.net.http/share/classes/jdk/internal/net/http/HttpClientImpl.java
++++ b/src/java.net.http/share/classes/jdk/internal/net/http/HttpClientImpl.java
+@@ -671,7 +682,7 @@ final long webSocketClose() {
+         final long webSocketCount = pendingWebSocketCount.decrementAndGet();
+         final long httpCount = pendingHttpOperationsCount.get();
+         final long http2Count = pendingHttp2StreamCount.get();
+-        if (count == 0 && facade() == null) {
++        if (count == 0 && facadeRef.refersTo(null)) {
+             selmgr.wakeupSelector();
+         }
+         assert httpCount >= 0 : "count of HTTP/1.1 operations < 0";
+
+--- a/src/java.net.http/share/classes/jdk/internal/net/http/HttpClientImpl.java
++++ b/src/java.net.http/share/classes/jdk/internal/net/http/HttpClientImpl.java
+@@ -697,6 +708,7 @@ static final class HttpClientTracker implements Tracker {
+         final AtomicLong websocketCount;
+         final AtomicLong operationsCount;
+         final AtomicLong connnectionsCount;
++        final AtomicLong subscribersCount;
+         final Reference<?> reference;
+         final AtomicBoolean isAlive;
+         final String name;
+
+--- a/src/java.net.http/share/classes/jdk/internal/net/http/HttpClientImpl.java
++++ b/src/java.net.http/share/classes/jdk/internal/net/http/HttpClientImpl.java
+@@ -706,6 +718,7 @@ static final class HttpClientTracker implements Tracker {
+                           AtomicLong ws,
+                           AtomicLong ops,
+                           AtomicLong conns,
++                          AtomicLong subscribers,
+                           Reference<?> ref,
+                           AtomicBoolean isAlive,
+                           String name) {
+
+--- a/src/java.net.http/share/classes/jdk/internal/net/http/HttpClientImpl.java
++++ b/src/java.net.http/share/classes/jdk/internal/net/http/HttpClientImpl.java
+@@ -715,11 +728,16 @@ static final class HttpClientTracker implements Tracker {
+             this.websocketCount = ws;
+             this.operationsCount = ops;
+             this.connnectionsCount = conns;
++            this.subscribersCount = subscribers;
+             this.reference = ref;
+             this.isAlive = isAlive;
+             this.name = name;
+         }
+         @Override
++        public long getOutstandingSubscribers() {
++            return subscribersCount.get();
++        }
++        @Override
+         public long getOutstandingOperations() {
+             return operationsCount.get();
+         }
+
+--- a/src/java.net.http/share/classes/jdk/internal/net/http/HttpClientImpl.java
++++ b/src/java.net.http/share/classes/jdk/internal/net/http/HttpClientImpl.java
+@@ -759,6 +777,7 @@ public Tracker getOperationsTracker() {
+                 pendingWebSocketCount,
+                 pendingOperationCount,
+                 pendingTCPConnectionCount,
++                pendingSubscribersCount,
+                 facadeRef,
+                 isAlive,
+                 dbgTag);
+
+--- a/src/java.net.http/share/classes/jdk/internal/net/http/Stream.java
++++ b/src/java.net.http/share/classes/jdk/internal/net/http/Stream.java
+@@ -355,8 +355,8 @@ private void registerResponseSubscriber(Http2StreamResponseSubscriber<?> subscri
+         client().registerSubscriber(subscriber);
+     }
+ 
+-    private void subscriberCompleted(Http2StreamResponseSubscriber<?> subscriber) {
+-        client().subscriberCompleted(subscriber);
++    private void unregisterResponseSubscriber(Http2StreamResponseSubscriber<?> subscriber) {
++        client().unregisterSubscriber(subscriber);
+     }
+ 
+     @Override
+
+--- a/src/java.net.http/share/classes/jdk/internal/net/http/Stream.java
++++ b/src/java.net.http/share/classes/jdk/internal/net/http/Stream.java
+@@ -1546,11 +1546,15 @@ final class Http2StreamResponseSubscriber<U> extends HttpBodySubscriberWrapper<U
+         @Override
+         protected void complete(Throwable t) {
+             try {
+-                Stream.this.subscriberCompleted(this);
++                Stream.this.unregisterResponseSubscriber(this);
+             } finally {
+                 super.complete(t);
+             }
+         }
++        @Override
++        protected void onCancel() {
++            Stream.this.unregisterResponseSubscriber(this);
++        }
+     }
+ 
+     private static final VarHandle STREAM_STATE;
+
+--- a/src/java.net.http/share/classes/jdk/internal/net/http/common/HttpBodySubscriberWrapper.java
++++ b/src/java.net.http/share/classes/jdk/internal/net/http/common/HttpBodySubscriberWrapper.java
+@@ -29,6 +29,7 @@
+ import java.nio.ByteBuffer;
+ import java.util.Comparator;
+ import java.util.List;
++import java.util.Objects;
+ import java.util.concurrent.CompletionStage;
+ import java.util.concurrent.Flow;
+ import java.util.concurrent.Flow.Subscription;
+
+--- a/src/java.net.http/share/classes/jdk/internal/net/http/common/HttpBodySubscriberWrapper.java
++++ b/src/java.net.http/share/classes/jdk/internal/net/http/common/HttpBodySubscriberWrapper.java
+@@ -61,12 +62,33 @@ public void cancel() { }
+     final BodySubscriber<T> userSubscriber;
+     final AtomicBoolean completed = new AtomicBoolean();
+     final AtomicBoolean subscribed = new AtomicBoolean();
+-    volatile Subscription subscription;
++    volatile SubscriptionWrapper subscription;
+     volatile Throwable withError;
+     public HttpBodySubscriberWrapper(BodySubscriber<T> userSubscriber) {
+         this.userSubscriber = userSubscriber;
+     }
+ 
++    private class SubscriptionWrapper implements Subscription {
++        final Subscription subscription;
++        SubscriptionWrapper(Subscription s) {
++            this.subscription = Objects.requireNonNull(s);
++        }
++        @Override
++        public void request(long n) {
++            subscription.request(n);
++        }
++
++        @Override
++        public void cancel() {
++            try {
++                subscription.cancel();
++                onCancel();
++            } catch (Throwable t) {
++                onError(t);
++            }
++        }
++    }
++
+     final long id() { return id; }
+ 
+     @Override
+
+--- a/src/java.net.http/share/classes/jdk/internal/net/http/common/HttpBodySubscriberWrapper.java
++++ b/src/java.net.http/share/classes/jdk/internal/net/http/common/HttpBodySubscriberWrapper.java
+@@ -97,6 +119,14 @@ private void propagateError(Throwable t) {
+         }
+     }
+ 
++    /**
++     * Called when the subscriber cancels its subscription.
++     * @apiNote
++     * This method may be used by subclasses to perform cleanup
++     * actions after a subscription has been cancelled.
++     */
++    protected void onCancel() { }
++
+     /**
+      * Complete the subscriber, either normally or exceptionally
+      * ensure that the subscriber is completed only once.
+
+--- a/src/java.net.http/share/classes/jdk/internal/net/http/common/HttpBodySubscriberWrapper.java
++++ b/src/java.net.http/share/classes/jdk/internal/net/http/common/HttpBodySubscriberWrapper.java
+@@ -137,12 +167,12 @@ public CompletionStage<T> getBody() {
+ 
+     @Override
+     public void onSubscribe(Flow.Subscription subscription) {
+-        this.subscription = subscription;
+         // race condition with propagateError: we need to wait until
+         // subscription is finished before calling onError;
+         synchronized (this) {
+             if (subscribed.compareAndSet(false, true)) {
+-                userSubscriber.onSubscribe(subscription);
++                SubscriptionWrapper wrapped = new SubscriptionWrapper(subscription);
++                userSubscriber.onSubscribe(this.subscription = wrapped);
+             } else {
+                 // could be already subscribed and completed
+                 // if an unexpected error occurred before the actual
+
+--- a/src/java.net.http/share/classes/jdk/internal/net/http/common/HttpBodySubscriberWrapper.java
++++ b/src/java.net.http/share/classes/jdk/internal/net/http/common/HttpBodySubscriberWrapper.java
+@@ -156,8 +186,9 @@ public void onSubscribe(Flow.Subscription subscription) {
+     @Override
+     public void onNext(List<ByteBuffer> item) {
+         if (completed.get()) {
++            SubscriptionWrapper subscription = this.subscription;
+             if (subscription != null) {
+-                subscription.cancel();
++                subscription.subscription.cancel();
+             }
+         } else {
+             userSubscriber.onNext(item);
+
+--- a/src/java.net.http/share/classes/jdk/internal/net/http/common/OperationTrackers.java
++++ b/src/java.net.http/share/classes/jdk/internal/net/http/common/OperationTrackers.java
+@@ -59,6 +59,8 @@ public interface Tracker {
+         long getOutstandingWebSocketOperations();
+         // number of TCP connections still opened
+         long getOutstandingTcpConnections();
++        // number of body subscribers not yet completed or canceled
++        long getOutstandingSubscribers();
+         // Whether the facade returned to the
+         // user is still referenced
+         boolean isFacadeReferenced();
+
+--- a/test/jdk/java/net/httpclient/CancelRequestTest.java
++++ b/test/jdk/java/net/httpclient/CancelRequestTest.java
+@@ -58,6 +58,7 @@
+ import java.io.IOException;
+ import java.io.InputStream;
+ import java.io.OutputStream;
++import java.lang.ref.Reference;
+ import java.net.InetAddress;
+ import java.net.InetSocketAddress;
+ import java.net.URI;
+
+--- a/test/jdk/java/net/httpclient/CancelRequestTest.java
++++ b/test/jdk/java/net/httpclient/CancelRequestTest.java
+@@ -377,6 +378,13 @@ public void testGetSendAsync(String uri, boolean sameClient, boolean mayInterrup
+             assertEquals(cf2.isDone(), true);
+             assertEquals(cf2.isCancelled(), false);
+             assertEquals(latch.getCount(), 0);
++
++            var error = TRACKER.check(1,
++                    (t) -> t.getOutstandingOperations() > 0 || t.getOutstandingSubscribers() > 0,
++                    "subscribers for testGetSendAsync(%s)\n\t step [%s]".formatted(req.uri(), i),
++                    false);
++            Reference.reachabilityFence(client);
++            if (error != null) throw error;
+         }
+     }
+ 
+
+--- a/test/jdk/java/net/httpclient/CancelRequestTest.java
++++ b/test/jdk/java/net/httpclient/CancelRequestTest.java
+@@ -481,6 +489,13 @@ public Iterator<byte[]> iterator() {
+             assertEquals(cf2.isDone(), true);
+             assertEquals(cf2.isCancelled(), false);
+             assertEquals(latch.getCount(), 0);
++
++            var error = TRACKER.check(1,
++                    (t) -> t.getOutstandingOperations() > 0 || t.getOutstandingSubscribers() > 0,
++                    "subscribers for testPostSendAsync(%s)\n\t step [%s]".formatted(req.uri(), i),
++                    false);
++            Reference.reachabilityFence(client);
++            if (error != null) throw error;
+         }
+     }
+ 
+
+--- a/test/jdk/java/net/httpclient/CancelRequestTest.java
++++ b/test/jdk/java/net/httpclient/CancelRequestTest.java
+@@ -536,6 +551,13 @@ public void testPostInterrupt(String uri, boolean sameClient)
+                 assertEquals(body, Stream.of(BODY.split("\\|")).collect(Collectors.joining()));
+                 throw failed;
+             }
++
++            var error = TRACKER.check(1,
++                    (t) -> t.getOutstandingOperations() > 0 || t.getOutstandingSubscribers() > 0,
++                    "subscribers for testPostInterrupt(%s)\n\t step [%s]".formatted(req.uri(), i),
++                    false);
++            Reference.reachabilityFence(client);
++            if (error != null) throw error;
+         }
+     }
+ 
+
+--- /dev/null
++++ b/test/jdk/java/net/httpclient/CancelStreamedBodyTest.java
+@@ -0,0 +1,450 @@
++/*
++ * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
++ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
++ *
++ * This code is free software; you can redistribute it and/or modify it
++ * under the terms of the GNU General Public License version 2 only, as
++ * published by the Free Software Foundation.
++ *
++ * This code is distributed in the hope that it will be useful, but WITHOUT
++ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
++ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
++ * version 2 for more details (a copy is included in the LICENSE file that
++ * accompanied this code).
++ *
++ * You should have received a copy of the GNU General Public License version
++ * 2 along with this work; if not, write to the Free Software Foundation,
++ * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
++ *
++ * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
++ * or visit www.oracle.com if you need additional information or have any
++ * questions.
++ */
++
++/*
++ * @test
++ * @bug 8294916
++ * @summary Tests that closing a streaming handler (ofInputStream()/ofLines())
++ *      without reading all the bytes unregisters the underlying subscriber.
++ * @library /test/lib http2/server
++ * @build jdk.test.lib.net.SimpleSSLContext HttpServerAdapters
++ *        ReferenceTracker CancelStreamedBodyTest
++ * @modules java.base/sun.net.www.http
++ *          java.net.http/jdk.internal.net.http.common
++ *          java.net.http/jdk.internal.net.http.frame
++ *          java.net.http/jdk.internal.net.http.hpack
++ * @run testng/othervm -Djdk.internal.httpclient.debug=true
++ *                     CancelStreamedBodyTest
++ */
++import com.sun.net.httpserver.HttpServer;
++import com.sun.net.httpserver.HttpsConfigurator;
++import com.sun.net.httpserver.HttpsServer;
++import jdk.internal.net.http.common.OperationTrackers.Tracker;
++import jdk.test.lib.RandomFactory;
++import jdk.test.lib.net.SimpleSSLContext;
++import org.testng.ITestContext;
++import org.testng.ITestResult;
++import org.testng.SkipException;
++import org.testng.annotations.AfterClass;
++import org.testng.annotations.AfterTest;
++import org.testng.annotations.BeforeMethod;
++import org.testng.annotations.BeforeTest;
++import org.testng.annotations.DataProvider;
++import org.testng.annotations.Test;
++
++import javax.net.ssl.SSLContext;
++import java.io.IOException;
++import java.io.InputStream;
++import java.io.OutputStream;
++import java.lang.ref.Reference;
++import java.net.InetAddress;
++import java.net.InetSocketAddress;
++import java.net.URI;
++import java.net.http.HttpClient;
++import java.net.http.HttpConnectTimeoutException;
++import java.net.http.HttpRequest;
++import java.net.http.HttpResponse;
++import java.net.http.HttpResponse.BodyHandler;
++import java.net.http.HttpResponse.BodyHandlers;
++import java.util.Arrays;
++import java.util.Iterator;
++import java.util.List;
++import java.util.Random;
++import java.util.concurrent.CancellationException;
++import java.util.concurrent.CompletableFuture;
++import java.util.concurrent.ConcurrentHashMap;
++import java.util.concurrent.ConcurrentMap;
++import java.util.concurrent.CountDownLatch;
++import java.util.concurrent.ExecutionException;
++import java.util.concurrent.Executor;
++import java.util.concurrent.Executors;
++import java.util.concurrent.atomic.AtomicLong;
++import java.util.concurrent.atomic.AtomicReference;
++import java.util.stream.Collectors;
++import java.util.stream.Stream;
++
++import static java.lang.System.arraycopy;
++import static java.lang.System.out;
++import static java.nio.charset.StandardCharsets.UTF_8;
++import static org.testng.Assert.assertEquals;
++import static org.testng.Assert.assertFalse;
++import static org.testng.Assert.assertTrue;
++
++public class CancelStreamedBodyTest implements HttpServerAdapters {
++
++    SSLContext sslContext;
++    HttpTestServer httpTestServer;    // HTTP/1.1    [ 4 servers ]
++    HttpTestServer httpsTestServer;   // HTTPS/1.1
++    HttpTestServer http2TestServer;   // HTTP/2 ( h2c )
++    HttpTestServer https2TestServer;  // HTTP/2 ( h2  )
++    String httpURI;
++    String httpsURI;
++    String http2URI;
++    String https2URI;
++
++    static final long SERVER_LATENCY = 75;
++    static final int ITERATION_COUNT = 3;
++    // a shared executor helps reduce the amount of threads created by the test
++    static final Executor executor = new TestExecutor(Executors.newCachedThreadPool());
++    static final ConcurrentMap<String, Throwable> FAILURES = new ConcurrentHashMap<>();
++    static volatile boolean tasksFailed;
++    static final AtomicLong serverCount = new AtomicLong();
++    static final AtomicLong clientCount = new AtomicLong();
++    static final long start = System.nanoTime();
++    public static String now() {
++        long now = System.nanoTime() - start;
++        long secs = now / 1000_000_000;
++        long mill = (now % 1000_000_000) / 1000_000;
++        long nan = now % 1000_000;
++        return String.format("[%d s, %d ms, %d ns] ", secs, mill, nan);
++    }
++
++    final ReferenceTracker TRACKER = ReferenceTracker.INSTANCE;
++    private volatile HttpClient sharedClient;
++
++    static class TestExecutor implements Executor {
++        final AtomicLong tasks = new AtomicLong();
++        Executor executor;
++        TestExecutor(Executor executor) {
++            this.executor = executor;
++        }
++
++        @Override
++        public void execute(Runnable command) {
++            long id = tasks.incrementAndGet();
++            executor.execute(() -> {
++                try {
++                    command.run();
++                } catch (Throwable t) {
++                    tasksFailed = true;
++                    System.out.printf(now() + "Task %s failed: %s%n", id, t);
++                    System.err.printf(now() + "Task %s failed: %s%n", id, t);
++                    FAILURES.putIfAbsent("Task " + id, t);
++                    throw t;
++                }
++            });
++        }
++    }
++
++    protected boolean stopAfterFirstFailure() {
++        return Boolean.getBoolean("jdk.internal.httpclient.debug");
++    }
++
++    final AtomicReference<SkipException> skiptests = new AtomicReference<>();
++    void checkSkip() {
++        var skip = skiptests.get();
++        if (skip != null) throw skip;
++    }
++    static String name(ITestResult result) {
++        var params = result.getParameters();
++        return result.getName()
++                + (params == null ? "()" : Arrays.toString(result.getParameters()));
++    }
++
++    @BeforeMethod
++    void beforeMethod(ITestContext context) {
++        if (stopAfterFirstFailure() && context.getFailedTests().size() > 0) {
++            if (skiptests.get() == null) {
++                SkipException skip = new SkipException("some tests failed");
++                skip.setStackTrace(new StackTraceElement[0]);
++                skiptests.compareAndSet(null, skip);
++            }
++        }
++    }
++
++    @AfterClass
++    static final void printFailedTests(ITestContext context) {
++        out.println("\n=========================");
++        var failed = context.getFailedTests().getAllResults().stream()
++                .collect(Collectors.toMap(r -> name(r), ITestResult::getThrowable));
++        FAILURES.putAll(failed);
++        try {
++            out.printf("%n%sCreated %d servers and %d clients%n",
++                    now(), serverCount.get(), clientCount.get());
++            if (FAILURES.isEmpty()) return;
++            out.println("Failed tests: ");
++            FAILURES.entrySet().forEach((e) -> {
++                out.printf("\t%s: %s%n", e.getKey(), e.getValue());
++                e.getValue().printStackTrace(out);
++            });
++            if (tasksFailed) {
++                System.out.println("WARNING: Some tasks failed");
++            }
++        } finally {
++            out.println("\n=========================\n");
++        }
++    }
++
++    private String[] uris() {
++        return new String[] {
++                httpURI,
++                httpsURI,
++                http2URI,
++                https2URI,
++        };
++    }
++
++
++    @DataProvider(name = "urls")
++    public Object[][] alltests() {
++        String[] uris = uris();
++        Object[][] result = new Object[uris.length * 2][];
++        int i = 0;
++        for (boolean sameClient : List.of(false, true)) {
++            for (String uri : uris()) {
++                String path = sameClient ? "same" : "new";
++                result[i++] = new Object[]{uri + path, sameClient};
++            }
++        }
++        assert i == uris.length * 2;
++        return result;
++    }
++
++    private HttpClient makeNewClient() {
++        clientCount.incrementAndGet();
++        var client = HttpClient.newBuilder()
++                .proxy(HttpClient.Builder.NO_PROXY)
++                .executor(executor)
++                .sslContext(sslContext)
++                .build();
++        // It is OK to even track the shared client here:
++        // the test methods will verify that the client has shut down
++        // only if it's not the shared client.
++        // Only the teardown() method verify that the shared client
++        // has shut down in this test.
++        return TRACKER.track(client);
++    }
++
++    HttpClient newHttpClient(boolean share) {
++        if (!share) return makeNewClient();
++        HttpClient shared = sharedClient;
++        if (shared != null) return shared;
++        synchronized (this) {
++            shared = sharedClient;
++            if (shared == null) {
++                shared = sharedClient = makeNewClient();
++            }
++            return shared;
++        }
++    }
++
++    final static String BODY = "Some string |\n that ?\n can |\n be split ?\n several |\n ways.";
++
++
++    @Test(dataProvider = "urls")
++    public void testAsLines(String uri, boolean sameClient)
++            throws Exception {
++        checkSkip();
++        HttpClient client = null;
++        uri = uri + "/testAsLines";
++        out.printf("%n%s testAsLines(%s, %b)%n", now(), uri, sameClient);
++        for (int i=0; i< ITERATION_COUNT; i++) {
++            if (!sameClient || client == null)
++                client = newHttpClient(sameClient);
++            var tracker = TRACKER.getTracker(client);
++
++            HttpRequest req = HttpRequest.newBuilder(URI.create(uri))
++                    .GET()
++                    .build();
++            List<String> lines;
++            for (int j = 0; j < 2; j++) {
++                try (Stream<String> body = client.send(req, BodyHandlers.ofLines()).body()) {
++                    lines = body.limit(j).toList();
++                    assertEquals(lines, BODY.replaceAll("\\||\\?", "")
++                            .lines().limit(j).toList());
++                }
++                // Only check our still alive client for outstanding operations
++                // and outstanding subscribers here: it should have none.
++                var error = TRACKER.check(tracker, 500,
++                        (t) -> t.getOutstandingOperations() > 0 || t.getOutstandingSubscribers() > 0,
++                        "subscribers for testAsLines(%s)\n\t step [%s,%s]".formatted(req.uri(), i,j),
++                        false);
++                Reference.reachabilityFence(client);
++                if (error != null) throw error;
++            }
++            // The shared client is only shut down at the end.
++            // Skip shutdown check for the shared client.
++            if (sameClient) continue;
++            client = null;
++            System.gc();
++            var error = TRACKER.check(tracker, 500);
++            if (error != null) throw error;
++        }
++    }
++
++    @Test(dataProvider = "urls")
++    public void testInputStream(String uri, boolean sameClient)
++            throws Exception {
++        checkSkip();
++        HttpClient client = null;
++        uri = uri + "/testInputStream";
++        out.printf("%n%s testInputStream(%s, %b)%n", now(), uri, sameClient);
++        for (int i=0; i< ITERATION_COUNT; i++) {
++            if (!sameClient || client == null)
++                client = newHttpClient(sameClient);
++            var tracker = TRACKER.getTracker(client);
++
++            HttpRequest req = HttpRequest.newBuilder(URI.create(uri))
++                    .GET()
++                    .build();
++            int read = -1;
++            for (int j = 0; j < 2; j++) {
++                try (InputStream is = client.send(req, BodyHandlers.ofInputStream()).body()) {
++                    for (int k = 0; k < j; k++) {
++                        read = is.read();
++                        assertEquals(read, BODY.charAt(k));
++                    }
++                }
++                // Only check our still alive client for outstanding operations
++                // and outstanding subscribers here: it should have none.
++                var error = TRACKER.check(tracker, 1,
++                        (t) -> t.getOutstandingOperations() > 0 || t.getOutstandingSubscribers() > 0,
++                        "subscribers for testInputStream(%s)\n\t step [%s,%s]".formatted(req.uri(), i,j),
++                        false);
++                Reference.reachabilityFence(client);
++                if (error != null) throw error;
++            }
++            // The shared client is only shut down at the end.
++            // Skip shutdown check for the shared client.
++            if (sameClient) continue;
++            client = null;
++            System.gc();
++            var error = TRACKER.check(tracker, 1);
++            if (error != null) throw error;
++        }
++    }
++
++
++
++    @BeforeTest
++    public void setup() throws Exception {
++        sslContext = new SimpleSSLContext().get();
++        if (sslContext == null)
++            throw new AssertionError("Unexpected null sslContext");
++
++        // HTTP/1.1
++        HttpTestHandler h1_chunkHandler = new HTTPSlowHandler();
++        InetSocketAddress sa = new InetSocketAddress(InetAddress.getLoopbackAddress(), 0);
++        httpTestServer = HttpTestServer.of(HttpServer.create(sa, 0));
++        httpTestServer.addHandler(h1_chunkHandler, "/http1/x/");
++        httpURI = "http://" + httpTestServer.serverAuthority() + "/http1/x/";
++
++        HttpsServer httpsServer = HttpsServer.create(sa, 0);
++        httpsServer.setHttpsConfigurator(new HttpsConfigurator(sslContext));
++        httpsTestServer = HttpTestServer.of(httpsServer);
++        httpsTestServer.addHandler(h1_chunkHandler, "/https1/x/");
++        httpsURI = "https://" + httpsTestServer.serverAuthority() + "/https1/x/";
++
++        // HTTP/2
++        HttpTestHandler h2_chunkedHandler = new HTTPSlowHandler();
++
++        http2TestServer = HttpTestServer.of(new Http2TestServer("localhost", false, 0));
++        http2TestServer.addHandler(h2_chunkedHandler, "/http2/x/");
++        http2URI = "http://" + http2TestServer.serverAuthority() + "/http2/x/";
++
++        https2TestServer = HttpTestServer.of(new Http2TestServer("localhost", true, sslContext));
++        https2TestServer.addHandler(h2_chunkedHandler, "/https2/x/");
++        https2URI = "https://" + https2TestServer.serverAuthority() + "/https2/x/";
++
++        serverCount.addAndGet(4);
++        httpTestServer.start();
++        httpsTestServer.start();
++        http2TestServer.start();
++        https2TestServer.start();
++    }
++
++    @AfterTest
++    public void teardown() throws Exception {
++        String sharedClientName =
++                sharedClient == null ? null : sharedClient.toString();
++        sharedClient = null;
++        // check that the shared client (and any other client) have
++        // properly shut down
++        System.gc();
++        Thread.sleep(100);
++        AssertionError fail = TRACKER.check(500);
++        try {
++            httpTestServer.stop();
++            httpsTestServer.stop();
++            http2TestServer.stop();
++            https2TestServer.stop();
++        } finally {
++            if (fail != null) {
++                if (sharedClientName != null) {
++                    System.err.println("Shared client name is: " + sharedClientName);
++                }
++                throw fail;
++            }
++        }
++    }
++
++    /**
++     * A handler that slowly sends back a body to give time for the
++     * the request to get cancelled before the body is fully received.
++     */
++    static class HTTPSlowHandler implements HttpTestHandler {
++        @Override
++        public void handle(HttpTestExchange t) throws IOException {
++            try {
++                out.println("HTTPSlowHandler received request to " + t.getRequestURI());
++                System.err.println("HTTPSlowHandler received request to " + t.getRequestURI());
++
++                byte[] req;
++                try (InputStream is = t.getRequestBody()) {
++                    req = is.readAllBytes();
++                }
++
++                // we're not expecting a request body.
++                // if we receive any, pretend we're a teapot.
++                int status = req.length == 0 ? 200 : 418;
++                t.sendResponseHeaders(status, -1); // chunked/variable
++                try (OutputStream os = t.getResponseBody()) {
++                    // lets split the response in several chunks...
++                    String msg = (req != null && req.length != 0)
++                            ? new String(req, UTF_8)
++                            : BODY;
++                    String[] str = msg.split("\\|");
++                    for (var s : str) {
++                        req = s.getBytes(UTF_8);
++                        os.write(req);
++                        os.flush();
++                        out.printf("Server wrote %d bytes%n", req.length);
++                        try {
++                            Thread.sleep(SERVER_LATENCY);
++                        } catch (InterruptedException x) {
++                            // OK
++                        }
++                    }
++                }
++            } catch (Throwable e) {
++                out.println("HTTPSlowHandler: unexpected exception: " + e);
++                e.printStackTrace();
++                throw e;
++            } finally {
++                out.printf("HTTPSlowHandler reply sent: %s%n", t.getRequestURI());
++                System.err.printf("HTTPSlowHandler reply sent: %s%n", t.getRequestURI());
++            }
++        }
++    }
++
++}
+
+--- a/test/jdk/java/net/httpclient/ReferenceTracker.java
++++ b/test/jdk/java/net/httpclient/ReferenceTracker.java
+@@ -31,6 +31,7 @@
+ import java.lang.management.ThreadInfo;
+ import java.net.http.HttpClient;
+ import java.util.Arrays;
++import java.util.Objects;
+ import java.util.concurrent.ConcurrentLinkedQueue;
+ import java.util.function.Predicate;
+ import java.util.stream.Collectors;
+
+--- a/test/jdk/java/net/httpclient/ReferenceTracker.java
++++ b/test/jdk/java/net/httpclient/ReferenceTracker.java
+@@ -61,9 +62,14 @@ public StringBuilder diagnose(StringBuilder warnings) {
+         return diagnose(warnings, (t) -> t.getOutstandingHttpOperations() > 0);
+     }
+ 
++    public StringBuilder diagnose(Tracker tracker, StringBuilder warnings, Predicate<Tracker> hasOutstanding) {
++        checkOutstandingOperations(warnings, tracker, hasOutstanding);
++        return warnings;
++    }
++
+     public StringBuilder diagnose(StringBuilder warnings, Predicate<Tracker> hasOutstanding) {
+         for (Tracker tracker : TRACKERS) {
+-            checkOutstandingOperations(warnings, tracker, hasOutstanding);
++            diagnose(tracker, warnings, hasOutstanding);
+         }
+         return warnings;
+     }
+
+--- a/test/jdk/java/net/httpclient/ReferenceTracker.java
++++ b/test/jdk/java/net/httpclient/ReferenceTracker.java
+@@ -72,6 +78,10 @@ public boolean hasOutstandingOperations() {
+         return TRACKERS.stream().anyMatch(t -> t.getOutstandingOperations() > 0);
+     }
+ 
++    public boolean hasOutstandingSubscribers() {
++        return TRACKERS.stream().anyMatch(t -> t.getOutstandingSubscribers() > 0);
++    }
++
+     public long getOutstandingOperationsCount() {
+         return TRACKERS.stream()
+                 .map(Tracker::getOutstandingOperations)
+
+--- a/test/jdk/java/net/httpclient/ReferenceTracker.java
++++ b/test/jdk/java/net/httpclient/ReferenceTracker.java
+@@ -86,10 +96,24 @@ public long getOutstandingClientCount() {
+                 .count();
+     }
+ 
++    public AssertionError check(Tracker tracker, long graceDelayMs) {
++        Predicate<Tracker> hasOperations = (t) -> t.getOutstandingOperations() > 0;
++        Predicate<Tracker> hasSubscribers = (t) -> t.getOutstandingSubscribers() > 0;
++        return check(tracker, graceDelayMs,
++                hasOperations.or(hasSubscribers)
++                        .or(Tracker::isFacadeReferenced)
++                        .or(Tracker::isSelectorAlive),
++                "outstanding operations or unreleased resources", false);
++    }
++
+     public AssertionError check(long graceDelayMs) {
++        Predicate<Tracker> hasOperations = (t) -> t.getOutstandingOperations() > 0;
++        Predicate<Tracker> hasSubscribers = (t) -> t.getOutstandingSubscribers() > 0;
+         return check(graceDelayMs,
+-                (t) -> t.getOutstandingHttpOperations() > 0,
+-                "outstanding operations", true);
++                hasOperations.or(hasSubscribers)
++                .or(Tracker::isFacadeReferenced)
++                .or(Tracker::isSelectorAlive),
++        "outstanding operations or unreleased resources", true);
+     }
+ 
+     // This method is copied from ThreadInfo::toString, but removes the
+
+--- a/test/jdk/java/net/httpclient/ReferenceTracker.java
++++ b/test/jdk/java/net/httpclient/ReferenceTracker.java
+@@ -173,6 +197,49 @@ private void printThreads(String why, PrintStream out) {
+                 .forEach(out::println);
+     }
+ 
++    public Tracker getTracker(HttpClient client) {
++        return OperationTrackers.getTracker(Objects.requireNonNull(client));
++    }
++
++    public AssertionError check(Tracker tracker,
++                                long graceDelayMs,
++                                Predicate<Tracker> hasOutstanding,
++                                String description,
++                                boolean printThreads) {
++        AssertionError fail = null;
++        graceDelayMs = Math.max(graceDelayMs, 100);
++        long delay = Math.min(graceDelayMs, 10);
++        var count = delay > 0 ? graceDelayMs / delay : 1;
++        for (int i = 0; i < count; i++) {
++            if (hasOutstanding.test(tracker)) {
++                System.gc();
++                try {
++                    if (i == 0) {
++                        System.out.println("Waiting for HTTP operations to terminate...");
++                    }
++                    Thread.sleep(Math.min(graceDelayMs, Math.max(delay, 1)));
++                } catch (InterruptedException x) {
++                    // OK
++                }
++            } else break;
++        }
++        if (hasOutstanding.test(tracker)) {
++            StringBuilder warnings = diagnose(tracker, new StringBuilder(), hasOutstanding);
++            if (hasOutstanding.test(tracker)) {
++                fail = new AssertionError(warnings.toString());
++            }
++        } else {
++            System.out.println("PASSED: No " + description + " found in " + tracker.getName());
++        }
++        if (fail != null) {
++            if (printThreads && tracker.isSelectorAlive()) {
++                printThreads("Some selector manager threads are still alive: ", System.out);
++                printThreads("Some selector manager threads are still alive: ", System.err);
++            }
++        }
++        return fail;
++    }
++
+     public AssertionError check(long graceDelayMs,
+                                 Predicate<Tracker> hasOutstanding,
+                                 String description,
+
+--- a/test/jdk/java/net/httpclient/ReferenceTracker.java
++++ b/test/jdk/java/net/httpclient/ReferenceTracker.java
+@@ -243,6 +310,7 @@ private static void checkOutstandingOperations(StringBuilder warning,
+             warning.append("\n\tPending HTTP/2 streams: " + tracker.getOutstandingHttp2Streams());
+             warning.append("\n\tPending WebSocket operations: " + tracker.getOutstandingWebSocketOperations());
+             warning.append("\n\tPending TCP connections: " + tracker.getOutstandingTcpConnections());
++            warning.append("\n\tPending Subscribers: " + tracker.getOutstandingSubscribers());
+             warning.append("\n\tTotal pending operations: " + tracker.getOutstandingOperations());
+             warning.append("\n\tFacade referenced: " + tracker.isFacadeReferenced());
+             warning.append("\n\tSelector alive: " + tracker.isSelectorAlive());
+
+--- a/test/jdk/java/net/httpclient/ReferenceTracker.java
++++ b/test/jdk/java/net/httpclient/ReferenceTracker.java
+@@ -267,8 +335,11 @@ public AssertionError checkShutdown(long graceDelayMs) {
+         Predicate<Tracker> isAlive = Tracker::isSelectorAlive;
+         Predicate<Tracker> hasPendingRequests = (t) -> t.getOutstandingHttpRequests() > 0;
+         Predicate<Tracker> hasPendingConnections = (t) -> t.getOutstandingTcpConnections() > 0;
++        Predicate<Tracker> hasPendingSubscribers = (t) -> t.getOutstandingSubscribers() > 0;
+         AssertionError failed = check(graceDelayMs,
+-                isAlive.or(hasPendingRequests).or(hasPendingConnections),
++                isAlive.or(hasPendingRequests)
++                        .or(hasPendingConnections)
++                        .or(hasPendingSubscribers),
+                 "outstanding unclosed resources", true);
+         return failed;
+     }
+
+--- a/test/jdk/java/net/httpclient/SmallTimeout.java
++++ b/test/jdk/java/net/httpclient/SmallTimeout.java
+@@ -1,5 +1,5 @@
+ /*
+- * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
++ * Copyright (c) 2015, 2022, Oracle and/or its affiliates. All rights reserved.
+  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+  *
+  * This code is free software; you can redistribute it and/or modify it
+
+--- a/test/jdk/java/net/httpclient/SmallTimeout.java
++++ b/test/jdk/java/net/httpclient/SmallTimeout.java
+@@ -21,6 +21,8 @@
+  * questions.
+  */
+ 
++import java.lang.ref.Reference;
++import java.lang.ref.WeakReference;
+ import java.net.InetAddress;
+ import java.net.InetSocketAddress;
+ import java.net.ServerSocket;
+
+--- a/test/jdk/java/net/httpclient/SmallTimeout.java
++++ b/test/jdk/java/net/httpclient/SmallTimeout.java
+@@ -35,6 +37,8 @@
+ import java.util.concurrent.ExecutorService;
+ import java.util.concurrent.Executors;
+ import java.util.concurrent.LinkedBlockingQueue;
++import java.util.concurrent.TimeUnit;
++
+ import static java.lang.System.out;
+ 
+ /**
+
+--- a/test/jdk/java/net/httpclient/SmallTimeout.java
++++ b/test/jdk/java/net/httpclient/SmallTimeout.java
+@@ -79,6 +83,7 @@ static HttpResult of(HttpRequest request, Throwable t) {
+     public static void main(String[] args) throws Exception {
+         HttpClient client = HttpClient.newHttpClient();
+         ReferenceTracker.INSTANCE.track(client);
++        Reference<HttpClient> reference = new WeakReference<>(client);
+ 
+         Throwable failed = null;
+         try (ServerSocket ss = new ServerSocket()) {
+
+--- a/test/jdk/java/net/httpclient/SmallTimeout.java
++++ b/test/jdk/java/net/httpclient/SmallTimeout.java
+@@ -151,10 +156,12 @@ public static void main(String[] args) throws Exception {
+                                          .build();
+ 
+                 final HttpRequest req = requests[i];
++
+                 executor.execute(() -> {
+                     Throwable cause = null;
+                     try {
+-                        HttpResponse<?> r = client.send(req, BodyHandlers.replacing(null));
++                        HttpClient httpClient = reference.get();
++                        HttpResponse<?> r = httpClient.send(req, BodyHandlers.replacing(null));
+                         out.println("Unexpected success for r" + n +": " + r);
+                     } catch (HttpTimeoutException e) {
+                         out.println("Caught expected timeout for r" + n +": " + e);
+
+--- a/test/jdk/java/net/httpclient/SmallTimeout.java
++++ b/test/jdk/java/net/httpclient/SmallTimeout.java
+@@ -173,7 +180,8 @@ public static void main(String[] args) throws Exception {
+ 
+             checkReturn(requests);
+ 
+-            executor.shutdownNow();
++            // shuts down the executor and awaits its termination
++            executor.close();
+ 
+             if (error)
+                 throw new RuntimeException("Failed. Check output");
+
+--- a/test/jdk/java/net/httpclient/SmallTimeout.java
++++ b/test/jdk/java/net/httpclient/SmallTimeout.java
+@@ -182,8 +190,11 @@ public static void main(String[] args) throws Exception {
+             failed = t;
+             throw t;
+         } finally {
++            Reference.reachabilityFence(client);
++            client = null;
++            System.gc();
+             try {
+-                Thread.sleep(100);
++                Thread.sleep(10);
+             } catch (InterruptedException t) {
+                 // ignore;
+             }
+

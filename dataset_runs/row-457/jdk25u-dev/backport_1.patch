@@ -1,0 +1,225 @@
+--- a/src/java.desktop/share/classes/javax/swing/plaf/basic/BasicPasswordFieldUI.java
++++ b/src/java.desktop/share/classes/javax/swing/plaf/basic/BasicPasswordFieldUI.java
+@@ -1,5 +1,5 @@
+ /*
+- * Copyright (c) 1997, 2006, Oracle and/or its affiliates. All rights reserved.
++ * Copyright (c) 1997, 2025, Oracle and/or its affiliates. All rights reserved.
+  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+  *
+  * This code is free software; you can redistribute it and/or modify it
+
+--- a/src/java.desktop/share/classes/javax/swing/plaf/basic/BasicPasswordFieldUI.java
++++ b/src/java.desktop/share/classes/javax/swing/plaf/basic/BasicPasswordFieldUI.java
+@@ -91,23 +91,4 @@ protected void installDefaults() {
+     public View create(Element elem) {
+         return new PasswordView(elem);
+     }
+-
+-    /**
+-     * Create the action map for Password Field.  This map provides
+-     * same actions for double mouse click and
+-     * and for triple mouse click (see bug 4231444).
+-     */
+-
+-    ActionMap createActionMap() {
+-        ActionMap map = super.createActionMap();
+-        if (map.get(DefaultEditorKit.selectWordAction) != null) {
+-            Action a = map.get(DefaultEditorKit.selectLineAction);
+-            if (a != null) {
+-                map.remove(DefaultEditorKit.selectWordAction);
+-                map.put(DefaultEditorKit.selectWordAction, a);
+-            }
+-        }
+-        return map;
+-    }
+-
+ }
+
+--- a/src/java.desktop/share/classes/javax/swing/plaf/basic/BasicTextUI.java
++++ b/src/java.desktop/share/classes/javax/swing/plaf/basic/BasicTextUI.java
+@@ -1,5 +1,5 @@
+ /*
+- * Copyright (c) 1997, 2023, Oracle and/or its affiliates. All rights reserved.
++ * Copyright (c) 1997, 2025, Oracle and/or its affiliates. All rights reserved.
+  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+  *
+  * This code is free software; you can redistribute it and/or modify it
+
+--- a/src/java.desktop/share/classes/javax/swing/plaf/basic/BasicTextUI.java
++++ b/src/java.desktop/share/classes/javax/swing/plaf/basic/BasicTextUI.java
+@@ -647,6 +647,22 @@ ActionMap createActionMap() {
+                 TransferHandler.getCopyAction());
+         map.put(TransferHandler.getPasteAction().getValue(Action.NAME),
+                 TransferHandler.getPasteAction());
++
++        if (getComponent() instanceof JPasswordField) {
++            // Edit the action map for Password Field.  This map provides
++            // same actions for double mouse click and
++            // and for triple mouse click (see bugs 4231444, 8354646).
++
++            if (map.get(DefaultEditorKit.selectWordAction) != null) {
++                map.remove(DefaultEditorKit.selectWordAction);
++
++                Action a = map.get(DefaultEditorKit.selectLineAction);
++                if (a != null) {
++                    map.put(DefaultEditorKit.selectWordAction, a);
++                }
++            }
++        }
++
+         return map;
+     }
+ 
+
+--- a/src/java.desktop/share/classes/javax/swing/plaf/synth/SynthPasswordFieldUI.java
++++ b/src/java.desktop/share/classes/javax/swing/plaf/synth/SynthPasswordFieldUI.java
+@@ -1,5 +1,5 @@
+ /*
+- * Copyright (c) 2002, 2013, Oracle and/or its affiliates. All rights reserved.
++ * Copyright (c) 2002, 2025, Oracle and/or its affiliates. All rights reserved.
+  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+  *
+  * This code is free software; you can redistribute it and/or modify it
+
+--- a/src/java.desktop/share/classes/javax/swing/plaf/synth/SynthPasswordFieldUI.java
++++ b/src/java.desktop/share/classes/javax/swing/plaf/synth/SynthPasswordFieldUI.java
+@@ -108,19 +108,4 @@ public void paintBorder(SynthContext context, Graphics g, int x,
+                             int y, int w, int h) {
+         context.getPainter().paintPasswordFieldBorder(context, g, x, y, w, h);
+     }
+-
+-    /**
+-     * {@inheritDoc}
+-     */
+-    @Override
+-    protected void installKeyboardActions() {
+-        super.installKeyboardActions();
+-        ActionMap map = SwingUtilities.getUIActionMap(getComponent());
+-        if (map != null && map.get(DefaultEditorKit.selectWordAction) != null) {
+-            Action a = map.get(DefaultEditorKit.selectLineAction);
+-            if (a != null) {
+-                map.put(DefaultEditorKit.selectWordAction, a);
+-            }
+-        }
+-    }
+ }
+
+--- a/test/jdk/java/awt/TextField/SetEchoCharWordOpsTest.java
++++ b/test/jdk/java/awt/TextField/SetEchoCharWordOpsTest.java
+@@ -1,5 +1,5 @@
+ /*
+- * Copyright (c) 2005, 2024, Oracle and/or its affiliates. All rights reserved.
++ * Copyright (c) 2005, 2025, Oracle and/or its affiliates. All rights reserved.
+  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+  *
+  * This code is free software; you can redistribute it and/or modify it
+
+--- a/test/jdk/java/awt/TextField/SetEchoCharWordOpsTest.java
++++ b/test/jdk/java/awt/TextField/SetEchoCharWordOpsTest.java
+@@ -30,7 +30,7 @@
+ 
+ /*
+  * @test
+- * @bug 6191897
++ * @bug 6191897 8354646
+  * @summary Verifies that ctrl+left/right does not move word-by-word in a TextField
+  *          with echo character set
+  * @library /java/awt/regtesthelpers  /test/lib
+
+--- /dev/null
++++ b/test/jdk/javax/swing/plaf/basic/BasicTextUI/PasswordSelectionWordTest.java
+@@ -0,0 +1,94 @@
++/*
++ * Copyright (c) 2025, Oracle and/or its affiliates. All rights reserved.
++ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
++ *
++ * This code is free software; you can redistribute it and/or modify it
++ * under the terms of the GNU General Public License version 2 only, as
++ * published by the Free Software Foundation.
++ *
++ * This code is distributed in the hope that it will be useful, but WITHOUT
++ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
++ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
++ * version 2 for more details (a copy is included in the LICENSE file that
++ * accompanied this code).
++ *
++ * You should have received a copy of the GNU General Public License version
++ * 2 along with this work; if not, write to the Free Software Foundation,
++ * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
++ *
++ * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
++ * or visit www.oracle.com if you need additional information or have any
++ * questions.
++ */
++
++/**
++ * @test
++ * @key headful
++ * @bug 4231444 8354646
++ * @summary Password fields' ActionMap needs to replace
++ *          DefaultEditorKit.selectWordAction with
++ *          DefaultEditorKit.selectLineAction.
++ *
++ * @run main PasswordSelectionWordTest
++ */
++
++import javax.swing.Action;
++import javax.swing.JPasswordField;
++import javax.swing.SwingUtilities;
++import javax.swing.UIManager;
++import javax.swing.UnsupportedLookAndFeelException;
++import javax.swing.plaf.basic.BasicTextUI;
++import javax.swing.text.DefaultEditorKit;
++import java.awt.event.ActionEvent;
++
++public class PasswordSelectionWordTest {
++    public static void main(String[] args) throws Exception {
++        for (UIManager.LookAndFeelInfo laf :
++                UIManager.getInstalledLookAndFeels()) {
++            System.out.println("Testing LAF: " + laf.getClassName());
++            SwingUtilities.invokeAndWait(() -> {
++                if (setLookAndFeel(laf)) {
++                    runTest();
++                }
++            });
++        }
++    }
++
++    private static boolean setLookAndFeel(UIManager.LookAndFeelInfo laf) {
++        try {
++            UIManager.setLookAndFeel(laf.getClassName());
++            return true;
++        } catch (UnsupportedLookAndFeelException  e) {
++            System.err.println("Skipping unsupported look and feel:");
++            e.printStackTrace();
++            return false;
++        } catch (Exception e) {
++            throw new RuntimeException(e);
++        }
++    }
++
++    private static void runTest() {
++        String str = "one two three";
++        JPasswordField field = new JPasswordField(str);
++        if (!(field.getUI() instanceof BasicTextUI)) {
++            throw new RuntimeException("Unexpected condition: JPasswordField UI was " + field.getUI());
++        }
++        System.out.println("Testing " + field.getUI());
++
++        // do something (anything) to initialize the Views:
++        field.setSize(100, 100);
++        field.addNotify();
++
++        Action action = field.getActionMap().get(
++                DefaultEditorKit.selectWordAction);
++        action.actionPerformed(new ActionEvent(field, 0, ""));
++        int selectionStart = field.getSelectionStart();
++        int selectionEnd = field.getSelectionEnd();
++        System.out.println("selectionStart = " + selectionStart);
++        System.out.println("selectionEnd = " + selectionEnd);
++        if (selectionStart != 0 || selectionEnd != str.length()) {
++            throw new RuntimeException("selectionStart = " + selectionStart +
++                    " and selectionEnd = " + selectionEnd);
++        }
++    }
++}

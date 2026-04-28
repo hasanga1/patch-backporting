@@ -1,0 +1,81 @@
+diff --git a/src/java.base/share/classes/sun/security/jca/ProviderList.java b/src/java.base/share/classes/sun/security/jca/ProviderList.java
+index c93983cd4aa..0dfead03158 100644
+--- a/src/java.base/share/classes/sun/security/jca/ProviderList.java
++++ b/src/java.base/share/classes/sun/security/jca/ProviderList.java
+@@ -369,17 +369,19 @@ public final class ProviderList {
+         int i;
+ 
+         // Preferred provider list
+-        if (preferredPropList != null &&
+-                (pList = preferredPropList.getAll(type, name)) != null) {
++        if (preferredPropList != null) {
++            pList = preferredPropList.getAll(type, name);
+             for (i = 0; i < pList.size(); i++) {
+                 Provider p = getProvider(pList.get(i).provider);
++                if (p == null) {
++                    continue;
++                }
+                 Service s = p.getService(type, name);
+                 if (s != null) {
+                     return s;
+                 }
+             }
+         }
+-
+         for (i = 0; i < configs.length; i++) {
+             Provider p = getProvider(i);
+             Service s = p.getService(type, name);
+diff --git a/test/jdk/sun/security/jca/NullPreferredList.java b/test/jdk/sun/security/jca/NullPreferredList.java
+new file mode 100644
+index 00000000000..0a8cf73443c
+--- /dev/null
++++ b/test/jdk/sun/security/jca/NullPreferredList.java
+@@ -0,0 +1,41 @@
++/*
++ * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
++ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
++ *
++ * This code is free software; you can redistribute it and/or modify it
++ * under the terms of the GNU General Public License version 2 only, as
++ * published by the Free Software Foundation.
++ *
++ * This code is distributed in the hope that it will be useful, but WITHOUT
++ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
++ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
++ * version 2 for more details (a copy is included in the LICENSE file that
++ * accompanied this code).
++ *
++ * You should have received a copy of the GNU General Public License version
++ * 2 along with this work; if not, write to the Free Software Foundation,
++ * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
++ *
++ * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
++ * or visit www.oracle.com if you need additional information or have any
++ * questions.
++ */
++
++import java.security.*;
++
++/**
++ * @test
++ * @bug 8328864
++ * @summary Test that ProviderList.getService checks configs when
++ * ProviderList.getProvider fails for preferred providers.
++ * @run main/othervm
++ *  -Djava.security.properties=${test.src}/app-security.properties NullPreferredList
++ */
++
++public class NullPreferredList {
++
++    public static void main(final String[] args) throws Exception {
++        final KeyStore ks = KeyStore.getInstance("PKCS12");
++        System.out.println("Got keystore " + ks);
++    }
++}
+diff --git a/test/jdk/sun/security/jca/app-security.properties b/test/jdk/sun/security/jca/app-security.properties
+new file mode 100644
+index 00000000000..1f15a7797c2
+--- /dev/null
++++ b/test/jdk/sun/security/jca/app-security.properties
+@@ -0,0 +1 @@
++jdk.security.provider.preferred=KeyStore.PKCS12:NonExistingProvider

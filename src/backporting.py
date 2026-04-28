@@ -238,6 +238,7 @@ def run_pipeline(
     debug_mode: bool,
     extra_validation_config: dict | None = None,
     java_preprocessing_config: dict | None = None,
+    cross_repo_config: dict | None = None,
 ):
     log_dir = "../logs"
     os.makedirs(log_dir, exist_ok=True)
@@ -247,6 +248,15 @@ def run_pipeline(
 
     project = Project(data)
     project._safe_clean_repo()
+
+    # ── Cross-repo: inject pre-computed patch from a different source repo ────
+    # Used for JDK backports where the original fix lives in the mainline 'jdk'
+    # repo but the backport target is 'jdk17u-dev' etc. The patch text was
+    # computed in run_from_csv.py using the source repo and is injected here so
+    # the rest of the pipeline never needs to resolve the original SHA locally.
+    if cross_repo_config and cross_repo_config.get("original_patch"):
+        _op = cross_repo_config["original_patch"]
+        project._get_patch = lambda ref: _op  # noqa: E731
 
     # ── Java preprocessing: filter patch to agent-eligible Java source hunks ─
     if java_preprocessing_config and java_preprocessing_config.get("filter_java_source"):

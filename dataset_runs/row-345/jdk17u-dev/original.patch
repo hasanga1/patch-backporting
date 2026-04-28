@@ -1,0 +1,1435 @@
+diff --git a/src/java.base/share/classes/sun/security/action/GetPropertyAction.java b/src/java.base/share/classes/sun/security/action/GetPropertyAction.java
+index 48e62a68f39..7b1757e46a0 100644
+--- a/src/java.base/share/classes/sun/security/action/GetPropertyAction.java
++++ b/src/java.base/share/classes/sun/security/action/GetPropertyAction.java
+@@ -1,5 +1,5 @@
+ /*
+- * Copyright (c) 1998, 2022, Oracle and/or its affiliates. All rights reserved.
++ * Copyright (c) 1998, 2023, Oracle and/or its affiliates. All rights reserved.
+  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+  *
+  * This code is free software; you can redistribute it and/or modify it
+@@ -28,6 +28,7 @@
+ import java.security.AccessController;
+ import java.security.PrivilegedAction;
+ import java.util.Properties;
++import sun.security.util.Debug;
+ 
+ /**
+  * A convenience class for retrieving the string value of a system
+@@ -160,4 +161,66 @@ public Properties run() {
+             );
+         }
+     }
++
++    /**
++     * Convenience method for fetching System property values that are timeouts.
++     * Accepted timeout values may be purely numeric, a numeric value
++     * followed by "s" (both interpreted as seconds), or a numeric value
++     * followed by "ms" (interpreted as milliseconds).
++     *
++     * @param prop the name of the System property
++     * @param def a default value (in milliseconds)
++     * @param dbg a Debug object, if null no debug messages will be sent
++     *
++     * @return an integer value corresponding to the timeout value in the System
++     *      property in milliseconds.  If the property value is empty, negative,
++     *      or contains non-numeric characters (besides a trailing "s" or "ms")
++     *      then the default value will be returned.  If a negative value for
++     *      the "def" parameter is supplied, zero will be returned if the
++     *      property's value does not conform to the allowed syntax.
++     */
++    public static int privilegedGetTimeoutProp(String prop, int def, Debug dbg) {
++        if (def < 0) {
++            def = 0;
++        }
++
++        String rawPropVal = privilegedGetProperty(prop, "").trim();
++        if (rawPropVal.length() == 0) {
++            return def;
++        }
++
++        // Determine if "ms" or just "s" is on the end of the string.
++        // We may do a little surgery on the value so we'll retain
++        // the original value in rawPropVal for debug messages.
++        boolean isMillis = false;
++        String propVal = rawPropVal;
++        if (rawPropVal.toLowerCase().endsWith("ms")) {
++            propVal = rawPropVal.substring(0, rawPropVal.length() - 2);
++            isMillis = true;
++        } else if (rawPropVal.toLowerCase().endsWith("s")) {
++            propVal = rawPropVal.substring(0, rawPropVal.length() - 1);
++        }
++
++        // Next check to make sure the string is built only from digits
++        if (propVal.matches("^\\d+$")) {
++            try {
++                int timeout = Integer.parseInt(propVal);
++                return isMillis ? timeout : timeout * 1000;
++            } catch (NumberFormatException nfe) {
++                if (dbg != null) {
++                    dbg.println("Warning: Unexpected " + nfe +
++                            " for timeout value " + rawPropVal +
++                            ". Using default value of " + def + " msec.");
++                }
++                return def;
++            }
++        } else {
++            if (dbg != null) {
++                dbg.println("Warning: Incorrect syntax for timeout value " +
++                        rawPropVal + ". Using default value of " + def +
++                        " msec.");
++            }
++            return def;
++        }
++    }
+ }
+diff --git a/src/java.base/share/classes/sun/security/provider/certpath/OCSP.java b/src/java.base/share/classes/sun/security/provider/certpath/OCSP.java
+index 825bb427589..a21635afa97 100644
+--- a/src/java.base/share/classes/sun/security/provider/certpath/OCSP.java
++++ b/src/java.base/share/classes/sun/security/provider/certpath/OCSP.java
+@@ -26,10 +26,7 @@
+ 
+ import java.io.IOException;
+ import java.io.OutputStream;
+-import java.net.URI;
+-import java.net.URL;
+-import java.net.HttpURLConnection;
+-import java.net.URLEncoder;
++import java.net.*;
+ import java.security.cert.CertificateException;
+ import java.security.cert.CertPathValidatorException;
+ import java.security.cert.CertPathValidatorException.BasicReason;
+@@ -41,7 +38,7 @@
+ import java.util.List;
+ import java.util.Map;
+ 
+-import sun.security.action.GetIntegerAction;
++import sun.security.action.GetPropertyAction;
+ import sun.security.util.Debug;
+ import sun.security.util.Event;
+ import sun.security.util.IOUtils;
+@@ -70,29 +67,36 @@ public final class OCSP {
+     private static final Debug debug = Debug.getInstance("certpath");
+ 
+     private static final int DEFAULT_CONNECT_TIMEOUT = 15000;
++    private static final int DEFAULT_READ_TIMEOUT = 15000;
+ 
+     /**
+-     * Integer value indicating the timeout length, in seconds, to be
+-     * used for the OCSP check. A timeout of zero is interpreted as
+-     * an infinite timeout.
++     * Integer value indicating the timeout length, in milliseconds, to be
++     * used for establishing a connection to an OCSP responder. A timeout of
++     * zero is interpreted as an infinite timeout.
+      */
+-    private static final int CONNECT_TIMEOUT = initializeTimeout();
++    private static final int CONNECT_TIMEOUT = initializeTimeout(
++            "com.sun.security.ocsp.timeout", DEFAULT_CONNECT_TIMEOUT);
++
++    /**
++     * Integer value indicating the timeout length, in milliseconds, to be
++     * used for reading an OCSP response from the responder.  A timeout of
++     * zero is interpreted as an infinite timeout.
++     */
++    private static final int READ_TIMEOUT = initializeTimeout(
++            "com.sun.security.ocsp.readtimeout", DEFAULT_READ_TIMEOUT);
+ 
+     /**
+      * Initialize the timeout length by getting the OCSP timeout
+      * system property. If the property has not been set, or if its
+      * value is negative, set the timeout length to the default.
+      */
+-    private static int initializeTimeout() {
+-        @SuppressWarnings("removal")
+-        Integer tmp = java.security.AccessController.doPrivileged(
+-                new GetIntegerAction("com.sun.security.ocsp.timeout"));
+-        if (tmp == null || tmp < 0) {
+-            return DEFAULT_CONNECT_TIMEOUT;
++    private static int initializeTimeout(String prop, int def) {
++        int timeoutVal =
++                GetPropertyAction.privilegedGetTimeoutProp(prop, def, debug);
++        if (debug != null) {
++            debug.println(prop + " set to " + timeoutVal + " milliseconds");
+         }
+-        // Convert to milliseconds, as the system property will be
+-        // specified in seconds
+-        return tmp * 1000;
++        return timeoutVal;
+     }
+ 
+     private OCSP() {}
+@@ -183,9 +187,10 @@ public static byte[] getOCSPBytes(List<CertId> certIds, URI responderURI,
+                     Base64.getEncoder().encodeToString(bytes), UTF_8));
+ 
+             if (encodedGetReq.length() <= 255) {
+-                @SuppressWarnings("deprecation")
+-                var _unused = url = new URL(encodedGetReq.toString());
++                url = new URI(encodedGetReq.toString()).toURL();
+                 con = (HttpURLConnection)url.openConnection();
++                con.setConnectTimeout(CONNECT_TIMEOUT);
++                con.setReadTimeout(READ_TIMEOUT);
+                 con.setDoOutput(true);
+                 con.setDoInput(true);
+                 con.setRequestMethod("GET");
+@@ -193,7 +198,7 @@ public static byte[] getOCSPBytes(List<CertId> certIds, URI responderURI,
+                 url = responderURI.toURL();
+                 con = (HttpURLConnection)url.openConnection();
+                 con.setConnectTimeout(CONNECT_TIMEOUT);
+-                con.setReadTimeout(CONNECT_TIMEOUT);
++                con.setReadTimeout(READ_TIMEOUT);
+                 con.setDoOutput(true);
+                 con.setDoInput(true);
+                 con.setRequestMethod("POST");
+@@ -223,6 +228,8 @@ public static byte[] getOCSPBytes(List<CertId> certIds, URI responderURI,
+             return (contentLength == -1) ? con.getInputStream().readAllBytes() :
+                     IOUtils.readExactlyNBytes(con.getInputStream(),
+                             contentLength);
++        } catch (URISyntaxException urise) {
++            throw new IOException(urise);
+         } finally {
+             if (con != null) {
+                 con.disconnect();
+diff --git a/src/java.base/share/classes/sun/security/provider/certpath/URICertStore.java b/src/java.base/share/classes/sun/security/provider/certpath/URICertStore.java
+index 1ab9c3f21b2..44f11cb0985 100644
+--- a/src/java.base/share/classes/sun/security/provider/certpath/URICertStore.java
++++ b/src/java.base/share/classes/sun/security/provider/certpath/URICertStore.java
+@@ -1,5 +1,5 @@
+ /*
+- * Copyright (c) 2006, 2022, Oracle and/or its affiliates. All rights reserved.
++ * Copyright (c) 2006, 2023, Oracle and/or its affiliates. All rights reserved.
+  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+  *
+  * This code is free software; you can redistribute it and/or modify it
+@@ -50,7 +50,8 @@
+ import java.util.Collections;
+ import java.util.List;
+ import java.util.Locale;
+-import sun.security.action.GetIntegerAction;
++
++import sun.security.action.GetPropertyAction;
+ import sun.security.x509.AccessDescription;
+ import sun.security.x509.GeneralNameInterface;
+ import sun.security.x509.URIName;
+@@ -127,8 +128,12 @@ class URICertStore extends CertStoreSpi {
+     // allowed when downloading CRLs
+     private static final int DEFAULT_CRL_READ_TIMEOUT = 15000;
+ 
++    // Default connect and read timeouts for CA certificate fetching (15 sec)
++    private static final int DEFAULT_CACERT_CONNECT_TIMEOUT = 15000;
++    private static final int DEFAULT_CACERT_READ_TIMEOUT = 15000;
++
+     /**
+-     * Integer value indicating the connect timeout, in seconds, to be
++     * Integer value indicating the connect timeout, in milliseconds, to be
+      * used for the CRL download. A timeout of zero is interpreted as
+      * an infinite timeout.
+      */
+@@ -137,7 +142,7 @@ class URICertStore extends CertStoreSpi {
+                           DEFAULT_CRL_CONNECT_TIMEOUT);
+ 
+     /**
+-     * Integer value indicating the read timeout, in seconds, to be
++     * Integer value indicating the read timeout, in milliseconds, to be
+      * used for the CRL download. A timeout of zero is interpreted as
+      * an infinite timeout.
+      */
+@@ -145,22 +150,36 @@ class URICertStore extends CertStoreSpi {
+         initializeTimeout("com.sun.security.crl.readtimeout",
+                           DEFAULT_CRL_READ_TIMEOUT);
+ 
++    /**
++     * Integer value indicating the connect timeout, in milliseconds, to be
++     * used for the CA certificate download. A timeout of zero is interpreted
++     * as an infinite timeout.
++     */
++    private static final int CACERT_CONNECT_TIMEOUT =
++            initializeTimeout("com.sun.security.cert.timeout",
++                    DEFAULT_CACERT_CONNECT_TIMEOUT);
++
++    /**
++     * Integer value indicating the read timeout, in milliseconds, to be
++     * used for the CA certificate download. A timeout of zero is interpreted
++     * as an infinite timeout.
++     */
++    private static final int CACERT_READ_TIMEOUT =
++            initializeTimeout("com.sun.security.cert.readtimeout",
++                    DEFAULT_CACERT_READ_TIMEOUT);
++
+     /**
+      * Initialize the timeout length by getting the specified CRL timeout
+      * system property. If the property has not been set, or if its
+      * value is negative, set the timeout length to the specified default.
+      */
+     private static int initializeTimeout(String prop, int def) {
+-        Integer tmp = GetIntegerAction.privilegedGetProperty(prop);
+-        if (tmp == null || tmp < 0) {
+-            return def;
+-        }
++        int timeoutVal =
++                GetPropertyAction.privilegedGetTimeoutProp(prop, def, debug);
+         if (debug != null) {
+-            debug.println(prop + " set to " + tmp + " seconds");
++            debug.println(prop + " set to " + timeoutVal + " milliseconds");
+         }
+-        // Convert to milliseconds, as the system property will be
+-        // specified in seconds
+-        return tmp * 1000;
++        return timeoutVal;
+     }
+ 
+     /**
+@@ -276,6 +295,8 @@ static CertStore getInstance(AccessDescription ad) {
+                 connection.setIfModifiedSince(lastModified);
+             }
+             long oldLastModified = lastModified;
++            connection.setConnectTimeout(CACERT_CONNECT_TIMEOUT);
++            connection.setReadTimeout(CACERT_READ_TIMEOUT);
+             try (InputStream in = connection.getInputStream()) {
+                 lastModified = connection.getLastModified();
+                 if (oldLastModified != 0) {
+diff --git a/test/jdk/java/security/cert/CertPathValidator/OCSP/OCSPTimeout.java b/test/jdk/java/security/cert/CertPathValidator/OCSP/OCSPTimeout.java
+new file mode 100644
+index 00000000000..1a634d3c2d4
+--- /dev/null
++++ b/test/jdk/java/security/cert/CertPathValidator/OCSP/OCSPTimeout.java
+@@ -0,0 +1,292 @@
++/*
++ * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
++ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
++ *
++ * This code is free software; you can redistribute it and/or modify it
++ * under the terms of the GNU General Public License version 2 only, as
++ * published by the Free Software Foundation.
++ *
++ * This code is distributed in the hope that it will be useful, but WITHOUT
++ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
++ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
++ * version 2 for more details (a copy is included in the LICENSE file that
++ * accompanied this code).
++ *
++ * You should have received a copy of the GNU General Public License version
++ * 2 along with this work; if not, write to the Free Software Foundation,
++ * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
++ *
++ * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
++ * or visit www.oracle.com if you need additional information or have any
++ * questions.
++ */
++
++//
++// Security properties, once set, cannot revert to unset.  To avoid
++// conflicts with tests running in the same VM isolate this test by
++// running it in otherVM mode.
++//
++
++/**
++ * @test
++ * @bug 8179502
++ * @summary Enhance OCSP, CRL and Certificate Fetch Timeouts
++ * @modules java.base/sun.security.x509
++ *          java.base/sun.security.provider.certpath
++ *          java.base/sun.security.util
++ * @library ../../../../../java/security/testlibrary
++ * @build CertificateBuilder SimpleOCSPServer
++ * @run main/othervm OCSPTimeout 1000 true
++ * @run main/othervm -Dcom.sun.security.ocsp.readtimeout=2
++ *      OCSPTimeout 1000 true
++ * @run main/othervm -Dcom.sun.security.ocsp.readtimeout=1
++ *      OCSPTimeout 2000 false
++ * @run main/othervm -Dcom.sun.security.ocsp.readtimeout=1s
++ *      OCSPTimeout 2000 false
++ * @run main/othervm -Dcom.sun.security.ocsp.readtimeout=1500ms
++ *      OCSPTimeout 2000 false
++ * @run main/othervm -Dcom.sun.security.ocsp.readtimeout=2750ms
++ *      OCSPTimeout 2000 true
++ */
++
++import java.io.*;
++import java.math.BigInteger;
++import java.net.*;
++import java.security.*;
++import java.security.cert.Certificate;
++import java.security.spec.ECGenParameterSpec;
++import java.util.*;
++import java.security.cert.*;
++import java.util.concurrent.TimeUnit;
++
++import sun.security.testlibrary.SimpleOCSPServer;
++import sun.security.testlibrary.CertificateBuilder;
++
++import static java.security.cert.PKIXRevocationChecker.Option.*;
++
++public class OCSPTimeout {
++
++    static String passwd = "passphrase";
++    static String ROOT_ALIAS = "root";
++    static String EE_ALIAS = "endentity";
++
++    // Enable debugging for additional output
++    static final boolean debug = true;
++
++    // PKI components we will need for this test
++    static X509Certificate rootCert;        // The root CA certificate
++    static X509Certificate eeCert;          // The end entity certificate
++    static KeyStore rootKeystore;           // Root CA Keystore
++    static KeyStore eeKeystore;             // End Entity Keystore
++    static KeyStore trustStore;             // SSL Client trust store
++    static SimpleOCSPServer rootOcsp;       // Root CA OCSP Responder
++    static int rootOcspPort;                // Port number for root OCSP
++
++    public static void main(String args[]) throws Exception {
++        int ocspTimeout = 15000;
++        boolean expected = false;
++
++        createPKI();
++
++        if (args[0] != null) {
++            ocspTimeout = Integer.parseInt(args[0]);
++        }
++        rootOcsp.setDelay(ocspTimeout);
++
++        expected = (args[1] != null && Boolean.parseBoolean(args[1]));
++        log("Test case expects to " + (expected ? "pass" : "fail"));
++
++        // validate chain
++        CertPathValidator cpv = CertPathValidator.getInstance("PKIX");
++        PKIXRevocationChecker prc =
++                (PKIXRevocationChecker) cpv.getRevocationChecker();
++        prc.setOptions(EnumSet.of(NO_FALLBACK, SOFT_FAIL));
++        PKIXParameters params =
++                new PKIXParameters(Set.of(new TrustAnchor(rootCert, null)));
++        params.addCertPathChecker(prc);
++        CertificateFactory cf = CertificateFactory.getInstance("X.509");
++        CertPath cp = cf.generateCertPath(List.of(eeCert));
++        cpv.validate(cp, params);
++
++        // unwrap soft fail exceptions and check for SocketTimeoutException
++        List<CertPathValidatorException> softExc = prc.getSoftFailExceptions();
++        if (expected) {
++            if (softExc.size() > 0) {
++                throw new RuntimeException("Expected to pass, found " +
++                        softExc.size() + " soft fail exceptions");
++            }
++        } else {
++            // If we expect to fail the validation then there should be a
++            // SocketTimeoutException
++            boolean found = false;
++            for (CertPathValidatorException softFail : softExc) {
++                log("CPVE: " + softFail);
++                Throwable cause = softFail.getCause();
++                log("Cause: " + cause);
++                while (cause != null) {
++                    if (cause instanceof SocketTimeoutException) {
++                        found = true;
++                        break;
++                    }
++                    cause = cause.getCause();
++                }
++                if (found) {
++                    break;
++                }
++            }
++
++            if (!found) {
++                throw new RuntimeException("SocketTimeoutException not thrown");
++            }
++        }
++    }
++
++    /**
++     * Creates the PKI components necessary for this test, including
++     * Root CA, Intermediate CA and SSL server certificates, the keystores
++     * for each entity, a client trust store, and starts the OCSP responders.
++     */
++    private static void createPKI() throws Exception {
++        CertificateBuilder cbld = new CertificateBuilder();
++        KeyPairGenerator keyGen = KeyPairGenerator.getInstance("EC");
++        keyGen.initialize(new ECGenParameterSpec("secp256r1"));
++        KeyStore.Builder keyStoreBuilder =
++                KeyStore.Builder.newInstance("PKCS12", null,
++                        new KeyStore.PasswordProtection(passwd.toCharArray()));
++
++        // Generate Root and EE keys
++        KeyPair rootCaKP = keyGen.genKeyPair();
++        log("Generated Root CA KeyPair");
++        KeyPair eeKP = keyGen.genKeyPair();
++        log("Generated End Entity KeyPair");
++
++        // Set up the Root CA Cert
++        cbld.setSubjectName("CN=Root CA Cert, O=SomeCompany");
++        cbld.setPublicKey(rootCaKP.getPublic());
++        cbld.setSerialNumber(new BigInteger("1"));
++        // Make a 3 year validity starting from 60 days ago
++        long start = System.currentTimeMillis() - TimeUnit.DAYS.toMillis(60);
++        long end = start + TimeUnit.DAYS.toMillis(1085);
++        cbld.setValidity(new Date(start), new Date(end));
++        addCommonExts(cbld, rootCaKP.getPublic(), rootCaKP.getPublic());
++        addCommonCAExts(cbld);
++        // Make our Root CA Cert!
++        rootCert = cbld.build(null, rootCaKP.getPrivate(),
++                "SHA256withECDSA");
++        log("Root CA Created:\n%s", certInfo(rootCert));
++
++        // Now build a keystore and add the keys and cert
++        rootKeystore = keyStoreBuilder.getKeyStore();
++        Certificate[] rootChain = {rootCert};
++        rootKeystore.setKeyEntry(ROOT_ALIAS, rootCaKP.getPrivate(),
++                passwd.toCharArray(), rootChain);
++
++        // Now fire up the OCSP responder
++        rootOcsp = new SimpleOCSPServer(rootKeystore, passwd, ROOT_ALIAS, null);
++        rootOcsp.enableLog(debug);
++        rootOcsp.setNextUpdateInterval(3600);
++        rootOcsp.setDisableContentLength(true);
++        rootOcsp.start();
++
++        // Wait 5 seconds for server ready
++        boolean readyStatus = rootOcsp.awaitServerReady(5, TimeUnit.SECONDS);
++        if (!readyStatus) {
++            throw new RuntimeException("Server not ready");
++        }
++
++        rootOcspPort = rootOcsp.getPort();
++        String rootRespURI = "http://localhost:" + rootOcspPort;
++        log("Root OCSP Responder URI is %s", rootRespURI);
++
++        // Now that we have the root keystore and OCSP responder we can
++        // create our end entity certificate
++        cbld.reset();
++        cbld.setSubjectName("CN=SSLCertificate, O=SomeCompany");
++        cbld.setPublicKey(eeKP.getPublic());
++        cbld.setSerialNumber(new BigInteger("4096"));
++        // Make a 1 year validity starting from 7 days ago
++        start = System.currentTimeMillis() - TimeUnit.DAYS.toMillis(7);
++        end = start + TimeUnit.DAYS.toMillis(365);
++        cbld.setValidity(new Date(start), new Date(end));
++
++        // Add extensions
++        addCommonExts(cbld, eeKP.getPublic(), rootCaKP.getPublic());
++        boolean[] kuBits = {true, false, false, false, false, false,
++                false, false, false};
++        cbld.addKeyUsageExt(kuBits);
++        List<String> ekuOids = new ArrayList<>();
++        ekuOids.add("1.3.6.1.5.5.7.3.1");
++        ekuOids.add("1.3.6.1.5.5.7.3.2");
++        cbld.addExtendedKeyUsageExt(ekuOids);
++        cbld.addSubjectAltNameDNSExt(Collections.singletonList("localhost"));
++        cbld.addAIAExt(Collections.singletonList(rootRespURI));
++        // Make our End Entity Cert!
++        eeCert = cbld.build(rootCert, rootCaKP.getPrivate(),
++                "SHA256withECDSA");
++        log("SSL Certificate Created:\n%s", certInfo(eeCert));
++
++        // Provide end entity cert revocation info to the Root CA
++        // OCSP responder.
++        Map<BigInteger, SimpleOCSPServer.CertStatusInfo> revInfo =
++                new HashMap<>();
++        revInfo.put(eeCert.getSerialNumber(),
++                new SimpleOCSPServer.CertStatusInfo(
++                        SimpleOCSPServer.CertStatus.CERT_STATUS_GOOD));
++        rootOcsp.updateStatusDb(revInfo);
++
++        // Now build a keystore and add the keys, chain and root cert as a TA
++        eeKeystore = keyStoreBuilder.getKeyStore();
++        Certificate[] eeChain = {eeCert, rootCert};
++        eeKeystore.setKeyEntry(EE_ALIAS, eeKP.getPrivate(),
++                passwd.toCharArray(), eeChain);
++        eeKeystore.setCertificateEntry(ROOT_ALIAS, rootCert);
++
++        // And finally a Trust Store for the client
++        trustStore = keyStoreBuilder.getKeyStore();
++        trustStore.setCertificateEntry(ROOT_ALIAS, rootCert);
++    }
++
++    private static void addCommonExts(CertificateBuilder cbld,
++            PublicKey subjKey, PublicKey authKey) throws IOException {
++        cbld.addSubjectKeyIdExt(subjKey);
++        cbld.addAuthorityKeyIdExt(authKey);
++    }
++
++    private static void addCommonCAExts(CertificateBuilder cbld)
++            throws IOException {
++        cbld.addBasicConstraintsExt(true, true, -1);
++        // Set key usage bits for digitalSignature, keyCertSign and cRLSign
++        boolean[] kuBitSettings = {true, false, false, false, false, true,
++                true, false, false};
++        cbld.addKeyUsageExt(kuBitSettings);
++    }
++
++    /**
++     * Helper routine that dumps only a few cert fields rather than
++     * the whole toString() output.
++     *
++     * @param cert an X509Certificate to be displayed
++     *
++     * @return the String output of the issuer, subject and
++     * serial number
++     */
++    private static String certInfo(X509Certificate cert) {
++        StringBuilder sb = new StringBuilder();
++        sb.append("Issuer: ").append(cert.getIssuerX500Principal()).
++                append("\n");
++        sb.append("Subject: ").append(cert.getSubjectX500Principal()).
++                append("\n");
++        sb.append("Serial: ").append(cert.getSerialNumber()).append("\n");
++        return sb.toString();
++    }
++
++    /**
++     * Log a message on stdout
++     *
++     * @param format the format string for the log entry
++     * @param args zero or more arguments corresponding to the format string
++     */
++    private static void log(String format, Object ... args) {
++        System.out.format(format + "\n", args);
++    }
++}
+diff --git a/test/jdk/java/security/testlibrary/CertificateBuilder.java b/test/jdk/java/security/testlibrary/CertificateBuilder.java
+index 726227b35b3..1e26d471c97 100644
+--- a/test/jdk/java/security/testlibrary/CertificateBuilder.java
++++ b/test/jdk/java/security/testlibrary/CertificateBuilder.java
+@@ -1,5 +1,5 @@
+ /*
+- * Copyright (c) 2015, 2021, Oracle and/or its affiliates. All rights reserved.
++ * Copyright (c) 2015, 2023, Oracle and/or its affiliates. All rights reserved.
+  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+  *
+  * This code is free software; you can redistribute it and/or modify it
+@@ -115,8 +115,9 @@ public CertificateBuilder() throws CertificateException {
+      * @param name An {@link X500Principal} to be used as the subject name
+      * on this certificate.
+      */
+-    public void setSubjectName(X500Principal name) {
++    public CertificateBuilder setSubjectName(X500Principal name) {
+         subjectName = name;
++        return this;
+     }
+ 
+     /**
+@@ -124,8 +125,9 @@ public void setSubjectName(X500Principal name) {
+      *
+      * @param name The subject name in RFC 2253 format
+      */
+-    public void setSubjectName(String name) {
++    public CertificateBuilder setSubjectName(String name) {
+         subjectName = new X500Principal(name);
++        return this;
+     }
+ 
+     /**
+@@ -133,8 +135,9 @@ public void setSubjectName(String name) {
+      *
+      * @param pubKey The {@link PublicKey} to be used on this certificate.
+      */
+-    public void setPublicKey(PublicKey pubKey) {
++    public CertificateBuilder setPublicKey(PublicKey pubKey) {
+         publicKey = Objects.requireNonNull(pubKey, "Caught null public key");
++        return this;
+     }
+ 
+     /**
+@@ -143,9 +146,10 @@ public void setPublicKey(PublicKey pubKey) {
+      * @param nbDate A {@link Date} object specifying the start of the
+      * certificate validity period.
+      */
+-    public void setNotBefore(Date nbDate) {
++    public CertificateBuilder setNotBefore(Date nbDate) {
+         Objects.requireNonNull(nbDate, "Caught null notBefore date");
+         notBefore = (Date)nbDate.clone();
++        return this;
+     }
+ 
+     /**
+@@ -154,9 +158,10 @@ public void setNotBefore(Date nbDate) {
+      * @param naDate A {@link Date} object specifying the end of the
+      * certificate validity period.
+      */
+-    public void setNotAfter(Date naDate) {
++    public CertificateBuilder setNotAfter(Date naDate) {
+         Objects.requireNonNull(naDate, "Caught null notAfter date");
+         notAfter = (Date)naDate.clone();
++        return this;
+     }
+ 
+     /**
+@@ -167,9 +172,8 @@ public void setNotAfter(Date naDate) {
+      * @param naDate A {@link Date} object specifying the end of the
+      * certificate validity period.
+      */
+-    public void setValidity(Date nbDate, Date naDate) {
+-        setNotBefore(nbDate);
+-        setNotAfter(naDate);
++    public CertificateBuilder setValidity(Date nbDate, Date naDate) {
++        return setNotBefore(nbDate).setNotAfter(naDate);
+     }
+ 
+     /**
+@@ -177,9 +181,10 @@ public void setValidity(Date nbDate, Date naDate) {
+      *
+      * @param serial A serial number in {@link BigInteger} form.
+      */
+-    public void setSerialNumber(BigInteger serial) {
++    public CertificateBuilder setSerialNumber(BigInteger serial) {
+         Objects.requireNonNull(serial, "Caught null serial number");
+         serialNumber = serial;
++        return this;
+     }
+ 
+ 
+@@ -188,9 +193,10 @@ public void setSerialNumber(BigInteger serial) {
+      *
+      * @param ext The extension to be added.
+      */
+-    public void addExtension(Extension ext) {
++    public CertificateBuilder addExtension(Extension ext) {
+         Objects.requireNonNull(ext, "Caught null extension");
+         extensions.put(ext.getId(), ext);
++        return this;
+     }
+ 
+     /**
+@@ -199,11 +205,12 @@ public void addExtension(Extension ext) {
+      * @param extList The {@link List} of extensions to be added to
+      * the certificate.
+      */
+-    public void addExtensions(List<Extension> extList) {
++    public CertificateBuilder addExtensions(List<Extension> extList) {
+         Objects.requireNonNull(extList, "Caught null extension list");
+         for (Extension ext : extList) {
+             extensions.put(ext.getId(), ext);
+         }
++        return this;
+     }
+ 
+     /**
+@@ -213,7 +220,8 @@ public void addExtensions(List<Extension> extList) {
+      *
+      * @throws IOException if an encoding error occurs.
+      */
+-    public void addSubjectAltNameDNSExt(List<String> dnsNames) throws IOException {
++    public CertificateBuilder addSubjectAltNameDNSExt(List<String> dnsNames)
++            throws IOException {
+         if (!dnsNames.isEmpty()) {
+             GeneralNames gNames = new GeneralNames();
+             for (String name : dnsNames) {
+@@ -222,29 +230,57 @@ public void addSubjectAltNameDNSExt(List<String> dnsNames) throws IOException {
+             addExtension(new SubjectAlternativeNameExtension(false,
+                     gNames));
+         }
++        return this;
+     }
+ 
+     /**
+      * Helper method to add one or more OCSP URIs to the Authority Info Access
+-     * certificate extension.
++     * certificate extension.  Location strings can be in two forms:
++     * 1) Just a URI by itself: This will be treated as using the OCSP
++     *    access description (legacy behavior).
++     * 2) An access description name (case-insensitive) followed by a
++     *    pipe (|) and the URI (e.g. OCSP|http://ocsp.company.com/revcheck).
++     * Current description names are OCSP and CAISSUER. Others may be
++     * added later.
+      *
+-     * @param locations A list of one or more OCSP responder URIs as strings
++     * @param locations A list of one or more access descriptor URIs as strings
+      *
+      * @throws IOException if an encoding error occurs.
+      */
+-    public void addAIAExt(List<String> locations)
++    public CertificateBuilder addAIAExt(List<String> locations)
+             throws IOException {
+         if (!locations.isEmpty()) {
+             List<AccessDescription> acDescList = new ArrayList<>();
+-            for (String ocspUri : locations) {
+-                acDescList.add(new AccessDescription(
+-                        AccessDescription.Ad_OCSP_Id,
+-                        new GeneralName(new URIName(ocspUri))));
++            for (String loc : locations) {
++                String[] tokens = loc.split("\\|", 2);
++                ObjectIdentifier adObj;
++                String uriLoc;
++                if (tokens.length == 1) {
++                    // Legacy form, assume OCSP
++                    adObj = AccessDescription.Ad_OCSP_Id;
++                    uriLoc = tokens[0];
++                } else {
++                    switch (tokens[0].toUpperCase()) {
++                        case "OCSP":
++                            adObj = AccessDescription.Ad_OCSP_Id;
++                            break;
++                        case "CAISSUER":
++                            adObj = AccessDescription.Ad_CAISSUERS_Id;
++                            break;
++                        default:
++                            throw new IOException("Unknown AD: " + tokens[0]);
++                    }
++                    uriLoc = tokens[1];
++                }
++                acDescList.add(new AccessDescription(adObj,
++                        new GeneralName(new URIName(uriLoc))));
+             }
+             addExtension(new AuthorityInfoAccessExtension(acDescList));
+         }
++        return this;
+     }
+ 
++
+     /**
+      * Set a Key Usage extension for the certificate.  The extension will
+      * be marked critical.
+@@ -254,8 +290,9 @@ public void addAIAExt(List<String> locations)
+      *
+      * @throws IOException if an encoding error occurs.
+      */
+-    public void addKeyUsageExt(boolean[] bitSettings) throws IOException {
+-        addExtension(new KeyUsageExtension(bitSettings));
++    public CertificateBuilder addKeyUsageExt(boolean[] bitSettings)
++            throws IOException {
++        return addExtension(new KeyUsageExtension(bitSettings));
+     }
+ 
+     /**
+@@ -270,9 +307,10 @@ public void addKeyUsageExt(boolean[] bitSettings) throws IOException {
+      *
+      * @throws IOException if an encoding error occurs.
+      */
+-    public void addBasicConstraintsExt(boolean crit, boolean isCA,
++    public CertificateBuilder addBasicConstraintsExt(boolean crit, boolean isCA,
+             int maxPathLen) throws IOException {
+-        addExtension(new BasicConstraintsExtension(crit, isCA, maxPathLen));
++        return addExtension(new BasicConstraintsExtension(crit, isCA,
++                maxPathLen));
+     }
+ 
+     /**
+@@ -282,9 +320,9 @@ public void addBasicConstraintsExt(boolean crit, boolean isCA,
+      *
+      * @throws IOException if an encoding error occurs.
+      */
+-    public void addAuthorityKeyIdExt(X509Certificate authorityCert)
++    public CertificateBuilder addAuthorityKeyIdExt(X509Certificate authorityCert)
+             throws IOException {
+-        addAuthorityKeyIdExt(authorityCert.getPublicKey());
++        return addAuthorityKeyIdExt(authorityCert.getPublicKey());
+     }
+ 
+     /**
+@@ -294,9 +332,11 @@ public void addAuthorityKeyIdExt(X509Certificate authorityCert)
+      *
+      * @throws IOException if an encoding error occurs.
+      */
+-    public void addAuthorityKeyIdExt(PublicKey authorityKey) throws IOException {
++    public CertificateBuilder addAuthorityKeyIdExt(PublicKey authorityKey)
++            throws IOException {
+         KeyIdentifier kid = new KeyIdentifier(authorityKey);
+-        addExtension(new AuthorityKeyIdentifierExtension(kid, null, null));
++        return addExtension(new AuthorityKeyIdentifierExtension(kid,
++                null, null));
+     }
+ 
+     /**
+@@ -306,9 +346,10 @@ public void addAuthorityKeyIdExt(PublicKey authorityKey) throws IOException {
+      *
+      * @throws IOException if an encoding error occurs.
+      */
+-    public void addSubjectKeyIdExt(PublicKey subjectKey) throws IOException {
++    public CertificateBuilder addSubjectKeyIdExt(PublicKey subjectKey)
++            throws IOException {
+         byte[] keyIdBytes = new KeyIdentifier(subjectKey).getIdentifier();
+-        addExtension(new SubjectKeyIdentifierExtension(keyIdBytes));
++        return addExtension(new SubjectKeyIdentifierExtension(keyIdBytes));
+     }
+ 
+     /**
+@@ -318,7 +359,7 @@ public void addSubjectKeyIdExt(PublicKey subjectKey) throws IOException {
+      *
+      * @throws IOException if an encoding error occurs.
+      */
+-    public void addExtendedKeyUsageExt(List<String> ekuOids)
++    public CertificateBuilder addExtendedKeyUsageExt(List<String> ekuOids)
+             throws IOException {
+         if (!ekuOids.isEmpty()) {
+             Vector<ObjectIdentifier> oidVector = new Vector<>();
+@@ -327,13 +368,14 @@ public void addExtendedKeyUsageExt(List<String> ekuOids)
+             }
+             addExtension(new ExtendedKeyUsageExtension(oidVector));
+         }
++        return this;
+     }
+ 
+     /**
+      * Clear all settings and return the {@code CertificateBuilder} to
+      * its default state.
+      */
+-    public void reset() {
++    public CertificateBuilder reset() {
+         extensions.clear();
+         subjectName = null;
+         notBefore = null;
+@@ -342,6 +384,7 @@ public void reset() {
+         publicKey = null;
+         signatureBytes = null;
+         tbsCertBytes = null;
++        return this;
+     }
+ 
+     /**
+@@ -383,7 +426,7 @@ public X509Certificate build(X509Certificate issuerCert,
+      * @param issuerCert The certificate of the issuing authority, or
+      * {@code null} if the resulting certificate is self-signed.
+      * @param issuerKey The private key of the issuing authority
+-     * @param signAlg The signature algorithm object
++     * @param algName The signature algorithm object
+      *
+      * @return The DER-encoded X.509 certificate
+      *
+@@ -449,10 +492,13 @@ private byte[] encodeTbsCert(X509Certificate issuerCert,
+         DerOutputStream tbsCertSeq = new DerOutputStream();
+         DerOutputStream tbsCertItems = new DerOutputStream();
+ 
+-        // Hardcode to V3
+-        byte[] v3int = {0x02, 0x01, 0x02};
+-        tbsCertItems.write(DerValue.createTag(DerValue.TAG_CONTEXT, true,
+-                (byte)0), v3int);
++        // If extensions exist then it needs to be v3, otherwise
++        // we can make it v1 and omit the version field as v1 is the default.
++        if (!extensions.isEmpty()) {
++            byte[] v3int = {0x02, 0x01, 0x02};
++            tbsCertItems.write(DerValue.createTag(DerValue.TAG_CONTEXT, true,
++                    (byte) 0), v3int);
++        }
+ 
+         // Serial Number
+         SerialNumber sn = new SerialNumber(serialNumber);
+@@ -482,7 +528,7 @@ private byte[] encodeTbsCert(X509Certificate issuerCert,
+         // SubjectPublicKeyInfo
+         tbsCertItems.write(publicKey.getEncoded());
+ 
+-        // TODO: Extensions!
++        // Encode any extensions in the builder
+         encodeExtensions(tbsCertItems);
+ 
+         // Wrap it all up in a SEQUENCE and return the bytes
+@@ -523,5 +569,4 @@ private void encodeExtensions(DerOutputStream tbsStream)
+         tbsStream.write(DerValue.createTag(DerValue.TAG_CONTEXT, true,
+                 (byte)3), extSequence);
+     }
+-
+ }
+diff --git a/test/jdk/sun/security/x509/URICertStore/AIACertTimeout.java b/test/jdk/sun/security/x509/URICertStore/AIACertTimeout.java
+new file mode 100644
+index 00000000000..871c47ce594
+--- /dev/null
++++ b/test/jdk/sun/security/x509/URICertStore/AIACertTimeout.java
+@@ -0,0 +1,292 @@
++/*
++ * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
++ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
++ *
++ * This code is free software; you can redistribute it and/or modify it
++ * under the terms of the GNU General Public License version 2 only, as
++ * published by the Free Software Foundation.
++ *
++ * This code is distributed in the hope that it will be useful, but WITHOUT
++ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
++ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
++ * version 2 for more details (a copy is included in the LICENSE file that
++ * accompanied this code).
++ *
++ * You should have received a copy of the GNU General Public License version
++ * 2 along with this work; if not, write to the Free Software Foundation,
++ * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
++ *
++ * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
++ * or visit www.oracle.com if you need additional information or have any
++ * questions.
++ */
++
++/*
++ * @test
++ * @bug 8179502
++ * @summary Enhance OCSP, CRL and Certificate Fetch Timeouts
++ * @modules java.base/sun.security.x509
++ *          java.base/sun.security.util
++ * @library /test/lib ../../../../java/security/testlibrary
++ * @build CertificateBuilder
++ * @run main/othervm -Dcom.sun.security.enableAIAcaIssuers=true
++ *      -Dcom.sun.security.cert.readtimeout=1 AIACertTimeout 2000 false
++ * @run main/othervm -Dcom.sun.security.enableAIAcaIssuers=true
++ *      -Dcom.sun.security.cert.readtimeout=1s AIACertTimeout 2000 false
++ * @run main/othervm -Dcom.sun.security.enableAIAcaIssuers=true
++ *      -Dcom.sun.security.cert.readtimeout=3 AIACertTimeout 2000 true
++ * @run main/othervm -Dcom.sun.security.enableAIAcaIssuers=true
++ *      -Dcom.sun.security.cert.readtimeout=1500ms AIACertTimeout 2000 false
++ * @run main/othervm -Dcom.sun.security.enableAIAcaIssuers=true
++ *      -Dcom.sun.security.cert.readtimeout=2750ms AIACertTimeout 2000 true
++ * @run main/othervm -Djava.security.debug=certpath
++ *      -Dcom.sun.security.enableAIAcaIssuers=false
++ *      -Dcom.sun.security.cert.readtimeout=20000ms AIACertTimeout 10000 false
++ */
++
++import com.sun.net.httpserver.*;
++import java.io.*;
++import java.math.BigInteger;
++import java.net.InetSocketAddress;
++import java.security.cert.*;
++import java.security.KeyPair;
++import java.security.KeyPairGenerator;
++import java.security.spec.*;
++import java.util.*;
++import java.util.concurrent.TimeUnit;
++
++import sun.security.testlibrary.CertificateBuilder;
++
++import sun.security.x509.*;
++import sun.security.util.*;
++
++public class AIACertTimeout {
++
++    private static final boolean logging = true;
++
++    // PKI and server components we will need for this test
++    private static KeyPair          rootKp;     // Root CA keys
++    private static X509Certificate  rootCert;
++    private static KeyPair          intKp;      // Intermediate CA keys
++    private static X509Certificate  intCert;
++    private static KeyPair          eeKp;       // End-entity keys
++    private static X509Certificate  eeCert;
++
++    public static void main(String[] args) throws Exception {
++        int servTimeoutMsec = (args != null && args.length >= 1) ?
++                Integer.parseInt(args[0]) : -1;
++        boolean expectedPass = args != null && args.length >= 2 &&
++                Boolean.parseBoolean(args[1]);
++
++        createAuthorities();
++        CaCertHttpServer aiaServer = new CaCertHttpServer(intCert,
++                servTimeoutMsec);
++        try {
++            aiaServer.start();
++            createEE(aiaServer.getAddress());
++
++            X509CertSelector target = new X509CertSelector();
++            target.setCertificate(eeCert);
++            PKIXParameters params = new PKIXBuilderParameters(Set.of(
++                        new TrustAnchor(rootCert, null)), target);
++            params.setRevocationEnabled(false);
++
++            try {
++                CertPathBuilder cpb = CertPathBuilder.getInstance("PKIX");
++                CertPathBuilderResult result = cpb.build(params);
++                if (expectedPass) {
++                    int pathLen = result.getCertPath().getCertificates().size();
++                    if (pathLen != 2) {
++                        throw new RuntimeException("Expected 2 certificates " +
++                                "in certpath, got " + pathLen);
++                    }
++                } else {
++                    throw new RuntimeException("Missing expected CertPathBuilderException");
++                }
++            } catch (CertPathBuilderException cpve) {
++                if (!expectedPass) {
++                    log("Cert path building failed as expected: " + cpve);
++                } else {
++                    throw cpve;
++                }
++            }
++        } finally {
++            aiaServer.stop();
++        }
++    }
++
++    private static class CaCertHttpServer {
++
++        private final X509Certificate caCert;
++        private final HttpServer server;
++        private final int timeout;
++
++        public CaCertHttpServer(X509Certificate cert, int timeout)
++                throws IOException {
++            caCert = Objects.requireNonNull(cert, "Null CA cert disallowed");
++            server = HttpServer.create();
++            this.timeout = timeout;
++            if (timeout > 0) {
++                log("Created HttpServer with timeout of " + timeout + " msec.");
++            } else {
++                log("Created HttpServer with no timeout");
++            }
++        }
++
++        public void start() throws IOException {
++            server.bind(new InetSocketAddress("localhost", 0), 0);
++            server.createContext("/cacert", t -> {
++                try (InputStream is = t.getRequestBody()) {
++                    is.readAllBytes();
++                }
++                try {
++                    if (timeout > 0) {
++                        // Sleep in order to simulate network latency
++                        log("Server sleeping for " + timeout + " msec.");
++                        Thread.sleep(timeout);
++                    }
++
++                    byte[] derCert = caCert.getEncoded();
++                    t.getResponseHeaders().add("Content-Type",
++                            "application/pkix-cert");
++                    t.sendResponseHeaders(200, derCert.length);
++                    try (OutputStream os = t.getResponseBody()) {
++                        os.write(derCert);
++                    }
++                } catch (InterruptedException |
++                        CertificateEncodingException exc) {
++                    throw new IOException(exc);
++                }
++            });
++            server.setExecutor(null);
++            server.start();
++            log("Started HttpServer: Listening on " + server.getAddress());
++        }
++
++        public void stop() {
++            server.stop(0);
++        }
++
++        public InetSocketAddress getAddress() {
++            return server.getAddress();
++        }
++    }
++
++
++    /**
++     * Creates the CA PKI components necessary for this test.
++     */
++    private static void createAuthorities() throws Exception {
++        CertificateBuilder cbld = new CertificateBuilder();
++        KeyPairGenerator keyGen = KeyPairGenerator.getInstance("EC");
++        keyGen.initialize(new ECGenParameterSpec("secp256r1"));
++
++        // Generate Root, IntCA, EE keys
++        rootKp = keyGen.genKeyPair();
++        log("Generated Root CA KeyPair");
++        intKp = keyGen.genKeyPair();
++        log("Generated Intermediate CA KeyPair");
++        eeKp = keyGen.genKeyPair();
++        log("Generated End Entity Cert KeyPair");
++
++        // Make a 3 year validity starting from 60 days ago
++        long start = System.currentTimeMillis() - TimeUnit.DAYS.toMillis(60);
++        long end = start + TimeUnit.DAYS.toMillis(1085);
++
++        boolean[] kuBitSettings = {true, false, false, false, false, true,
++                true, false, false};
++
++        // Set up the Root CA Cert
++        cbld.setSubjectName("CN=Root CA Cert, O=SomeCompany").
++                setPublicKey(rootKp.getPublic()).
++                setSerialNumber(new BigInteger("1")).
++                setValidity(new Date(start), new Date(end)).
++                addSubjectKeyIdExt(rootKp.getPublic()).
++                addAuthorityKeyIdExt(rootKp.getPublic()).
++                addBasicConstraintsExt(true, true, -1).
++                addKeyUsageExt(kuBitSettings);
++
++        // Make our Root CA Cert!
++        rootCert = cbld.build(null, rootKp.getPrivate(), "SHA256withECDSA");
++        log("Root CA Created:\n" + certInfo(rootCert));
++
++        // Make a 2 year validity starting from 30 days ago
++        start = System.currentTimeMillis() - TimeUnit.DAYS.toMillis(30);
++        end = start + TimeUnit.DAYS.toMillis(730);
++
++        // Now that we have the root keystore we can create our
++        // intermediate CA.
++        cbld.reset();
++        cbld.setSubjectName("CN=Intermediate CA Cert, O=SomeCompany").
++                setPublicKey(intKp.getPublic()).
++                setSerialNumber(new BigInteger("100")).
++                setValidity(new Date(start), new Date(end)).
++                addSubjectKeyIdExt(intKp.getPublic()).
++                addAuthorityKeyIdExt(rootKp.getPublic()).
++                addBasicConstraintsExt(true, true, -1).
++                addKeyUsageExt(kuBitSettings);
++
++        // Make our Intermediate CA Cert!
++        intCert = cbld.build(rootCert, rootKp.getPrivate(), "SHA256withECDSA");
++        log("Intermediate CA Created:\n" + certInfo(intCert));
++    }
++
++    /**
++     * Creates the end entity certificate from the previously generated
++     * intermediate CA cert.
++     *
++     * @param aiaAddr the address/port of the server that will hold the issuer
++     *                certificate. This will be used to create an AIA URI.
++     */
++    private static void createEE(InetSocketAddress aiaAddr) throws Exception {
++        // Make a 1 year validity starting from 7 days ago
++        long start = System.currentTimeMillis() - TimeUnit.DAYS.toMillis(7);
++        long end = start + TimeUnit.DAYS.toMillis(365);
++        boolean[] kuBits = {true, false, false, false, false, false,
++                false, false, false};
++        List<String> ekuOids = List.of("1.3.6.1.5.5.7.3.1",
++                "1.3.6.1.5.5.7.3.2", "1.3.6.1.5.5.7.3.4");
++        String aiaUri = String.format("http://%s:%d/cacert",
++                aiaAddr.getHostName(), aiaAddr.getPort());
++
++        CertificateBuilder cbld = new CertificateBuilder();
++        cbld.setSubjectName("CN=Oscar T. Grouch, O=SomeCompany").
++                setPublicKey(eeKp.getPublic()).
++                setSerialNumber(new BigInteger("4096")).
++                setValidity(new Date(start), new Date(end)).
++                addSubjectKeyIdExt(eeKp.getPublic()).
++                addAuthorityKeyIdExt(intKp.getPublic()).
++                addKeyUsageExt(kuBits).addExtendedKeyUsageExt(ekuOids).
++                addAIAExt(List.of("CAISSUER|" + aiaUri));
++
++        // Build the cert
++        eeCert = cbld.build(intCert, intKp.getPrivate(), "SHA256withECDSA");
++        log("EE Certificate Created:\n" + certInfo(eeCert));
++    }
++
++    /**
++     * Helper routine that dumps only a few cert fields rather than
++     * the whole toString() output.
++     *
++     * @param cert an X509Certificate to be displayed
++     *
++     * @return the String output of the issuer, subject and
++     * serial number
++     */
++    private static String certInfo(X509Certificate cert) {
++        StringBuilder sb = new StringBuilder();
++        sb.append("Issuer: ").append(cert.getIssuerX500Principal()).
++                append("\n");
++        sb.append("Subject: ").append(cert.getSubjectX500Principal()).
++                append("\n");
++        sb.append("Serial: ").append(cert.getSerialNumber()).append("\n");
++        return sb.toString();
++    }
++
++    private static void log(String str) {
++        if (logging) {
++            System.out.println("[" + Thread.currentThread().getName() + "] " +
++                    str);
++        }
++    }
++}
+diff --git a/test/jdk/sun/security/x509/URICertStore/CRLReadTimeout.java b/test/jdk/sun/security/x509/URICertStore/CRLReadTimeout.java
+index 05ec77b51e5..06a070263b7 100644
+--- a/test/jdk/sun/security/x509/URICertStore/CRLReadTimeout.java
++++ b/test/jdk/sun/security/x509/URICertStore/CRLReadTimeout.java
+@@ -1,5 +1,5 @@
+ /*
+- * Copyright (c) 2019, Oracle and/or its affiliates. All rights reserved.
++ * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
+  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+  *
+  * This code is free software; you can redistribute it and/or modify it
+@@ -23,55 +23,65 @@
+ 
+ /*
+  * @test
+- * @bug 8191808
++ * @bug 8191808 8179502
+  * @summary check that CRL download is interrupted if it takes too long
++ * @modules java.base/sun.security.x509
++ *          java.base/sun.security.util
+  * @library /test/lib
+- * @run main/othervm -Dcom.sun.security.crl.readtimeout=1 CRLReadTimeout
++ * @run main/othervm -Dcom.sun.security.crl.readtimeout=1 CRLReadTimeout 2000 false
++ * @run main/othervm -Dcom.sun.security.crl.readtimeout=1s CRLReadTimeout 2000 false
++ * @run main/othervm -Dcom.sun.security.crl.readtimeout=4 CRLReadTimeout 2000 true
++ * @run main/othervm -Dcom.sun.security.crl.readtimeout=1500ms CRLReadTimeout 2000 false
++ * @run main/othervm -Dcom.sun.security.crl.readtimeout=2750ms CRLReadTimeout 2000 true
+  */
+ 
+-import java.io.File;
+-import java.io.InputStream;
+-import java.io.IOException;
++import java.io.*;
++import java.math.BigInteger;
+ import java.net.InetSocketAddress;
+ import java.net.SocketTimeoutException;
++import java.security.GeneralSecurityException;
+ import java.security.KeyStore;
+-import java.security.cert.CertificateFactory;
+-import java.security.cert.CertPath;
+-import java.security.cert.CertPathValidator;
+-import java.security.cert.CertPathValidatorException;
+-import java.security.cert.PKIXParameters;
+-import java.security.cert.PKIXRevocationChecker;
+-import static java.security.cert.PKIXRevocationChecker.Option.*;
+-import java.security.cert.TrustAnchor;
+-import java.security.cert.X509Certificate;
++import java.security.PrivateKey;
++import java.security.cert.*;
++import java.util.Date;
+ import java.util.EnumSet;
+ import java.util.List;
+ import java.util.Set;
+-import com.sun.net.httpserver.HttpServer;
++import java.util.concurrent.TimeUnit;
++
++import static java.security.cert.PKIXRevocationChecker.Option.*;
+ 
++import com.sun.net.httpserver.HttpServer;
+ import jdk.test.lib.SecurityTools;
+ import jdk.test.lib.process.OutputAnalyzer;
++import sun.security.util.SignatureUtil;
++import sun.security.x509.*;
+ 
+ public class CRLReadTimeout {
+ 
++    public static final String PASS = "changeit";
++    public static X509CRL crl;
++
+     public static void main(String[] args) throws Exception {
+ 
+-        String timeout = System.getProperty("com.sun.security.crl.readtimeout");
+-        if (timeout == null) {
+-            timeout = "15";
+-        }
+-        System.out.println("Testing timeout of " + timeout + " seconds");
++        int serverTimeout = (args != null && args[0] != null) ?
++                Integer.parseInt(args[0]) : 15000;
++        boolean expectedPass = args != null && args[1] != null &&
++                Boolean.parseBoolean(args[1]);
++        System.out.println("Server timeout is " + serverTimeout + " msec.");
++        System.out.println("Test is expected to " + (expectedPass ? "pass" : "fail"));
+ 
+-        CrlHttpServer crlServer = new CrlHttpServer(Integer.parseInt(timeout));
++        CrlHttpServer crlServer = new CrlHttpServer(serverTimeout);
+         try {
+             crlServer.start();
+-            testTimeout(crlServer.getPort());
++            testTimeout(crlServer.getPort(), expectedPass);
+         } finally {
+             crlServer.stop();
+         }
+     }
+ 
+-    private static void testTimeout(int port) throws Exception {
++    private static void testTimeout(int port, boolean expectedPass)
++            throws Exception {
+ 
+         // create certificate chain with two certs, root and end-entity
+         keytool("-alias duke -dname CN=duke -genkey -keyalg RSA");
+@@ -82,10 +92,10 @@ private static void testTimeout(int port) throws Exception {
+                 + "-ext crl=uri:http://localhost:" + port + "/crl");
+         keytool("-importcert -file duke.cert -alias duke");
+ 
+-        KeyStore ks = KeyStore.getInstance(new File("ks"),
+-                                           "changeit".toCharArray());
++        KeyStore ks = KeyStore.getInstance(new File("ks"), PASS.toCharArray());
+         X509Certificate cert = (X509Certificate)ks.getCertificate("duke");
+         X509Certificate root = (X509Certificate)ks.getCertificate("root");
++        crl = genCrl(ks, "root", PASS);
+ 
+         // validate chain
+         CertPathValidator cpv = CertPathValidator.getInstance("PKIX");
+@@ -100,28 +110,60 @@ private static void testTimeout(int port) throws Exception {
+         cpv.validate(cp, params);
+ 
+         // unwrap soft fail exceptions and check for SocketTimeoutException
+-        boolean expected = false;
+-        for (CertPathValidatorException softFail:prc.getSoftFailExceptions()) {
+-            Throwable cause = softFail.getCause();
+-            while (cause != null) {
+-                if (cause instanceof SocketTimeoutException) {
+-                    expected = true;
++        List<CertPathValidatorException> softExc = prc.getSoftFailExceptions();
++        if (expectedPass) {
++            if (softExc.size() > 0) {
++                throw new RuntimeException("Expected to pass, found " +
++                        softExc.size() + " soft fail exceptions");
++            }
++        } else {
++            boolean foundSockTOExc = false;
++            for (CertPathValidatorException softFail : softExc) {
++                Throwable cause = softFail.getCause();
++                while (cause != null) {
++                    if (cause instanceof SocketTimeoutException) {
++                        foundSockTOExc = true;
++                        break;
++                    }
++                    cause = cause.getCause();
++                }
++                if (foundSockTOExc) {
+                     break;
+                 }
+-                cause = cause.getCause();
+             }
+-            if (expected) {
+-                break;
++            if (!foundSockTOExc) {
++                throw new Exception("SocketTimeoutException not thrown");
+             }
+         }
+-        if (!expected) {
+-            throw new Exception("SocketTimeoutException not thrown");
+-        }
+     }
+ 
+     private static OutputAnalyzer keytool(String cmd) throws Exception {
+-        return SecurityTools.keytool("-storepass changeit "
+-                + "-keystore ks " + cmd);
++        return SecurityTools.keytool("-storepass " + PASS +
++                " -keystore ks " + cmd);
++    }
++
++    private static X509CRL genCrl(KeyStore ks, String issAlias, String pass)
++            throws GeneralSecurityException, IOException {
++        // Create an empty CRL with a 1-day validity period.
++        X509Certificate issuerCert = (X509Certificate)ks.getCertificate(issAlias);
++        PrivateKey issuerKey = (PrivateKey)ks.getKey(issAlias, pass.toCharArray());
++
++        long curTime = System.currentTimeMillis();
++        Date thisUp = new Date(curTime - TimeUnit.SECONDS.toMillis(43200));
++        Date nextUp = new Date(curTime + TimeUnit.SECONDS.toMillis(43200));
++        CRLExtensions exts = new CRLExtensions();
++        var aki = new AuthorityKeyIdentifierExtension(new KeyIdentifier(
++                issuerCert.getPublicKey()), null, null);
++        var crlNum = new CRLNumberExtension(BigInteger.ONE);
++        exts.setExtension(aki.getId(), aki);
++        exts.setExtension(crlNum.getId(), crlNum);
++        X509CRLImpl.TBSCertList cList = new X509CRLImpl.TBSCertList(
++                new X500Name(issuerCert.getSubjectX500Principal().toString()),
++                thisUp, nextUp, null, exts);
++        X509CRL crl = X509CRLImpl.newSigned(cList, issuerKey,
++                SignatureUtil.getDefaultSigAlgForKey(issuerKey));
++        System.out.println("ISSUED CRL:\n" + crl);
++        return crl;
+     }
+ 
+     private static class CrlHttpServer {
+@@ -136,15 +178,23 @@ public CrlHttpServer(int timeout) throws IOException {
+ 
+         public void start() throws IOException {
+             server.bind(new InetSocketAddress(0), 0);
+-            server.createContext("/", t -> {
++            server.createContext("/crl", t -> {
+                 try (InputStream is = t.getRequestBody()) {
+                     is.readAllBytes();
+                 }
+                 try {
+-                    // sleep for 2 seconds longer to force timeout
+-                    Thread.sleep((timeout + 2)*1000);
+-                } catch (InterruptedException ie) {
+-                    throw new IOException(ie);
++                    // Sleep in order to simulate network latency
++                    Thread.sleep(timeout);
++
++                    byte[] derCrl = crl.getEncoded();
++                    t.getResponseHeaders().add("Content-Type",
++                            "application/pkix-crl");
++                    t.sendResponseHeaders(200, derCrl.length);
++                    try (OutputStream os = t.getResponseBody()) {
++                        os.write(derCrl);
++                    }
++                } catch (InterruptedException | CRLException exc) {
++                    throw new IOException(exc);
+                 }
+             });
+             server.setExecutor(null);

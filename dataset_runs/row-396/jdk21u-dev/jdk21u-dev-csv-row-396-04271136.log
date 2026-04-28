@@ -1,0 +1,268 @@
+2026-04-27 11:36:23,864 - backport - INFO - Using openrouter API: https://openrouter.ai/api/v1 (model: openai/gpt-4.1-mini)
+2026-04-27 11:36:29,413 - backport - INFO - Aplly all hunks in the patch      PASS
+2026-04-27 11:36:30,248 - backport - INFO - Successfully backport the patch to the target release 2439c6d5aaff7d9ee2a5be4c7caa5f9ccd65b748
+2026-04-27 11:36:30,249 - backport - INFO - --- a/src/java.base/share/classes/sun/nio/cs/StreamEncoder.java
++++ b/src/java.base/share/classes/sun/nio/cs/StreamEncoder.java
+@@ -414,8 +414,8 @@ void implFlush() throws IOException {
+     }
+ 
+     void implClose() throws IOException {
+-        flushLeftoverChar(null, true);
+-        try {
++        try (ch; out) {
++            flushLeftoverChar(null, true);
+             for (;;) {
+                 CoderResult cr = encoder.flush(bb);
+                 if (cr.isUnderflow())
+
+--- a/src/java.base/share/classes/sun/nio/cs/StreamEncoder.java
++++ b/src/java.base/share/classes/sun/nio/cs/StreamEncoder.java
+@@ -430,15 +430,8 @@ void implClose() throws IOException {
+ 
+             if (bb.position() > 0)
+                 writeBytes();
+-            if (ch != null)
+-                ch.close();
+-            else {
+-                try {
+-                    out.flush();
+-                } finally {
+-                    out.close();
+-                }
+-            }
++            if (out != null)
++                out.flush();
+         } catch (IOException x) {
+             encoder.reset();
+             throw x;
+
+--- /dev/null
++++ b/test/jdk/java/io/OutputStreamWriter/CloseWriterOnFailedFlush.java
+@@ -0,0 +1,86 @@
++/*
++ * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
++ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
++ *
++ * This code is free software; you can redistribute it and/or modify it
++ * under the terms of the GNU General Public License version 2 only, as
++ * published by the Free Software Foundation.
++ *
++ * This code is distributed in the hope that it will be useful, but WITHOUT
++ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
++ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
++ * version 2 for more details (a copy is included in the LICENSE file that
++ * accompanied this code).
++ *
++ * You should have received a copy of the GNU General Public License version
++ * 2 along with this work; if not, write to the Free Software Foundation,
++ * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
++ *
++ * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
++ * or visit www.oracle.com if you need additional information or have any
++ * questions.
++ */
++
++/* @test
++ * @bug 8136895
++ * @summary Verify stream closed after write error in StreamEncoder::implClose
++ */
++
++import java.io.IOException;
++import java.io.OutputStream;
++import java.io.OutputStreamWriter;
++import java.io.Writer;
++import java.nio.charset.MalformedInputException;
++import java.nio.charset.StandardCharsets;
++
++public class CloseWriterOnFailedFlush {
++    private static final String STR_IOE = "Test";   // IOException
++    private static final String STR_MIE = "\ud83c"; // MalformedInputException
++
++    public static void main(String[] args) throws IOException {
++        boolean failed = false;
++
++        for (String s : new String[] {STR_IOE, STR_MIE}) {
++            System.out.println("string: " + s);
++            ErroringOutputStream stream = new ErroringOutputStream();
++            try (Writer writer = new OutputStreamWriter(stream,
++                     StandardCharsets.UTF_8.newEncoder())) {
++                writer.write(s);
++            } catch (IOException ex) {
++                Class exClass = ex.getClass();
++                if (s.equals(STR_IOE) && exClass != IOException.class ||
++                    s.equals(STR_MIE) && exClass != MalformedInputException.class)
++                    throw ex;
++            }
++
++            if (stream.isOpen()) {
++                System.err.println("Stream is STILL open");
++                failed = true;
++            } else {
++                System.out.println("Stream is closed");
++            }
++        }
++
++        if (failed)
++            throw new RuntimeException("Test failed");
++    }
++
++    private static class ErroringOutputStream extends OutputStream {
++        private boolean open = true;
++
++        @Override
++        public void write(int b) throws IOException {
++            throw new IOException();
++        }
++
++        public boolean isOpen() {
++            return open;
++        }
++
++        @Override
++        public void close() throws IOException {
++            open = false;
++            System.out.println("Closing");
++        }
++    }
++}
+
+--- /dev/null
++++ b/test/jdk/java/nio/channels/Channels/CloseWriterOnFailedFlush.java
+@@ -0,0 +1,88 @@
++/*
++ * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
++ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
++ *
++ * This code is free software; you can redistribute it and/or modify it
++ * under the terms of the GNU General Public License version 2 only, as
++ * published by the Free Software Foundation.
++ *
++ * This code is distributed in the hope that it will be useful, but WITHOUT
++ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
++ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
++ * version 2 for more details (a copy is included in the LICENSE file that
++ * accompanied this code).
++ *
++ * You should have received a copy of the GNU General Public License version
++ * 2 along with this work; if not, write to the Free Software Foundation,
++ * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
++ *
++ * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
++ * or visit www.oracle.com if you need additional information or have any
++ * questions.
++ */
++
++/* @test
++ * @bug 8136895
++ * @summary Verify channel closed after write error in StreamEncoder::implClose
++ */
++
++import java.io.IOException;
++import java.io.Writer;
++import java.nio.ByteBuffer;
++import java.nio.channels.Channels;
++import java.nio.channels.WritableByteChannel;
++import java.nio.charset.MalformedInputException;
++import java.nio.charset.StandardCharsets;
++
++public class CloseWriterOnFailedFlush {
++    private static final String STR_IOE = "Test";   // IOException
++    private static final String STR_MIE = "\ud83c"; // MalformedInputException
++
++    public static void main(String[] args) throws IOException {
++        boolean failed = false;
++
++        for (String s : new String[] {STR_IOE, STR_MIE}) {
++            System.out.println("string: " + s);
++            ErroringByteChannel channel = new ErroringByteChannel();
++            try (Writer writer = Channels.newWriter
++                    (channel, StandardCharsets.UTF_8.newEncoder(), -1 )) {
++                writer.write(s);
++            } catch (IOException ex) {
++                Class exClass = ex.getClass();
++                if (s.equals(STR_IOE) && exClass != IOException.class ||
++                    s.equals(STR_MIE) && exClass != MalformedInputException.class)
++                    throw ex;
++            }
++
++            if (channel.isOpen()) {
++                System.err.println("Channel is STILL open");
++                failed = true;
++            } else {
++                System.out.println("Channel is closed");
++            }
++        }
++
++        if (failed)
++            throw new RuntimeException("Test failed");
++    }
++
++    private static class ErroringByteChannel implements WritableByteChannel {
++        private boolean open = true;
++
++        @Override
++        public int write(ByteBuffer src) throws IOException {
++            throw new IOException();
++        }
++
++        @Override
++        public boolean isOpen() {
++            return open;
++        }
++
++        @Override
++        public void close() {
++            open = false;
++            System.out.println("Closing");
++        }
++    }
++}
+
+--- a/test/jdk/sun/nio/cs/StreamEncoderClose.java
++++ b/test/jdk/sun/nio/cs/StreamEncoderClose.java
+@@ -1,5 +1,5 @@
+ /*
+- * Copyright (c) 2008, Oracle and/or its affiliates. All rights reserved.
++ * Copyright (c) 2008, 2023, Oracle and/or its affiliates. All rights reserved.
+  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+  *
+  * This code is free software; you can redistribute it and/or modify it
+
+--- a/test/jdk/sun/nio/cs/StreamEncoderClose.java
++++ b/test/jdk/sun/nio/cs/StreamEncoderClose.java
+@@ -31,6 +31,15 @@
+ 
+ import java.io.*;
+ public class StreamEncoderClose {
++    private static void ck(String s, int actual, int expected)
++        throws IOException {
++        if (actual != expected) {
++            String msg = String.format("%s: actual (%d) != expected (%d)%n",
++                                       s, actual, expected);
++            throw new IOException(msg);
++        }
++    }
++
+     public static void main( String arg[] ) throws Exception {
+         byte[] expected = {(byte)0x1b,(byte)0x24,(byte)0x42,
+                            (byte)0x30,(byte)0x6c,
+
+--- a/test/jdk/sun/nio/cs/StreamEncoderClose.java
++++ b/test/jdk/sun/nio/cs/StreamEncoderClose.java
+@@ -46,13 +55,10 @@ public static void main( String arg[] ) throws Exception {
+ 
+         //double check, probably not necessary
+         byte[] out = baos.toByteArray();
+-        if (out.length != expected.length) {
+-            throw new IOException("Failed");
+-        }
++        ck("Lengths are unequal", out.length, expected.length);
+         for (int i = 0; i < out.length; i++) {
+             //System.out.printf("(byte)0x%x,", out[i] & 0xff);
+-            if (out[i] != expected[i])
+-                throw new IOException("Failed");
++            ck("Values are unequal", out[i], expected[i]);
+         }
+     }
+ 
+

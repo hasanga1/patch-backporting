@@ -1,0 +1,223 @@
+diff --git a/src/jdk.crypto.cryptoki/share/classes/sun/security/pkcs11/SunPKCS11.java b/src/jdk.crypto.cryptoki/share/classes/sun/security/pkcs11/SunPKCS11.java
+index 4d10584fa09..44a2c4efb06 100644
+--- a/src/jdk.crypto.cryptoki/share/classes/sun/security/pkcs11/SunPKCS11.java
++++ b/src/jdk.crypto.cryptoki/share/classes/sun/security/pkcs11/SunPKCS11.java
+@@ -27,7 +27,7 @@
+ 
+ import java.io.*;
+ import java.util.*;
+-
++import java.util.stream.Collectors;
+ import java.security.*;
+ import java.security.interfaces.*;
+ 
+@@ -1272,7 +1272,11 @@ private void initToken(CK_SLOT_INFO slotInfo) throws PKCS11Exception {
+                         CKM_SHA3_512_RSA_PKCS_PSS);
+             }
+         }
++
+         long[] supportedMechanisms = p11.C_GetMechanismList(slotID);
++        Set<Long> supportedMechSet =
++                Arrays.stream(supportedMechanisms).boxed().collect
++                (Collectors.toCollection(HashSet::new));
+ 
+         // Create a map from the various Descriptors to the "most
+         // preferred" mechanism that was defined during the
+@@ -1281,10 +1285,9 @@ private void initToken(CK_SLOT_INFO slotInfo) throws PKCS11Exception {
+         // the earliest entry.  When asked for "DES/CBC/PKCS5Padding", we
+         // return a CKM_DES_CBC_PAD.
+         final Map<Descriptor,Integer> supportedAlgs =
+-                                        new HashMap<Descriptor,Integer>();
++                new HashMap<Descriptor,Integer>();
+ 
+-        for (int i = 0; i < supportedMechanisms.length; i++) {
+-            long longMech = supportedMechanisms[i];
++        for (long longMech : supportedMechanisms) {
+             CK_MECHANISM_INFO mechInfo = token.getMechanismInfo(longMech);
+             if (showInfo) {
+                 System.out.println("Mechanism " +
+@@ -1331,13 +1334,19 @@ private void initToken(CK_SLOT_INFO slotInfo) throws PKCS11Exception {
+             for (Descriptor d : ds) {
+                 Integer oldMech = supportedAlgs.get(d);
+                 if (oldMech == null) {
++                    // check all required mechs are supported
+                     if (d.requiredMechs != null) {
+-                        // Check that other mechanisms required for the
+-                        // service are supported before listing it as
+-                        // available for the first time.
+-                        for (int requiredMech : d.requiredMechs) {
+-                            if (token.getMechanismInfo(
+-                                    requiredMech & 0xFFFFFFFFL) == null) {
++                        for (int reqMech : d.requiredMechs) {
++                            long longReqMech = reqMech & 0xFFFFFFFFL;
++                            if (!config.isEnabled(longReqMech) ||
++                                    !supportedMechSet.contains(longReqMech) ||
++                                    brokenMechanisms.contains(longReqMech)) {
++                                if (showInfo) {
++                                    System.out.println("DISABLED " + d.type +
++                                        " " + d.algorithm +
++                                        " due to no support for req'd mech " +
++                                        Functions.getMechanismName(longReqMech));
++                                }
+                                 continue descLoop;
+                             }
+                         }
+@@ -1350,7 +1359,7 @@ private void initToken(CK_SLOT_INFO slotInfo) throws PKCS11Exception {
+                                 (d.type == SIG &&
+                                 (mechInfo.flags & CKF_SIGN) == 0)) {
+                             if (showInfo) {
+-                                System.out.println("DISABLED " +  d.type +
++                                System.out.println("DISABLED " + d.type +
+                                         " " + d.algorithm +
+                                         " due to partial support");
+                             }
+@@ -1374,7 +1383,6 @@ private void initToken(CK_SLOT_INFO slotInfo) throws PKCS11Exception {
+                     }
+                 }
+             }
+-
+         }
+ 
+         // register algorithms in provider
+diff --git a/test/jdk/sun/security/pkcs11/Provider/RequiredMechCheck.cfg b/test/jdk/sun/security/pkcs11/Provider/RequiredMechCheck.cfg
+new file mode 100644
+index 00000000000..906e4a3a362
+--- /dev/null
++++ b/test/jdk/sun/security/pkcs11/Provider/RequiredMechCheck.cfg
+@@ -0,0 +1,14 @@
++name = NSS
++
++showInfo = true
++
++slot = 1
++
++library = ${pkcs11test.nss.lib}
++
++disabledMechanisms = {
++    CKM_SHA224_HMAC
++    CKM_SHA256_HMAC
++}
++
++nssArgs = "configdir='${pkcs11test.nss.db}' certPrefix='' keyPrefix=''"
+diff --git a/test/jdk/sun/security/pkcs11/Provider/RequiredMechCheck.java b/test/jdk/sun/security/pkcs11/Provider/RequiredMechCheck.java
+new file mode 100644
+index 00000000000..11fb562a825
+--- /dev/null
++++ b/test/jdk/sun/security/pkcs11/Provider/RequiredMechCheck.java
+@@ -0,0 +1,116 @@
++/*
++ * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
++ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
++ *
++ * This code is free software; you can redistribute it and/or modify it
++ * under the terms of the GNU General Public License version 2 only, as
++ * published by the Free Software Foundation.
++ *
++ * This code is distributed in the hope that it will be useful, but WITHOUT
++ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
++ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
++ * version 2 for more details (a copy is included in the LICENSE file that
++ * accompanied this code).
++ *
++ * You should have received a copy of the GNU General Public License version
++ * 2 along with this work; if not, write to the Free Software Foundation,
++ * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
++ *
++ * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
++ * or visit www.oracle.com if you need additional information or have any
++ * questions.
++ */
++
++/*
++ * @test
++ * @bug 8335288
++ * @library /test/lib ..
++ * @modules jdk.crypto.cryptoki
++ * @summary check that if any required mech is unavailable, then the
++ * mechanism will be unavailable as well.
++ * @run testng/othervm RequiredMechCheck
++ */
++import java.nio.file.Path;
++import java.security.Provider;
++import java.security.NoSuchAlgorithmException;
++import javax.crypto.Cipher;
++import javax.crypto.Mac;
++import javax.crypto.SecretKeyFactory;
++
++import jtreg.SkippedException;
++import org.testng.SkipException;
++import org.testng.annotations.BeforeClass;
++import org.testng.annotations.Test;
++
++public class RequiredMechCheck extends PKCS11Test {
++
++    private static record TestData(String serviceType, String algo,
++            boolean disabled) {}
++
++    private static TestData[] testValues = {
++        new TestData("MAC", "HmacPBESHA1", false),
++        new TestData("MAC", "HmacPBESHA224", true),
++        new TestData("MAC", "HmacPBESHA256", true),
++        new TestData("MAC", "HmacPBESHA384", false),
++        new TestData("MAC", "HmacPBESHA512", false),
++        new TestData("SKF", "PBEWithHmacSHA1AndAES_128", false),
++        new TestData("SKF", "PBEWithHmacSHA224AndAES_128", true),
++        new TestData("SKF", "PBEWithHmacSHA256AndAES_128", true),
++        new TestData("SKF", "PBEWithHmacSHA384AndAES_128", false),
++        new TestData("SKF", "PBEWithHmacSHA512AndAES_128", false),
++        new TestData("CIP", "PBEWithHmacSHA1AndAES_128", false),
++        new TestData("CIP", "PBEWithHmacSHA224AndAES_128", true),
++        new TestData("CIP", "PBEWithHmacSHA256AndAES_128", true),
++        new TestData("CIP", "PBEWithHmacSHA384AndAES_128", false),
++        new TestData("CIP", "PBEWithHmacSHA512AndAES_128", false),
++    };
++
++    @BeforeClass
++    public void setUp() throws Exception {
++        Path configPath = Path.of(BASE).resolve("RequiredMechCheck.cfg");
++        System.setProperty("CUSTOM_P11_CONFIG", configPath.toString());
++    }
++
++    @Test
++    public void test() throws Exception {
++        try {
++            main(new RequiredMechCheck());
++        } catch (SkippedException se) {
++            throw new SkipException("One or more tests are skipped");
++        }
++    }
++
++    public void main(Provider p) throws Exception {
++        for (TestData td : testValues) {
++            String desc = td.serviceType + " " + td.algo;
++            Object t;
++            try {
++                switch (td.serviceType) {
++                    case "MAC":
++                        t = Mac.getInstance(td.algo, p);
++                    break;
++                    case "SKF":
++                        t = SecretKeyFactory.getInstance(td.algo, p);
++                    break;
++                    case "CIP":
++                        t = Cipher.getInstance(td.algo, p);
++                    break;
++                    default:
++                        throw new RuntimeException("Unsupported Test Type!");
++                }
++
++                if (td.disabled) {
++                    throw new RuntimeException("Fail, no NSAE for " + desc);
++                } else {
++                    System.out.println("Ok, getInstance() works for " + desc);
++                }
++            } catch (NoSuchAlgorithmException e) {
++                if (td.disabled) {
++                    System.out.println("Ok, NSAE thrown for " + desc);
++                } else {
++                    throw new RuntimeException("Unexpected Ex for " + desc, e);
++                }
++            }
++        }
++    }
++}

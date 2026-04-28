@@ -1,0 +1,244 @@
+diff --git a/src/java.xml/share/classes/com/sun/org/apache/xalan/internal/xsltc/compiler/XSLTC.java b/src/java.xml/share/classes/com/sun/org/apache/xalan/internal/xsltc/compiler/XSLTC.java
+index 9a256efc5a1..644bc4d28fc 100644
+--- a/src/java.xml/share/classes/com/sun/org/apache/xalan/internal/xsltc/compiler/XSLTC.java
++++ b/src/java.xml/share/classes/com/sun/org/apache/xalan/internal/xsltc/compiler/XSLTC.java
+@@ -1,5 +1,5 @@
+ /*
+- * Copyright (c) 2012, 2022, Oracle and/or its affiliates. All rights reserved.
++ * Copyright (c) 2012, 2025, Oracle and/or its affiliates. All rights reserved.
+  */
+ /*
+  * Licensed to the Apache Software Foundation (ASF) under one or more
+@@ -57,7 +57,7 @@ import org.xml.sax.XMLReader;
+  * @author G. Todd Miller
+  * @author Morten Jorgensen
+  * @author John Howard (johnh@schemasoft.com)
+- * @LastModified: Jan 2022
++ * @LastModified: Feb 2025
+  */
+ public final class XSLTC {
+ 
+@@ -730,7 +730,6 @@ public final class XSLTC {
+      */
+     public void setPackageName(String packageName) {
+         _packageName = Objects.requireNonNull(packageName);
+-        if (_className != null) setClassName(_className);
+     }
+ 
+     /**
+diff --git a/src/java.xml/share/classes/com/sun/org/apache/xalan/internal/xsltc/trax/TransformerFactoryImpl.java b/src/java.xml/share/classes/com/sun/org/apache/xalan/internal/xsltc/trax/TransformerFactoryImpl.java
+index a93c76b41f4..91a4fb080c9 100644
+--- a/src/java.xml/share/classes/com/sun/org/apache/xalan/internal/xsltc/trax/TransformerFactoryImpl.java
++++ b/src/java.xml/share/classes/com/sun/org/apache/xalan/internal/xsltc/trax/TransformerFactoryImpl.java
+@@ -1,5 +1,5 @@
+ /*
+- * Copyright (c) 2007, 2022, Oracle and/or its affiliates. All rights reserved.
++ * Copyright (c) 2007, 2025, Oracle and/or its affiliates. All rights reserved.
+  */
+ /*
+  * Licensed to the Apache Software Foundation (ASF) under one or more
+@@ -88,7 +88,7 @@ import org.xml.sax.XMLReader;
+  * @author G. Todd Miller
+  * @author Morten Jorgensen
+  * @author Santiago Pericas-Geertsen
+- * @LastModified: Jan 2022
++ * @LastModified: Feb 2025
+  */
+ public class TransformerFactoryImpl
+     extends SAXTransformerFactory implements SourceLoader
+@@ -1004,9 +1004,6 @@ public class TransformerFactoryImpl
+         // Set the attributes for translet generation
+         int outputType = XSLTC.BYTEARRAY_OUTPUT;
+         if (_generateTranslet || _autoTranslet) {
+-            // Set the translet name
+-            xsltc.setClassName(getTransletBaseName(source));
+-
+             if (_destinationDirectory != null)
+                 xsltc.setDestDirectory(_destinationDirectory);
+             else {
+@@ -1020,8 +1017,11 @@ public class TransformerFactoryImpl
+                 }
+             }
+ 
++            // set package name
+             if (_packageName != null)
+                 xsltc.setPackageName(_packageName);
++            // Set the translet name
++            xsltc.setClassName(getTransletBaseName(source));
+ 
+             if (_jarFileName != null) {
+                 xsltc.setJarFileName(_jarFileName);
+diff --git a/test/jaxp/javax/xml/jaxp/libs/jaxp/library/JUnitTestUtil.java b/test/jaxp/javax/xml/jaxp/libs/jaxp/library/JUnitTestUtil.java
+new file mode 100644
+index 00000000000..a31963f21de
+--- /dev/null
++++ b/test/jaxp/javax/xml/jaxp/libs/jaxp/library/JUnitTestUtil.java
+@@ -0,0 +1,63 @@
++/*
++ * Copyright (c) 2025, Oracle and/or its affiliates. All rights reserved.
++ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
++ *
++ * This code is free software; you can redistribute it and/or modify it
++ * under the terms of the GNU General Public License version 2 only, as
++ * published by the Free Software Foundation.
++ *
++ * This code is distributed in the hope that it will be useful, but WITHOUT
++ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
++ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
++ * version 2 for more details (a copy is included in the LICENSE file that
++ * accompanied this code).
++ *
++ * You should have received a copy of the GNU General Public License version
++ * 2 along with this work; if not, write to the Free Software Foundation,
++ * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
++ *
++ * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
++ * or visit www.oracle.com if you need additional information or have any
++ * questions.
++ */
++package jaxp.library;
++
++import java.io.IOException;
++import java.nio.file.Files;
++import java.nio.file.Path;
++import java.nio.file.StandardCopyOption;
++import jdk.test.lib.Platform;
++
++public class JUnitTestUtil {
++    public static final String CLS_DIR = System.getProperty("test.classes");
++    public static final String SRC_DIR = System.getProperty("test.src");
++
++    /**
++     * Returns the System identifier (URI) of the source.
++     * @param path the path to the source
++     * @return the System identifier
++     */
++    public static String getSystemId(String path) {
++        if (path == null) return null;
++        String xmlSysId = "file://" + path;
++        if (Platform.isWindows()) {
++            path = path.replace('\\', '/');
++            xmlSysId = "file:///" + path;
++        }
++        return xmlSysId;
++    }
++
++    /**
++     * Copies a file.
++     * @param src the path of the source file
++     * @param target the path of the target file
++     * @throws Exception if the process fails
++     */
++    public static void copyFile(String src, String target) throws Exception {
++        try {
++            Files.copy(Path.of(src), Path.of(target), StandardCopyOption.REPLACE_EXISTING);
++        } catch (IOException x) {
++            throw new Exception(x.getMessage());
++        }
++    }
++}
+diff --git a/test/jaxp/javax/xml/jaxp/unittest/transform/PropertiesTest.java b/test/jaxp/javax/xml/jaxp/unittest/transform/PropertiesTest.java
+new file mode 100644
+index 00000000000..69c7a9ef543
+--- /dev/null
++++ b/test/jaxp/javax/xml/jaxp/unittest/transform/PropertiesTest.java
+@@ -0,0 +1,99 @@
++/*
++ * Copyright (c) 2025, Oracle and/or its affiliates. All rights reserved.
++ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
++ *
++ * This code is free software; you can redistribute it and/or modify it
++ * under the terms of the GNU General Public License version 2 only, as
++ * published by the Free Software Foundation.
++ *
++ * This code is distributed in the hope that it will be useful, but WITHOUT
++ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
++ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
++ * version 2 for more details (a copy is included in the LICENSE file that
++ * accompanied this code).
++ *
++ * You should have received a copy of the GNU General Public License version
++ * 2 along with this work; if not, write to the Free Software Foundation,
++ * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
++ *
++ * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
++ * or visit www.oracle.com if you need additional information or have any
++ * questions.
++ */
++
++package transform;
++
++import javax.xml.transform.TransformerFactory;
++import javax.xml.transform.stream.StreamSource;
++import java.io.*;
++import java.nio.file.Files;
++import java.nio.file.Path;
++import java.util.stream.Stream;
++import jaxp.library.JUnitTestUtil;
++import org.junit.jupiter.api.BeforeAll;
++import org.junit.jupiter.params.ParameterizedTest;
++import org.junit.jupiter.params.provider.Arguments;
++import org.junit.jupiter.params.provider.MethodSource;
++import static org.junit.jupiter.api.Assertions.assertTrue;
++
++/*
++ * @test
++ * @bug 8344925
++ * @summary Transformer properties tests
++ * @library /javax/xml/jaxp/libs /javax/xml/jaxp/unittest /test/lib
++ * @run junit/othervm transform.PropertiesTest
++ */
++public class PropertiesTest {
++    private static final String USER_DIR = System.getProperty("user.dir");
++    private static final String TEST_DIR = System.getProperty("test.src");
++    // Test parameters:
++    // generate-translet: indicates whether to generate translet
++    // translet-name: the name of the translet
++    // package-name: the package name
++    // destination-directory: the destination
++    // expected: the class path
++    private static Stream<Arguments> testData() {
++        String destination = JUnitTestUtil.CLS_DIR + "/testdir";
++        return Stream.of(
++                Arguments.of(true, "MyTranslet", "org.myorg", destination, "/org/myorg/MyTranslet.class"),
++                Arguments.of(false, "Translet", "not.generate", destination, "/not/generate/Translet.class"),
++                // translet named after the stylesheet
++                Arguments.of(true, null, "org.myorg", destination, "/org/myorg/transform.class"),
++                // default package name die.verwandlung since JDK 9
++                Arguments.of(true, "MyTranslet", null, destination, "/die/verwandlung/MyTranslet.class"),
++                Arguments.of(true, "MyTranslet", "org.myorg", null, "/org/myorg/MyTranslet.class")
++                );
++    }
++
++    @BeforeAll
++    public static void setup() throws Exception {
++        // so that the translet is generated under test.classes
++        JUnitTestUtil.copyFile(JUnitTestUtil.SRC_DIR + "/transform.xsl", JUnitTestUtil.CLS_DIR + "/transform.xsl");
++    }
++
++    @ParameterizedTest
++    @MethodSource("testData")
++    public void test(boolean generateTranslet, String name, String packageName,
++                     String destination, String expected)
++            throws Exception {
++        TransformerFactory tf = TransformerFactory.newInstance();
++
++        tf.setAttribute("generate-translet", generateTranslet);
++        if (name != null) tf.setAttribute("translet-name", name);
++        if (packageName != null) tf.setAttribute("package-name", packageName);
++        if (destination != null) tf.setAttribute("destination-directory", destination);
++
++        String xslFile = JUnitTestUtil.CLS_DIR + "/transform.xsl";
++        String xslSysId = JUnitTestUtil.getSystemId(xslFile);
++        StreamSource xsl = new StreamSource(xslSysId);
++        tf.newTemplates(xsl);
++
++        String path = (destination != null) ? destination + expected : new File(xslFile).getParent() + expected;
++
++        if (generateTranslet) {
++            assertTrue(Files.exists(Path.of(path)), "Translet is expected at " + expected);
++        } else {
++            assertTrue(Files.notExists(Path.of(path)), "Translet is not to be generated.");
++        }
++    }
++}

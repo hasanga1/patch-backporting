@@ -1,0 +1,274 @@
+diff --git a/src/java.desktop/share/classes/sun/print/CustomMediaSizeName.java b/src/java.desktop/share/classes/sun/print/CustomMediaSizeName.java
+index 34035e5c1a3..b8d3ec723b8 100644
+--- a/src/java.desktop/share/classes/sun/print/CustomMediaSizeName.java
++++ b/src/java.desktop/share/classes/sun/print/CustomMediaSizeName.java
+@@ -27,15 +27,20 @@ package sun.print;
+ 
+ import java.io.Serial;
+ import java.util.ArrayList;
++import java.util.Map;
++import java.util.HashMap;
++import java.util.Objects;
+ 
+ import javax.print.attribute.EnumSyntax;
+ import javax.print.attribute.standard.Media;
+ import javax.print.attribute.standard.MediaSize;
+ import javax.print.attribute.standard.MediaSizeName;
++import javax.print.attribute.Size2DSyntax;
+ 
+ class CustomMediaSizeName extends MediaSizeName {
+     private static ArrayList<String> customStringTable = new ArrayList<>();
+     private static ArrayList<MediaSizeName> customEnumTable = new ArrayList<>();
++    private static Map<SizeNameChoiceItem, CustomMediaSizeName> customMap = new HashMap<>();
+     private String choiceName;
+     private MediaSizeName mediaName;
+ 
+@@ -191,4 +196,55 @@ class CustomMediaSizeName extends MediaSizeName {
+       return customEnumTable.toArray(enumTable);
+     }
+ 
++    public static CustomMediaSizeName create(String name, String choice,
++                                             float width, float length) {
++        SizeNameChoiceItem key = new SizeNameChoiceItem(name, choice, width, length);
++        CustomMediaSizeName value = customMap.get(key);
++        if (value == null) {
++            value = new CustomMediaSizeName(name, choice, width, length);
++            customMap.put(key, value);
++
++            // add this new custom media size name to MediaSize array
++            if ((width > 0.0) && (length > 0.0)) {
++                try {
++                    new MediaSize(width, length, Size2DSyntax.INCH, value);
++                } catch (IllegalArgumentException e) {
++                        /* PDF printer in Linux for Ledger paper causes
++                        "IllegalArgumentException: X dimension > Y dimension".
++                        We rotate based on IPP spec. */
++                    new MediaSize(length, width, Size2DSyntax.INCH, value);
++                }
++            }
++        }
++        return value;
++    }
++
++    private static class SizeNameChoiceItem {
++
++        private final String name;
++        private final String choice;
++        private final float width;
++        private final float length;
++
++        public SizeNameChoiceItem(String name, String choice, float width, float length) {
++            this.name = name;
++            this.choice = choice;
++            this.width = width;
++            this.length = length;
++        }
++
++        public boolean equals(Object object) {
++            if (this == object) return true;
++            if (object == null || getClass() != object.getClass()) return false;
++            SizeNameChoiceItem that = (SizeNameChoiceItem) object;
++            return Objects.equals(this.name, that.name)
++                    && Objects.equals(this.choice, that.choice) &&
++                    Float.compare(this.width, that.width) == 0 &&
++                    Float.compare(this.length, that.length) == 0;
++        }
++
++        public int hashCode() {
++            return Objects.hash(name, choice, width, length);
++        }
++    }
+ }
+diff --git a/src/java.desktop/share/classes/sun/print/CustomMediaTray.java b/src/java.desktop/share/classes/sun/print/CustomMediaTray.java
+index 324059a56d6..e1ce64106b1 100644
+--- a/src/java.desktop/share/classes/sun/print/CustomMediaTray.java
++++ b/src/java.desktop/share/classes/sun/print/CustomMediaTray.java
+@@ -27,6 +27,9 @@ package sun.print;
+ 
+ import java.io.Serial;
+ import java.util.ArrayList;
++import java.util.Objects;
++import java.util.Map;
++import java.util.HashMap;
+ 
+ import javax.print.attribute.EnumSyntax;
+ import javax.print.attribute.standard.Media;
+@@ -35,6 +38,7 @@ import javax.print.attribute.standard.MediaTray;
+ public class CustomMediaTray extends MediaTray {
+     private static ArrayList<String> customStringTable = new ArrayList<>();
+     private static ArrayList<MediaTray> customEnumTable = new ArrayList<>();
++    private static Map<NameChoiceItem, CustomMediaTray> customMap = new HashMap<>();
+     private String choiceName;
+ 
+     private CustomMediaTray(int x) {
+@@ -93,4 +97,36 @@ public class CustomMediaTray extends MediaTray {
+       return customEnumTable.toArray(enumTable);
+     }
+ 
++    public static CustomMediaTray create(String name, String choice) {
++        NameChoiceItem key = new NameChoiceItem(name, choice);
++        CustomMediaTray value = customMap.get(key);
++        if (value == null) {
++            value = new CustomMediaTray(name, choice);
++            customMap.put(key, value);
++        }
++        return value;
++    }
++
++    private static class NameChoiceItem {
++
++        private final String name;
++        private final String choice;
++
++        public NameChoiceItem(String name, String choice) {
++            this.name = name;
++            this.choice = choice;
++        }
++
++        public boolean equals(Object object) {
++            if (this == object) return true;
++            if (object == null || getClass() != object.getClass()) return false;
++            NameChoiceItem that = (NameChoiceItem) object;
++            return Objects.equals(this.name, that.name)
++                    && Objects.equals(this.choice, that.choice);
++        }
++
++        public int hashCode() {
++            return Objects.hash(name, choice);
++        }
++    }
+ }
+diff --git a/src/java.desktop/unix/classes/sun/print/CUPSPrinter.java b/src/java.desktop/unix/classes/sun/print/CUPSPrinter.java
+index e2a69c79c3e..6c75949731d 100644
+--- a/src/java.desktop/unix/classes/sun/print/CUPSPrinter.java
++++ b/src/java.desktop/unix/classes/sun/print/CUPSPrinter.java
+@@ -225,26 +225,13 @@ public class CUPSPrinter  {
+             w = (float)(pageSizes[i*6+4]/PRINTER_DPI);
+             y = (float)(pageSizes[i*6+5]/PRINTER_DPI);
+ 
+-            msn = new CustomMediaSizeName(media[i*2], media[i*2+1],
+-                                          width, length);
++            msn = CustomMediaSizeName.create(media[i*2], media[i*2+1],
++                                             width, length);
+ 
+             // add to list of standard MediaSizeNames
+             if ((cupsMediaSNames[i] = msn.getStandardMedia()) == null) {
+                 // add custom if no matching standard media
+                 cupsMediaSNames[i] = msn;
+-
+-                // add this new custom msn to MediaSize array
+-                if ((width > 0.0) && (length > 0.0)) {
+-                    try {
+-                    new MediaSize(width, length,
+-                                  Size2DSyntax.INCH, msn);
+-                    } catch (IllegalArgumentException e) {
+-                        /* PDF printer in Linux for Ledger paper causes
+-                        "IllegalArgumentException: X dimension > Y dimension".
+-                        We rotate based on IPP spec. */
+-                        new MediaSize(length, width, Size2DSyntax.INCH, msn);
+-                    }
+-                }
+             }
+ 
+             // add to list of custom MediaSizeName
+@@ -269,8 +256,8 @@ public class CUPSPrinter  {
+ 
+         MediaTray mt;
+         for (int i=0; i<nTrays; i++) {
+-            mt = new CustomMediaTray(media[(nPageSizes+i)*2],
+-                                     media[(nPageSizes+i)*2+1]);
++            mt = CustomMediaTray.create(media[(nPageSizes+i)*2],
++                                        media[(nPageSizes+i)*2+1]);
+             cupsMediaTrays[i] = mt;
+         }
+ 
+diff --git a/src/java.desktop/unix/classes/sun/print/IPPPrintService.java b/src/java.desktop/unix/classes/sun/print/IPPPrintService.java
+index 95a2682e058..25123045f51 100644
+--- a/src/java.desktop/unix/classes/sun/print/IPPPrintService.java
++++ b/src/java.desktop/unix/classes/sun/print/IPPPrintService.java
+@@ -1013,15 +1013,15 @@ public class IPPPrintService implements PrintService, SunPrinterJobService {
+      * Returns the matching standard Media using string comparison of names.
+      */
+     private Media getIPPMedia(String mediaName) {
+-        CustomMediaSizeName sampleSize = new CustomMediaSizeName("sample", "",
+-                                                                 0, 0);
++        CustomMediaSizeName sampleSize =
++                CustomMediaSizeName.create("sample", "", 0, 0);
+         Media[] sizes = sampleSize.getSuperEnumTable();
+         for (int i=0; i<sizes.length; i++) {
+             if (mediaName.equals(""+sizes[i])) {
+                 return sizes[i];
+             }
+         }
+-        CustomMediaTray sampleTray = new CustomMediaTray("sample", "");
++        CustomMediaTray sampleTray = CustomMediaTray.create("sample", "");
+         Media[] trays = sampleTray.getSuperEnumTable();
+         for (int i=0; i<trays.length; i++) {
+             if (mediaName.equals(""+trays[i])) {
+diff --git a/test/jdk/javax/print/CustomMediaSizeNameOOMETest.java b/test/jdk/javax/print/CustomMediaSizeNameOOMETest.java
+new file mode 100644
+index 00000000000..bf9f894fe55
+--- /dev/null
++++ b/test/jdk/javax/print/CustomMediaSizeNameOOMETest.java
+@@ -0,0 +1,61 @@
++/*
++ * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
++ * Copyright (c) 2023, BELLSOFT. All rights reserved.
++ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
++ *
++ * This code is free software; you can redistribute it and/or modify it
++ * under the terms of the GNU General Public License version 2 only, as
++ * published by the Free Software Foundation.
++ *
++ * This code is distributed in the hope that it will be useful, but WITHOUT
++ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
++ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
++ * version 2 for more details (a copy is included in the LICENSE file that
++ * accompanied this code).
++ *
++ * You should have received a copy of the GNU General Public License version
++ * 2 along with this work; if not, write to the Free Software Foundation,
++ * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
++ *
++ * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
++ * or visit www.oracle.com if you need additional information or have any
++ * questions.
++ */
++
++/*
++ * @test
++ * @bug 7001133
++ * @summary OutOfMemoryError by CustomMediaSizeName implementation
++ * @run main CustomMediaSizeNameOOMETest
++ * @run main/timeout=300/othervm -Xmx8m CustomMediaSizeNameOOMETest
++*/
++
++import javax.print.PrintService;
++import javax.print.PrintServiceLookup;
++
++public class CustomMediaSizeNameOOMETest {
++
++    private static final int MILLIS = 3000;
++
++    public static void main(String[] args) {
++
++        PrintService[] services = PrintServiceLookup.lookupPrintServices(null, null);
++        if (services == null || services.length == 0) {
++            return;
++        }
++
++        for (PrintService service : services) {
++            service.getUnsupportedAttributes(null, null);
++        }
++
++        long time = System.currentTimeMillis() + MILLIS;
++
++        do {
++            for (int i = 0; i < 2000; i++) {
++                for (PrintService service : services) {
++                    service.getAttributes();
++                }
++            }
++        } while (time > System.currentTimeMillis());
++    }
++}

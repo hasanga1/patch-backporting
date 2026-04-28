@@ -1,0 +1,111 @@
+2026-04-27 11:35:42,994 - backport - INFO - Using openrouter API: https://openrouter.ai/api/v1 (model: openai/gpt-4.1-mini)
+2026-04-27 11:35:46,083 - backport - INFO - Aplly all hunks in the patch      PASS
+2026-04-27 11:35:46,825 - backport - INFO - Successfully backport the patch to the target release 63e90fb4df3e549e0ff47a1d9c6bdeb034a5aef1
+2026-04-27 11:35:46,827 - backport - INFO - --- a/src/java.base/share/classes/sun/security/provider/certpath/OCSP.java
++++ b/src/java.base/share/classes/sun/security/provider/certpath/OCSP.java
+@@ -1,5 +1,5 @@
+ /*
+- * Copyright (c) 2009, 2024, Oracle and/or its affiliates. All rights reserved.
++ * Copyright (c) 2009, 2025, Oracle and/or its affiliates. All rights reserved.
+  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+  *
+  * This code is free software; you can redistribute it and/or modify it
+
+--- a/src/java.base/share/classes/sun/security/provider/certpath/OCSP.java
++++ b/src/java.base/share/classes/sun/security/provider/certpath/OCSP.java
+@@ -67,7 +67,6 @@ public final class OCSP {
+     private static final Debug debug = Debug.getInstance("certpath");
+ 
+     private static final int DEFAULT_CONNECT_TIMEOUT = 15000;
+-    private static final int DEFAULT_READ_TIMEOUT = 15000;
+ 
+     /**
+      * Integer value indicating the timeout length, in milliseconds, to be
+
+--- a/src/java.base/share/classes/sun/security/provider/certpath/OCSP.java
++++ b/src/java.base/share/classes/sun/security/provider/certpath/OCSP.java
+@@ -83,7 +82,7 @@ public final class OCSP {
+      * zero is interpreted as an infinite timeout.
+      */
+     private static final int READ_TIMEOUT = initializeTimeout(
+-            "com.sun.security.ocsp.readtimeout", DEFAULT_READ_TIMEOUT);
++            "com.sun.security.ocsp.readtimeout", CONNECT_TIMEOUT);
+ 
+     /**
+      * Boolean value indicating whether OCSP client can use GET for OCSP
+
+--- /dev/null
++++ b/test/jdk/sun/security/provider/certpath/OCSP/OCSPReadTimeoutDefault.java
+@@ -0,0 +1,70 @@
++/*
++ * Copyright (c) 2025, Oracle and/or its affiliates. All rights reserved.
++ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
++ *
++ * This code is free software; you can redistribute it and/or modify it
++ * under the terms of the GNU General Public License version 2 only, as
++ * published by the Free Software Foundation.
++ *
++ * This code is distributed in the hope that it will be useful, but WITHOUT
++ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
++ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
++ * version 2 for more details (a copy is included in the LICENSE file that
++ * accompanied this code).
++ *
++ * You should have received a copy of the GNU General Public License version
++ * 2 along with this work; if not, write to the Free Software Foundation,
++ * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
++ *
++ * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
++ * or visit www.oracle.com if you need additional information or have any
++ * questions.
++ */
++
++/*
++ * @test
++ * @bug 8347506
++ * @summary Compatible OCSP readtimeout property with OCSP timeout
++ * @modules java.base/sun.security.provider.certpath
++ * @run main/othervm
++ *      --add-opens java.base/sun.security.provider.certpath=ALL-UNNAMED
++ *      OCSPReadTimeoutDefault 15000
++ * @run main/othervm
++ *      --add-opens java.base/sun.security.provider.certpath=ALL-UNNAMED
++ *      -Dcom.sun.security.ocsp.timeout=6
++ *      OCSPReadTimeoutDefault 6000
++ * @run main/othervm
++ *      --add-opens java.base/sun.security.provider.certpath=ALL-UNNAMED
++ *      -Dcom.sun.security.ocsp.timeout=6 -Dcom.sun.security.ocsp.readtimeout=1
++ *      OCSPReadTimeoutDefault 1000
++ */
++
++import java.lang.reflect.*;
++
++public class OCSPReadTimeoutDefault {
++
++    public static void main(String[] args) throws Exception {
++        if (args == null || args.length < 1) {
++            throw new RuntimeException("Missing mandatory readtimeout value");
++        }
++
++        int expectedReadTimeout = Integer.parseInt(args[0]);
++
++        Class<?> ocspClazz = sun.security.provider.certpath.OCSP.class;
++        System.out.println("OCSP Class: " + ocspClazz);
++
++        Field cto = ocspClazz.getDeclaredField("CONNECT_TIMEOUT");
++        Field rto = ocspClazz.getDeclaredField("READ_TIMEOUT");
++        cto.setAccessible(true);
++        rto.setAccessible(true);
++        int ctoVal = cto.getInt(null);
++        int rtoVal = rto.getInt(null);
++
++        System.out.println("Expected read timeout: " + expectedReadTimeout);
++        System.out.println("CTOVal: " + ctoVal + ", RTOVal: " + rtoVal);
++        if (rtoVal != expectedReadTimeout) {
++            throw new RuntimeException("Expected read timeout value of " +
++                    expectedReadTimeout + ", found " + rtoVal);
++        }
++    }
++}
+\ No newline at end of file
+

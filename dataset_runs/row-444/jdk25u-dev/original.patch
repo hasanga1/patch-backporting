@@ -1,0 +1,139 @@
+diff --git a/src/java.base/share/classes/java/text/DigitList.java b/src/java.base/share/classes/java/text/DigitList.java
+index ce098bd8800..9ad1203fb62 100644
+--- a/src/java.base/share/classes/java/text/DigitList.java
++++ b/src/java.base/share/classes/java/text/DigitList.java
+@@ -356,6 +356,11 @@ private void set(boolean isNegative, int exp,
+         }
+         decimalAt = count + exp;
+ 
++        // Eliminate trailing zeros.
++        while (count > 1 && digits[count - 1] == '0') {
++            --count;
++        }
++
+         if (fixedPoint) {
+             // The negative of the exponent represents the number of leading
+             // zeros between the decimal and the first non-zero digit, for
+@@ -382,11 +387,6 @@ private void set(boolean isNegative, int exp,
+             // else fall through
+         }
+ 
+-        // Eliminate trailing zeros.
+-        while (count > 1 && digits[count - 1] == '0') {
+-            --count;
+-        }
+-
+         // Eliminate digits beyond maximum digits to be displayed.
+         // Round up if appropriate.
+         round(fixedPoint ? (maximumDigits + decimalAt) : maximumDigits,
+diff --git a/test/jdk/java/text/Format/DecimalFormat/RoundingTiesNearZeroTest.java b/test/jdk/java/text/Format/DecimalFormat/RoundingTiesNearZeroTest.java
+new file mode 100644
+index 00000000000..9cbf572f368
+--- /dev/null
++++ b/test/jdk/java/text/Format/DecimalFormat/RoundingTiesNearZeroTest.java
+@@ -0,0 +1,83 @@
++/*
++ * Copyright (c) 2025, Oracle and/or its affiliates. All rights reserved.
++ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
++ *
++ * This code is free software; you can redistribute it and/or modify it
++ * under the terms of the GNU General Public License version 2 only, as
++ * published by the Free Software Foundation.
++ *
++ * This code is distributed in the hope that it will be useful, but WITHOUT
++ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
++ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
++ * version 2 for more details (a copy is included in the LICENSE file that
++ * accompanied this code).
++ *
++ * You should have received a copy of the GNU General Public License version
++ * 2 along with this work; if not, write to the Free Software Foundation,
++ * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
++ *
++ * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
++ * or visit www.oracle.com if you need additional information or have any
++ * questions.
++ */
++
++/*
++ * @test
++ * @bug 8369050
++ * @summary Check rounding of DecimalFormat on tie cases when the maximum
++ *      fraction digits allowed is one less than the position of the first
++ *      significant digit in the double.
++ * @run junit RoundingTiesNearZeroTest
++ */
++
++import org.junit.jupiter.params.ParameterizedTest;
++import org.junit.jupiter.params.provider.Arguments;
++import org.junit.jupiter.params.provider.MethodSource;
++
++import java.math.RoundingMode;
++import java.text.NumberFormat;
++import java.util.Locale;
++import java.util.stream.Stream;
++
++import static org.junit.jupiter.api.Assertions.assertEquals;
++
++public class RoundingTiesNearZeroTest {
++
++    // Safe to re-use since we are not testing any fast-path cases
++    // so state is irrelevant
++    private static final NumberFormat format = NumberFormat.getInstance(Locale.US);
++
++    @ParameterizedTest
++    @MethodSource("ties")
++    void roundingTieTest(RoundingMode rm, int maxDigits, double db, String expected) {
++        format.setRoundingMode(rm);
++        format.setMaximumFractionDigits(maxDigits);
++        assertEquals(expected, format.format(db), "Rounding failed under " + rm);
++    }
++
++    static Stream<Arguments> ties() {
++        return Stream.of(
++                // 1) String is exact as binary
++                // 0.5 -> 0.5
++                Arguments.of(RoundingMode.HALF_EVEN, 0, 0.5, "0"),
++                Arguments.of(RoundingMode.HALF_UP, 0, 0.5, "1"),
++                Arguments.of(RoundingMode.HALF_DOWN, 0, 0.5, "0"),
++                // 2) String is rounded up from binary
++                // 0.0000005 -> 4.999999999999999773740559129431293428069693618454039096832275390625E-7
++                Arguments.of(RoundingMode.HALF_EVEN, 6, 0.0000005, "0"),
++                Arguments.of(RoundingMode.HALF_UP, 6, 0.0000005, "0"),
++                Arguments.of(RoundingMode.HALF_DOWN, 6, 0.0000005, "0"),
++                // 3) String is not rounded up from binary
++                // Non-exponential notation
++                // 0.05 -> 0.05000000000000000277555756156289135105907917022705078125
++                Arguments.of(RoundingMode.HALF_EVEN, 1, 0.05, "0.1"),
++                Arguments.of(RoundingMode.HALF_UP, 1, 0.05, "0.1"),
++                Arguments.of(RoundingMode.HALF_DOWN, 1, 0.05, "0.1"),
++                // Exponential notation
++                // 0.00005 -> 0.0000500000000000000023960868011929647991564706899225711822509765625
++                Arguments.of(RoundingMode.HALF_EVEN, 4, 0.00005, "0.0001"),
++                Arguments.of(RoundingMode.HALF_UP, 4, 0.00005, "0.0001"),
++                Arguments.of(RoundingMode.HALF_DOWN, 4, 0.00005, "0.0001")
++        );
++    }
++}
+diff --git a/test/jdk/java/text/Format/NumberFormat/NumberRegression.java b/test/jdk/java/text/Format/NumberFormat/NumberRegression.java
+index 1b3452012cd..a0a096e6782 100644
+--- a/test/jdk/java/text/Format/NumberFormat/NumberRegression.java
++++ b/test/jdk/java/text/Format/NumberFormat/NumberRegression.java
+@@ -30,7 +30,7 @@
+  * 4125885 4134034 4134300 4140009 4141750 4145457 4147295 4147706 4162198
+  * 4162852 4167494 4170798 4176114 4179818 4212072 4212073 4216742 4217661
+  * 4243011 4243108 4330377 4233840 4241880 4833877 6177299 8008577 8227313
+- * 8174269
++ * 8174269 8369050
+  * @summary Regression tests for NumberFormat and associated classes
+  * @library /java/text/testlib
+  * @build HexDumpReader TestUtils
+@@ -1776,7 +1776,7 @@ public void test4241880() {
+                 "2%", "1%", "2%", "2%", "1%",
+                 "0%", "0%", "1%", "1%", "1%",
+                 "0", "2", "0.2", "0.6", "0.04",
+-                "0.04", "0.000", "0.002",
++                "0.04", "0.001", "0.002",
+         };
+         for (int i = 0; i < input.length; i++) {
+             DecimalFormat format = new DecimalFormat(pattern[i]);

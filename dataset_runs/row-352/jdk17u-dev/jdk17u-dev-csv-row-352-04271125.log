@@ -1,0 +1,747 @@
+2026-04-27 11:25:38,636 - backport - INFO - Using openrouter API: https://openrouter.ai/api/v1 (model: openai/gpt-4.1-mini)
+2026-04-27 11:26:12,860 - backport - INFO - Aplly all hunks in the patch      PASS
+2026-04-27 11:26:14,098 - backport - INFO - Successfully backport the patch to the target release ca766c0d92f4a3c587909d5811772369e9853c63
+2026-04-27 11:26:14,100 - backport - INFO - --- a/src/java.naming/share/classes/com/sun/jndi/ldap/Obj.java
++++ b/src/java.naming/share/classes/com/sun/jndi/ldap/Obj.java
+@@ -1,5 +1,5 @@
+ /*
+- * Copyright (c) 1999, 2021, Oracle and/or its affiliates. All rights reserved.
++ * Copyright (c) 1999, 2022, Oracle and/or its affiliates. All rights reserved.
+  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+  *
+  * This code is free software; you can redistribute it and/or modify it
+
+--- a/src/java.naming/share/classes/com/sun/jndi/ldap/Obj.java
++++ b/src/java.naming/share/classes/com/sun/jndi/ldap/Obj.java
+@@ -239,6 +239,10 @@ static Object decodeObject(Attributes attrs)
+                 ClassLoader cl = helper.getURLClassLoader(codebases);
+                 return deserializeObject((byte[])attr.get(), cl);
+             } else if ((attr = attrs.get(JAVA_ATTRIBUTES[REMOTE_LOC])) != null) {
++                 // javaRemoteLocation attribute (RMI stub will be created)
++                 if (!VersionHelper.isSerialDataAllowed()) {
++                     throw new NamingException("Object deserialization is not allowed");
++                 }
+                 // For backward compatibility only
+                 return decodeRmiObject(
+                     (String)attrs.get(JAVA_ATTRIBUTES[CLASSNAME]).get(),
+
+--- a/src/java.naming/share/classes/com/sun/jndi/ldap/VersionHelper.java
++++ b/src/java.naming/share/classes/com/sun/jndi/ldap/VersionHelper.java
+@@ -1,5 +1,5 @@
+ /*
+- * Copyright (c) 1999, 2021, Oracle and/or its affiliates. All rights reserved.
++ * Copyright (c) 1999, 2022, Oracle and/or its affiliates. All rights reserved.
+  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+  *
+  * This code is free software; you can redistribute it and/or modify it
+
+--- a/src/java.naming/share/classes/com/sun/jndi/ldap/VersionHelper.java
++++ b/src/java.naming/share/classes/com/sun/jndi/ldap/VersionHelper.java
+@@ -44,8 +44,8 @@ public final class VersionHelper {
+     private static final boolean trustURLCodebase;
+ 
+     /**
+-     * Determines whether objects may be deserialized from the content of
+-     * 'javaSerializedData' attribute.
++     * Determines whether objects may be deserialized or reconstructed from a content of
++     * 'javaSerializedData', 'javaRemoteLocation' or 'javaReferenceAddress' LDAP attributes.
+      */
+     private static final boolean trustSerialData;
+ 
+
+--- a/src/java.naming/share/classes/com/sun/jndi/ldap/VersionHelper.java
++++ b/src/java.naming/share/classes/com/sun/jndi/ldap/VersionHelper.java
+@@ -56,10 +56,10 @@ public final class VersionHelper {
+                 "com.sun.jndi.ldap.object.trustURLCodebase", "false");
+         trustURLCodebase = "true".equalsIgnoreCase(trust);
+ 
+-        // System property to control whether classes is allowed to be loaded from
+-        // 'javaSerializedData' attribute
++        // System property to control whether classes are allowed to be loaded from
++        // 'javaSerializedData', 'javaRemoteLocation' or 'javaReferenceAddress' attributes.
+         String trustSerialDataSp = getPrivilegedProperty(
+-                "com.sun.jndi.ldap.object.trustSerialData", "true");
++                "com.sun.jndi.ldap.object.trustSerialData", "false");
+         trustSerialData = "true".equalsIgnoreCase(trustSerialDataSp);
+     }
+ 
+
+--- a/src/java.naming/share/classes/com/sun/jndi/ldap/VersionHelper.java
++++ b/src/java.naming/share/classes/com/sun/jndi/ldap/VersionHelper.java
+@@ -81,8 +81,9 @@ static VersionHelper getVersionHelper() {
+     }
+ 
+     /**
+-     * Returns true if deserialization of objects from 'javaSerializedData'
+-     * and 'javaReferenceAddress' LDAP attributes is allowed.
++     * Returns true if deserialization or reconstruction of objects from
++     * 'javaSerializedData', 'javaRemoteLocation' and 'javaReferenceAddress'
++     * LDAP attributes is allowed.
+      *
+      * @return true if deserialization is allowed; false - otherwise
+      */
+
+--- a/src/java.naming/share/classes/module-info.java
++++ b/src/java.naming/share/classes/module-info.java
+@@ -79,11 +79,16 @@
+  * <ul>
+  *     <li>{@systemProperty com.sun.jndi.ldap.object.trustSerialData}:
+  *          <br>The value of this system property is the string representation of a boolean value
+- *          which allows to control the deserialization of java objects from the 'javaSerializedData'
+- *          LDAP attribute. To prevent the deserialization of java objects from the 'javaSerializedData'
+- *          attribute, the system property value can be set to 'false'.
+- *          <br>If the property is not specified then the deserialization of java objects
+- *          from the 'javaSerializedData' attribute is allowed.
++ *          that controls the deserialization of java objects from the {@code javaSerializedData} LDAP
++ *          attribute, reconstruction of RMI references from the {@code javaRemoteLocation} LDAP attribute, and
++ *          reconstruction of {@linkplain javax.naming.BinaryRefAddr binary reference addresses} from
++ *          the {@code javaReferenceAddress} LDAP attribute.
++ *          To allow the deserialization or reconstruction of java objects from {@code javaSerializedData},
++ *          {@code javaRemoteLocation} or {@code javaReferenceAddress} attributes, the system property value
++ *          can be set to {@code true} (case insensitive).
++ *          <br>If the property is not specified the deserialization of java objects
++ *          from the {@code javaSerializedData}, the {@code javaRemoteLocation}, or {@code javaReferenceAddress}
++ *          attributes is not allowed.
+  *     </li>
+  *     <li>{@systemProperty jdk.jndi.object.factoriesFilter}:
+  *          <br>The value of this system property defines a filter used by
+
+--- /dev/null
++++ b/test/jdk/com/sun/jndi/ldap/objects/RemoteLocationAttributeTest.java
+@@ -0,0 +1,124 @@
++/*
++ * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
++ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
++ *
++ * This code is free software; you can redistribute it and/or modify it
++ * under the terms of the GNU General Public License version 2 only, as
++ * published by the Free Software Foundation.
++ *
++ * This code is distributed in the hope that it will be useful, but WITHOUT
++ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
++ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
++ * version 2 for more details (a copy is included in the LICENSE file that
++ * accompanied this code).
++ *
++ * You should have received a copy of the GNU General Public License version
++ * 2 along with this work; if not, write to the Free Software Foundation,
++ * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
++ *
++ * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
++ * or visit www.oracle.com if you need additional information or have any
++ * questions.
++ */
++
++import java.net.InetAddress;
++import java.net.InetSocketAddress;
++import java.net.ServerSocket;
++import java.net.SocketAddress;
++import java.util.Hashtable;
++import javax.naming.CommunicationException;
++import javax.naming.NamingException;
++import javax.naming.ServiceUnavailableException;
++import javax.naming.directory.DirContext;
++import javax.naming.directory.InitialDirContext;
++
++import jdk.test.lib.net.URIBuilder;
++
++/**
++ * @test
++ * @bug 8290367
++ * @summary Check if com.sun.jndi.ldap.object.trustSerialData covers the creation
++ *          of RMI remote objects from the 'javaRemoteLocation' LDAP attribute.
++ * @modules java.naming/com.sun.jndi.ldap
++ * @library /test/lib ../lib /javax/naming/module/src/test/test/
++ * @build LDAPServer LDAPTestUtils
++ *
++ * @run main/othervm RemoteLocationAttributeTest
++ * @run main/othervm -Dcom.sun.jndi.ldap.object.trustSerialData
++ *                   RemoteLocationAttributeTest
++ * @run main/othervm -Dcom.sun.jndi.ldap.object.trustSerialData=false
++ *                   RemoteLocationAttributeTest
++ * @run main/othervm -Dcom.sun.jndi.ldap.object.trustSerialData=true
++ *                   RemoteLocationAttributeTest
++ * @run main/othervm -Dcom.sun.jndi.ldap.object.trustSerialData=TrUe
++ *                   RemoteLocationAttributeTest
++ */
++
++public class RemoteLocationAttributeTest {
++
++    public static void main(String[] args) throws Exception {
++        // Create unbound server socket
++        ServerSocket serverSocket = new ServerSocket();
++
++        // Bind it to the loopback address
++        SocketAddress sockAddr = new InetSocketAddress(
++                InetAddress.getLoopbackAddress(), 0);
++        serverSocket.bind(sockAddr);
++
++        // Construct the provider URL for LDAPTestUtils
++        String providerURL = URIBuilder.newBuilder()
++                .scheme("ldap")
++                .loopback()
++                .port(serverSocket.getLocalPort())
++                .buildUnchecked().toString();
++
++        Hashtable<Object, Object> env;
++
++        // Initialize test environment variables
++        env = LDAPTestUtils.initEnv(serverSocket, providerURL,
++                RemoteLocationAttributeTest.class.getName(), args, false);
++
++        DirContext ctx = null;
++        try (serverSocket) {
++            System.err.println(env);
++            // connect to server
++            ctx = new InitialDirContext(env);
++            Object lookupResult = ctx.lookup("Test");
++            System.err.println("Lookup result:" + lookupResult);
++            // Test doesn't provide RMI registry running at 127.0.0.1:1097, but if
++            // there is one running on test host successful result is valid for
++            // cases when reconstruction allowed.
++            if (!RECONSTRUCTION_ALLOWED) {
++                throw new AssertionError("Unexpected successful lookup");
++            }
++        } catch (ServiceUnavailableException | CommunicationException connectionException) {
++            // The remote location was properly reconstructed but connection to
++            // RMI endpoint failed:
++            //    ServiceUnavailableException - no open socket on 127.0.0.1:1097
++            //    CommunicationException - 127.0.0.1:1097 is open, but it is not RMI registry
++            System.err.println("Got one of connection exceptions:" + connectionException);
++            if (!RECONSTRUCTION_ALLOWED) {
++                throw new AssertionError("Reconstruction not blocked, as expected");
++            }
++        } catch (NamingException ne) {
++            String message = ne.getMessage();
++            System.err.printf("Got NamingException with message: '%s'%n", message);
++            if (RECONSTRUCTION_ALLOWED && EXPECTED_NAMING_EXCEPTION_MESSAGE.equals(message)) {
++                throw new AssertionError("Reconstruction unexpectedly blocked");
++            }
++            if (!RECONSTRUCTION_ALLOWED && !EXPECTED_NAMING_EXCEPTION_MESSAGE.equals(message)) {
++                throw new AssertionError("Reconstruction not blocked");
++            }
++        } finally {
++            LDAPTestUtils.cleanup(ctx);
++        }
++    }
++
++    // Reconstruction of RMI remote objects is allowed if 'com.sun.jndi.ldap.object.trustSerialData'
++    // is set to "true". If the system property is not specified it implies default "false" value
++    private static final boolean RECONSTRUCTION_ALLOWED =
++            Boolean.getBoolean("com.sun.jndi.ldap.object.trustSerialData");
++
++    // NamingException message when reconstruction is not allowed
++    private static final String EXPECTED_NAMING_EXCEPTION_MESSAGE = "Object deserialization is not allowed";
++}
+
+--- /dev/null
++++ b/test/jdk/com/sun/jndi/ldap/objects/RemoteLocationAttributeTest.ldap
+@@ -0,0 +1,61 @@
++#
++# Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
++# DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
++#
++# This code is free software; you can redistribute it and/or modify it
++# under the terms of the GNU General Public License version 2 only, as
++# published by the Free Software Foundation.
++#
++# This code is distributed in the hope that it will be useful, but WITHOUT
++# ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
++# FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
++# version 2 for more details (a copy is included in the LICENSE file that
++# accompanied this code).
++#
++# You should have received a copy of the GNU General Public License version
++# 2 along with this work; if not, write to the Free Software Foundation,
++# Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
++#
++# Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
++# or visit www.oracle.com if you need additional information or have any
++# questions.
++#
++
++################################################################################
++# Capture file for RemoteLocationAttributeTest.java
++#
++# NOTE: This hexadecimal dump of LDAP protocol messages was generated by
++#       running the RemoteLocationAttributeTest application program against
++#       a real LDAP server and setting the JNDI/LDAP environment property:
++#       com.sun.jndi.ldap.trace.ber to activate LDAP message tracing.
++#
++################################################################################
++
++# LDAP BindRequest
++0000: 30 0C 02 01 01 60 07 02   01 03 04 00 80 00        0....`........
++
++# LDAP BindResponse
++0000: 30 0C 02 01 01 61 07 0A   01 00 04 00 04 00        0....a........
++
++# LDAP SearchRequest
++0000: 30 46 02 01 02 63 24 04   04 54 65 73 74 0A 01 00  0F...c$..Test...
++0010: 0A 01 03 02 01 00 02 01   00 01 01 00 87 0B 6F 62  ..............ob
++0020: 6A 65 63 74 43 6C 61 73   73 30 00 A0 1B 30 19 04  jectClass0...0..
++0030: 17 32 2E 31 36 2E 38 34   30 2E 31 2E 31 31 33 37  .2.16.840.1.1137
++0040: 33 30 2E 33 2E 34 2E 32                            30.3.4.2
++
++# LDAP SearchResultEntry
++0000: 30 5E 02 01 02 64 59 04   04 54 65 73 74 30 51 30  0^...dY..Test0Q0
++0010: 16 04 0D 6A 61 76 61 43   6C 61 73 73 4E 61 6D 65  ...javaClassName
++0020: 31 05 04 03 66 6F 6F 30   37 04 12 6A 61 76 61 52  1...foo07..javaR
++0030: 65 6D 6F 74 65 4C 6F 63   61 74 69 6F 6E 31 21 04  emoteLocation1!.
++0040: 1F 72 6D 69 3A 2F 2F 31   32 37 2E 30 2E 30 2E 31  .rmi://127.0.0.1
++0050: 3A 31 30 39 37 2F 54 65   73 74 52 65 6D 6F 74 65  :1097/TestRemote
++
++# LDAP SearchResultDone
++0000: 30 0C 02 01 02 65 07 0A   01 00 04 00 04 00        0....e........
++
++# LDAP UnbindRequest
++0000: 30 22 02 01 03 42 00 A0   1B 30 19 04 17 32 2E 31  0"...B...0...2.1
++0010: 36 2E 38 34 30 2E 31 2E   31 31 33 37 33 30 2E 33  6.840.1.113730.3
++0020: 2E 34 2E 32                                        .4.2
+
+--- a/test/jdk/javax/naming/module/RunBasic.java
++++ b/test/jdk/javax/naming/module/RunBasic.java
+@@ -1,5 +1,5 @@
+ /*
+- * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
++ * Copyright (c) 2015, 2022, Oracle and/or its affiliates. All rights reserved.
+  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+  *
+  * This code is free software; you can redistribute it and/or modify it
+
+--- a/test/jdk/javax/naming/module/RunBasic.java
++++ b/test/jdk/javax/naming/module/RunBasic.java
+@@ -31,6 +31,7 @@
+ import java.nio.file.Files;
+ import java.nio.file.Path;
+ import java.time.Duration;
++import java.util.ArrayList;
+ import java.util.Collection;
+ import java.util.Collections;
+ import java.util.List;
+
+--- a/test/jdk/javax/naming/module/RunBasic.java
++++ b/test/jdk/javax/naming/module/RunBasic.java
+@@ -92,10 +93,14 @@ public static void main(String[] args) throws Throwable {
+         System.out.println("Hostname: [" + HOST_NAME + "]");
+ 
+         // run tests
+-        runTest("java.desktop", "test.StoreObject");
+-        runTest("person", "test.StorePerson");
+-        runTest("fruit", "test.StoreFruit");
+-        runTest("hello", "test.StoreRemote");
++        runTest("java.desktop", "test.StoreObject",
++                "-Dcom.sun.jndi.ldap.object.trustSerialData=true");
++        runTest("person", "test.StorePerson",
++                "-Dcom.sun.jndi.ldap.object.trustSerialData=true");
++        runTest("fruit", "test.StoreFruit",
++                "-Dcom.sun.jndi.ldap.object.trustSerialData=true");
++        runTest("hello", "test.StoreRemote",
++                "-Dcom.sun.jndi.ldap.object.trustSerialData=true");
+         runTest("foo", "test.ConnectWithFoo");
+         runTest("authz", "test.ConnectWithAuthzId");
+         runTest("ldapv4", "test.ReadByUrl");
+
+--- a/test/jdk/javax/naming/module/RunBasic.java
++++ b/test/jdk/javax/naming/module/RunBasic.java
+@@ -117,10 +122,19 @@ private static void makeDir(String first, String... more)
+         Files.createDirectories(Path.of(first, more));
+     }
+ 
+-    private static void runTest(String desc, String clsName) throws Throwable {
++    private static void runTest(String desc, String clsName, String... additionalVmOpts) throws Throwable {
++        List<String> opts = new ArrayList<>();
++        opts.add("-Dtest.src=" + TEST_SRC);
++        for (String opt : additionalVmOpts) {
++            opts.add(opt);
++        }
++        opts.add("-p");
++        opts.add("mods");
++        opts.add("-m");
++        opts.add("test/" + clsName);
++        opts.add("ldap://" + HOST_NAME + "/dc=ie,dc=oracle,dc=com");
+         System.out.println("Running with the '" + desc + "' module...");
+-        runJava("-Dtest.src=" + TEST_SRC, "-p", "mods", "-m", "test/" + clsName,
+-                "ldap://" + HOST_NAME + "/dc=ie,dc=oracle,dc=com");
++        runJava(opts.toArray(String[]::new));
+     }
+ 
+     private static void runJava(String... opts) throws Throwable {
+
+--- a/test/jdk/javax/naming/module/src/test/test/ConnectWithAuthzId.java
++++ b/test/jdk/javax/naming/module/src/test/test/ConnectWithAuthzId.java
+@@ -1,5 +1,5 @@
+ /*
+- * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
++ * Copyright (c) 2015, 2022, Oracle and/or its affiliates. All rights reserved.
+  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+  *
+  * This code is free software; you can redistribute it and/or modify it
+
+--- a/test/jdk/javax/naming/module/src/test/test/ConnectWithAuthzId.java
++++ b/test/jdk/javax/naming/module/src/test/test/ConnectWithAuthzId.java
+@@ -33,7 +33,6 @@
+ import java.net.*;
+ import java.util.*;
+ import javax.naming.*;
+-import javax.naming.directory.*;
+ import javax.naming.ldap.*;
+ 
+ import org.example.authz.AuthzIdRequestControl;
+
+--- a/test/jdk/javax/naming/module/src/test/test/ConnectWithAuthzId.java
++++ b/test/jdk/javax/naming/module/src/test/test/ConnectWithAuthzId.java
+@@ -68,7 +67,7 @@ public static void main(String[] args) throws Exception {
+             System.err.println("        <ldapurl> is the LDAP URL of the parent entry\n");
+             System.err.println("example:");
+             System.err.println("        java ConnectWithAuthzId ldap://oasis/o=airius.com");
+-            return;
++            throw new IllegalArgumentException();
+         }
+ 
+         /*
+
+--- a/test/jdk/javax/naming/module/src/test/test/ConnectWithAuthzId.java
++++ b/test/jdk/javax/naming/module/src/test/test/ConnectWithAuthzId.java
+@@ -134,6 +133,7 @@ public void run() {
+                 }
+             } catch (NamingException e) {
+                 System.err.println("ConnectWithAuthzId: error connecting " + e);
++                throw e;
+             } finally {
+                 if (ctx != null) {
+                     ctx.close();
+
+--- a/test/jdk/javax/naming/module/src/test/test/ConnectWithFoo.java
++++ b/test/jdk/javax/naming/module/src/test/test/ConnectWithFoo.java
+@@ -1,5 +1,5 @@
+ /*
+- * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
++ * Copyright (c) 2015, 2022, Oracle and/or its affiliates. All rights reserved.
+  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+  *
+  * This code is free software; you can redistribute it and/or modify it
+
+--- a/test/jdk/javax/naming/module/src/test/test/ConnectWithFoo.java
++++ b/test/jdk/javax/naming/module/src/test/test/ConnectWithFoo.java
+@@ -65,7 +65,7 @@ public static void main(String[] args) throws Exception {
+             System.err.println("        <ldapurl> is the LDAP URL of the parent entry\n");
+             System.err.println("example:");
+             System.err.println("        java ConnectWithFoo ldap://oasis/o=airius.com");
+-            return;
++            throw new IllegalArgumentException();
+         }
+ 
+         /*
+
+--- a/test/jdk/javax/naming/module/src/test/test/ConnectWithFoo.java
++++ b/test/jdk/javax/naming/module/src/test/test/ConnectWithFoo.java
+@@ -112,6 +112,7 @@ public void run() {
+                 System.out.println("ConnectWithFoo: connected");
+             } catch (NamingException e) {
+                 System.err.println("ConnectWithFoo: error connecting " + e);
++                throw e;
+             } finally {
+                 if (ctx != null) {
+                     ctx.close();
+
+--- a/test/jdk/javax/naming/module/src/test/test/ReadByUrl.java
++++ b/test/jdk/javax/naming/module/src/test/test/ReadByUrl.java
+@@ -1,5 +1,5 @@
+ /*
+- * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
++ * Copyright (c) 2015, 2022, Oracle and/or its affiliates. All rights reserved.
+  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+  *
+  * This code is free software; you can redistribute it and/or modify it
+
+--- a/test/jdk/javax/naming/module/src/test/test/ReadByUrl.java
++++ b/test/jdk/javax/naming/module/src/test/test/ReadByUrl.java
+@@ -63,7 +63,7 @@ public static void main(String[] args) throws Exception {
+             System.err.println("        <ldapurl> is the LDAP URL of the parent entry\n");
+             System.err.println("example:");
+             System.err.println("        java ReadByUrl ldap://oasis/o=airius.com");
+-            return;
++            throw new IllegalArgumentException();
+         }
+ 
+         /*
+
+--- a/test/jdk/javax/naming/module/src/test/test/ReadByUrl.java
++++ b/test/jdk/javax/naming/module/src/test/test/ReadByUrl.java
+@@ -112,6 +112,7 @@ public void run() {
+                 entry.close();
+             } catch (NamingException e) {
+                 System.err.println("ReadByUrl: error connecting " + e);
++                throw e;
+             } finally {
+                 if (ctx != null) {
+                     ctx.close();
+
+--- a/test/jdk/javax/naming/module/src/test/test/StoreFruit.java
++++ b/test/jdk/javax/naming/module/src/test/test/StoreFruit.java
+@@ -1,5 +1,5 @@
+ /*
+- * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
++ * Copyright (c) 2015, 2022, Oracle and/or its affiliates. All rights reserved.
+  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+  *
+  * This code is free software; you can redistribute it and/or modify it
+
+--- a/test/jdk/javax/naming/module/src/test/test/StoreFruit.java
++++ b/test/jdk/javax/naming/module/src/test/test/StoreFruit.java
+@@ -65,7 +65,7 @@ public static void main(String[] args) throws Exception {
+             System.err.println("        <ldapurl> is the LDAP URL of the parent entry\n");
+             System.err.println("example:");
+             System.err.println("        java StoreFruit ldap://oasis/o=airius.com");
+-            return;
++            throw new IllegalArgumentException();
+         }
+ 
+         /*
+
+--- a/test/jdk/javax/naming/module/src/test/test/StoreFruit.java
++++ b/test/jdk/javax/naming/module/src/test/test/StoreFruit.java
+@@ -116,7 +116,7 @@ public void run() {
+                 System.err.println("StoreFruit: entry '" + dn +
+                         "' already exists");
+                 cleanup(ctx, (String)null);
+-                return;
++                throw e;
+             }
+ 
+             try {
+
+--- a/test/jdk/javax/naming/module/src/test/test/StoreFruit.java
++++ b/test/jdk/javax/naming/module/src/test/test/StoreFruit.java
+@@ -126,7 +126,7 @@ public void run() {
+                 System.err.println("StoreFruit: entry '" + dn2 +
+                         "' already exists");
+                 cleanup(ctx, dn);
+-                return;
++                throw e;
+             }
+ 
+             /*
+
+--- a/test/jdk/javax/naming/module/src/test/test/StoreFruit.java
++++ b/test/jdk/javax/naming/module/src/test/test/StoreFruit.java
+@@ -141,7 +141,7 @@ public void run() {
+                         dn + "' " + e);
+                 e.printStackTrace();
+                 cleanup(ctx, dn, dn2);
+-                return;
++                throw e;
+             }
+ 
+             try {
+
+--- a/test/jdk/javax/naming/module/src/test/test/StoreFruit.java
++++ b/test/jdk/javax/naming/module/src/test/test/StoreFruit.java
+@@ -152,7 +152,7 @@ public void run() {
+                         dn2 + "' " + e);
+                 e.printStackTrace();
+                 cleanup(ctx, dn, dn2);
+-                return;
++                throw e;
+             }
+ 
+             cleanup(ctx, dn, dn2);
+
+--- a/test/jdk/javax/naming/module/src/test/test/StoreObject.java
++++ b/test/jdk/javax/naming/module/src/test/test/StoreObject.java
+@@ -1,5 +1,5 @@
+ /*
+- * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
++ * Copyright (c) 2015, 2022, Oracle and/or its affiliates. All rights reserved.
+  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+  *
+  * This code is free software; you can redistribute it and/or modify it
+
+--- a/test/jdk/javax/naming/module/src/test/test/StoreObject.java
++++ b/test/jdk/javax/naming/module/src/test/test/StoreObject.java
+@@ -64,7 +64,7 @@ public static void main(String[] args) throws Exception {
+             System.err.println("        <ldapurl> is the LDAP URL of the parent entry\n");
+             System.err.println("example:");
+             System.err.println("        java StoreObject ldap://oasis/o=airius.com");
+-            return;
++            throw new IllegalArgumentException();
+         }
+ 
+         /*
+
+--- a/test/jdk/javax/naming/module/src/test/test/StoreObject.java
++++ b/test/jdk/javax/naming/module/src/test/test/StoreObject.java
+@@ -114,7 +114,7 @@ public void run() {
+                 System.err.println("StoreObject: entry '" + dn +
+                         "' already exists");
+                 cleanup(ctx, (String)null);
+-                return;
++                throw e;
+             }
+ 
+             try {
+
+--- a/test/jdk/javax/naming/module/src/test/test/StoreObject.java
++++ b/test/jdk/javax/naming/module/src/test/test/StoreObject.java
+@@ -124,7 +124,7 @@ public void run() {
+                 System.err.println("StoreObject: entry '" + dn2 +
+                         "' already exists");
+                 cleanup(ctx, dn);
+-                return;
++                throw e;
+             }
+ 
+             /*
+
+--- a/test/jdk/javax/naming/module/src/test/test/StoreObject.java
++++ b/test/jdk/javax/naming/module/src/test/test/StoreObject.java
+@@ -139,7 +139,7 @@ public void run() {
+                         dn + "' " + e);
+                 e.printStackTrace();
+                 cleanup(ctx, dn, dn2);
+-                return;
++                throw e;
+             }
+ 
+             try {
+
+--- a/test/jdk/javax/naming/module/src/test/test/StoreObject.java
++++ b/test/jdk/javax/naming/module/src/test/test/StoreObject.java
+@@ -150,7 +150,7 @@ public void run() {
+                         dn2 + "' " + e);
+                 e.printStackTrace();
+                 cleanup(ctx, dn, dn2);
+-                return;
++                throw e;
+             }
+ 
+             cleanup(ctx, dn, dn2);
+
+--- a/test/jdk/javax/naming/module/src/test/test/StorePerson.java
++++ b/test/jdk/javax/naming/module/src/test/test/StorePerson.java
+@@ -1,5 +1,5 @@
+ /*
+- * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
++ * Copyright (c) 2015, 2022, Oracle and/or its affiliates. All rights reserved.
+  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+  *
+  * This code is free software; you can redistribute it and/or modify it
+
+--- a/test/jdk/javax/naming/module/src/test/test/StorePerson.java
++++ b/test/jdk/javax/naming/module/src/test/test/StorePerson.java
+@@ -67,7 +67,7 @@ public static void main(String[] args) throws Exception {
+             System.err.println("        <ldapurl> is the LDAP URL of the parent entry\n");
+             System.err.println("example:");
+             System.err.println("        java StorePerson ldap://oasis/o=airius.com");
+-            return;
++            throw new IllegalArgumentException();
+         }
+ 
+         /*
+
+--- a/test/jdk/javax/naming/module/src/test/test/StorePerson.java
++++ b/test/jdk/javax/naming/module/src/test/test/StorePerson.java
+@@ -124,7 +124,7 @@ public void run() {
+                 System.err.println("StorePerson: entry '" + dn +
+                         "' already exists");
+                 cleanup(ctx, (String)null);
+-                return;
++                throw e;
+             }
+ 
+             name = "Jill Smyth";
+
+--- a/test/jdk/javax/naming/module/src/test/test/StorePerson.java
++++ b/test/jdk/javax/naming/module/src/test/test/StorePerson.java
+@@ -139,7 +139,7 @@ public void run() {
+                 System.err.println("StorePerson: entry '" + dn2 +
+                         "' already exists");
+                 cleanup(ctx, dn);
+-                return;
++                throw e;
+             }
+ 
+             /*
+
+--- a/test/jdk/javax/naming/module/src/test/test/StorePerson.java
++++ b/test/jdk/javax/naming/module/src/test/test/StorePerson.java
+@@ -161,7 +161,7 @@ public void run() {
+                         dn + "' " + e);
+                 e.printStackTrace();
+                 cleanup(ctx, dn, dn2);
+-                return;
++                throw e;
+             }
+ 
+             try {
+
+--- a/test/jdk/javax/naming/module/src/test/test/StorePerson.java
++++ b/test/jdk/javax/naming/module/src/test/test/StorePerson.java
+@@ -179,7 +179,7 @@ public void run() {
+                         dn2 + "' " + e);
+                 e.printStackTrace();
+                 cleanup(ctx, dn, dn2);
+-                return;
++                throw e;
+             }
+ 
+             cleanup(ctx, dn, dn2);
+
+--- a/test/jdk/javax/naming/module/src/test/test/StoreRemote.java
++++ b/test/jdk/javax/naming/module/src/test/test/StoreRemote.java
+@@ -1,5 +1,5 @@
+ /*
+- * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
++ * Copyright (c) 2015, 2022, Oracle and/or its affiliates. All rights reserved.
+  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+  *
+  * This code is free software; you can redistribute it and/or modify it
+
+--- a/test/jdk/javax/naming/module/src/test/test/StoreRemote.java
++++ b/test/jdk/javax/naming/module/src/test/test/StoreRemote.java
+@@ -53,7 +53,6 @@ public class StoreRemote {
+         System.getProperty("test.src") + "/src/test/test/StoreRemote.ldap";
+ 
+     public static void main(String[] args) throws Exception {
+-
+         /*
+          * Process arguments
+          */
+
+--- a/test/jdk/javax/naming/module/src/test/test/StoreRemote.java
++++ b/test/jdk/javax/naming/module/src/test/test/StoreRemote.java
+@@ -66,7 +65,7 @@ public static void main(String[] args) throws Exception {
+             System.err.println("        <ldapurl> is the LDAP URL of the parent entry\n");
+             System.err.println("example:");
+             System.err.println("        java StoreRemote ldap://oasis/o=airius.com");
+-            return;
++            throw new IllegalArgumentException();
+         }
+ 
+         /*
+
+--- a/test/jdk/javax/naming/module/src/test/test/StoreRemote.java
++++ b/test/jdk/javax/naming/module/src/test/test/StoreRemote.java
+@@ -120,7 +119,7 @@ public void run() {
+                 System.err.println("StoreRemote: entry '" + dn +
+                         "' already exists");
+                 cleanup(ctx, (String)null);
+-                return;
++                throw e;
+             }
+ 
+             /*
+
+--- a/test/jdk/javax/naming/module/src/test/test/StoreRemote.java
++++ b/test/jdk/javax/naming/module/src/test/test/StoreRemote.java
+@@ -141,7 +140,7 @@ public void run() {
+                         dn + "' " + e);
+                 e.printStackTrace();
+                 cleanup(ctx, dn);
+-                return;
++                throw e;
+             }
+ 
+             cleanup(ctx, dn);
+

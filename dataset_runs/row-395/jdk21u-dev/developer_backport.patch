@@ -1,0 +1,165 @@
+diff --git a/src/jdk.compiler/share/classes/com/sun/tools/javac/jvm/ClassReader.java b/src/jdk.compiler/share/classes/com/sun/tools/javac/jvm/ClassReader.java
+index 90797b1a723..435e4c3b502 100644
+--- a/src/jdk.compiler/share/classes/com/sun/tools/javac/jvm/ClassReader.java
++++ b/src/jdk.compiler/share/classes/com/sun/tools/javac/jvm/ClassReader.java
+@@ -62,6 +62,7 @@ import com.sun.tools.javac.file.PathFileObject;
+ import com.sun.tools.javac.jvm.ClassFile.Version;
+ import com.sun.tools.javac.jvm.PoolConstant.NameAndType;
+ import com.sun.tools.javac.main.Option;
++import com.sun.tools.javac.resources.CompilerProperties.Errors;
+ import com.sun.tools.javac.resources.CompilerProperties.Fragments;
+ import com.sun.tools.javac.resources.CompilerProperties.Warnings;
+ import com.sun.tools.javac.util.*;
+@@ -2272,9 +2273,17 @@ public class ClassReader {
+      * 4.7.20-A target_type to locate the correct type to rewrite, and then interpreting the JVMS
+      * 4.7.20.2 type_path to associate the annotation with the correct contained type.
+      */
+-    private static void addTypeAnnotationsToSymbol(
+-            Symbol s, List<Attribute.TypeCompound> attributes) {
+-        new TypeAnnotationSymbolVisitor(attributes).visit(s, null);
++    private void addTypeAnnotationsToSymbol(Symbol s, List<Attribute.TypeCompound> attributes) {
++        try {
++            new TypeAnnotationSymbolVisitor(attributes).visit(s, null);
++        } catch (CompletionFailure ex) {
++            JavaFileObject prev = log.useSource(currentClassFile);
++            try {
++                log.error(Errors.CantAttachTypeAnnotations(attributes, s.owner, s.name, ex.getDetailValue()));
++            } finally {
++                log.useSource(prev);
++            }
++        }
+     }
+ 
+     private static class TypeAnnotationSymbolVisitor
+diff --git a/src/jdk.compiler/share/classes/com/sun/tools/javac/resources/compiler.properties b/src/jdk.compiler/share/classes/com/sun/tools/javac/resources/compiler.properties
+index c53b5356d67..e54c27beff8 100644
+--- a/src/jdk.compiler/share/classes/com/sun/tools/javac/resources/compiler.properties
++++ b/src/jdk.compiler/share/classes/com/sun/tools/javac/resources/compiler.properties
+@@ -2304,6 +2304,11 @@ compiler.warn.annotation.method.not.found=\
+ compiler.warn.annotation.method.not.found.reason=\
+     Cannot find annotation method ''{1}()'' in type ''{0}'': {2}
+ 
++# 0: list of annotation, 1: symbol, 2: name, 3: message segment
++compiler.err.cant.attach.type.annotations=\
++    Cannot attach type annotations {0} to {1}.{2}:\n\
++    {3}
++
+ # 0: file object, 1: symbol, 2: name
+ compiler.warn.unknown.enum.constant=\
+     unknown enum constant {1}.{2}
+diff --git a/test/langtools/tools/javac/annotations/typeAnnotations/CompletionErrorOnEnclosingType.java b/test/langtools/tools/javac/annotations/typeAnnotations/CompletionErrorOnEnclosingType.java
+new file mode 100644
+index 00000000000..11b4e1ccbd4
+--- /dev/null
++++ b/test/langtools/tools/javac/annotations/typeAnnotations/CompletionErrorOnEnclosingType.java
+@@ -0,0 +1,98 @@
++/*
++ * Copyright (c) 2024, Alphabet LLC. All rights reserved.
++ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
++ *
++ * This code is free software; you can redistribute it and/or modify it
++ * under the terms of the GNU General Public License version 2 only, as
++ * published by the Free Software Foundation.
++ *
++ * This code is distributed in the hope that it will be useful, but WITHOUT
++ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
++ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
++ * version 2 for more details (a copy is included in the LICENSE file that
++ * accompanied this code).
++ *
++ * You should have received a copy of the GNU General Public License version
++ * 2 along with this work; if not, write to the Free Software Foundation,
++ * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
++ *
++ * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
++ * or visit www.oracle.com if you need additional information or have any
++ * questions.
++ */
++
++/*
++ * @test
++ * @bug 8337998
++ * @summary CompletionFailure in getEnclosingType attaching type annotations
++ * @library /tools/javac/lib /tools/lib
++ * @modules jdk.compiler/com.sun.tools.javac.api
++ *          jdk.compiler/com.sun.tools.javac.main
++ */
++
++import toolbox.*;
++import toolbox.Task.*;
++
++import java.nio.file.Path;
++import java.nio.file.Paths;
++import java.util.List;
++
++public class CompletionErrorOnEnclosingType {
++    ToolBox tb = new ToolBox();
++
++    public static void main(String... args) throws Exception {
++        CompletionErrorOnEnclosingType t = new CompletionErrorOnEnclosingType();
++        t.testMissingEnclosingType();
++    }
++
++    void testMissingEnclosingType() throws Exception {
++        String annoSrc =
++                """
++                import static java.lang.annotation.ElementType.TYPE_USE;
++                import java.lang.annotation.Target;
++                @Target(TYPE_USE)
++                @interface Anno {}
++
++                class A<E> {}
++
++                class B {
++                  private @Anno A<String> a;
++                }
++                """;
++        String cSrc =
++                """
++                class C {
++                  B b;
++                }
++                """;
++
++        Path base = Paths.get(".");
++        Path src = base.resolve("src");
++        tb.createDirectories(src);
++        tb.writeJavaFiles(src, annoSrc, cSrc);
++        Path out = base.resolve("out");
++        tb.createDirectories(out);
++        new JavacTask(tb).outdir(out).files(tb.findJavaFiles(src)).run();
++
++        // now if we remove A.class there will be an error but javac should not crash
++        tb.deleteFiles(out.resolve("A.class"));
++        List<String> log =
++                new JavacTask(tb)
++                        .outdir(out)
++                        .classpath(out)
++                        .options("-XDrawDiagnostics")
++                        .files(src.resolve("C.java"))
++                        .run(Expect.FAIL)
++                        .writeAll()
++                        .getOutputLines(Task.OutputKind.DIRECT);
++
++        var expectedOutput =
++                List.of(
++                        "B.class:-:-: compiler.err.cant.attach.type.annotations: @Anno, B, a,"
++                            + " (compiler.misc.class.file.not.found: A)",
++                        "1 error");
++        if (!expectedOutput.equals(log)) {
++            throw new Exception("expected output not found: " + log);
++        }
++    }
++}
+diff --git a/test/langtools/tools/javac/diags/examples.not-yet.txt b/test/langtools/tools/javac/diags/examples.not-yet.txt
+index 983469b78c2..e460a494a65 100644
+--- a/test/langtools/tools/javac/diags/examples.not-yet.txt
++++ b/test/langtools/tools/javac/diags/examples.not-yet.txt
+@@ -41,6 +41,7 @@ compiler.err.signature.doesnt.match.intf                # UNUSED
+ compiler.err.signature.doesnt.match.supertype           # UNUSED
+ compiler.err.source.cant.overwrite.input.file
+ compiler.err.stack.sim.error
++compiler.err.cant.attach.type.annotations               # bad class file
+ compiler.err.type.var.more.than.once                    # UNUSED
+ compiler.err.type.var.more.than.once.in.result          # UNUSED
+ compiler.err.unexpected.type

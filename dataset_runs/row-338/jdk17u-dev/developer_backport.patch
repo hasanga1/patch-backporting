@@ -1,0 +1,334 @@
+diff --git a/src/jdk.jartool/share/classes/sun/security/tools/jarsigner/Main.java b/src/jdk.jartool/share/classes/sun/security/tools/jarsigner/Main.java
+index 6957939cae4..d17615309e8 100644
+--- a/src/jdk.jartool/share/classes/sun/security/tools/jarsigner/Main.java
++++ b/src/jdk.jartool/share/classes/sun/security/tools/jarsigner/Main.java
+@@ -180,6 +180,7 @@ public class Main {
+     private boolean hasExpiringCert = false;
+     private boolean hasExpiringTsaCert = false;
+     private boolean noTimestamp = true;
++    private boolean hasNonexistentEntries = false;
+ 
+     // Expiration date. The value could be null if signed by a trusted cert.
+     private Date expireDate = null;
+@@ -706,6 +707,7 @@ public class Main {
+         Map<String,PKCS7> sigMap = new HashMap<>();
+         Map<String,String> sigNameMap = new HashMap<>();
+         Map<String,String> unparsableSignatures = new HashMap<>();
++        Map<String,Set<String>> entriesInSF = new HashMap<>();
+ 
+         try {
+             jf = new JarFile(jarName, true);
+@@ -753,6 +755,7 @@ public class Main {
+                                         break;
+                                     }
+                                 }
++                                entriesInSF.put(alias, sf.getEntries().keySet());
+                                 if (!found) {
+                                     unparsableSignatures.putIfAbsent(alias,
+                                         String.format(
+@@ -851,6 +854,9 @@ public class Main {
+                                 sb.append('\n');
+                             }
+                         }
++                        for (var signed : entriesInSF.values()) {
++                            signed.remove(name);
++                        }
+                     } else if (showcerts && !verbose.equals("all")) {
+                         // Print no info for unsigned entries when -verbose:all,
+                         // to be consistent with old behavior.
+@@ -1044,6 +1050,13 @@ public class Main {
+                         if (verbose != null) {
+                             System.out.println(history);
+                         }
++                        var signed = entriesInSF.get(s);
++                        if (!signed.isEmpty()) {
++                            if (verbose != null) {
++                                System.out.println(rb.getString("history.nonexistent.entries") + signed);
++                            }
++                            hasNonexistentEntries = true;
++                        }
+                     } else {
+                         unparsableSignatures.putIfAbsent(s, String.format(
+                                 rb.getString("history.nobk"), s));
+@@ -1287,6 +1300,9 @@ public class Main {
+             }
+         }
+ 
++        if (hasNonexistentEntries) {
++            warnings.add(rb.getString("nonexistent.entries.found"));
++        }
+         if (extraAttrsDetected) {
+             warnings.add(rb.getString("extra.attributes.detected"));
+         }
+diff --git a/src/jdk.jartool/share/classes/sun/security/tools/jarsigner/Resources.java b/src/jdk.jartool/share/classes/sun/security/tools/jarsigner/Resources.java
+index 2b74856b7ce..4185c786aec 100644
+--- a/src/jdk.jartool/share/classes/sun/security/tools/jarsigner/Resources.java
++++ b/src/jdk.jartool/share/classes/sun/security/tools/jarsigner/Resources.java
+@@ -165,6 +165,7 @@ public class Resources extends java.util.ListResourceBundle {
+ 
+         {"history.with.ts", "- Signed by \"%1$s\"\n    Digest algorithm: %2$s\n    Signature algorithm: %3$s, %4$s\n  Timestamped by \"%6$s\" on %5$tc\n    Timestamp digest algorithm: %7$s\n    Timestamp signature algorithm: %8$s, %9$s"},
+         {"history.without.ts", "- Signed by \"%1$s\"\n    Digest algorithm: %2$s\n    Signature algorithm: %3$s, %4$s"},
++        {"history.nonexistent.entries", "    Warning: nonexistent signed entries: "},
+         {"history.unparsable", "- Unparsable signature-related file %s"},
+         {"history.nosf", "- Missing signature-related file META-INF/%s.SF"},
+         {"history.nobk", "- Missing block file for signature-related file META-INF/%s.SF"},
+@@ -175,6 +176,7 @@ public class Resources extends java.util.ListResourceBundle {
+         {"key.bit.weak", "%d-bit key (weak)"},
+         {"key.bit.disabled", "%d-bit key (disabled)"},
+         {"unknown.size", "unknown size"},
++        {"nonexistent.entries.found", "This jar contains signed entries for files that do not exist. See the -verbose output for more details."},
+         {"extra.attributes.detected", "POSIX file permission and/or symlink attributes detected. These attributes are ignored when signing and are not protected by the signature."},
+ 
+         {"jarsigner.", "jarsigner: "},
+diff --git a/test/jdk/sun/security/tools/jarsigner/RemovedFiles.java b/test/jdk/sun/security/tools/jarsigner/RemovedFiles.java
+new file mode 100644
+index 00000000000..7a4e566efa6
+--- /dev/null
++++ b/test/jdk/sun/security/tools/jarsigner/RemovedFiles.java
+@@ -0,0 +1,94 @@
++/*
++ * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
++ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
++ *
++ * This code is free software; you can redistribute it and/or modify it
++ * under the terms of the GNU General Public License version 2 only, as
++ * published by the Free Software Foundation.
++ *
++ * This code is distributed in the hope that it will be useful, but WITHOUT
++ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
++ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
++ * version 2 for more details (a copy is included in the LICENSE file that
++ * accompanied this code).
++ *
++ * You should have received a copy of the GNU General Public License version
++ * 2 along with this work; if not, write to the Free Software Foundation,
++ * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
++ *
++ * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
++ * or visit www.oracle.com if you need additional information or have any
++ * questions.
++ */
++
++/*
++ * @test
++ * @bug 8309841
++ * @summary Jarsigner should print a warning if an entry is removed
++ * @library /test/lib
++ */
++
++import jdk.test.lib.SecurityTools;
++import jdk.test.lib.util.JarUtils;
++
++import java.nio.file.Files;
++import java.nio.file.Path;
++import java.util.jar.Attributes;
++import java.util.jar.Manifest;
++
++public class RemovedFiles {
++
++    private static final String NONEXISTENT_ENTRIES_FOUND
++            = "This jar contains signed entries for files that do not exist. See the -verbose output for more details.";
++
++    public static void main(String[] args) throws Exception {
++        JarUtils.createJarFile(
++                Path.of("a.jar"),
++                Path.of("."),
++                Files.writeString(Path.of("a"), "a"),
++                Files.writeString(Path.of("b"), "b"));
++        SecurityTools.keytool("-genkeypair -storepass changeit -keystore ks -alias x -dname CN=x -keyalg ed25519");
++        SecurityTools.jarsigner("-storepass changeit -keystore ks a.jar x");
++
++        // All is fine at the beginning.
++        SecurityTools.jarsigner("-verify a.jar")
++                .shouldNotContain(NONEXISTENT_ENTRIES_FOUND);
++
++        // Remove an entry after signing. There will be a warning.
++        JarUtils.deleteEntries(Path.of("a.jar"), "a");
++        SecurityTools.jarsigner("-verify a.jar")
++                .shouldContain(NONEXISTENT_ENTRIES_FOUND);
++        SecurityTools.jarsigner("-verify -verbose a.jar")
++                .shouldContain(NONEXISTENT_ENTRIES_FOUND)
++                .shouldContain("Warning: nonexistent signed entries: [a]");
++
++        // Remove one more entry.
++        JarUtils.deleteEntries(Path.of("a.jar"), "b");
++        SecurityTools.jarsigner("-verify a.jar")
++                .shouldContain(NONEXISTENT_ENTRIES_FOUND);
++        SecurityTools.jarsigner("-verify -verbose a.jar")
++                .shouldContain(NONEXISTENT_ENTRIES_FOUND)
++                .shouldContain("Warning: nonexistent signed entries: [a, b]");
++
++        // Re-sign will not clear the warning.
++        SecurityTools.jarsigner("-storepass changeit -keystore ks a.jar x");
++        SecurityTools.jarsigner("-verify a.jar")
++                .shouldContain(NONEXISTENT_ENTRIES_FOUND);
++
++        // Unfortunately, if there is a non-file entry in manifest, there will be
++        // a false alarm. See https://bugs.openjdk.org/browse/JDK-8334261.
++        var man = new Manifest();
++        man.getMainAttributes().putValue("Manifest-Version", "1.0");
++        man.getEntries().computeIfAbsent("Hello", key -> new Attributes())
++                .putValue("Foo", "Bar");
++        JarUtils.createJarFile(Path.of("b.jar"),
++                man,
++                Path.of("."),
++                Path.of("a"));
++        SecurityTools.jarsigner("-storepass changeit -keystore ks b.jar x");
++        SecurityTools.jarsigner("-verbose -verify b.jar")
++                .shouldContain("Warning: nonexistent signed entries: [Hello]")
++                .shouldContain(NONEXISTENT_ENTRIES_FOUND);
++
++    }
++}
+diff --git a/test/lib-test/jdk/test/lib/util/JarUtilsTest.java b/test/lib-test/jdk/test/lib/util/JarUtilsTest.java
+new file mode 100644
+index 00000000000..eb9dced3256
+--- /dev/null
++++ b/test/lib-test/jdk/test/lib/util/JarUtilsTest.java
+@@ -0,0 +1,77 @@
++/*
++ * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
++ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
++ *
++ * This code is free software; you can redistribute it and/or modify it
++ * under the terms of the GNU General Public License version 2 only, as
++ * published by the Free Software Foundation.
++ *
++ * This code is distributed in the hope that it will be useful, but WITHOUT
++ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
++ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
++ * version 2 for more details (a copy is included in the LICENSE file that
++ * accompanied this code).
++ *
++ * You should have received a copy of the GNU General Public License version
++ * 2 along with this work; if not, write to the Free Software Foundation,
++ * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
++ *
++ * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
++ * or visit www.oracle.com if you need additional information or have any
++ * questions.
++ */
++
++/* @test
++ * @bug 8309841
++ * @summary Unit Test for a common Test API in jdk.test.lib.util.JarUtils
++ * @library /test/lib
++ */
++
++import jdk.test.lib.Asserts;
++import jdk.test.lib.util.JarUtils;
++
++import java.io.IOException;
++import java.nio.file.Files;
++import java.nio.file.Path;
++import java.util.Set;
++import java.util.jar.JarEntry;
++import java.util.jar.JarFile;
++import java.util.stream.Collectors;
++
++public class JarUtilsTest {
++    public static void main(String[] args) throws Exception {
++        Files.createDirectory(Path.of("bx"));
++        JarUtils.createJarFile(Path.of("a.jar"),
++                Path.of("."),
++                Files.writeString(Path.of("a"), ""),
++                Files.writeString(Path.of("b1"), ""),
++                Files.writeString(Path.of("b2"), ""),
++                Files.writeString(Path.of("bx/x"), ""),
++                Files.writeString(Path.of("c"), ""),
++                Files.writeString(Path.of("e1"), ""),
++                Files.writeString(Path.of("e2"), ""));
++        checkContent("a", "b1", "b2", "bx/x", "c", "e1", "e2");
++
++        JarUtils.deleteEntries(Path.of("a.jar"), "a");
++        checkContent("b1", "b2", "bx/x", "c", "e1", "e2");
++
++        // Note: b* covers everything starting with b, even bx/x
++        JarUtils.deleteEntries(Path.of("a.jar"), "b*");
++        checkContent("c", "e1", "e2");
++
++        // d* does not match
++        JarUtils.deleteEntries(Path.of("a.jar"), "d*");
++        checkContent("c", "e1", "e2");
++
++        // multiple patterns
++        JarUtils.deleteEntries(Path.of("a.jar"), "d*", "e*");
++        checkContent("c");
++    }
++
++    static void checkContent(String... expected) throws IOException {
++        try (var jf = new JarFile("a.jar")) {
++            Asserts.assertEquals(Set.of(expected),
++                    jf.stream().map(JarEntry::getName).collect(Collectors.toSet()));
++        }
++    }
++}
+diff --git a/test/lib/jdk/test/lib/util/JarUtils.java b/test/lib/jdk/test/lib/util/JarUtils.java
+index e1b3ccac19f..3aa4ada5197 100644
+--- a/test/lib/jdk/test/lib/util/JarUtils.java
++++ b/test/lib/jdk/test/lib/util/JarUtils.java
+@@ -1,5 +1,5 @@
+ /*
+- * Copyright (c) 2015, 2020, Oracle and/or its affiliates. All rights reserved.
++ * Copyright (c) 2015, 2024, Oracle and/or its affiliates. All rights reserved.
+  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+  *
+  * This code is free software; you can redistribute it and/or modify it
+@@ -320,6 +320,57 @@ public final class JarUtils {
+         updateJar(src, dest, Map.of(JarFile.MANIFEST_NAME, bout.toByteArray()));
+     }
+ 
++    /**
++     * Remove entries from a ZIP file.
++     *
++     * Each entry can be a name or a name ending with "*".
++     *
++     * @return number of removed entries
++     * @throws IOException if there is any I/O error
++     */
++    public static int deleteEntries(Path jarfile, String... patterns)
++            throws IOException {
++        Path tmpfile = Files.createTempFile("jar", "jar");
++        int count = 0;
++
++        try (OutputStream out = Files.newOutputStream(tmpfile);
++             JarOutputStream jos = new JarOutputStream(out)) {
++            try (JarFile jf = new JarFile(jarfile.toString())) {
++                Enumeration<JarEntry> jentries = jf.entries();
++                top: while (jentries.hasMoreElements()) {
++                    JarEntry jentry = jentries.nextElement();
++                    String name = jentry.getName();
++                    for (String pattern : patterns) {
++                        if (pattern.endsWith("*")) {
++                            if (name.startsWith(pattern.substring(
++                                    0, pattern.length() - 1))) {
++                                // Go directly to next entry. This
++                                // one is not written into `jos` and
++                                // therefore removed.
++                                count++;
++                                continue top;
++                            }
++                        } else {
++                            if (name.equals(pattern)) {
++                                // Same as above
++                                count++;
++                                continue top;
++                            }
++                        }
++                    }
++                    // No pattern matched, file retained
++                    jos.putNextEntry(copyEntry(jentry));
++                    jf.getInputStream(jentry).transferTo(jos);
++                }
++            }
++        }
++
++        // replace the original JAR file
++        Files.move(tmpfile, jarfile, StandardCopyOption.REPLACE_EXISTING);
++
++        return count;
++    }
++
+     private static void updateEntry(JarOutputStream jos, String name, Object content)
+            throws IOException {
+         if (content instanceof Boolean) {

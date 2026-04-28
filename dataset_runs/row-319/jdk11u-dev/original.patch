@@ -1,0 +1,732 @@
+diff --git a/src/jdk.compiler/share/classes/com/sun/tools/javac/jvm/StringConcat.java b/src/jdk.compiler/share/classes/com/sun/tools/javac/jvm/StringConcat.java
+index 0dddb3e5868..edb41fc2faf 100644
+--- a/src/jdk.compiler/share/classes/com/sun/tools/javac/jvm/StringConcat.java
++++ b/src/jdk.compiler/share/classes/com/sun/tools/javac/jvm/StringConcat.java
+@@ -142,25 +142,6 @@ private List<JCTree> collect(JCTree tree, List<JCTree> res) {
+         return res.append(tree);
+     }
+ 
+-    /**
+-     * If the type is not accessible from current context, try to figure out the
+-     * sharpest accessible supertype.
+-     *
+-     * @param originalType type to sharpen
+-     * @return sharped type
+-     */
+-    Type sharpestAccessible(Type originalType) {
+-        if (originalType.hasTag(ARRAY)) {
+-            return types.makeArrayType(sharpestAccessible(types.elemtype(originalType)));
+-        }
+-
+-        Type type = originalType;
+-        while (!rs.isAccessible(gen.getAttrEnv(), type.asElement())) {
+-            type = types.supertype(type);
+-        }
+-        return type;
+-    }
+-
+     /**
+      * "Legacy" bytecode flavor: emit the StringBuilder.append chains for string
+      * concatenation.
+@@ -305,6 +286,14 @@ protected List<List<JCTree>> split(List<JCTree> args) {
+ 
+             return splits.toList();
+         }
++
++        /**
++         * Returns true if the argument should be converted to a string eagerly, to preserve
++         * possible side-effects.
++         */
++        protected boolean shouldConvertToStringEagerly(Type argType) {
++            return !types.unboxedTypeOrType(argType).isPrimitive() && argType.tsym != syms.stringType.tsym;
++        }
+     }
+ 
+     /**
+@@ -333,14 +322,18 @@ protected void emit(JCDiagnostic.DiagnosticPosition pos, List<JCTree> args, bool
+                 for (JCTree arg : t) {
+                     Object constVal = arg.type.constValue();
+                     if ("".equals(constVal)) continue;
+-                    if (arg.type == syms.botType) {
+-                        dynamicArgs.add(types.boxedClass(syms.voidType).type);
+-                    } else {
+-                        dynamicArgs.add(sharpestAccessible(arg.type));
++                    Type argType = arg.type;
++                    if (argType == syms.botType) {
++                        argType = types.boxedClass(syms.voidType).type;
+                     }
+                     if (!first || generateFirstArg) {
+                         gen.genExpr(arg, arg.type).load();
+                     }
++                    if (shouldConvertToStringEagerly(argType)) {
++                        gen.callMethod(pos, syms.stringType, names.valueOf, List.of(syms.objectType), true);
++                        argType = syms.stringType;
++                    }
++                    dynamicArgs.add(argType);
+                     first = false;
+                 }
+                 doCall(type, pos, dynamicArgs.toList());
+@@ -439,10 +432,15 @@ protected void emit(JCDiagnostic.DiagnosticPosition pos, List<JCTree> args, bool
+                     } else {
+                         // Ordinary arguments come through the dynamic arguments.
+                         recipe.append(TAG_ARG);
+-                        dynamicArgs.add(sharpestAccessible(arg.type));
++                        Type argType = arg.type;
+                         if (!first || generateFirstArg) {
+                             gen.genExpr(arg, arg.type).load();
+                         }
++                        if (shouldConvertToStringEagerly(argType)) {
++                            gen.callMethod(pos, syms.stringType, names.valueOf, List.of(syms.objectType), true);
++                            argType = syms.stringType;
++                        }
++                        dynamicArgs.add(argType);
+                         first = false;
+                     }
+                 }
+diff --git a/test/hotspot/jtreg/runtime/modules/AccessCheck/MethodAccessReadTwice.java b/test/hotspot/jtreg/runtime/modules/AccessCheck/MethodAccessReadTwice.java
+index 29bbe7f39b0..d6b85ced257 100644
+--- a/test/hotspot/jtreg/runtime/modules/AccessCheck/MethodAccessReadTwice.java
++++ b/test/hotspot/jtreg/runtime/modules/AccessCheck/MethodAccessReadTwice.java
+@@ -29,8 +29,8 @@
+  *          after the module read edge is added.
+  * @compile ModuleLibrary.java
+  *          p2/c2.java
+- *          p5/c5.java
+- *          p7/c7.java
++ *          p5/c5.jasm
++ *          p7/c7.jasm
+  * @run main/othervm MethodAccessReadTwice
+  */
+ 
+diff --git a/test/hotspot/jtreg/runtime/modules/AccessCheck/p5/c5.jasm b/test/hotspot/jtreg/runtime/modules/AccessCheck/p5/c5.jasm
+new file mode 100644
+index 00000000000..b1178eaab6c
+--- /dev/null
++++ b/test/hotspot/jtreg/runtime/modules/AccessCheck/p5/c5.jasm
+@@ -0,0 +1,76 @@
++/*
++ * Copyright (c) 2021, Google LLC. All rights reserved.
++ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
++ *
++ * This code is free software; you can redistribute it and/or modify it
++ * under the terms of the GNU General Public License version 2 only, as
++ * published by the Free Software Foundation.
++ *
++ * This code is distributed in the hope that it will be useful, but WITHOUT
++ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
++ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
++ * version 2 for more details (a copy is included in the LICENSE file that
++ * accompanied this code).
++ *
++ * You should have received a copy of the GNU General Public License version
++ * 2 along with this work; if not, write to the Free Software Foundation,
++ * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
++ *
++ * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
++ * or visit www.oracle.com if you need additional information or have any
++ * questions.
++ */
++
++/*
++ * Test input for the fix for JDK-8174954, which checks for an expected
++ * IllegalAccessError when the parameter type of an invokedynamic is
++ * inaccessible.
++ *
++ * The test assumes that given the string concatenation expression "" + param,
++ * javac generates an invokedynamic that uses the specific type of param. The
++ * fix for JDK-8273914 make javac eagerly convert param to a String before
++ * passing it to the invokedynamic call, which avoids the accessibility issue
++ * the test is trying to exercise.
++ *
++ * This jasm file contains the bytecode javac generated before the fix for
++ * JDK-8273914, to continue to exercise the invokedynamic behaviour that
++ * JDK-8174954 is testing.
++ */
++
++package  p5;
++
++super public class c5
++	version 61:0
++{
++  public Method "<init>":"()V"
++	stack 1 locals 1
++  {
++		aload_0;
++		invokespecial	Method java/lang/Object."<init>":"()V";
++		return;
++  }
++  public Method method5:"(Lp2/c2;)V"
++	stack 2 locals 2
++  {
++		getstatic	Field java/lang/System.out:"Ljava/io/PrintStream;";
++		aload_1;
++		invokedynamic	InvokeDynamic REF_invokeStatic:Method java/lang/invoke/StringConcatFactory.makeConcatWithConstants:"(Ljava/lang/invoke/MethodHandles$Lookup;Ljava/lang/String;Ljava/lang/invoke/MethodType;Ljava/lang/String;[Ljava/lang/Object;)Ljava/lang/invoke/CallSite;":makeConcatWithConstants:"(Lp2/c2;)Ljava/lang/String;" {
++			String "In c5\'s method5 with param = "
++		};
++		invokevirtual	Method java/io/PrintStream.println:"(Ljava/lang/String;)V";
++		return;
++  }
++  public Method methodAddReadEdge:"(Ljava/lang/Module;)V"
++	stack 2 locals 2
++  {
++		ldc	class c5;
++		invokevirtual	Method java/lang/Class.getModule:"()Ljava/lang/Module;";
++		aload_1;
++		invokevirtual	Method java/lang/Module.addReads:"(Ljava/lang/Module;)Ljava/lang/Module;";
++		pop;
++		return;
++  }
++
++  public static final InnerClass Lookup=class java/lang/invoke/MethodHandles$Lookup of class java/lang/invoke/MethodHandles;
++
++} // end Class c5
+diff --git a/test/hotspot/jtreg/runtime/modules/AccessCheck/p7/c7.jasm b/test/hotspot/jtreg/runtime/modules/AccessCheck/p7/c7.jasm
+new file mode 100644
+index 00000000000..6ca4e6850e3
+--- /dev/null
++++ b/test/hotspot/jtreg/runtime/modules/AccessCheck/p7/c7.jasm
+@@ -0,0 +1,113 @@
++/*
++ * Copyright (c) 2021, Google LLC. All rights reserved.
++ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
++ *
++ * This code is free software; you can redistribute it and/or modify it
++ * under the terms of the GNU General Public License version 2 only, as
++ * published by the Free Software Foundation.
++ *
++ * This code is distributed in the hope that it will be useful, but WITHOUT
++ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
++ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
++ * version 2 for more details (a copy is included in the LICENSE file that
++ * accompanied this code).
++ *
++ * You should have received a copy of the GNU General Public License version
++ * 2 along with this work; if not, write to the Free Software Foundation,
++ * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
++ *
++ * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
++ * or visit www.oracle.com if you need additional information or have any
++ * questions.
++ */
++
++/*
++ * Test input for the fix for JDK-8174954, which checks for an expected
++ * IllegalAccessError when the parameter type of an invokedynamic is
++ * inaccessible.
++ *
++ * The test assumes that given the string concatenation expression "" + param,
++ * javac generates an invokedynamic that uses the specific type of param. The
++ * fix for JDK-8273914 make javac eagerly convert param to a String before
++ * passing it to the invokedynamic call, which avoids the accessibility issue
++ * the test is trying to exercise.
++ *
++ * This jasm file contains the bytecode javac generated before the fix for
++ * JDK-8273914, to continue to exercise the invokedynamic behaviour that
++ * JDK-8174954 is testing.
++ */
++
++package  p7;
++
++super public class c7
++	version 61:0
++{
++  public Method "<init>":"()V"
++	stack 1 locals 1
++  {
++		aload_0;
++		invokespecial	Method java/lang/Object."<init>":"()V";
++		return;
++  }
++  public Method method7:"(Lp2/c2;Ljava/lang/Module;)V"
++	stack 3 locals 4
++  {
++		try t0;
++		getstatic	Field java/lang/System.out:"Ljava/io/PrintStream;";
++		aload_1;
++		invokedynamic	InvokeDynamic REF_invokeStatic:Method java/lang/invoke/StringConcatFactory.makeConcatWithConstants:"(Ljava/lang/invoke/MethodHandles$Lookup;Ljava/lang/String;Ljava/lang/invoke/MethodType;Ljava/lang/String;[Ljava/lang/Object;)Ljava/lang/invoke/CallSite;":makeConcatWithConstants:"(Lp2/c2;)Ljava/lang/String;" {
++			String "In c7\'s method7 with param = "
++		};
++		invokevirtual	Method java/io/PrintStream.println:"(Ljava/lang/String;)V";
++		new	class java/lang/RuntimeException;
++		dup;
++		ldc	String "c7 failed to throw expected IllegalAccessError";
++		invokespecial	Method java/lang/RuntimeException."<init>":"(Ljava/lang/String;)V";
++		athrow;
++		endtry t0;
++		catch t0 java/lang/IllegalAccessError;
++		stack_frame_type stack1;
++		stack_map class java/lang/IllegalAccessError;
++		astore_3;
++		aload_0;
++		aload_2;
++		invokevirtual	Method methodAddReadEdge:"(Ljava/lang/Module;)V";
++		try t1;
++		getstatic	Field java/lang/System.out:"Ljava/io/PrintStream;";
++		aload_1;
++		invokedynamic	InvokeDynamic REF_invokeStatic:Method java/lang/invoke/StringConcatFactory.makeConcatWithConstants:"(Ljava/lang/invoke/MethodHandles$Lookup;Ljava/lang/String;Ljava/lang/invoke/MethodType;Ljava/lang/String;[Ljava/lang/Object;)Ljava/lang/invoke/CallSite;":makeConcatWithConstants:"(Lp2/c2;)Ljava/lang/String;" {
++			String "In c7\'s method7 with param = "
++		};
++		invokevirtual	Method java/io/PrintStream.println:"(Ljava/lang/String;)V";
++		endtry t1;
++		goto	L61;
++		catch t1 java/lang/IllegalAccessError;
++		stack_frame_type stack1;
++		stack_map class java/lang/IllegalAccessError;
++		astore_3;
++		new	class java/lang/RuntimeException;
++		dup;
++		aload_3;
++		invokevirtual	Method java/lang/IllegalAccessError.getMessage:"()Ljava/lang/String;";
++		invokedynamic	InvokeDynamic REF_invokeStatic:Method java/lang/invoke/StringConcatFactory.makeConcatWithConstants:"(Ljava/lang/invoke/MethodHandles$Lookup;Ljava/lang/String;Ljava/lang/invoke/MethodType;Ljava/lang/String;[Ljava/lang/Object;)Ljava/lang/invoke/CallSite;":makeConcatWithConstants:"(Ljava/lang/String;)Ljava/lang/String;" {
++			String "Unexpected IllegalAccessError: "
++		};
++		invokespecial	Method java/lang/RuntimeException."<init>":"(Ljava/lang/String;)V";
++		athrow;
++	L61:	stack_frame_type same;
++		return;
++  }
++  public Method methodAddReadEdge:"(Ljava/lang/Module;)V"
++	stack 2 locals 2
++  {
++		ldc	class c7;
++		invokevirtual	Method java/lang/Class.getModule:"()Ljava/lang/Module;";
++		aload_1;
++		invokevirtual	Method java/lang/Module.addReads:"(Ljava/lang/Module;)Ljava/lang/Module;";
++		pop;
++		return;
++  }
++
++  public static final InnerClass Lookup=class java/lang/invoke/MethodHandles$Lookup of class java/lang/invoke/MethodHandles;
++
++} // end Class c7
+diff --git a/test/langtools/tools/javac/StringConcat/StringAppendEvaluatesInOrder.java b/test/langtools/tools/javac/StringConcat/StringAppendEvaluatesInOrder.java
+new file mode 100644
+index 00000000000..b2bd47acde0
+--- /dev/null
++++ b/test/langtools/tools/javac/StringConcat/StringAppendEvaluatesInOrder.java
+@@ -0,0 +1,66 @@
++/*
++ * Copyright (c) 2021, Google LLC. All rights reserved.
++ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
++ *
++ * This code is free software; you can redistribute it and/or modify it
++ * under the terms of the GNU General Public License version 2 only, as
++ * published by the Free Software Foundation.
++ *
++ * This code is distributed in the hope that it will be useful, but WITHOUT
++ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
++ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
++ * version 2 for more details (a copy is included in the LICENSE file that
++ * accompanied this code).
++ *
++ * You should have received a copy of the GNU General Public License version
++ * 2 along with this work; if not, write to the Free Software Foundation,
++ * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
++ *
++ * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
++ * or visit www.oracle.com if you need additional information or have any
++ * questions.
++ */
++
++/*
++ * @test
++ * @bug     8273914
++ * @summary Indy string concat changes order of operations
++ *
++ * @clean *
++ * @compile -XDstringConcat=indy              StringAppendEvaluatesInOrder.java
++ * @run main StringAppendEvaluatesInOrder
++ *
++ * @clean *
++ * @compile -XDstringConcat=indyWithConstants StringAppendEvaluatesInOrder.java
++ * @run main StringAppendEvaluatesInOrder
++ *
++ * @clean *
++ * @compile -XDstringConcat=inline            StringAppendEvaluatesInOrder.java
++ * @run main StringAppendEvaluatesInOrder
++ */
++
++public class StringAppendEvaluatesInOrder {
++    static String test() {
++        StringBuilder builder = new StringBuilder("foo");
++        int i = 15;
++        return "Test: " + i + " " + (++i) + builder + builder.append("bar");
++    }
++
++    static String compoundAssignment() {
++        StringBuilder builder2 = new StringBuilder("foo");
++        Object oo = builder2;
++        oo += "" + builder2.append("bar");
++        return oo.toString();
++    }
++
++    public static void main(String[] args) throws Exception {
++        assertEquals(test(), "Test: 15 16foofoobar");
++        assertEquals(compoundAssignment(), "foofoobar");
++    }
++
++    private static void assertEquals(String actual, String expected) {
++      if (!actual.equals(expected)) {
++        throw new AssertionError("expected: " + expected + ", actual: " + actual);
++      }
++    }
++}
+diff --git a/test/langtools/tools/javac/StringConcat/WellKnownTypeSignatures.java b/test/langtools/tools/javac/StringConcat/WellKnownTypeSignatures.java
+new file mode 100644
+index 00000000000..07cdeef4956
+--- /dev/null
++++ b/test/langtools/tools/javac/StringConcat/WellKnownTypeSignatures.java
+@@ -0,0 +1,119 @@
++/*
++ * Copyright (c) 2021, Google LLC. All rights reserved.
++ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
++ *
++ * This code is free software; you can redistribute it and/or modify it
++ * under the terms of the GNU General Public License version 2 only, as
++ * published by the Free Software Foundation.
++ *
++ * This code is distributed in the hope that it will be useful, but WITHOUT
++ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
++ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
++ * version 2 for more details (a copy is included in the LICENSE file that
++ * accompanied this code).
++ *
++ * You should have received a copy of the GNU General Public License version
++ * 2 along with this work; if not, write to the Free Software Foundation,
++ * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
++ *
++ * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
++ * or visit www.oracle.com if you need additional information or have any
++ * questions.
++ */
++
++import com.sun.tools.classfile.*;
++import com.sun.tools.classfile.ConstantPool.*;
++
++import java.io.File;
++import java.util.ArrayList;
++import java.util.List;
++
++/*
++ * @test
++ * @bug     8273914
++ * @summary Indy string concat changes order of operations
++ * @modules jdk.jdeps/com.sun.tools.classfile
++ *
++ * @clean *
++ * @compile -XDstringConcat=indy              WellKnownTypeSignatures.java
++ * @run main WellKnownTypeSignatures
++ *
++ * @clean *
++ * @compile -XDstringConcat=indyWithConstants WellKnownTypeSignatures.java
++ * @run main WellKnownTypeSignatures
++ */
++
++public class WellKnownTypeSignatures {
++    static List<String> actualTypes;
++
++    static int idx = 0;
++
++    static boolean z = true;
++    static char c = (char) 42;
++    static short s = (short) 42;
++    static byte b = (byte) 42;
++    static int i = 42;
++    static long l = 42L;
++    static float f = 42.0f;
++    static double d = 42.0;
++
++    public static void main(String[] argv) throws Exception {
++        readIndyTypes();
++
++        test("" + WellKnownTypeSignatures.class, idx++, "(Ljava/lang/String;)Ljava/lang/String;");
++        test("" + Boolean.valueOf(z), idx++, "(Ljava/lang/Boolean;)Ljava/lang/String;");
++        test("" + Character.valueOf(c), idx++, "(Ljava/lang/Character;)Ljava/lang/String;");
++        test("" + Byte.valueOf(b), idx++, "(Ljava/lang/Byte;)Ljava/lang/String;");
++        test("" + Short.valueOf(s), idx++, "(Ljava/lang/Short;)Ljava/lang/String;");
++        test("" + Integer.valueOf(i), idx++, "(Ljava/lang/Integer;)Ljava/lang/String;");
++        test("" + Long.valueOf(l), idx++, "(Ljava/lang/Long;)Ljava/lang/String;");
++        test("" + Double.valueOf(d), idx++, "(Ljava/lang/Double;)Ljava/lang/String;");
++        test("" + Float.valueOf(f), idx++, "(Ljava/lang/Float;)Ljava/lang/String;");
++        test("" + z, idx++, "(Z)Ljava/lang/String;");
++        test("" + c, idx++, "(C)Ljava/lang/String;");
++        test("" + b, idx++, "(B)Ljava/lang/String;");
++        test("" + s, idx++, "(S)Ljava/lang/String;");
++        test("" + i, idx++, "(I)Ljava/lang/String;");
++        test("" + l, idx++, "(J)Ljava/lang/String;");
++        test("" + d, idx++, "(D)Ljava/lang/String;");
++        test("" + f, idx++, "(F)Ljava/lang/String;");
++    }
++
++    public static void test(String actual, int index, String expectedType) {
++        String actualType = actualTypes.get(index);
++        if (!actualType.equals(expectedType)) {
++            throw new IllegalStateException(
++                    index
++                            + " Unexpected type: expected = "
++                            + expectedType
++                            + ", actual = "
++                            + actualType);
++        }
++    }
++
++    public static void readIndyTypes() throws Exception {
++        actualTypes = new ArrayList<String>();
++
++        ClassFile classFile =
++                ClassFile.read(
++                        new File(
++                                System.getProperty("test.classes", "."),
++                                WellKnownTypeSignatures.class.getName() + ".class"));
++        ConstantPool constantPool = classFile.constant_pool;
++
++        for (Method method : classFile.methods) {
++            if (method.getName(constantPool).equals("main")) {
++                Code_attribute code = (Code_attribute) method.attributes.get(Attribute.Code);
++                for (Instruction i : code.getInstructions()) {
++                    if (i.getOpcode() == Opcode.INVOKEDYNAMIC) {
++                        CONSTANT_InvokeDynamic_info indyInfo =
++                                (CONSTANT_InvokeDynamic_info)
++                                        constantPool.get(i.getUnsignedShort(1));
++                        CONSTANT_NameAndType_info natInfo = indyInfo.getNameAndTypeInfo();
++                        actualTypes.add(natInfo.getType());
++                    }
++                }
++            }
++        }
++    }
++}
+diff --git a/test/langtools/tools/javac/StringConcat/WellKnownTypes.java b/test/langtools/tools/javac/StringConcat/WellKnownTypes.java
+new file mode 100644
+index 00000000000..39150cfc4da
+--- /dev/null
++++ b/test/langtools/tools/javac/StringConcat/WellKnownTypes.java
+@@ -0,0 +1,81 @@
++/*
++ * Copyright (c) 2021, Google LLC. All rights reserved.
++ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
++ *
++ * This code is free software; you can redistribute it and/or modify it
++ * under the terms of the GNU General Public License version 2 only, as
++ * published by the Free Software Foundation.
++ *
++ * This code is distributed in the hope that it will be useful, but WITHOUT
++ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
++ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
++ * version 2 for more details (a copy is included in the LICENSE file that
++ * accompanied this code).
++ *
++ * You should have received a copy of the GNU General Public License version
++ * 2 along with this work; if not, write to the Free Software Foundation,
++ * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
++ *
++ * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
++ * or visit www.oracle.com if you need additional information or have any
++ * questions.
++ */
++
++import com.sun.tools.classfile.*;
++import com.sun.tools.classfile.ConstantPool.*;
++
++/*
++ * @test
++ * @bug     8273914
++ * @summary Indy string concat changes order of operations
++ * @modules jdk.jdeps/com.sun.tools.classfile
++ *
++ * @compile -XDstringConcat=indy              WellKnownTypes.java
++ * @run main WellKnownTypes
++ *
++ * @compile -XDstringConcat=indyWithConstants WellKnownTypes.java
++ * @run main WellKnownTypes
++ *
++ * @compile -XDstringConcat=inline            WellKnownTypes.java
++ * @run main WellKnownTypes
++ */
++
++public class WellKnownTypes {
++    static int idx = 0;
++
++    static boolean z = true;
++    static char c = (char) 42;
++    static byte b = (byte) 43;
++    static short s = (short) 44;
++    static int i = 45;
++    static long l = 46L;
++    static float f = 47.0f;
++    static double d = 48.0;
++
++    public static void main(String[] argv) throws Exception {
++        test("" + WellKnownTypes.class, idx++, "class WellKnownTypes");
++        test("" + Boolean.valueOf(z), idx++, "true");
++        test("" + Character.valueOf(c), idx++, "*");
++        test("" + Byte.valueOf(b), idx++, "43");
++        test("" + Short.valueOf(s), idx++, "44");
++        test("" + Integer.valueOf(i), idx++, "45");
++        test("" + Long.valueOf(l), idx++, "46");
++        test("" + Float.valueOf(f), idx++, "47.0");
++        test("" + Double.valueOf(d), idx++, "48.0");
++        test("" + z, idx++, "true");
++        test("" + c, idx++, "*");
++        test("" + b, idx++, "43");
++        test("" + s, idx++, "44");
++        test("" + i, idx++, "45");
++        test("" + l, idx++, "46");
++        test("" + f, idx++, "47.0");
++        test("" + d, idx++, "48.0");
++    }
++
++    public static void test(String actual, int index, String expected) {
++        if (!actual.equals(expected)) {
++      throw new IllegalStateException(
++          index + " Unexpected: expected = " + expected + ", actual = " + actual);
++        }
++    }
++}
+diff --git a/test/langtools/tools/javac/StringConcat/access/Test.java b/test/langtools/tools/javac/StringConcat/access/Test.java
+index 72237e8b4ef..578bbddb118 100644
+--- a/test/langtools/tools/javac/StringConcat/access/Test.java
++++ b/test/langtools/tools/javac/StringConcat/access/Test.java
+@@ -56,109 +56,109 @@ public static void main(String[] argv) throws Exception {
+         // ----------------------------------------------------------------------------
+ 
+         // public Private_PublicClass            c1 = new Private_PublicClass();
+-        test("" + holder.c1, idx++, "(Lp1/PublicClass;)Ljava/lang/String;");
++        test("" + holder.c1, idx++, "(Ljava/lang/String;)Ljava/lang/String;");
+ 
+         // public Private_PublicInterface        c2 = new Private_PublicInterface();
+-        test("" + holder.c2, idx++, "(Ljava/lang/Object;)Ljava/lang/String;");
++        test("" + holder.c2, idx++, "(Ljava/lang/String;)Ljava/lang/String;");
+ 
+         // public Private_PrivateInterface1      c3 = new Private_PrivateInterface1();
+-        test("" + holder.c3, idx++, "(Ljava/lang/Object;)Ljava/lang/String;");
++        test("" + holder.c3, idx++, "(Ljava/lang/String;)Ljava/lang/String;");
+ 
+         // public Private_PrivateInterface2      c4 = new Private_PrivateInterface2();
+-        test("" + holder.c4, idx++, "(Ljava/lang/Object;)Ljava/lang/String;");
++        test("" + holder.c4, idx++, "(Ljava/lang/String;)Ljava/lang/String;");
+ 
+         // public Public_PublicClass             c5 = new Public_PublicClass();
+-        test("" + holder.c5, idx++, "(Lp1/Public_PublicClass;)Ljava/lang/String;");
++        test("" + holder.c5, idx++, "(Ljava/lang/String;)Ljava/lang/String;");
+ 
+         // public Public_PublicInterface         c6 = new Public_PublicInterface();
+-        test("" + holder.c6, idx++, "(Lp1/Public_PublicInterface;)Ljava/lang/String;");
++        test("" + holder.c6, idx++, "(Ljava/lang/String;)Ljava/lang/String;");
+ 
+         // public Public_PrivateInterface1       c7 = new Public_PrivateInterface1();
+-        test("" + holder.c7, idx++, "(Lp1/Public_PrivateInterface1;)Ljava/lang/String;");
++        test("" + holder.c7, idx++, "(Ljava/lang/String;)Ljava/lang/String;");
+ 
+         // public Public_PrivateInterface2       c8 = new Public_PrivateInterface2();
+-        test("" + holder.c8, idx++, "(Lp1/Public_PrivateInterface2;)Ljava/lang/String;");
++        test("" + holder.c8, idx++, "(Ljava/lang/String;)Ljava/lang/String;");
+ 
+         // ----------------------------------------------------------------------------
+ 
+         // public Private_PublicClass[]          ac1 = new Private_PublicClass[0];
+-        test("" + holder.ac1, idx++, "([Lp1/PublicClass;)Ljava/lang/String;");
++        test("" + holder.ac1, idx++, "(Ljava/lang/String;)Ljava/lang/String;");
+ 
+         // public Private_PublicInterface[]      ac2 = new Private_PublicInterface[0];
+-        test("" + holder.ac2, idx++, "([Ljava/lang/Object;)Ljava/lang/String;");
++        test("" + holder.ac2, idx++, "(Ljava/lang/String;)Ljava/lang/String;");
+ 
+         // public Private_PrivateInterface1[]    ac3 = new Private_PrivateInterface1[0];
+-        test("" + holder.ac3, idx++, "([Ljava/lang/Object;)Ljava/lang/String;");
++        test("" + holder.ac3, idx++, "(Ljava/lang/String;)Ljava/lang/String;");
+ 
+         // public Private_PrivateInterface2[]    ac4 = new Private_PrivateInterface2[0];
+-        test("" + holder.ac4, idx++, "([Ljava/lang/Object;)Ljava/lang/String;");
++        test("" + holder.ac4, idx++, "(Ljava/lang/String;)Ljava/lang/String;");
+ 
+         // public Public_PublicClass[]           ac5 = new Public_PublicClass[0];
+-        test("" + holder.ac5, idx++, "([Lp1/Public_PublicClass;)Ljava/lang/String;");
++        test("" + holder.ac5, idx++, "(Ljava/lang/String;)Ljava/lang/String;");
+ 
+         // public Public_PublicInterface[]       ac6 = new Public_PublicInterface[0];
+-        test("" + holder.ac6, idx++, "([Lp1/Public_PublicInterface;)Ljava/lang/String;");
++        test("" + holder.ac6, idx++, "(Ljava/lang/String;)Ljava/lang/String;");
+ 
+         // public Public_PrivateInterface1[]     ac7 = new Public_PrivateInterface1[0];
+-        test("" + holder.ac7, idx++, "([Lp1/Public_PrivateInterface1;)Ljava/lang/String;");
++        test("" + holder.ac7, idx++, "(Ljava/lang/String;)Ljava/lang/String;");
+ 
+         // public Public_PrivateInterface2[]     ac8 = new Public_PrivateInterface2[0];
+-        test("" + holder.ac8, idx++, "([Lp1/Public_PrivateInterface2;)Ljava/lang/String;");
++        test("" + holder.ac8, idx++, "(Ljava/lang/String;)Ljava/lang/String;");
+ 
+         // ----------------------------------------------------------------------------
+ 
+         // public Private_PublicClass[][]       aac1 = new Private_PublicClass[0][];
+-        test("" + holder.aac1, idx++, "([[Lp1/PublicClass;)Ljava/lang/String;");
++        test("" + holder.aac1, idx++, "(Ljava/lang/String;)Ljava/lang/String;");
+ 
+         // public Private_PublicInterface[][]   aac2 = new Private_PublicInterface[0][];
+-        test("" + holder.aac2, idx++, "([[Ljava/lang/Object;)Ljava/lang/String;");
++        test("" + holder.aac2, idx++, "(Ljava/lang/String;)Ljava/lang/String;");
+ 
+         // public Private_PrivateInterface1[][] aac3 = new Private_PrivateInterface1[0][];
+-        test("" + holder.aac3, idx++, "([[Ljava/lang/Object;)Ljava/lang/String;");
++        test("" + holder.aac3, idx++, "(Ljava/lang/String;)Ljava/lang/String;");
+ 
+         // public Private_PrivateInterface2[][] aac4 = new Private_PrivateInterface2[0][];
+-        test("" + holder.aac4, idx++, "([[Ljava/lang/Object;)Ljava/lang/String;");
++        test("" + holder.aac4, idx++, "(Ljava/lang/String;)Ljava/lang/String;");
+ 
+         // public Public_PublicClass[][]        aac5 = new Public_PublicClass[0][];
+-        test("" + holder.aac5, idx++, "([[Lp1/Public_PublicClass;)Ljava/lang/String;");
++        test("" + holder.aac5, idx++, "(Ljava/lang/String;)Ljava/lang/String;");
+ 
+         // public Public_PublicInterface[][]    aac6 = new Public_PublicInterface[0][];
+-        test("" + holder.aac6, idx++, "([[Lp1/Public_PublicInterface;)Ljava/lang/String;");
++        test("" + holder.aac6, idx++, "(Ljava/lang/String;)Ljava/lang/String;");
+ 
+         // public Public_PrivateInterface1[][]  aac7 = new Public_PrivateInterface1[0][];
+-        test("" + holder.aac7, idx++, "([[Lp1/Public_PrivateInterface1;)Ljava/lang/String;");
++        test("" + holder.aac7, idx++, "(Ljava/lang/String;)Ljava/lang/String;");
+ 
+         // public Public_PrivateInterface2[][]  aac8 = new Public_PrivateInterface2[0][];
+-        test("" + holder.aac8, idx++, "([[Lp1/Public_PrivateInterface2;)Ljava/lang/String;");
++        test("" + holder.aac8, idx++, "(Ljava/lang/String;)Ljava/lang/String;");
+ 
+         // ----------------------------------------------------------------------------
+ 
+         // public PublicInterface                i1 = new Private_PublicInterface();
+-        test("" + holder.i1, idx++, "(Lp1/PublicInterface;)Ljava/lang/String;");
++        test("" + holder.i1, idx++, "(Ljava/lang/String;)Ljava/lang/String;");
+ 
+         // public PrivateInterface1              i2 = new Private_PrivateInterface1();
+-        test("" + holder.i2, idx++, "(Ljava/lang/Object;)Ljava/lang/String;");
++        test("" + holder.i2, idx++, "(Ljava/lang/String;)Ljava/lang/String;");
+ 
+         // public PrivateInterface2              i3 = new Private_PrivateInterface2();
+-        test("" + holder.i3, idx++, "(Ljava/lang/Object;)Ljava/lang/String;");
++        test("" + holder.i3, idx++, "(Ljava/lang/String;)Ljava/lang/String;");
+ 
+         // public PublicInterface[]              ai1 = new Private_PublicInterface[0];
+-        test("" + holder.ai1, idx++, "([Lp1/PublicInterface;)Ljava/lang/String;");
++        test("" + holder.ai1, idx++, "(Ljava/lang/String;)Ljava/lang/String;");
+ 
+         // public PrivateInterface1[]            ai2 = new Private_PrivateInterface1[0];
+-        test("" + holder.ai2, idx++, "([Ljava/lang/Object;)Ljava/lang/String;");
++        test("" + holder.ai2, idx++, "(Ljava/lang/String;)Ljava/lang/String;");
+ 
+         // public PrivateInterface2[]            ai3 = new Private_PrivateInterface2[0];
+-        test("" + holder.ai3, idx++, "([Ljava/lang/Object;)Ljava/lang/String;");
++        test("" + holder.ai3, idx++, "(Ljava/lang/String;)Ljava/lang/String;");
+ 
+         // public PublicInterface[][]           aai1 = new Private_PublicInterface[0][];
+-        test("" + holder.aai1, idx++, "([[Lp1/PublicInterface;)Ljava/lang/String;");
++        test("" + holder.aai1, idx++, "(Ljava/lang/String;)Ljava/lang/String;");
+ 
+         // public PrivateInterface1[][]         aai2 = new Private_PrivateInterface1[0][];
+-        test("" + holder.aai2, idx++, "([[Ljava/lang/Object;)Ljava/lang/String;");
++        test("" + holder.aai2, idx++, "(Ljava/lang/String;)Ljava/lang/String;");
+ 
+         // public PrivateInterface2[][]         aai3 = new Private_PrivateInterface2[0][];
+-        test("" + holder.aai3, idx++, "([[Ljava/lang/Object;)Ljava/lang/String;");
++        test("" + holder.aai3, idx++, "(Ljava/lang/String;)Ljava/lang/String;");
+ 
+     }
+ 

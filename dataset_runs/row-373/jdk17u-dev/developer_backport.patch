@@ -1,0 +1,72 @@
+diff --git a/src/jdk.compiler/share/classes/com/sun/tools/javac/comp/LambdaToMethod.java b/src/jdk.compiler/share/classes/com/sun/tools/javac/comp/LambdaToMethod.java
+index 1968d182fe0..80b70ddd957 100644
+--- a/src/jdk.compiler/share/classes/com/sun/tools/javac/comp/LambdaToMethod.java
++++ b/src/jdk.compiler/share/classes/com/sun/tools/javac/comp/LambdaToMethod.java
+@@ -1561,8 +1561,15 @@ public class LambdaToMethod extends TreeTranslator {
+         public void visitVarDef(JCVariableDecl tree) {
+             TranslationContext<?> context = context();
+             if (context != null && context instanceof LambdaTranslationContext lambdaContext) {
+-                if (frameStack.head.tree.hasTag(LAMBDA)) {
+-                    lambdaContext.addSymbol(tree.sym, LOCAL_VAR);
++                for (Frame frame : frameStack) {
++                    if (frame.tree.hasTag(VARDEF)) {
++                        //skip variable frames inside a lambda:
++                        continue;
++                    } else if (frame.tree.hasTag(LAMBDA)) {
++                        lambdaContext.addSymbol(tree.sym, LOCAL_VAR);
++                    } else {
++                        break;
++                    }
+                 }
+                 // Check for type variables (including as type arguments).
+                 // If they occur within class nested in a lambda, mark for erasure
+diff --git a/test/langtools/tools/javac/patterns/T8312229.java b/test/langtools/tools/javac/patterns/T8312229.java
+new file mode 100644
+index 00000000000..20c3eb3e023
+--- /dev/null
++++ b/test/langtools/tools/javac/patterns/T8312229.java
+@@ -0,0 +1,44 @@
++/*
++ * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
++ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
++ *
++ * This code is free software; you can redistribute it and/or modify it
++ * under the terms of the GNU General Public License version 2 only, as
++ * published by the Free Software Foundation.
++ *
++ * This code is distributed in the hope that it will be useful, but WITHOUT
++ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
++ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
++ * version 2 for more details (a copy is included in the LICENSE file that
++ * accompanied this code).
++ *
++ * You should have received a copy of the GNU General Public License version
++ * 2 along with this work; if not, write to the Free Software Foundation,
++ * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
++ *
++ * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
++ * or visit www.oracle.com if you need additional information or have any
++ * questions.
++ */
++ /*
++ * @test
++ * @bug 8312229
++ * @summary Ensure javac does not crash when a variable is used from an anonymous class
++ * @compile --enable-preview -source ${jdk.version} T8312229.java
++ */
++public class T8312229 {
++    void test(Object o) {
++        Runnable r = () -> {
++            var l = switch (o) {
++                default -> {
++                    Integer i = 42;
++                    yield new Runnable() {
++                        public void run() {
++                            i.toString(); // should not crash here
++                        }
++                    };
++                }
++            };
++        };
++    }
++}

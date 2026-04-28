@@ -1,0 +1,99 @@
+diff --git a/src/java.desktop/share/classes/com/sun/imageio/plugins/jpeg/AdobeMarkerSegment.java b/src/java.desktop/share/classes/com/sun/imageio/plugins/jpeg/AdobeMarkerSegment.java
+index f7063bdc25f..551f4dc4d72 100644
+--- a/src/java.desktop/share/classes/com/sun/imageio/plugins/jpeg/AdobeMarkerSegment.java
++++ b/src/java.desktop/share/classes/com/sun/imageio/plugins/jpeg/AdobeMarkerSegment.java
+@@ -55,15 +55,17 @@ class AdobeMarkerSegment extends MarkerSegment {
+ 
+     AdobeMarkerSegment(JPEGBuffer buffer) throws IOException {
+         super(buffer);
+-        buffer.bufPtr += ID_SIZE; // Skip the id
+-        version = (buffer.buf[buffer.bufPtr++] & 0xff) << 8;
+-        version |= buffer.buf[buffer.bufPtr++] & 0xff;
+-        flags0 = (buffer.buf[buffer.bufPtr++] & 0xff) << 8;
+-        flags0 |= buffer.buf[buffer.bufPtr++] & 0xff;
+-        flags1 = (buffer.buf[buffer.bufPtr++] & 0xff) << 8;
+-        flags1 |= buffer.buf[buffer.bufPtr++] & 0xff;
+-        transform = buffer.buf[buffer.bufPtr++] & 0xff;
++        int markPtr = buffer.bufPtr;
++        markPtr += ID_SIZE; // Skip the id
++        version = (buffer.buf[markPtr++] & 0xff) << 8;
++        version |= buffer.buf[markPtr++] & 0xff;
++        flags0 = (buffer.buf[markPtr++] & 0xff) << 8;
++        flags0 |= buffer.buf[markPtr++] & 0xff;
++        flags1 = (buffer.buf[markPtr++] & 0xff) << 8;
++        flags1 |= buffer.buf[markPtr++] & 0xff;
++        transform = buffer.buf[markPtr++] & 0xff;
+         buffer.bufAvail -= length;
++        buffer.bufPtr += length;
+     }
+ 
+     AdobeMarkerSegment(Node node) throws IIOInvalidTreeException {
+diff --git a/test/jdk/javax/imageio/plugins/jpeg/LargeAdobeMarkerSegmentTest.java b/test/jdk/javax/imageio/plugins/jpeg/LargeAdobeMarkerSegmentTest.java
+new file mode 100644
+index 00000000000..e682fe6d600
+--- /dev/null
++++ b/test/jdk/javax/imageio/plugins/jpeg/LargeAdobeMarkerSegmentTest.java
+@@ -0,0 +1,59 @@
++/*
++ * Copyright 2023 Alphabet LLC.  All Rights Reserved.
++ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
++ *
++ * This code is free software; you can redistribute it and/or modify it
++ * under the terms of the GNU General Public License version 2 only, as
++ * published by the Free Software Foundation.
++ *
++ * This code is distributed in the hope that it will be useful, but WITHOUT
++ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
++ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
++ * version 2 for more details (a copy is included in the LICENSE file that
++ * accompanied this code).
++ *
++ * You should have received a copy of the GNU General Public License version
++ * 2 along with this work; if not, write to the Free Software Foundation,
++ * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
++ *
++ * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
++ * or visit www.oracle.com if you need additional information or have any
++ * questions.
++ */
++
++/*
++ * @test
++ * @bug     6355567
++ * @summary Verifies that AdobeMarkerSegment() keeps the available bytes
++ *          and buffer pointer in sync, when a non-standard length Adobe
++ *          marker is encountered.
++ */
++
++import java.io.ByteArrayInputStream;
++import java.io.File;
++import java.io.IOException;
++import javax.imageio.ImageIO;
++import javax.imageio.ImageReader;
++import javax.imageio.stream.ImageInputStream;
++
++public class LargeAdobeMarkerSegmentTest {
++
++    private static String fileName = "jdk_6355567.jpg";
++
++    public static void main(String[] args) throws IOException {
++      /*
++       * Open a JPEG image, and get the metadata. Without the fix for
++       * 6355567, a NegativeArraySizeException is thrown while reading
++       * the metadata from the JPEG below.
++       */
++      String sep = System.getProperty("file.separator");
++      String dir = System.getProperty("test.src", ".");
++      String filePath = dir+sep+fileName;
++      System.out.println("Test file: " + filePath);
++      File f = new File(filePath);
++      ImageInputStream iis = ImageIO.createImageInputStream(f);
++      ImageReader r = ImageIO.getImageReaders(iis).next();
++      r.setInput(iis);
++      r.getImageMetadata(0);
++    }
++}
+diff --git a/test/jdk/javax/imageio/plugins/jpeg/jdk_6355567.jpg b/test/jdk/javax/imageio/plugins/jpeg/jdk_6355567.jpg
+new file mode 100644
+index 00000000000..608bf27a046
+Binary files /dev/null and b/test/jdk/javax/imageio/plugins/jpeg/jdk_6355567.jpg differ

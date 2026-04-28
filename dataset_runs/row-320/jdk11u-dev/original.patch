@@ -1,0 +1,618 @@
+diff --git a/src/jdk.jartool/share/classes/sun/tools/jar/GNUStyleOptions.java b/src/jdk.jartool/share/classes/sun/tools/jar/GNUStyleOptions.java
+index 6bb06cee9ba..28f6fccdc3a 100644
+--- a/src/jdk.jartool/share/classes/sun/tools/jar/GNUStyleOptions.java
++++ b/src/jdk.jartool/share/classes/sun/tools/jar/GNUStyleOptions.java
+@@ -214,6 +214,13 @@ void process(Main jartool, String opt, String arg) throws BadArgs {
+                 }
+             },
+ 
++            // Extract options
++            new Option(false, OptionType.EXTRACT, "--keep-old-files", "-k") {
++                void process(Main jartool, String opt, String arg) {
++                    jartool.kflag = true;
++                }
++            },
++
+             // Hidden options
+             new Option(false, OptionType.OTHER, "-P") {
+                 void process(Main jartool, String opt, String arg) {
+diff --git a/src/jdk.jartool/share/classes/sun/tools/jar/Main.java b/src/jdk.jartool/share/classes/sun/tools/jar/Main.java
+index 61cd863218b..d6cc2dbcdde 100644
+--- a/src/jdk.jartool/share/classes/sun/tools/jar/Main.java
++++ b/src/jdk.jartool/share/classes/sun/tools/jar/Main.java
+@@ -155,8 +155,9 @@ public int hashCode() {
+      * nflag: Perform jar normalization at the end
+      * pflag: preserve/don't strip leading slash and .. component from file name
+      * dflag: print module descriptor
++     * kflag: keep existing file
+      */
+-    boolean cflag, uflag, xflag, tflag, vflag, flag0, Mflag, iflag, pflag, dflag, validate;
++    boolean cflag, uflag, xflag, tflag, vflag, flag0, Mflag, iflag, pflag, dflag, kflag, validate;
+ 
+     boolean suppressDeprecateMsg = false;
+ 
+@@ -594,6 +595,9 @@ boolean parseArgs(String[] args) {
+                         case '0':
+                             flag0 = true;
+                             break;
++                        case 'k':
++                            kflag = true;
++                            break;
+                         case 'i':
+                             if (cflag || uflag || xflag || tflag) {
+                                 usageError(getMsg("error.multiple.main.operations"));
+@@ -624,6 +628,9 @@ boolean parseArgs(String[] args) {
+             usageError(getMsg("error.bad.option"));
+             return false;
+         }
++        if (kflag && !xflag) {
++            warn(formatMsg("warn.option.is.ignored", "--keep-old-files/-k/k"));
++        }
+ 
+         /* parse file arguments */
+         int n = args.length - count;
+@@ -1493,6 +1500,12 @@ ZipEntry extractFile(InputStream is, ZipEntry e) throws IOException {
+                 output(formatMsg("out.create", name));
+             }
+         } else {
++            if (f.exists() && kflag) {
++                if (vflag) {
++                    output(formatMsg("out.kept", name));
++                }
++                return rc;
++            }
+             if (f.getParent() != null) {
+                 File d = new File(f.getParent());
+                 if (!d.exists() && !d.mkdirs() || !d.isDirectory()) {
+diff --git a/src/jdk.jartool/share/classes/sun/tools/jar/resources/jar.properties b/src/jdk.jartool/share/classes/sun/tools/jar/resources/jar.properties
+index 7d7ec89c899..c7b34abb340 100644
+--- a/src/jdk.jartool/share/classes/sun/tools/jar/resources/jar.properties
++++ b/src/jdk.jartool/share/classes/sun/tools/jar/resources/jar.properties
+@@ -147,6 +147,8 @@ warn.index.is.ignored=\
+         The JAR index (META-INF/INDEX.LIST) is ignored at run-time since JDK 18
+ warn.flag.is.deprecated=\
+         Warning: The {0} option is deprecated, and may be ignored or removed in a future release\n
++warn.option.is.ignored=\
++        Warning: The {0} option is not valid with current usage, will be ignored.
+ out.added.manifest=\
+         added manifest
+ out.added.module-info=\
+@@ -169,6 +171,8 @@ out.create=\
+         \ \ created: {0}
+ out.extracted=\
+         extracted: {0}
++out.kept=\
++        \ \ skipped: {0} exists
+ out.inflated=\
+         \ inflated: {0}
+ out.size=\
+@@ -252,7 +256,10 @@ main.help.opt.main.list=\
+ main.help.opt.main.update=\
+ \  -u, --update               Update an existing jar archive
+ main.help.opt.main.extract=\
+-\  -x, --extract              Extract named (or all) files from the archive
++\  -x, --extract              Extract named (or all) files from the archive.\n\
++\                             If a file with the same name appears more than once in\n\
++\                             the archive, each copy will be extracted, with later copies\n\
++\                             overwriting (replacing) earlier copies unless -k is specified.
+ main.help.opt.main.describe-module=\
+ \  -d, --describe-module      Print the module descriptor, or automatic module name
+ main.help.opt.main.validate=\
+@@ -315,6 +322,15 @@ main.help.opt.create.update.index.date=\
+ \      --date=TIMESTAMP       The timestamp in ISO-8601 extended offset date-time with\n\
+ \                             optional time-zone format, to use for the timestamps of\n\
+ \                             entries, e.g. "2022-02-12T12:30:00-05:00"
++main.help.opt.extract=\
++\ Operation modifiers valid only in extract mode:\n
++main.help.opt.extract.keep-old-files=\
++\  -k, --keep-old-files       Do not overwrite existing files.\n\
++\                             If a Jar file entry with the same name exists in the target\n\
++\                             directory, the existing file will not be overwritten.\n\
++\                             As a result, if a file appears more than once in an\n\
++\                             archive, later copies will not overwrite earlier copies.\n\
++\                             Also note that some file system can be case insensitive.
+ main.help.opt.other=\
+ \ Other options:\n
+ main.help.opt.other.help=\
+diff --git a/test/jdk/tools/jar/ExtractFilesTest.java b/test/jdk/tools/jar/ExtractFilesTest.java
+new file mode 100644
+index 00000000000..b829b770fc8
+--- /dev/null
++++ b/test/jdk/tools/jar/ExtractFilesTest.java
+@@ -0,0 +1,265 @@
++/*
++ * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
++ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
++ *
++ * This code is free software; you can redistribute it and/or modify it
++ * under the terms of the GNU General Public License version 2 only, as
++ * published by the Free Software Foundation.
++ *
++ * This code is distributed in the hope that it will be useful, but WITHOUT
++ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
++ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
++ * version 2 for more details (a copy is included in the LICENSE file that
++ * accompanied this code).
++ *
++ * You should have received a copy of the GNU General Public License version
++ * 2 along with this work; if not, write to the Free Software Foundation,
++ * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
++ *
++ * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
++ * or visit www.oracle.com if you need additional information or have any
++ * questions.
++ */
++
++/*
++ * @test
++ * @bug 8335912
++ * @summary test extract jar files overwrite existing files behavior
++ * @library /test/lib
++ * @modules jdk.jartool
++ * @build jdk.test.lib.Platform
++ *        jdk.test.lib.util.FileUtils
++ * @run junit/othervm ExtractFilesTest
++ */
++
++import org.junit.jupiter.api.AfterAll;
++import org.junit.jupiter.api.Assertions;
++import org.junit.jupiter.api.BeforeAll;
++import org.junit.jupiter.api.Test;
++import org.junit.jupiter.api.TestInstance;
++import org.junit.jupiter.api.TestInstance.Lifecycle;
++
++import java.io.ByteArrayOutputStream;
++import java.io.IOException;
++import java.io.PrintStream;
++import java.io.UncheckedIOException;
++import java.nio.file.Files;
++import java.nio.file.Path;
++import java.util.Arrays;
++import java.util.spi.ToolProvider;
++import java.util.stream.Stream;
++
++import jdk.test.lib.util.FileUtils;
++
++ @TestInstance(Lifecycle.PER_CLASS)
++ public class ExtractFilesTest {
++    private static final ToolProvider JAR_TOOL = ToolProvider.findFirst("jar")
++        .orElseThrow(() ->
++            new RuntimeException("jar tool not found")
++        );
++
++    private final String nl = System.lineSeparator();
++    private final ByteArrayOutputStream baos = new ByteArrayOutputStream();
++    private final PrintStream out = new PrintStream(baos);
++
++    @BeforeAll
++    public void setupJar() throws IOException {
++        mkdir("test1 test2");
++        echo("testfile1", "test1/testfile1");
++        echo("testfile2", "test2/testfile2");
++        jar("cf test.jar -C test1 . -C test2 .");
++        rm("test1 test2");
++    }
++
++    @AfterAll
++    public void cleanup() {
++        rm("test.jar");
++    }
++
++    /**
++     * Regular clean extract with expected output.
++     */
++    @Test
++    public void testExtract() throws IOException {
++        jar("xvf test.jar");
++        println();
++        String output = "  created: META-INF/" + nl +
++                " inflated: META-INF/MANIFEST.MF" + nl +
++                " inflated: testfile1" + nl +
++                " inflated: testfile2" + nl;
++        rm("META-INF testfile1 testfile2");
++        Assertions.assertArrayEquals(baos.toByteArray(), output.getBytes());
++    }
++
++    /**
++     * Extract should overwrite existing file as default behavior.
++     */
++    @Test
++    public void testOverwrite() throws IOException {
++        touch("testfile1");
++        jar("xvf test.jar");
++        println();
++        String output = "  created: META-INF/" + nl +
++                " inflated: META-INF/MANIFEST.MF" + nl +
++                " inflated: testfile1" + nl +
++                " inflated: testfile2" + nl;
++        Assertions.assertEquals("testfile1", cat("testfile1"));
++        rm("META-INF testfile1 testfile2");
++        Assertions.assertArrayEquals(baos.toByteArray(), output.getBytes());
++    }
++
++    /**
++     * Extract with legacy style option `k` should preserve existing files.
++     */
++    @Test
++    public void testKeptOldFile() throws IOException {
++        touch("testfile1");
++        jar("xkvf test.jar");
++        println();
++        String output = "  created: META-INF/" + nl +
++                " inflated: META-INF/MANIFEST.MF" + nl +
++                "  skipped: testfile1 exists" + nl +
++                " inflated: testfile2" + nl;
++        Assertions.assertEquals("", cat("testfile1"));
++        Assertions.assertEquals("testfile2", cat("testfile2"));
++        rm("META-INF testfile1 testfile2");
++        Assertions.assertArrayEquals(baos.toByteArray(), output.getBytes());
++    }
++
++    /**
++     * Extract with gnu style -k should preserve existing files.
++     */
++    @Test
++    public void testGnuOptionsKeptOldFile() throws IOException {
++        touch("testfile1 testfile2");
++        jar("-x -k -v -f test.jar");
++        println();
++        String output = "  created: META-INF/" + nl +
++                " inflated: META-INF/MANIFEST.MF" + nl +
++                "  skipped: testfile1 exists" + nl +
++                "  skipped: testfile2 exists" + nl;
++        Assertions.assertEquals("", cat("testfile1"));
++        Assertions.assertEquals("", cat("testfile2"));
++        rm("META-INF testfile1 testfile2");
++        Assertions.assertArrayEquals(baos.toByteArray(), output.getBytes());
++    }
++
++    /**
++     * Extract with gnu style long option --keep-old-files should preserve existing files.
++     */
++    @Test
++    public void testGnuLongOptionsKeptOldFile() throws IOException {
++        touch("testfile2");
++        jar("-x --keep-old-files -v -f test.jar");
++        println();
++        String output = "  created: META-INF/" + nl +
++                " inflated: META-INF/MANIFEST.MF" + nl +
++                " inflated: testfile1" + nl +
++                "  skipped: testfile2 exists" + nl;
++        Assertions.assertEquals("testfile1", cat("testfile1"));
++        Assertions.assertEquals("", cat("testfile2"));
++        rm("META-INF testfile1 testfile2");
++        Assertions.assertArrayEquals(baos.toByteArray(), output.getBytes());
++    }
++
++    /**
++     * Test jar will issue warning when use keep option in non-extraction mode.
++     */
++    @Test
++    public void testWarningOnInvalidKeepOption() throws IOException {
++        var err = jar("tkf test.jar");
++        println();
++
++        String output = "META-INF/" + nl +
++                "META-INF/MANIFEST.MF" + nl +
++                "testfile1" + nl +
++                "testfile2" + nl;
++
++        Assertions.assertArrayEquals(baos.toByteArray(), output.getBytes());
++        Assertions.assertEquals("Warning: The --keep-old-files/-k/k option is not valid with current usage, will be ignored." + nl, err);
++    }
++
++    private Stream<Path> mkpath(String... args) {
++        return Arrays.stream(args).map(d -> Path.of(".", d.split("/")));
++    }
++
++    private void mkdir(String cmdline) {
++        System.out.println("mkdir -p " + cmdline);
++        mkpath(cmdline.split(" +")).forEach(p -> {
++            try {
++                Files.createDirectories(p);
++            } catch (IOException x) {
++                throw new UncheckedIOException(x);
++            }
++        });
++    }
++
++    private void touch(String cmdline) {
++        System.out.println("touch " + cmdline);
++        mkpath(cmdline.split(" +")).forEach(p -> {
++            try {
++                Files.createFile(p);
++            } catch (IOException x) {
++                throw new UncheckedIOException(x);
++            }
++        });
++    }
++
++    private void echo(String text, String path) {
++        System.out.println("echo '" + text + "' > " + path);
++        try {
++            var p = Path.of(".", path.split("/"));
++            Files.writeString(p, text);
++        } catch (IOException x) {
++            throw new UncheckedIOException(x);
++        }
++    }
++
++    private String cat(String path) {
++        System.out.println("cat " + path);
++        try {
++            return Files.readString(Path.of(path));
++        } catch (IOException x) {
++            throw new UncheckedIOException(x);
++        }
++    }
++
++    private void rm(String cmdline) {
++        System.out.println("rm -rf " + cmdline);
++        mkpath(cmdline.split(" +")).forEach(p -> {
++            try {
++                if (Files.isDirectory(p)) {
++                    FileUtils.deleteFileTreeWithRetry(p);
++                } else {
++                    FileUtils.deleteFileIfExistsWithRetry(p);
++                }
++            } catch (IOException x) {
++                throw new UncheckedIOException(x);
++            }
++        });
++    }
++
++    private String jar(String cmdline) throws IOException {
++        System.out.println("jar " + cmdline);
++        baos.reset();
++
++        // the run method catches IOExceptions, we need to expose them
++        ByteArrayOutputStream baes = new ByteArrayOutputStream();
++        PrintStream err = new PrintStream(baes);
++        PrintStream saveErr = System.err;
++        System.setErr(err);
++        try {
++            int rc = JAR_TOOL.run(out, err, cmdline.split(" +"));
++            if (rc != 0) {
++                throw new IOException(baes.toString());
++            }
++        } finally {
++            System.setErr(saveErr);
++        }
++        return baes.toString();
++    }
++
++    private void println() throws IOException {
++        System.out.println(new String(baos.toByteArray()));
++    }
++}
+diff --git a/test/jdk/tools/jar/MultipleManifestTest.java b/test/jdk/tools/jar/MultipleManifestTest.java
+new file mode 100644
+index 00000000000..951ce4bb890
+--- /dev/null
++++ b/test/jdk/tools/jar/MultipleManifestTest.java
+@@ -0,0 +1,224 @@
++/*
++ * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
++ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
++ *
++ * This code is free software; you can redistribute it and/or modify it
++ * under the terms of the GNU General Public License version 2 only, as
++ * published by the Free Software Foundation.
++ *
++ * This code is distributed in the hope that it will be useful, but WITHOUT
++ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
++ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
++ * version 2 for more details (a copy is included in the LICENSE file that
++ * accompanied this code).
++ *
++ * You should have received a copy of the GNU General Public License version
++ * 2 along with this work; if not, write to the Free Software Foundation,
++ * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
++ *
++ * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
++ * or visit www.oracle.com if you need additional information or have any
++ * questions.
++ */
++
++/*
++ * @test
++ * @bug 8335912
++ * @summary test extract jar with multpile manifest files
++ * @library /test/lib
++ * @modules jdk.jartool
++ * @build jdk.test.lib.Platform
++ *        jdk.test.lib.util.FileUtils
++ * @run junit/othervm MultipleManifestTest
++ */
++
++import java.io.ByteArrayOutputStream;
++
++import org.junit.jupiter.api.AfterAll;
++import org.junit.jupiter.api.AfterEach;
++import org.junit.jupiter.api.Assertions;
++import org.junit.jupiter.api.BeforeAll;
++import org.junit.jupiter.api.Test;
++import org.junit.jupiter.api.TestInstance;
++import org.junit.jupiter.api.TestInstance.Lifecycle;
++
++import java.io.IOException;
++import java.io.PrintStream;
++import java.io.UncheckedIOException;
++import java.nio.charset.StandardCharsets;
++import java.nio.file.Files;
++import java.nio.file.Path;
++import java.util.Arrays;
++import java.util.jar.Attributes;
++import java.util.jar.JarFile;
++import java.util.jar.Manifest;
++import java.util.spi.ToolProvider;
++import java.util.stream.Stream;
++import java.util.zip.ZipEntry;
++import java.util.zip.ZipOutputStream;
++
++import jdk.test.lib.util.FileUtils;
++
++@TestInstance(Lifecycle.PER_CLASS)
++class MultipleManifestTest {
++    private static final ToolProvider JAR_TOOL = ToolProvider.findFirst("jar")
++        .orElseThrow(() ->
++            new RuntimeException("jar tool not found")
++        );
++
++    private final String nl = System.lineSeparator();
++    private final ByteArrayOutputStream baos = new ByteArrayOutputStream();
++    private final PrintStream jarOut = new PrintStream(baos);
++
++    static final Path zip = Path.of("MultipleManifestTest.jar");
++    static final String jdkVendor = System.getProperty("java.vendor");
++    static final String jdkVersion = System.getProperty("java.version");
++    static final String MANIFEST1 = "Manifest-Version: 1.0"
++            + System.lineSeparator()
++            + "Created-By: " + jdkVersion + " (" + jdkVendor + ")";
++    static final String MANIFEST2 = "Manifest-Version: 2.0"
++            + System.lineSeparator()
++            + "Created-By: " + jdkVersion + " (" + jdkVendor + ")";
++    static final String MANIFEST3 = "Manifest-Version: 3.0"
++            + System.lineSeparator()
++            + "Created-By: " + jdkVersion + " (" + jdkVendor + ")";
++    private static final String META_INF = "META-INF/";
++
++    /**
++     * Delete the ZIP file produced by this test
++     *
++     * @throws IOException if an unexpected IOException occurs
++     */
++    @AfterAll
++    public void cleanup() throws IOException {
++        Files.deleteIfExists(zip);
++    }
++
++    /**
++     * Create a JAR with the Manifest as the 1st, 2nd and 4th entry
++     *
++     * @throws IOException if an error occurs
++     */
++    @BeforeAll
++    public void writeManifestAsFirstSecondAndFourthEntry() throws IOException {
++        int locPosA, locPosB, cenPos;
++        System.out.printf("%n%n*****Creating Jar with the Manifest as the 1st, 2nd and 4th entry*****%n%n");
++        var out = new ByteArrayOutputStream(1024);
++        try (var zos = new ZipOutputStream(out)) {
++            zos.putNextEntry(new ZipEntry(JarFile.MANIFEST_NAME));
++            zos.write(MANIFEST1.getBytes(StandardCharsets.UTF_8));
++            zos.closeEntry();
++            locPosA = out.size();
++            zos.putNextEntry(new ZipEntry(META_INF + "AANIFEST.MF"));
++            zos.write(MANIFEST2.getBytes(StandardCharsets.UTF_8));
++            zos.putNextEntry(new ZipEntry("entry1.txt"));
++            zos.write("entry1".getBytes(StandardCharsets.UTF_8));
++            zos.closeEntry();
++            locPosB = out.size();
++            zos.putNextEntry(new ZipEntry(META_INF + "BANIFEST.MF"));
++            zos.write(MANIFEST3.getBytes(StandardCharsets.UTF_8));
++            zos.putNextEntry(new ZipEntry("entry2.txt"));
++            zos.write("hello entry2".getBytes(StandardCharsets.UTF_8));
++            zos.flush();
++            cenPos = out.size();
++        }
++        var template = out.toByteArray();
++        // ISO_8859_1 to keep the 8-bit value
++        var s = new String(template, StandardCharsets.ISO_8859_1);
++        // change META-INF/AANIFEST.MF to META-INF/MANIFEST.MF
++        var loc = s.indexOf("AANIFEST.MF", locPosA);
++        var cen = s.indexOf("AANIFEST.MF", cenPos);
++        template[loc] = template[cen] = (byte) 'M';
++        // change META-INF/BANIFEST.MF to META-INF/MANIFEST.MF
++        loc = s.indexOf("BANIFEST.MF", locPosB);
++        cen = s.indexOf("BANIFEST.MF", cenPos);
++        template[loc] = template[cen] = (byte) 'M';
++        Files.write(zip, template);
++    }
++
++    @AfterEach
++    public void removeExtractedFiles() {
++        rm("META-INF entry1.txt entry2.txt");
++    }
++
++    /**
++     * Extract by default should have the last manifest.
++     */
++    @Test
++    public void testOverwrite() throws IOException {
++        jar("xvf " + zip.toString());
++        println();
++        Assertions.assertEquals("3.0", getManifestVersion());
++        String output = " inflated: META-INF/MANIFEST.MF" + nl +
++                " inflated: META-INF/MANIFEST.MF" + nl +
++                " inflated: entry1.txt" + nl +
++                " inflated: META-INF/MANIFEST.MF" + nl +
++                " inflated: entry2.txt" + nl;
++        Assertions.assertArrayEquals(baos.toByteArray(), output.getBytes());
++    }
++
++    /**
++     * Extract with k option should have first manifest.
++     */
++    @Test
++    public void testKeptOldFile() throws IOException {
++        jar("xkvf " + zip.toString());
++        println();
++        Assertions.assertEquals("1.0", getManifestVersion());
++        String output = " inflated: META-INF/MANIFEST.MF" + nl +
++                "  skipped: META-INF/MANIFEST.MF exists" + nl +
++                " inflated: entry1.txt" + nl +
++                "  skipped: META-INF/MANIFEST.MF exists" + nl +
++                " inflated: entry2.txt" + nl;
++        Assertions.assertArrayEquals(baos.toByteArray(), output.getBytes());
++    }
++
++    private String getManifestVersion() throws IOException {
++        try (var is = Files.newInputStream(Path.of(JarFile.MANIFEST_NAME))) {
++            var manifest = new Manifest(is);
++            return manifest.getMainAttributes().getValue(Attributes.Name.MANIFEST_VERSION);
++        }
++    }
++
++    private void jar(String cmdline) throws IOException {
++        System.out.println("jar " + cmdline);
++        baos.reset();
++
++        // the run method catches IOExceptions, we need to expose them
++        ByteArrayOutputStream baes = new ByteArrayOutputStream();
++        PrintStream err = new PrintStream(baes);
++        PrintStream saveErr = System.err;
++        System.setErr(err);
++        try {
++            int rc = JAR_TOOL.run(jarOut, err, cmdline.split(" +"));
++            if (rc != 0) {
++                throw new IOException(baes.toString());
++            }
++        } finally {
++            System.setErr(saveErr);
++        }
++    }
++
++    private void println() throws IOException {
++        System.out.println(new String(baos.toByteArray()));
++    }
++
++    private Stream<Path> mkpath(String... args) {
++        return Arrays.stream(args).map(d -> Path.of(".", d.split("/")));
++    }
++
++    private void rm(String cmdline) {
++        System.out.println("rm -rf " + cmdline);
++        mkpath(cmdline.split(" +")).forEach(p -> {
++            try {
++                if (Files.isDirectory(p)) {
++                    FileUtils.deleteFileTreeWithRetry(p);
++                } else {
++                    FileUtils.deleteFileIfExistsWithRetry(p);
++                }
++            } catch (IOException x) {
++                throw new UncheckedIOException(x);
++            }
++        });
++    }
++}
+\ No newline at end of file

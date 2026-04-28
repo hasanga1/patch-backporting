@@ -1,0 +1,201 @@
+diff --git a/src/java.desktop/unix/classes/sun/print/PrintServiceLookupProvider.java b/src/java.desktop/unix/classes/sun/print/PrintServiceLookupProvider.java
+index 268fc9b69af..7fa1b201340 100644
+--- a/src/java.desktop/unix/classes/sun/print/PrintServiceLookupProvider.java
++++ b/src/java.desktop/unix/classes/sun/print/PrintServiceLookupProvider.java
+@@ -26,10 +26,8 @@
+ package sun.print;
+ 
+ import java.io.BufferedReader;
+-import java.io.FileInputStream;
+-import java.io.InputStream;
+-import java.io.InputStreamReader;
+ import java.io.IOException;
++import java.security.PrivilegedAction;
+ import java.util.ArrayList;
+ import java.util.Vector;
+ import java.security.AccessController;
+@@ -54,6 +52,8 @@
+ import java.net.URL;
+ import java.nio.file.Files;
+ 
++import sun.awt.util.ThreadGroupUtils;
++
+ /*
+  * Remind: This class uses solaris commands. We also need a linux
+  * version
+@@ -204,14 +204,18 @@ static int getBSDCommandIndex() {
+         return BSD_LPD;
+     }
+ 
+-
++    @SuppressWarnings("removal")
+     public PrintServiceLookupProvider() {
+         // start the printer listener thread
+         if (pollServices) {
+-            Thread thr = new Thread(null, new PrinterChangeListener(),
+-                                    "PrinterListener", 0, false);
+-            thr.setDaemon(true);
+-            thr.start();
++            AccessController.doPrivileged((PrivilegedAction<Thread>) () -> {
++                Thread thr = new Thread(ThreadGroupUtils.getRootThreadGroup(),
++                                        new PrinterChangeListener(),
++                                        "PrinterListener", 0, false);
++                thr.setContextClassLoader(null);
++                thr.setDaemon(true);
++                return thr;
++            }).start();
+             IPPPrintService.debug_println(debugPrefix+"polling turned on");
+         }
+     }
+diff --git a/src/java.desktop/windows/classes/sun/print/PrintServiceLookupProvider.java b/src/java.desktop/windows/classes/sun/print/PrintServiceLookupProvider.java
+index 1d76ebae479..28055c1afec 100644
+--- a/src/java.desktop/windows/classes/sun/print/PrintServiceLookupProvider.java
++++ b/src/java.desktop/windows/classes/sun/print/PrintServiceLookupProvider.java
+@@ -25,6 +25,8 @@
+ 
+ package sun.print;
+ 
++import java.security.AccessController;
++import java.security.PrivilegedAction;
+ import java.util.ArrayList;
+ 
+ import javax.print.DocFlavor;
+@@ -41,6 +43,8 @@
+ import javax.print.attribute.PrintServiceAttributeSet;
+ import javax.print.attribute.standard.PrinterName;
+ 
++import sun.awt.util.ThreadGroupUtils;
++
+ public class PrintServiceLookupProvider extends PrintServiceLookup {
+ 
+     private PrintService defaultPrintService;
+@@ -81,22 +85,31 @@ public static PrintServiceLookupProvider getWin32PrintLUS() {
+         return win32PrintLUS;
+     }
+ 
++    @SuppressWarnings("removal")
+     public PrintServiceLookupProvider() {
+ 
+         if (win32PrintLUS == null) {
+             win32PrintLUS = this;
+ 
+             // start the local printer listener thread
+-            Thread thr = new Thread(null, new PrinterChangeListener(),
+-                                    "PrinterListener", 0, false);
+-            thr.setDaemon(true);
+-            thr.start();
++            AccessController.doPrivileged((PrivilegedAction<Thread>) () -> {
++                Thread thr = new Thread(ThreadGroupUtils.getRootThreadGroup(),
++                                        new PrinterChangeListener(),
++                                        "PrinterListener", 0, false);
++                thr.setContextClassLoader(null);
++                thr.setDaemon(true);
++                return thr;
++            }).start();
+ 
+             // start the remote printer listener thread
+-            Thread remThr = new Thread(null, new RemotePrinterChangeListener(),
+-                                       "RemotePrinterListener", 0, false);
+-            remThr.setDaemon(true);
+-            remThr.start();
++            AccessController.doPrivileged((PrivilegedAction<Thread>) () -> {
++                Thread thr = new Thread(ThreadGroupUtils.getRootThreadGroup(),
++                                        new RemotePrinterChangeListener(),
++                                        "RemotePrinterListener", 0, false);
++                thr.setContextClassLoader(null);
++                thr.setDaemon(true);
++                return thr;
++            }).start();
+         } /* else condition ought to never happen! */
+     }
+ 
+diff --git a/test/jdk/javax/print/PrintServiceLookup/FlushCustomClassLoader.java b/test/jdk/javax/print/PrintServiceLookup/FlushCustomClassLoader.java
+new file mode 100644
+index 00000000000..6e0a25a69d0
+--- /dev/null
++++ b/test/jdk/javax/print/PrintServiceLookup/FlushCustomClassLoader.java
+@@ -0,0 +1,84 @@
++/*
++ * Copyright Amazon.com Inc. or its affiliates. All Rights Reserved.
++ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
++ *
++ * This code is free software; you can redistribute it and/or modify it
++ * under the terms of the GNU General Public License version 2 only, as
++ * published by the Free Software Foundation.
++ *
++ * This code is distributed in the hope that it will be useful, but WITHOUT
++ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
++ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
++ * version 2 for more details (a copy is included in the LICENSE file that
++ * accompanied this code).
++ *
++ * You should have received a copy of the GNU General Public License version
++ * 2 along with this work; if not, write to the Free Software Foundation,
++ * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
++ *
++ * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
++ * or visit www.oracle.com if you need additional information or have any
++ * questions.
++ */
++
++import java.awt.EventQueue;
++import java.lang.ref.Reference;
++import java.lang.ref.WeakReference;
++import java.net.URL;
++import java.net.URLClassLoader;
++
++import javax.print.DocFlavor;
++import javax.print.PrintServiceLookup;
++
++/**
++ * @test
++ * @bug 8273831
++ * @summary Tests custom class loader cleanup
++ */
++public final class FlushCustomClassLoader {
++
++    public static void main(String[] args) throws Exception {
++        Reference<ClassLoader> loader = getLoader("testMethod");
++
++        int attempt = 0;
++        while (loader.get() != null) {
++            if (++attempt > 10) {
++                throw new RuntimeException("Too many attempts: " + attempt);
++            }
++            System.gc();
++            Thread.sleep(1000);
++            System.out.println("Not freed, attempt: " + attempt);
++        }
++    }
++
++    public static void testMethod() {
++        DocFlavor flavor = DocFlavor.SERVICE_FORMATTED.PRINTABLE;
++        PrintServiceLookup.lookupPrintServices(flavor, null);
++    }
++
++    private static Reference<ClassLoader> getLoader(String m) throws Exception {
++        /*
++         * The print services are stored per the AppContext, and each AppContext
++         * caches the "current" class loader during creation.
++         * see javax.print.PrintServiceLookup.
++         *
++         * To prevent AppContext from cache our test loader we force AppContext
++         * creation early by the invokeAndWait.
++         * The "EventQueue.invokeAndWait(() -> {});" can be removed when the
++         * AppContext usage will be deleted in the PrintServiceLookup
++         */
++        EventQueue.invokeAndWait(() -> {});
++
++        URL url = FlushCustomClassLoader.class.getProtectionDomain()
++                                              .getCodeSource().getLocation();
++        URLClassLoader loader = new URLClassLoader(new URL[]{url}, null);
++
++        Thread ct = Thread.currentThread();
++        ct.setContextClassLoader(loader);
++        Class<?> cls = Class.forName("FlushCustomClassLoader", true, loader);
++        cls.getDeclaredMethod(m).invoke(null);
++        ct.setContextClassLoader(null);
++        loader.close();
++        return new WeakReference<>(loader);
++    }
++}

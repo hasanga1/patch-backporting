@@ -1,0 +1,172 @@
+2026-04-27 11:23:55,920 - backport - INFO - Using openrouter API: https://openrouter.ai/api/v1 (model: openai/gpt-4.1-mini)
+2026-04-27 11:24:00,230 - backport - INFO - Aplly all hunks in the patch      PASS
+2026-04-27 11:24:01,397 - backport - INFO - Successfully backport the patch to the target release 49027ee5af77f3f2580c04759a8e37986b108deb
+2026-04-27 11:24:01,398 - backport - INFO - --- a/src/java.base/share/classes/java/lang/Class.java
++++ b/src/java.base/share/classes/java/lang/Class.java
+@@ -55,7 +55,9 @@
+ import java.lang.constant.Constable;
+ import java.net.URL;
+ import java.security.AccessController;
++import java.security.Permissions;
+ import java.security.PrivilegedAction;
++import java.security.ProtectionDomain;
+ import java.util.ArrayList;
+ import java.util.Arrays;
+ import java.util.Collection;
+
+--- a/src/java.base/share/classes/java/lang/Class.java
++++ b/src/java.base/share/classes/java/lang/Class.java
+@@ -3220,10 +3222,6 @@ private boolean isOpenToCaller(String name, Class<?> caller) {
+         return true;
+     }
+ 
+-
+-    /** protection domain returned when the internal domain is null */
+-    private static java.security.ProtectionDomain allPermDomain;
+-
+     /**
+      * Returns the {@code ProtectionDomain} of this class.  If there is a
+      * security manager installed, this method first calls the security
+
+--- a/src/java.base/share/classes/java/lang/Class.java
++++ b/src/java.base/share/classes/java/lang/Class.java
+@@ -3244,7 +3242,7 @@ private boolean isOpenToCaller(String name, Class<?> caller) {
+      * @see java.lang.RuntimePermission
+      * @since 1.2
+      */
+-    public java.security.ProtectionDomain getProtectionDomain() {
++    public ProtectionDomain getProtectionDomain() {
+         @SuppressWarnings("removal")
+         SecurityManager sm = System.getSecurityManager();
+         if (sm != null) {
+
+--- a/src/java.base/share/classes/java/lang/Class.java
++++ b/src/java.base/share/classes/java/lang/Class.java
+@@ -3253,26 +3251,30 @@ public java.security.ProtectionDomain getProtectionDomain() {
+         return protectionDomain();
+     }
+ 
++    /** Holder for the protection domain returned when the internal domain is null */
++    private static class Holder {
++        private static final ProtectionDomain allPermDomain;
++        static {
++            Permissions perms = new Permissions();
++            perms.add(SecurityConstants.ALL_PERMISSION);
++            allPermDomain = new ProtectionDomain(null, perms);
++        }
++    }
++
+     // package-private
+-    java.security.ProtectionDomain protectionDomain() {
+-        java.security.ProtectionDomain pd = getProtectionDomain0();
++    ProtectionDomain protectionDomain() {
++        ProtectionDomain pd = getProtectionDomain0();
+         if (pd == null) {
+-            if (allPermDomain == null) {
+-                java.security.Permissions perms =
+-                    new java.security.Permissions();
+-                perms.add(SecurityConstants.ALL_PERMISSION);
+-                allPermDomain =
+-                    new java.security.ProtectionDomain(null, perms);
+-            }
+-            pd = allPermDomain;
++            return Holder.allPermDomain;
++        } else {
++            return pd;
+         }
+-        return pd;
+     }
+ 
+     /**
+      * Returns the ProtectionDomain of this class.
+      */
+-    private native java.security.ProtectionDomain getProtectionDomain0();
++    private native ProtectionDomain getProtectionDomain0();
+ 
+     /*
+      * Return the Virtual Machine's Class object for the named
+
+--- /dev/null
++++ b/test/jdk/java/lang/Class/ProtectionDomainRace.java
+@@ -0,0 +1,80 @@
++/*
++ * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
++ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
++ *
++ * This code is free software; you can redistribute it and/or modify it
++ * under the terms of the GNU General Public License version 2 only, as
++ * published by the Free Software Foundation.
++ *
++ * This code is distributed in the hope that it will be useful, but WITHOUT
++ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
++ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
++ * version 2 for more details (a copy is included in the LICENSE file that
++ * accompanied this code).
++ *
++ * You should have received a copy of the GNU General Public License version
++ * 2 along with this work; if not, write to the Free Software Foundation,
++ * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
++ *
++ * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
++ * or visit www.oracle.com if you need additional information or have any
++ * questions.
++ */
++
++/*
++ * @test
++ * @bug 8334394
++ * @summary ensure there is no race condition in Class::protectionDomain
++ * @run main/othervm ProtectionDomainRace
++ */
++import javax.security.auth.Subject;
++import java.security.PrivilegedAction;
++
++/**
++ * Without the code fix, this test would fail with
++ * java.lang.AssertionError: sun.security.util.ResourcesMgr (PD)
++ *         at java.base/java.lang.invoke.MethodHandleImpl$BindCaller.checkInjectedInvoker(MethodHandleImpl.java:1209)
++ *         at java.base/java.lang.invoke.MethodHandleImpl$BindCaller.makeInjectedInvoker(MethodHandleImpl.java:1110)
++ *         at java.base/java.lang.invoke.MethodHandleImpl$BindCaller$1.computeValue(MethodHandleImpl.java:1117)
++ *         at java.base/java.lang.invoke.MethodHandleImpl$BindCaller$1.computeValue(MethodHandleImpl.java:1114)
++ *         at java.base/java.lang.ClassValue.getFromHashMap(ClassValue.java:229)
++ *         at java.base/java.lang.ClassValue.getFromBackup(ClassValue.java:211)
++ *         at java.base/java.lang.ClassValue.get(ClassValue.java:117)
++ *         at java.base/java.lang.invoke.MethodHandleImpl$BindCaller.bindCallerWithInjectedInvoker(MethodHandleImpl.java:1089)
++ *         at java.base/java.lang.invoke.MethodHandleImpl$BindCaller.bindCaller(MethodHandleImpl.java:1077)
++ *         at java.base/java.lang.invoke.MethodHandleImpl.bindCaller(MethodHandleImpl.java:1032)
++ *         at java.base/java.lang.invoke.MethodHandles$Lookup.maybeBindCaller(MethodHandles.java:4149)
++ *         at java.base/java.lang.invoke.MethodHandles$Lookup.getDirectMethodCommon(MethodHandles.java:4133)
++ *         at java.base/java.lang.invoke.MethodHandles$Lookup.getDirectMethodNoSecurityManager(MethodHandles.java:4077)
++ *         at java.base/java.lang.invoke.MethodHandles$Lookup.getDirectMethodForConstant(MethodHandles.java:4326)
++ *         at java.base/java.lang.invoke.MethodHandles$Lookup.linkMethodHandleConstant(MethodHandles.java:4274)
++ *         at java.base/java.lang.invoke.MethodHandleNatives.linkMethodHandleConstant(MethodHandleNatives.java:628)
++ *         at java.base/sun.security.util.ResourcesMgr.getBundle(ResourcesMgr.java:54)
++ *         at java.base/sun.security.util.ResourcesMgr.getString(ResourcesMgr.java:40)
++ *         at java.base/javax.security.auth.Subject.doAs(Subject.java:517)
++ *         ...
++ * as the Class::protectionDomain might assign different objects to the (original) allPermDomain field.
++ */
++public class ProtectionDomainRace {
++    private static volatile Throwable failed = null;
++    public static void main(String[] args) throws Throwable {
++        PrivilegedAction<?> pa = () -> null;
++        Thread[] threads = new Thread[100];
++        for (int i = 0; i < 100; i++) {
++            threads[i] = new Thread(() -> {
++                try {
++                    Subject.doAs(null, pa);
++                } catch (Throwable t) {
++                    failed = t;
++                }
++            });
++            threads[i].start();
++        }
++        for (int i = 0; i < 100; i++) {
++            threads[i].join();
++        }
++        if (failed != null) {
++            throw failed;
++        }
++    }
++}
+

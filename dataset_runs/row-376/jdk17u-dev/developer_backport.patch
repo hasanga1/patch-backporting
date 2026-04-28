@@ -1,0 +1,625 @@
+diff --git a/src/jdk.jlink/share/classes/jdk/tools/jlink/builder/DefaultImageBuilder.java b/src/jdk.jlink/share/classes/jdk/tools/jlink/builder/DefaultImageBuilder.java
+index 8989a28ca1a..b1c0caef51b 100644
+--- a/src/jdk.jlink/share/classes/jdk/tools/jlink/builder/DefaultImageBuilder.java
++++ b/src/jdk.jlink/share/classes/jdk/tools/jlink/builder/DefaultImageBuilder.java
+@@ -1,5 +1,5 @@
+ /*
+- * Copyright (c) 2015, 2020, Oracle and/or its affiliates. All rights reserved.
++ * Copyright (c) 2015, 2021, Oracle and/or its affiliates. All rights reserved.
+  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+  *
+  * This code is free software; you can redistribute it and/or modify it
+@@ -86,8 +86,9 @@ public final class DefaultImageBuilder implements ImageBuilder {
+         private final Path home;
+         private final List<String> args;
+         private final Set<String> modules;
++        private final Platform platform;
+ 
+-        DefaultExecutableImage(Path home, Set<String> modules) {
++        DefaultExecutableImage(Path home, Set<String> modules, Platform p) {
+             Objects.requireNonNull(home);
+             if (!Files.exists(home)) {
+                 throw new IllegalArgumentException("Invalid image home");
+@@ -95,6 +96,7 @@ public final class DefaultImageBuilder implements ImageBuilder {
+             this.home = home;
+             this.modules = Collections.unmodifiableSet(modules);
+             this.args = createArgs(home);
++            this.platform = p;
+         }
+ 
+         private static List<String> createArgs(Path home) {
+@@ -127,13 +129,18 @@ public final class DefaultImageBuilder implements ImageBuilder {
+                 throw new UncheckedIOException(ex);
+             }
+         }
++
++        @Override
++        public Platform getTargetPlatform() {
++            return platform;
++        }
+     }
+ 
+     private final Path root;
+     private final Map<String, String> launchers;
+     private final Path mdir;
+     private final Set<String> modules = new HashSet<>();
+-    private Platform targetPlatform;
++    private Platform platform;
+ 
+     /**
+      * Default image builder constructor.
+@@ -148,6 +155,11 @@ public final class DefaultImageBuilder implements ImageBuilder {
+         Files.createDirectories(mdir);
+     }
+ 
++    @Override
++    public Platform getTargetPlatform() {
++        return platform;
++    }
++
+     @Override
+     public void storeFiles(ResourcePool files) {
+         try {
+@@ -158,7 +170,7 @@ public final class DefaultImageBuilder implements ImageBuilder {
+             if (value == null) {
+                 throw new PluginException("ModuleTarget attribute is missing for java.base module");
+             }
+-            this.targetPlatform = Platform.toPlatform(value);
++            this.platform = Platform.parsePlatform(value);
+ 
+             checkResourcePool(files);
+ 
+@@ -474,7 +486,7 @@ public final class DefaultImageBuilder implements ImageBuilder {
+     }
+ 
+     private boolean isWindows() {
+-        return targetPlatform == Platform.WINDOWS;
++        return platform.os() == Platform.OperatingSystem.WINDOWS;
+     }
+ 
+     /**
+@@ -509,7 +521,7 @@ public final class DefaultImageBuilder implements ImageBuilder {
+ 
+     @Override
+     public ExecutableImage getExecutableImage() {
+-        return new DefaultExecutableImage(root, modules);
++        return new DefaultExecutableImage(root, modules, platform);
+     }
+ 
+     // This is experimental, we should get rid-off the scripts in a near future
+@@ -551,7 +563,10 @@ public final class DefaultImageBuilder implements ImageBuilder {
+         Path binDir = root.resolve(BIN_DIRNAME);
+         if (Files.exists(binDir.resolve("java")) ||
+             Files.exists(binDir.resolve("java.exe"))) {
+-            return new DefaultExecutableImage(root, retrieveModules(root));
++            // It may be possible to extract the platform info from the given image.
++            // --post-process-path is a hidden option and pass unknown platform for now.
++            // --generate-cds-archive plugin cannot be used with --post-process-path option.
++            return new DefaultExecutableImage(root, retrieveModules(root), Platform.UNKNOWN);
+         }
+         return null;
+     }
+diff --git a/src/jdk.jlink/share/classes/jdk/tools/jlink/builder/ImageBuilder.java b/src/jdk.jlink/share/classes/jdk/tools/jlink/builder/ImageBuilder.java
+index 9ebc6211fc3..32440d5ba7f 100644
+--- a/src/jdk.jlink/share/classes/jdk/tools/jlink/builder/ImageBuilder.java
++++ b/src/jdk.jlink/share/classes/jdk/tools/jlink/builder/ImageBuilder.java
+@@ -1,5 +1,5 @@
+ /*
+- * Copyright (c) 2015, Oracle and/or its affiliates. All rights reserved.
++ * Copyright (c) 2015, 2021, Oracle and/or its affiliates. All rights reserved.
+  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+  *
+  * This code is free software; you can redistribute it and/or modify it
+@@ -28,6 +28,7 @@ import java.io.DataOutputStream;
+ import java.util.Properties;
+ 
+ import jdk.tools.jlink.internal.ExecutableImage;
++import jdk.tools.jlink.internal.Platform;
+ import jdk.tools.jlink.plugin.PluginException;
+ import jdk.tools.jlink.plugin.ResourcePool;
+ 
+@@ -74,4 +75,13 @@ public interface ImageBuilder {
+      * @throws PluginException
+      */
+     public ExecutableImage getExecutableImage();
++
++    /**
++     * Gets the platform of the image.
++     *
++     * @return {@code Platform} object representing the platform of the image
++     */
++    public default Platform getTargetPlatform() {
++        return Platform.UNKNOWN;
++    }
+ }
+diff --git a/src/jdk.jlink/share/classes/jdk/tools/jlink/internal/ExecutableImage.java b/src/jdk.jlink/share/classes/jdk/tools/jlink/internal/ExecutableImage.java
+index 1e788e0ce1d..6169cb8e44a 100644
+--- a/src/jdk.jlink/share/classes/jdk/tools/jlink/internal/ExecutableImage.java
++++ b/src/jdk.jlink/share/classes/jdk/tools/jlink/internal/ExecutableImage.java
+@@ -1,5 +1,5 @@
+ /*
+- * Copyright (c) 2015, Oracle and/or its affiliates. All rights reserved.
++ * Copyright (c) 2015, 2021, Oracle and/or its affiliates. All rights reserved.
+  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+  *
+  * This code is free software; you can redistribute it and/or modify it
+@@ -61,4 +61,11 @@ public interface ExecutableImage {
+      * @param args Additional arguments
+      */
+     public void storeLaunchArgs(List<String> args);
++
++    /**
++     * The Platform of the image.
++     *
++     * @return Platform
++     */
++    public Platform getTargetPlatform();
+ }
+diff --git a/src/jdk.jlink/share/classes/jdk/tools/jlink/internal/ImagePluginStack.java b/src/jdk.jlink/share/classes/jdk/tools/jlink/internal/ImagePluginStack.java
+index ce93b4a06fe..008336e23c6 100644
+--- a/src/jdk.jlink/share/classes/jdk/tools/jlink/internal/ImagePluginStack.java
++++ b/src/jdk.jlink/share/classes/jdk/tools/jlink/internal/ImagePluginStack.java
+@@ -1,5 +1,5 @@
+ /*
+- * Copyright (c) 2015, 2020, Oracle and/or its affiliates. All rights reserved.
++ * Copyright (c) 2015, 2021, Oracle and/or its affiliates. All rights reserved.
+  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+  *
+  * This code is free software; you can redistribute it and/or modify it
+diff --git a/src/jdk.jlink/share/classes/jdk/tools/jlink/internal/Platform.java b/src/jdk.jlink/share/classes/jdk/tools/jlink/internal/Platform.java
+index c3ea6fb1647..a08678455c6 100644
+--- a/src/jdk.jlink/share/classes/jdk/tools/jlink/internal/Platform.java
++++ b/src/jdk.jlink/share/classes/jdk/tools/jlink/internal/Platform.java
+@@ -1,5 +1,5 @@
+ /*
+- * Copyright (c) 2017, 2020, Oracle and/or its affiliates. All rights reserved.
++ * Copyright (c) 2017, 2021, Oracle and/or its affiliates. All rights reserved.
+  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+  *
+  * This code is free software; you can redistribute it and/or modify it
+@@ -24,48 +24,112 @@
+  */
+ package jdk.tools.jlink.internal;
+ 
+-import jdk.tools.jlink.plugin.ResourcePoolModule;
+-
+ import java.util.Locale;
+ 
+ /**
+  * Supported platforms
+  */
+-public enum Platform {
+-    WINDOWS,
+-    LINUX,
+-    MACOS,
+-    AIX,
+-    UNKNOWN;
++public record Platform(OperatingSystem os, Architecture arch) {
+ 
+-    /**
+-     * Returns the {@code Platform} derived from the target platform
+-     * in the {@code ModuleTarget} attribute.
++    public enum OperatingSystem {
++        WINDOWS,
++        LINUX,
++        MACOS,
++        AIX,
++        UNKNOWN;
++    }
++
++    public enum Architecture {
++        X86,
++        x64,
++        ARM,
++        AARCH64,
++        UNKNOWN;
++    }
++
++    public static final Platform UNKNOWN = new Platform(OperatingSystem.UNKNOWN, Architecture.UNKNOWN);
++
++    /*
++     * Returns the {@code Platform} based on the platformString of the form <operating system>-<arch>.
+      */
+-    public static Platform toPlatform(String targetPlatform) {
++    public static Platform parsePlatform(String platformString) {
+         String osName;
+-        int index = targetPlatform.indexOf("-");
++        String archName;
++        int index = platformString.indexOf("-");
+         if (index < 0) {
+-            osName = targetPlatform;
++            osName = platformString;
++            archName = "UNKNOWN";
+         } else {
+-            osName = targetPlatform.substring(0, index);
++            osName = platformString.substring(0, index);
++            archName = platformString.substring(index + 1);
+         }
++        OperatingSystem os;
+         try {
+-            return Platform.valueOf(osName.toUpperCase(Locale.ENGLISH));
++            os = OperatingSystem.valueOf(osName.toUpperCase(Locale.ENGLISH));
+         } catch (IllegalArgumentException e) {
+-            return Platform.UNKNOWN;
++            os = OperatingSystem.UNKNOWN;
+         }
++        Architecture arch = toArch(archName);
++        return new Platform(os, arch);
+     }
+ 
+     /**
+-     * Returns the {@code Platform} to which the given module is target to.
++     * @return true is it's a 64-bit platform
+      */
+-    public static Platform getTargetPlatform(ResourcePoolModule module) {
+-        String targetPlatform = module.targetPlatform();
+-        if (targetPlatform != null) {
+-            return toPlatform(targetPlatform);
+-        } else {
+-            return Platform.UNKNOWN;
+-        }
++    public boolean is64Bit() {
++        return (arch() == Platform.Architecture.x64 ||
++                arch() == Platform.Architecture.AARCH64);
++    }
++
++    /**
++     * Returns the runtime {@code Platform}.
++     */
++    public static Platform runtime() {
++        return new Platform(runtimeOS(), runtimeArch());
++    }
++
++    /**
++     * Returns a {@code String} representation of a {@code Platform} in the format of <os>-<arch>
++     */
++    @Override
++    public String toString() {
++        return os.toString().toLowerCase() + "-" + arch.toString().toLowerCase();
++    }
++
++    /**
++     * Returns the runtime {@code Platform.OperatingSystem}.
++     */
++    private static OperatingSystem runtimeOS() {
++        String osName = System.getProperty("os.name").substring(0, 3).toLowerCase();
++        OperatingSystem os = switch (osName) {
++            case "win" -> OperatingSystem.WINDOWS;
++            case "lin" -> OperatingSystem.LINUX;
++            case "mac" -> OperatingSystem.MACOS;
++            case "aix" -> OperatingSystem.AIX;
++            default    -> OperatingSystem.UNKNOWN;
++        };
++        return os;
++    }
++
++    /**
++     * Returns the runtime {@code Platform.Architechrure}.
++     */
++    private static Architecture runtimeArch() {
++        String archName = System.getProperty("os.arch");
++        return toArch(archName);
++    }
++
++    /**
++     * Returns the {@code Platform.Architecture} based on the archName.
++     */
++    private static Architecture toArch(String archName) {
++        Architecture arch = switch (archName) {
++            case "x86"             -> Architecture.X86;
++            case "amd64", "x86_64" -> Architecture.x64;
++            case "arm"             -> Architecture.ARM;
++            case "aarch64"         -> Architecture.AARCH64;
++            default                -> Architecture.UNKNOWN;
++        };
++        return arch;
+     }
+ }
+diff --git a/src/jdk.jlink/share/classes/jdk/tools/jlink/internal/plugins/CDSPlugin.java b/src/jdk.jlink/share/classes/jdk/tools/jlink/internal/plugins/CDSPlugin.java
+new file mode 100644
+index 00000000000..a1bee72c255
+--- /dev/null
++++ b/src/jdk.jlink/share/classes/jdk/tools/jlink/internal/plugins/CDSPlugin.java
+@@ -0,0 +1,123 @@
++/*
++ * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
++ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
++ *
++ * This code is free software; you can redistribute it and/or modify it
++ * under the terms of the GNU General Public License version 2 only, as
++ * published by the Free Software Foundation.  Oracle designates this
++ * particular file as subject to the "Classpath" exception as provided
++ * by Oracle in the LICENSE file that accompanied this code.
++ *
++ * This code is distributed in the hope that it will be useful, but WITHOUT
++ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
++ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
++ * version 2 for more details (a copy is included in the LICENSE file that
++ * accompanied this code).
++ *
++ * You should have received a copy of the GNU General Public License version
++ * 2 along with this work; if not, write to the Free Software Foundation,
++ * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
++ *
++ * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
++ * or visit www.oracle.com if you need additional information or have any
++ * questions.
++ */
++package jdk.tools.jlink.internal.plugins;
++
++import java.io.IOException;
++import java.nio.file.Files;
++import java.nio.file.Path;
++import java.util.*;
++
++import jdk.tools.jlink.internal.ExecutableImage;
++import jdk.tools.jlink.internal.Platform;
++import jdk.tools.jlink.internal.PostProcessor;
++import jdk.tools.jlink.plugin.PluginException;
++import jdk.tools.jlink.plugin.ResourcePool;
++import jdk.tools.jlink.plugin.ResourcePoolBuilder;
++
++/**
++ *
++ * CDS plugin
++ */
++public final class CDSPlugin extends AbstractPlugin implements PostProcessor {
++    private static final String NAME = "generate-cds-archive";
++    private Platform targetPlatform;
++    private Platform runtimePlatform;
++
++    public CDSPlugin() {
++        super(NAME);
++    }
++
++
++    private String javaExecutableName() {
++        if (targetPlatform.os() == Platform.OperatingSystem.WINDOWS) {
++            return "java.exe";
++        } else {
++            return "java";
++        }
++    }
++
++    private void generateCDSArchive(ExecutableImage image, boolean noCoops) {
++        List<String> javaCmd = new ArrayList<String>();
++        Path javaPath = image.getHome().resolve("bin").resolve(javaExecutableName());
++        if (!Files.exists(javaPath)) {
++            throw new PluginException("Cannot find java executable at: " + javaPath.toString());
++        }
++        javaCmd.add(javaPath.toString());
++        javaCmd.add("-Xshare:dump");
++        String archiveMsg = "CDS";
++        if (noCoops) {
++            javaCmd.add("-XX:-UseCompressedOops");
++            archiveMsg += "-NOCOOPS";
++        }
++        ProcessBuilder builder = new ProcessBuilder(javaCmd);
++        int status = -1;
++        try {
++            Process p = builder.inheritIO().start();
++            status = p.waitFor();
++        } catch (InterruptedException | IOException e) {
++            throw new PluginException(e);
++        }
++
++        if (status != 0) {
++            throw new PluginException("Failed creating " + archiveMsg + " archive!");
++        }
++    }
++
++    @Override
++    public List<String> process(ExecutableImage image) {
++        targetPlatform = image.getTargetPlatform();
++        runtimePlatform = Platform.runtime();
++
++        if (!targetPlatform.equals(runtimePlatform)) {
++            throw new PluginException("Cannot generate CDS archives: target image platform " +
++                    targetPlatform.toString() + " is different from runtime platform " +
++                    runtimePlatform.toString());
++        }
++
++        Path classListPath = image.getHome().resolve("lib").resolve("classlist");
++        if (Files.exists(classListPath)) {
++            generateCDSArchive(image,false);
++
++            if (targetPlatform.is64Bit()) {
++                generateCDSArchive(image,true);
++            }
++            System.out.println("Created CDS archive successfully");
++        } else {
++            throw new PluginException("Cannot generate CDS archives: classlist not found: " +
++                                      classListPath.toString());
++        }
++        return null;
++    }
++
++    @Override
++    public Category getType() {
++        return Category.PROCESSOR;
++    }
++
++    @Override
++    public ResourcePool transform(ResourcePool in, ResourcePoolBuilder out) {
++        return in;
++    }
++}
+diff --git a/src/jdk.jlink/share/classes/jdk/tools/jlink/internal/plugins/ExcludeVMPlugin.java b/src/jdk.jlink/share/classes/jdk/tools/jlink/internal/plugins/ExcludeVMPlugin.java
+index cdd0167eb6e..a9cc357787a 100644
+--- a/src/jdk.jlink/share/classes/jdk/tools/jlink/internal/plugins/ExcludeVMPlugin.java
++++ b/src/jdk.jlink/share/classes/jdk/tools/jlink/internal/plugins/ExcludeVMPlugin.java
+@@ -1,5 +1,5 @@
+ /*
+- * Copyright (c) 2015, 2020, Oracle and/or its affiliates. All rights reserved.
++ * Copyright (c) 2015, 2021, Oracle and/or its affiliates. All rights reserved.
+  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+  *
+  * This code is free software; you can redistribute it and/or modify it
+@@ -245,8 +245,9 @@ public final class ExcludeVMPlugin extends AbstractPlugin {
+     }
+ 
+     private static String[] jvmlibs(ResourcePoolModule module) {
+-        Platform platform = Platform.getTargetPlatform(module);
+-        switch (platform) {
++        String targetPlatform = module.targetPlatform();
++        Platform platform = Platform.parsePlatform(targetPlatform);
++        switch (platform.os()) {
+             case WINDOWS:
+                 return new String[] { "jvm.dll" };
+             case MACOS:
+diff --git a/src/jdk.jlink/share/classes/jdk/tools/jlink/resources/jlink.properties b/src/jdk.jlink/share/classes/jdk/tools/jlink/resources/jlink.properties
+index cb70252c180..832b8be8575 100644
+--- a/src/jdk.jlink/share/classes/jdk/tools/jlink/resources/jlink.properties
++++ b/src/jdk.jlink/share/classes/jdk/tools/jlink/resources/jlink.properties
+@@ -1,5 +1,5 @@
+ #
+-# Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
++# Copyright (c) 2015, 2021, Oracle and/or its affiliates. All rights reserved.
+ # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+ #
+ # This code is free software; you can redistribute it and/or modify it
+diff --git a/src/jdk.jlink/share/classes/jdk/tools/jlink/resources/plugins.properties b/src/jdk.jlink/share/classes/jdk/tools/jlink/resources/plugins.properties
+index d49dd1d38bd..958c43c2ca4 100644
+--- a/src/jdk.jlink/share/classes/jdk/tools/jlink/resources/plugins.properties
++++ b/src/jdk.jlink/share/classes/jdk/tools/jlink/resources/plugins.properties
+@@ -1,5 +1,5 @@
+ #
+-# Copyright (c) 2015, 2019, Oracle and/or its affiliates. All rights reserved.
++# Copyright (c) 2015, 2021, Oracle and/or its affiliates. All rights reserved.
+ # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+ #
+ # This code is free software; you can redistribute it and/or modify it
+@@ -137,6 +137,13 @@ exclude-jmod-section.usage=\
+ \                            Specify a JMOD section to exclude.\n\
+ \                            Where <section-name> is \"man\" or \"headers\".
+ 
++
++generate-cds-archive.description=\
++CDS plugin: generate cds archives if the runtime image supports CDS feature.\n\
++
++generate-cds-archive.usage=\
++\  --generate-cds-archive    Generate CDS archives if the runtime image supports CDS feature.
++
+ generate-jli-classes.argument=@filename
+ 
+ generate-jli-classes.description=\
+diff --git a/src/jdk.jlink/share/classes/module-info.java b/src/jdk.jlink/share/classes/module-info.java
+index 3d097772e77..d2db4c5f9e4 100644
+--- a/src/jdk.jlink/share/classes/module-info.java
++++ b/src/jdk.jlink/share/classes/module-info.java
+@@ -1,5 +1,5 @@
+ /*
+- * Copyright (c) 2015, 2019, Oracle and/or its affiliates. All rights reserved.
++ * Copyright (c) 2015, 2021, Oracle and/or its affiliates. All rights reserved.
+  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+  *
+  * This code is free software; you can redistribute it and/or modify it
+@@ -76,6 +76,7 @@ module jdk.jlink {
+         jdk.tools.jlink.internal.plugins.AddOptionsPlugin,
+         jdk.tools.jlink.internal.plugins.VendorBugURLPlugin,
+         jdk.tools.jlink.internal.plugins.VendorVMBugURLPlugin,
+-        jdk.tools.jlink.internal.plugins.VendorVersionPlugin;
++        jdk.tools.jlink.internal.plugins.VendorVersionPlugin,
++        jdk.tools.jlink.internal.plugins.CDSPlugin;
+ 
+ }
+diff --git a/test/jdk/tools/jlink/plugins/CDSPluginTest.java b/test/jdk/tools/jlink/plugins/CDSPluginTest.java
+new file mode 100644
+index 00000000000..5a973320951
+--- /dev/null
++++ b/test/jdk/tools/jlink/plugins/CDSPluginTest.java
+@@ -0,0 +1,94 @@
++/*
++ * Copyright (c) 2021, Oracle and/or its affiliates. All rights reserved.
++ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
++ *
++ * This code is free software; you can redistribute it and/or modify it
++ * under the terms of the GNU General Public License version 2 only, as
++ * published by the Free Software Foundation.
++ *
++ * This code is distributed in the hope that it will be useful, but WITHOUT
++ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
++ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
++ * version 2 for more details (a copy is included in the LICENSE file that
++ * accompanied this code).
++ *
++ * You should have received a copy of the GNU General Public License version
++ * 2 along with this work; if not, write to the Free Software Foundation,
++ * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
++ *
++ * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
++ * or visit www.oracle.com if you need additional information or have any
++ * questions.
++ */
++
++import java.io.File;
++
++import jdk.test.lib.JDKToolFinder;
++import jdk.test.lib.Platform;
++import jdk.test.lib.process.*;
++
++import tests.Helper;
++
++/* @test
++ * @bug 8264322
++ * @summary Test the --generate-cds-archive plugin
++ * @requires vm.cds
++ * @library ../../lib
++ * @library /test/lib
++ * @modules java.base/jdk.internal.jimage
++ *          jdk.jdeps/com.sun.tools.classfile
++ *          jdk.jlink/jdk.tools.jlink.internal
++ *          jdk.jlink/jdk.tools.jmod
++ *          jdk.jlink/jdk.tools.jimage
++ *          jdk.compiler
++ * @build tests.*
++ * @run main CDSPluginTest
++ */
++
++public class CDSPluginTest {
++
++    public static void main(String[] args) throws Throwable {
++
++        Helper helper = Helper.newHelper();
++        if (helper == null) {
++            System.err.println("Test not run");
++            return;
++        }
++
++        var module = "cds";
++        helper.generateDefaultJModule(module);
++        var image = helper.generateDefaultImage(new String[] { "--generate-cds-archive" },
++                                                module)
++            .assertSuccess();
++
++        String subDir;
++        String sep = File.separator;
++        if (Platform.isWindows()) {
++            subDir = "bin" + sep;
++        } else {
++            subDir = "lib" + sep;
++        }
++        subDir += "server" + sep;
++        helper.checkImage(image, module, null, null,
++                          new String[] { subDir + "classes.jsa", subDir + "classes_nocoops.jsa" });
++
++       // Simulate different platforms between current runtime and target image.
++       if (Platform.isLinux()) {
++           System.out.println("---- Test different platforms scenario ----");
++           String jlinkPath = JDKToolFinder.getJDKTool("jlink");
++           String[] cmd = {jlinkPath, "--add-modules", "java.base,java.logging",
++                           "-J-Dos.name=windows", "--generate-cds-archive",
++                           "--output", System.getProperty("test.classes") + sep + module + "-tmp"};
++           StringBuilder cmdLine = new StringBuilder();
++           for (String s : cmd) {
++               cmdLine.append(s).append(' ');
++           }
++           System.out.println("Command line: [" + cmdLine.toString() + "]");
++           ProcessBuilder pb = new ProcessBuilder(cmd);
++           OutputAnalyzer out = new OutputAnalyzer(pb.start());
++           System.out.println("    stdout: " + out.getStdout());
++           out.shouldMatch("Error: Cannot generate CDS archives: target image platform linux-.*is different from runtime platform windows-.*");
++           out.shouldHaveExitValue(1);
++       }
++    }
++}

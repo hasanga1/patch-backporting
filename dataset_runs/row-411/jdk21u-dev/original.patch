@@ -1,0 +1,382 @@
+diff --git a/src/jdk.jlink/share/classes/jdk/tools/jlink/internal/plugins/SystemModulesPlugin.java b/src/jdk.jlink/share/classes/jdk/tools/jlink/internal/plugins/SystemModulesPlugin.java
+index 735c969a886..40693b33d6d 100644
+--- a/src/jdk.jlink/share/classes/jdk/tools/jlink/internal/plugins/SystemModulesPlugin.java
++++ b/src/jdk.jlink/share/classes/jdk/tools/jlink/internal/plugins/SystemModulesPlugin.java
+@@ -1,5 +1,5 @@
+ /*
+- * Copyright (c) 2015, 2023, Oracle and/or its affiliates. All rights reserved.
++ * Copyright (c) 2015, 2024, Oracle and/or its affiliates. All rights reserved.
+  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+  *
+  * This code is free software; you can redistribute it and/or modify it
+@@ -1827,6 +1827,9 @@ private String genSystemModulesMapClass(ClassDesc allSystemModules,
+ 
+         // write the class file to the pool as a resource
+         String rn = "/java.base/" + SYSTEM_MODULES_MAP_CLASSNAME + ".class";
++        // sort the map of module name to the class name of the generated SystemModules class
++        List<Map.Entry<String, String>> systemModulesMap = map.entrySet()
++                .stream().sorted(Map.Entry.comparingByKey()).toList();
+         ResourcePoolEntry e = ResourcePoolEntry.create(rn, ClassFile.of().build(
+                 CD_SYSTEM_MODULES_MAP,
+                 clb -> clb.withFlags(ACC_FINAL + ACC_SUPER)
+@@ -1877,10 +1880,10 @@ private String genSystemModulesMapClass(ClassDesc allSystemModules,
+                                       cob.anewarray(CD_String);
+ 
+                                       int index = 0;
+-                                      for (String moduleName : sorted(map.keySet())) {
++                                      for (Map.Entry<String,String> entry : systemModulesMap) {
+                                           cob.dup() // arrayref
+                                              .constantInstruction(index)
+-                                             .constantInstruction(moduleName)
++                                             .constantInstruction(entry.getKey())
+                                              .aastore();
+                                           index++;
+                                       }
+@@ -1898,10 +1901,10 @@ private String genSystemModulesMapClass(ClassDesc allSystemModules,
+                                          .anewarray(CD_String);
+ 
+                                       int index = 0;
+-                                      for (String className : sorted(map.values())) {
++                                      for (Map.Entry<String,String> entry : systemModulesMap) {
+                                           cob.dup() // arrayref
+                                              .constantInstruction(index)
+-                                             .constantInstruction(className.replace('/', '.'))
++                                             .constantInstruction(entry.getValue().replace('/', '.'))
+                                              .aastore();
+                                           index++;
+                                       }
+diff --git a/test/jdk/tools/jlink/plugins/SystemModuleDescriptors/ModuleMainClassTest.java b/test/jdk/tools/jlink/plugins/SystemModuleDescriptors/ModuleMainClassTest.java
+new file mode 100644
+index 00000000000..ca7e2bc5f30
+--- /dev/null
++++ b/test/jdk/tools/jlink/plugins/SystemModuleDescriptors/ModuleMainClassTest.java
+@@ -0,0 +1,145 @@
++/*
++ * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
++ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
++ *
++ * This code is free software; you can redistribute it and/or modify it
++ * under the terms of the GNU General Public License version 2 only, as
++ * published by the Free Software Foundation.
++ *
++ * This code is distributed in the hope that it will be useful, but WITHOUT
++ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
++ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
++ * version 2 for more details (a copy is included in the LICENSE file that
++ * accompanied this code).
++ *
++ * You should have received a copy of the GNU General Public License version
++ * 2 along with this work; if not, write to the Free Software Foundation,
++ * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
++ *
++ * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
++ * or visit www.oracle.com if you need additional information or have any
++ * questions.
++ */
++
++import java.nio.file.Files;
++import java.nio.file.Path;
++import java.nio.file.Paths;
++import java.util.Arrays;
++import java.util.spi.ToolProvider;
++import java.util.stream.Collectors;
++import java.util.stream.Stream;
++
++import jdk.test.lib.compiler.CompilerUtils;
++import jdk.test.lib.util.FileUtils;
++
++import static jdk.test.lib.process.ProcessTools.*;
++
++import org.junit.jupiter.api.Test;
++import org.junit.jupiter.api.BeforeAll;
++import static org.junit.jupiter.api.Assertions.*;
++
++/**
++ * @test
++ * @bug 8322809
++ * @library /test/lib
++ * @modules jdk.compiler jdk.jlink
++ * @build jdk.test.lib.compiler.CompilerUtils
++ *        jdk.test.lib.process.ProcessTools
++ *        jdk.test.lib.util.FileUtils
++ *        ModuleMainClassTest
++ * @run junit ModuleMainClassTest
++ */
++
++public class ModuleMainClassTest {
++    private static final String JAVA_HOME = System.getProperty("java.home");
++    private static final String TEST_SRC = System.getProperty("test.src");
++
++    private static final Path SRC_DIR = Path.of(TEST_SRC, "src");
++    private static final Path MODS_DIR = Path.of("mods");
++    private static final Path JMODS_DIR = Path.of("jmods");
++
++    private static final Path IMAGE = Path.of("image");
++
++    // the module names are sorted by the plugin and so these names cover
++    // the cases that are before and after the elements of `jdk.*` modules
++    // with main classes
++    private static String[] modules = new String[] {"com.foo", "net.foo"};
++
++    private static boolean hasJmods() {
++        if (!Files.exists(Paths.get(JAVA_HOME, "jmods"))) {
++            System.err.println("Test skipped. NO jmods directory");
++            return false;
++        }
++        return true;
++    }
++
++    @BeforeAll
++    public static void compileAll() throws Throwable {
++        if (!hasJmods()) return;
++
++        for (String mn : modules) {
++            Path msrc = SRC_DIR.resolve(mn);
++            assertTrue(CompilerUtils.compile(msrc, MODS_DIR,
++                    "--module-source-path", SRC_DIR.toString(),
++                    "--add-exports", "java.base/jdk.internal.module=" + mn));
++        }
++
++        if (Files.exists(IMAGE)) {
++            FileUtils.deleteFileTreeUnchecked(IMAGE);
++        }
++
++        // create JMOD files
++        Files.createDirectories(JMODS_DIR);
++        Stream.of(modules).forEach(mn ->
++                assertTrue(jmod("create",
++                        "--class-path", MODS_DIR.resolve(mn).toString(),
++                        "--main-class", mn + ".Main",
++                        JMODS_DIR.resolve(mn + ".jmod").toString()) == 0)
++        );
++
++        // the run-time image created will have 4 modules with main classes
++        createImage(IMAGE, "com.foo");
++    }
++
++    @Test
++    public void testComFoo() throws Exception {
++        if (!hasJmods()) return;
++
++        Path java = IMAGE.resolve("bin").resolve("java");
++        assertTrue(executeProcess(java.toString(),
++                "-m", "com.foo")
++                .outputTo(System.out)
++                .errorTo(System.out)
++                .getExitValue() == 0);
++    }
++
++    @Test
++    public void testNetFoo() throws Exception {
++        if (!hasJmods()) return;
++
++        Path java = IMAGE.resolve("bin").resolve("java");
++        assertTrue(executeProcess(java.toString(),
++                "-m", "net.foo")
++                .outputTo(System.out)
++                .errorTo(System.out)
++                .getExitValue() == 0);
++    }
++
++    static final ToolProvider JLINK_TOOL = ToolProvider.findFirst("jlink")
++        .orElseThrow(() -> new RuntimeException("jlink tool not found"));
++
++    static final ToolProvider JMOD_TOOL = ToolProvider.findFirst("jmod")
++        .orElseThrow(() -> new RuntimeException("jmod tool not found"));
++
++    private static void createImage(Path outputDir, String... modules) throws Throwable {
++        assertTrue(JLINK_TOOL.run(System.out, System.out,
++                "--output", outputDir.toString(),
++                "--add-modules", Arrays.stream(modules).collect(Collectors.joining(",")),
++                "--module-path", JMODS_DIR.toString()) == 0);
++    }
++
++    private static int jmod(String... options) {
++        System.out.println("jmod " + Arrays.asList(options));
++        return JMOD_TOOL.run(System.out, System.out, options);
++    }
++}
+diff --git a/test/jdk/tools/jlink/plugins/SystemModuleDescriptors/src/com.foo/com/foo/Main.java b/test/jdk/tools/jlink/plugins/SystemModuleDescriptors/src/com.foo/com/foo/Main.java
+new file mode 100644
+index 00000000000..f8b230647fa
+--- /dev/null
++++ b/test/jdk/tools/jlink/plugins/SystemModuleDescriptors/src/com.foo/com/foo/Main.java
+@@ -0,0 +1,53 @@
++/*
++ * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
++ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
++ *
++ * This code is free software; you can redistribute it and/or modify it
++ * under the terms of the GNU General Public License version 2 only, as
++ * published by the Free Software Foundation.
++ *
++ * This code is distributed in the hope that it will be useful, but WITHOUT
++ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
++ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
++ * version 2 for more details (a copy is included in the LICENSE file that
++ * accompanied this code).
++ *
++ * You should have received a copy of the GNU General Public License version
++ * 2 along with this work; if not, write to the Free Software Foundation,
++ * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
++ *
++ * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
++ * or visit www.oracle.com if you need additional information or have any
++ * questions.
++ */
++
++package com.foo;
++
++import java.lang.module.ModuleDescriptor;
++import java.lang.module.ModuleFinder;
++import java.util.stream.Stream;
++
++/**
++ * Sanity test if SystemModules pre-resolved at link-time for com.foo
++ * with main class is loaded properly.
++ */
++public class Main {
++    public static void main(String... args) throws Exception {
++        ModuleDescriptor md = Main.class.getModule().getDescriptor();
++        System.out.println(md);
++
++        checkMainClass("com.foo", "com.foo.Main");
++        checkMainClass("net.foo", "net.foo.Main");
++        Stream.of("jdk.httpserver", "jdk.jfr").forEach(mn ->
++                ModuleFinder.ofSystem().find(mn).get().descriptor().mainClass()
++                            .orElseThrow(() -> new RuntimeException(mn + " no main class"))
++        );
++    }
++
++    static void checkMainClass(String mn, String mainClass) {
++        String cn = ModuleFinder.ofSystem().find(mn).get().descriptor().mainClass().get();
++        if (!cn.equals(mainClass)) {
++            throw new RuntimeException("Mismatched main class of module " + mn + ": " + cn + " expected: " + mainClass);
++        }
++    }
++}
+diff --git a/test/jdk/tools/jlink/plugins/SystemModuleDescriptors/src/com.foo/module-info.java b/test/jdk/tools/jlink/plugins/SystemModuleDescriptors/src/com.foo/module-info.java
+new file mode 100644
+index 00000000000..99107602506
+--- /dev/null
++++ b/test/jdk/tools/jlink/plugins/SystemModuleDescriptors/src/com.foo/module-info.java
+@@ -0,0 +1,27 @@
++/*
++ * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
++ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
++ *
++ * This code is free software; you can redistribute it and/or modify it
++ * under the terms of the GNU General Public License version 2 only, as
++ * published by the Free Software Foundation.
++ *
++ * This code is distributed in the hope that it will be useful, but WITHOUT
++ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
++ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
++ * version 2 for more details (a copy is included in the LICENSE file that
++ * accompanied this code).
++ *
++ * You should have received a copy of the GNU General Public License version
++ * 2 along with this work; if not, write to the Free Software Foundation,
++ * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
++ *
++ * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
++ * or visit www.oracle.com if you need additional information or have any
++ * questions.
++ */
++
++module com.foo {
++    requires jdk.httpserver;
++    requires net.foo;
++}
+diff --git a/test/jdk/tools/jlink/plugins/SystemModuleDescriptors/src/net.foo/module-info.java b/test/jdk/tools/jlink/plugins/SystemModuleDescriptors/src/net.foo/module-info.java
+new file mode 100644
+index 00000000000..360a989d9b3
+--- /dev/null
++++ b/test/jdk/tools/jlink/plugins/SystemModuleDescriptors/src/net.foo/module-info.java
+@@ -0,0 +1,26 @@
++/*
++ * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
++ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
++ *
++ * This code is free software; you can redistribute it and/or modify it
++ * under the terms of the GNU General Public License version 2 only, as
++ * published by the Free Software Foundation.
++ *
++ * This code is distributed in the hope that it will be useful, but WITHOUT
++ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
++ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
++ * version 2 for more details (a copy is included in the LICENSE file that
++ * accompanied this code).
++ *
++ * You should have received a copy of the GNU General Public License version
++ * 2 along with this work; if not, write to the Free Software Foundation,
++ * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
++ *
++ * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
++ * or visit www.oracle.com if you need additional information or have any
++ * questions.
++ */
++
++module net.foo {
++    requires jdk.jfr;
++}
+diff --git a/test/jdk/tools/jlink/plugins/SystemModuleDescriptors/src/net.foo/net/foo/Main.java b/test/jdk/tools/jlink/plugins/SystemModuleDescriptors/src/net.foo/net/foo/Main.java
+new file mode 100644
+index 00000000000..c147923e75a
+--- /dev/null
++++ b/test/jdk/tools/jlink/plugins/SystemModuleDescriptors/src/net.foo/net/foo/Main.java
+@@ -0,0 +1,54 @@
++/*
++ * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
++ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
++ *
++ * This code is free software; you can redistribute it and/or modify it
++ * under the terms of the GNU General Public License version 2 only, as
++ * published by the Free Software Foundation.
++ *
++ * This code is distributed in the hope that it will be useful, but WITHOUT
++ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
++ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
++ * version 2 for more details (a copy is included in the LICENSE file that
++ * accompanied this code).
++ *
++ * You should have received a copy of the GNU General Public License version
++ * 2 along with this work; if not, write to the Free Software Foundation,
++ * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
++ *
++ * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
++ * or visit www.oracle.com if you need additional information or have any
++ * questions.
++ */
++
++package net.foo;
++
++import java.lang.module.ModuleDescriptor;
++import java.lang.module.ModuleFinder;
++import java.util.stream.Stream;
++
++/**
++ * Sanity test if SystemModules pre-resolved at link-time for net.foo
++ * with main class is loaded properly.
++ */
++public class Main {
++    public static void main(String... args) throws Exception {
++        ModuleDescriptor md = Main.class.getModule().getDescriptor();
++        System.out.println(md);
++
++        checkMainClass("com.foo", "com.foo.Main");
++        checkMainClass("net.foo", "net.foo.Main");
++        Stream.of("jdk.httpserver", "jdk.jfr").forEach(mn ->
++                ModuleFinder.ofSystem().find(mn).get().descriptor().mainClass()
++                        .orElseThrow(() -> new RuntimeException(mn + " no main class"))
++        );
++    }
++
++    static void checkMainClass(String mn, String mainClass) {
++        String cn = ModuleFinder.ofSystem().find(mn).get().descriptor().mainClass().get();
++        if (!cn.equals(mainClass)) {
++            throw new RuntimeException("Mismatched main class of module " + mn + ": " + cn + " expected: " + mainClass);
++        }
++    }
++
++}

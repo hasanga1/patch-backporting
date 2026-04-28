@@ -1,0 +1,72 @@
+2026-04-27 11:40:43,312 - backport - INFO - Using openrouter API: https://openrouter.ai/api/v1 (model: openai/gpt-4.1-mini)
+2026-04-27 11:40:45,748 - backport - INFO - Aplly all hunks in the patch      PASS
+2026-04-27 11:40:46,490 - backport - INFO - Successfully backport the patch to the target release 1e6648867b9b04f079332ce8baf59ae4b471571e
+2026-04-27 11:40:46,492 - backport - INFO - --- a/src/jdk.compiler/share/classes/com/sun/tools/javac/parser/JavacParser.java
++++ b/src/jdk.compiler/share/classes/com/sun/tools/javac/parser/JavacParser.java
+@@ -3361,6 +3361,8 @@ PatternResult analyzePattern(int lookahead) {
+                 case RPAREN: parenDepth--; break;
+                 case ARROW: return parenDepth > 0 ? PatternResult.EXPRESSION
+                                                    : pendingResult;
++                case FINAL:
++                    if (parenDepth > 0) return PatternResult.PATTERN;
+                 default: return pendingResult;
+             }
+             lookahead++;
+
+--- a/test/langtools/tools/javac/patterns/T8317300.out
++++ b/test/langtools/tools/javac/patterns/T8317300.out
+@@ -1,5 +1,3 @@
+ T8317300.java:13:18: compiler.err.mod.not.allowed.here: final
+-T8317300.java:20:22: compiler.err.illegal.start.of.expr
+-T8317300.java:20:31: compiler.err.expected: token.identifier
+-T8317300.java:20:37: compiler.err.expected: ';'
+-4 errors
++T8317300.java:20:22: compiler.err.mod.not.allowed.here: final
++2 errors
+
+--- /dev/null
++++ b/test/langtools/tools/javac/patterns/T8320145.java
+@@ -0,0 +1,42 @@
++/*
++ * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
++ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
++ *
++ * This code is free software; you can redistribute it and/or modify it
++ * under the terms of the GNU General Public License version 2 only, as
++ * published by the Free Software Foundation.
++ *
++ * This code is distributed in the hope that it will be useful, but WITHOUT
++ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
++ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
++ * version 2 for more details (a copy is included in the LICENSE file that
++ * accompanied this code).
++ *
++ * You should have received a copy of the GNU General Public License version
++ * 2 along with this work; if not, write to the Free Software Foundation,
++ * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
++ *
++ * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
++ * or visit www.oracle.com if you need additional information or have any
++ * questions.
++ */
++/*
++ * @test
++ * @bug 8320145
++ * @summary Compiler should accept final variable in Record Pattern
++ * @compile T8320145.java
++ */
++public class T8320145 {
++    record ARecord(String aComponent) {}
++    record BRecord(ARecord aComponent) {}
++    record CRecord(ARecord aComponent1, ARecord aComponent2) {}
++
++    public String match(Object o) {
++        return switch(o) {
++            case ARecord(final String s) -> s;
++            case BRecord(ARecord(final String s)) -> s;
++            case CRecord(ARecord(String s), ARecord(final String s2)) -> s;
++            default -> "No match";
++        };
++    }
++}
+

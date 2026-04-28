@@ -1,156 +1,120 @@
---- a/server/src/main/java/org/elasticsearch/index/mapper/NestedObjectMapper.java
-+++ b/server/src/main/java/org/elasticsearch/index/mapper/NestedObjectMapper.java
-@@ -463,17 +463,14 @@ public class NestedObjectMapper extends ObjectMapper {
-         public void write(XContentBuilder b) throws IOException {
-             assert (children != null && children.size() > 0);
-             if (children.size() == 1) {
--                b.startObject(leafName());
-+                b.field(leafName());
-                 leafStoredFieldLoader.advanceTo(children.get(0));
-                 leafSourceLoader.write(leafStoredFieldLoader, children.get(0), b);
--                b.endObject();
-             } else {
-                 b.startArray(leafName());
-                 for (int childId : children) {
--                    b.startObject();
-                     leafStoredFieldLoader.advanceTo(childId);
-                     leafSourceLoader.write(leafStoredFieldLoader, childId, b);
--                    b.endObject();
-                 }
-                 b.endArray();
-             }
-
---- a/server/src/main/java/org/elasticsearch/index/mapper/ObjectMapper.java
-+++ b/server/src/main/java/org/elasticsearch/index/mapper/ObjectMapper.java
-@@ -843,12 +843,10 @@ public class ObjectMapper extends Mapper {
-                 return;
-             }
+--- a/logstash-core/src/main/java/org/logstash/jackson/StreamReadConstraintsUtil.java
++++ b/logstash-core/src/main/java/org/logstash/jackson/StreamReadConstraintsUtil.java
+@@ -18,6 +18,14 @@ public class StreamReadConstraintsUtil {
  
--            if (isFragment == false) {
--                if (isRoot()) {
--                    b.startObject();
--                } else {
--                    b.startObject(leafName());
--                }
-+            if (isRoot() || isFragment) {
-+                b.startObject();
-+            } else {
-+                b.startObject(leafName());
-             }
+     private StreamReadConstraints configuredStreamReadConstraints;
  
-             if (ignoredValues != null && ignoredValues.isEmpty() == false) {
++    // Provide default values for Jackson constraints in the case they are
++    // not specified in configuration file.
++    private static final Map<Override, Integer> JACKSON_DEFAULTS = Map.of(
++        Override.MAX_STRING_LENGTH, 200_000_000,
++        Override.MAX_NUMBER_LENGTH, 10_000,
++        Override.MAX_NESTING_DEPTH, 1_000
++    );
++
+     enum Override {
+         MAX_STRING_LENGTH(StreamReadConstraints.Builder::maxStringLength, StreamReadConstraints::getMaxStringLength),
+         MAX_NUMBER_LENGTH(StreamReadConstraints.Builder::maxNumberLength, StreamReadConstraints::getMaxNumberLength),
 
---- a/server/src/main/java/org/elasticsearch/index/mapper/ObjectMapper.java
-+++ b/server/src/main/java/org/elasticsearch/index/mapper/ObjectMapper.java
-@@ -875,9 +873,7 @@ public class ObjectMapper extends Mapper {
-                 }
-             }
-             hasValue = false;
--            if (isFragment == false) {
--                b.endObject();
--            }
-+            b.endObject();
-         }
+--- a/logstash-core/src/main/java/org/logstash/jackson/StreamReadConstraintsUtil.java
++++ b/logstash-core/src/main/java/org/logstash/jackson/StreamReadConstraintsUtil.java
+@@ -78,6 +86,8 @@ public class StreamReadConstraintsUtil {
+         if (configuredStreamReadConstraints == null) {
+             final StreamReadConstraints.Builder builder = StreamReadConstraints.defaults().rebuild();
  
-         @Override
++            // Apply the Jackson defaults first, then the overrides from config
++            JACKSON_DEFAULTS.forEach((override, value) -> override.applicator.apply(builder, value));
+             eachOverride((override, value) -> override.applicator.apply(builder, value));
+ 
+             this.configuredStreamReadConstraints = builder.build();
 
---- a/server/src/test/java/org/elasticsearch/index/mapper/NestedObjectMapperTests.java
-+++ b/server/src/test/java/org/elasticsearch/index/mapper/NestedObjectMapperTests.java
-@@ -1737,6 +1737,97 @@ public class NestedObjectMapperTests extends MapperServiceTestCase {
-             {"path":{"bar":"B","foo":"A"}}""", syntheticSource);
+--- a/logstash-core/src/test/java/org/logstash/jackson/StreamReadConstraintsUtilTest.java
++++ b/logstash-core/src/test/java/org/logstash/jackson/StreamReadConstraintsUtilTest.java
+@@ -26,6 +26,10 @@ public class StreamReadConstraintsUtilTest {
+     private ListAppender listAppender;
+     private Logger observedLogger;
+ 
++    private static final int DEFAULT_MAX_STRING_LENGTH = 200_000_000;
++    private static final int DEFAULT_MAX_NUMBER_LENGTH = 10_000;
++    private static final int DEFAULT_MAX_NESTING_DEPTH = 1_000;
++
+     @Before
+     public void setUpLoggingListAppender() {
+         int i = 1+16;
+
+--- a/logstash-core/src/test/java/org/logstash/jackson/StreamReadConstraintsUtilTest.java
++++ b/logstash-core/src/test/java/org/logstash/jackson/StreamReadConstraintsUtilTest.java
+@@ -51,8 +55,8 @@ public class StreamReadConstraintsUtilTest {
+             assertThat(configuredConstraints).as("inherited defaults")
+                     .returns(defaults.getMaxDocumentLength(), from(StreamReadConstraints::getMaxDocumentLength))
+                     .returns(defaults.getMaxNameLength(), from(StreamReadConstraints::getMaxNameLength))
+-                    .returns(defaults.getMaxNestingDepth(), from(StreamReadConstraints::getMaxNestingDepth))
+-                    .returns(defaults.getMaxNumberLength(), from(StreamReadConstraints::getMaxNumberLength));
++                    .returns(DEFAULT_MAX_NESTING_DEPTH, from(StreamReadConstraints::getMaxNestingDepth))
++                    .returns(DEFAULT_MAX_NUMBER_LENGTH, from(StreamReadConstraints::getMaxNumberLength));
+ 
+             assertThatThrownBy(configuredUtil::validateIsGlobalDefault).isInstanceOf(IllegalStateException.class).hasMessageContaining(MAX_STRING_LENGTH.propertyName);
+ 
+
+--- a/logstash-core/src/test/java/org/logstash/jackson/StreamReadConstraintsUtilTest.java
++++ b/logstash-core/src/test/java/org/logstash/jackson/StreamReadConstraintsUtilTest.java
+@@ -94,8 +98,8 @@ public class StreamReadConstraintsUtilTest {
+             assertThat(configuredConstraints).as("inherited defaults")
+                     .returns(defaults.getMaxDocumentLength(), from(StreamReadConstraints::getMaxDocumentLength))
+                     .returns(defaults.getMaxNameLength(), from(StreamReadConstraints::getMaxNameLength))
+-                    .returns(defaults.getMaxNestingDepth(), from(StreamReadConstraints::getMaxNestingDepth))
+-                    .returns(defaults.getMaxStringLength(), from(StreamReadConstraints::getMaxStringLength));
++                    .returns(DEFAULT_MAX_NESTING_DEPTH, from(StreamReadConstraints::getMaxNestingDepth))
++                    .returns(DEFAULT_MAX_STRING_LENGTH, from(StreamReadConstraints::getMaxStringLength));
+ 
+             assertThatThrownBy(configuredUtil::validateIsGlobalDefault).isInstanceOf(IllegalStateException.class).hasMessageContaining(MAX_NUMBER_LENGTH.propertyName);
+ 
+
+--- a/logstash-core/src/test/java/org/logstash/jackson/StreamReadConstraintsUtilTest.java
++++ b/logstash-core/src/test/java/org/logstash/jackson/StreamReadConstraintsUtilTest.java
+@@ -137,8 +141,8 @@ public class StreamReadConstraintsUtilTest {
+             assertThat(configuredConstraints).as("inherited defaults")
+                     .returns(defaults.getMaxDocumentLength(), from(StreamReadConstraints::getMaxDocumentLength))
+                     .returns(defaults.getMaxNameLength(), from(StreamReadConstraints::getMaxNameLength))
+-                    .returns(defaults.getMaxStringLength(), from(StreamReadConstraints::getMaxStringLength))
+-                    .returns(defaults.getMaxNumberLength(), from(StreamReadConstraints::getMaxNumberLength));
++                    .returns(DEFAULT_MAX_STRING_LENGTH, from(StreamReadConstraints::getMaxStringLength))
++                    .returns(DEFAULT_MAX_NUMBER_LENGTH, from(StreamReadConstraints::getMaxNumberLength));
+ 
+             assertThatThrownBy(configuredUtil::validateIsGlobalDefault).isInstanceOf(IllegalStateException.class).hasMessageContaining(MAX_NESTING_DEPTH.propertyName);
+ 
+
+--- a/logstash-core/src/test/java/org/logstash/jackson/StreamReadConstraintsUtilTest.java
++++ b/logstash-core/src/test/java/org/logstash/jackson/StreamReadConstraintsUtilTest.java
+@@ -193,6 +197,31 @@ public class StreamReadConstraintsUtilTest {
+         assertLogObserved(Level.WARN, "override `" + PROP_PREFIX + "unsupported-option1` is unknown and has been ignored");
      }
  
-+    public void testSyntheticNestedWithEmptyObject() throws IOException {
-+        DocumentMapper documentMapper = createMapperService(syntheticSourceMapping(b -> {
-+            b.startObject("path").field("type", "nested");
-+            {
-+                b.startObject("properties");
-+                {
-+                    b.startObject("foo").field("type", "keyword").endObject();
-+                }
-+                b.endObject();
-+            }
-+            b.endObject();
-+        })).documentMapper();
-+        var syntheticSource = syntheticSource(documentMapper, b -> { b.startObject("path").nullField("foo").endObject(); });
-+        assertEquals("""
-+            {"path":{}}""", syntheticSource);
++    @Test
++    public void usesJacksonDefaultsWhenNoConfig() {
++        StreamReadConstraintsUtil util = new StreamReadConstraintsUtil(new Properties(), this.observedLogger);
++        StreamReadConstraints constraints = util.get();
++
++        assertThat(constraints)
++            .returns(DEFAULT_MAX_STRING_LENGTH, from(StreamReadConstraints::getMaxStringLength))
++            .returns(DEFAULT_MAX_NUMBER_LENGTH, from(StreamReadConstraints::getMaxNumberLength))
++            .returns(DEFAULT_MAX_NESTING_DEPTH, from(StreamReadConstraints::getMaxNestingDepth));
 +    }
 +
-+    public void testSyntheticNestedWithEmptySubObject() throws IOException {
-+        DocumentMapper documentMapper = createMapperService(syntheticSourceMapping(b -> {
-+            b.startObject("path").field("type", "nested");
-+            {
-+                b.startObject("properties");
-+                {
-+                    b.startObject("to").startObject("properties");
-+                    {
-+                        b.startObject("foo").field("type", "keyword").endObject();
-+                    }
-+                    b.endObject().endObject();
-+                }
-+                b.endObject();
-+            }
-+            b.endObject();
-+        })).documentMapper();
-+        var syntheticSource = syntheticSource(documentMapper, b -> {
-+            b.startObject("path");
-+            {
-+                b.startObject("to").nullField("foo").endObject();
-+            }
-+            b.endObject();
-+        });
-+        assertEquals("""
-+            {"path":{}}""", syntheticSource);
++    @Test
++    public void configOverridesDefault() {
++        Properties props = new Properties();
++        props.setProperty("logstash.jackson.stream-read-constraints.max-string-length", "100");
++
++        StreamReadConstraintsUtil util = new StreamReadConstraintsUtil(props, this.observedLogger);
++        StreamReadConstraints constraints = util.get();
++
++        assertThat(constraints)
++            .returns(100, from(StreamReadConstraints::getMaxStringLength))
++            .returns(DEFAULT_MAX_NUMBER_LENGTH, from(StreamReadConstraints::getMaxNumberLength))
++            .returns(DEFAULT_MAX_NESTING_DEPTH, from(StreamReadConstraints::getMaxNestingDepth));
 +    }
 +
-+    public void testSyntheticNestedWithArrayContainingEmptyObject() throws IOException {
-+        DocumentMapper documentMapper = createMapperService(syntheticSourceMapping(b -> {
-+            b.startObject("path").field("type", "nested");
-+            {
-+                b.startObject("properties");
-+                {
-+                    b.startObject("foo").field("type", "keyword").endObject();
-+                }
-+                b.endObject();
-+            }
-+            b.endObject();
-+        })).documentMapper();
-+        var syntheticSource = syntheticSource(documentMapper, b -> {
-+            b.startArray("path");
-+            {
-+                b.startObject().field("foo", "A").endObject();
-+                b.startObject().nullField("foo").endObject();
-+            }
-+            b.endArray();
-+        });
-+        assertEquals("""
-+            {"path":[{"foo":"A"},{}]}""", syntheticSource);
-+    }
-+
-+    public void testSyntheticNestedWithArrayContainingOnlyEmptyObject() throws IOException {
-+        DocumentMapper documentMapper = createMapperService(syntheticSourceMapping(b -> {
-+            b.startObject("path").field("type", "nested");
-+            {
-+                b.startObject("properties");
-+                {
-+                    b.startObject("foo").field("type", "keyword").endObject();
-+                }
-+                b.endObject();
-+            }
-+            b.endObject();
-+        })).documentMapper();
-+        var syntheticSource = syntheticSource(documentMapper, b -> {
-+            b.startArray("path");
-+            {
-+                b.startObject().nullField("foo").endObject();
-+            }
-+            b.endArray();
-+        });
-+        assertEquals("""
-+            {"path":{}}""", syntheticSource);
-+    }
-+
-     private NestedObjectMapper createNestedObjectMapperWithAllParametersSet(CheckedConsumer<XContentBuilder, IOException> propertiesBuilder)
-         throws IOException {
-         DocumentMapper mapper = createDocumentMapper(mapping(b -> {
+     private void assertLogObserved(final Level level, final String... messageFragments) {
+         List<LogEvent> logEvents = listAppender.getEvents();
+         assertThat(logEvents)

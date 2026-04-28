@@ -1,0 +1,479 @@
+diff --git a/src/java.base/share/classes/java/lang/invoke/MethodHandleProxies.java b/src/java.base/share/classes/java/lang/invoke/MethodHandleProxies.java
+index c1c34185ffb..b2e93afea12 100644
+--- a/src/java.base/share/classes/java/lang/invoke/MethodHandleProxies.java
++++ b/src/java.base/share/classes/java/lang/invoke/MethodHandleProxies.java
+@@ -28,9 +28,11 @@
+ import java.lang.reflect.*;
+ import java.security.AccessController;
+ import java.security.PrivilegedAction;
++
++import jdk.internal.access.JavaLangReflectAccess;
++import jdk.internal.access.SharedSecrets;
+ import sun.invoke.WrapperInstance;
+ import java.util.ArrayList;
+-import java.util.concurrent.ConcurrentHashMap;
+ 
+ import jdk.internal.reflect.CallerSensitive;
+ import jdk.internal.reflect.Reflection;
+@@ -184,8 +186,6 @@ public static <T> T asInterfaceInstance(final Class<T> intfc, final MethodHandle
+             checkTarget = checkTarget.asType(checkTarget.type().changeReturnType(Object.class));
+             vaTargets[i] = checkTarget.asSpreader(Object[].class, smMT.parameterCount());
+         }
+-        final ConcurrentHashMap<Method, MethodHandle> defaultMethodMap =
+-                hasDefaultMethods(intfc) ? new ConcurrentHashMap<>() : null;
+         final InvocationHandler ih = new InvocationHandler() {
+                 private Object getArg(String name) {
+                     if ((Object)name == "getWrapperInstanceTarget")  return target;
+@@ -202,7 +202,8 @@ public Object invoke(Object proxy, Method method, Object[] args) throws Throwabl
+                     if (isObjectMethod(method))
+                         return callObjectMethod(proxy, method, args);
+                     if (isDefaultMethod(method)) {
+-                        return callDefaultMethod(defaultMethodMap, proxy, intfc, method, args);
++                        // no additional access check is performed
++                        return JLRA.invokeDefault(proxy, method, args, null);
+                     }
+                     throw newInternalError("bad proxy method: "+method);
+                 }
+@@ -320,37 +321,5 @@ private static boolean isDefaultMethod(Method m) {
+         return !Modifier.isAbstract(m.getModifiers());
+     }
+ 
+-    private static boolean hasDefaultMethods(Class<?> intfc) {
+-        for (Method m : intfc.getMethods()) {
+-            if (!isObjectMethod(m) &&
+-                !Modifier.isAbstract(m.getModifiers())) {
+-                return true;
+-            }
+-        }
+-        return false;
+-    }
+-
+-    private static Object callDefaultMethod(ConcurrentHashMap<Method, MethodHandle> defaultMethodMap,
+-                             Object self, Class<?> intfc, Method m, Object[] args) throws Throwable {
+-        assert(isDefaultMethod(m) && !isObjectMethod(m)) : m;
+-
+-        // Lazily compute the associated method handle from the method
+-        MethodHandle dmh = defaultMethodMap.computeIfAbsent(m, mk -> {
+-            try {
+-                // Look up the default method for special invocation thereby
+-                // avoiding recursive invocation back to the proxy
+-                MethodHandle mh = MethodHandles.Lookup.IMPL_LOOKUP.findSpecial(
+-                        intfc, mk.getName(),
+-                        MethodType.methodType(mk.getReturnType(), mk.getParameterTypes()),
+-                        self.getClass());
+-                return mh.asSpreader(Object[].class, mk.getParameterCount());
+-            } catch (NoSuchMethodException | IllegalAccessException e) {
+-                // The method is known to exist and should be accessible, this
+-                // method would not be called unless the invokeinterface to the
+-                // default (public) method passed access control checks
+-                throw new InternalError(e);
+-            }
+-        });
+-        return dmh.invoke(self, args);
+-    }
++    private static final JavaLangReflectAccess JLRA = SharedSecrets.getJavaLangReflectAccess();
+ }
+diff --git a/src/java.base/share/classes/java/lang/reflect/InvocationHandler.java b/src/java.base/share/classes/java/lang/reflect/InvocationHandler.java
+index 4ca59906367..d5d00f34c86 100644
+--- a/src/java.base/share/classes/java/lang/reflect/InvocationHandler.java
++++ b/src/java.base/share/classes/java/lang/reflect/InvocationHandler.java
+@@ -28,7 +28,6 @@
+ import jdk.internal.reflect.CallerSensitive;
+ import jdk.internal.reflect.Reflection;
+ 
+-import java.lang.invoke.MethodHandle;
+ import java.util.Objects;
+ 
+ /**
+@@ -262,33 +261,6 @@ public static Object invokeDefault(Object proxy, Method method, Object... args)
+             throws Throwable {
+         Objects.requireNonNull(proxy);
+         Objects.requireNonNull(method);
+-
+-        // verify that the object is actually a proxy instance
+-        if (!Proxy.isProxyClass(proxy.getClass())) {
+-            throw new IllegalArgumentException("'proxy' is not a proxy instance");
+-        }
+-        if (!method.isDefault()) {
+-            throw new IllegalArgumentException("\"" + method + "\" is not a default method");
+-        }
+-        @SuppressWarnings("unchecked")
+-        Class<? extends Proxy> proxyClass = (Class<? extends Proxy>)proxy.getClass();
+-
+-        Class<?> intf = method.getDeclaringClass();
+-        // access check on the default method
+-        method.checkAccess(Reflection.getCallerClass(), intf, proxyClass, method.getModifiers());
+-
+-        MethodHandle mh = Proxy.defaultMethodHandle(proxyClass, method);
+-        // invoke the super method
+-        try {
+-            // the args array can be null if the number of formal parameters required by
+-            // the method is zero (consistent with Method::invoke)
+-            Object[] params = args != null ? args : Proxy.EMPTY_ARGS;
+-            return mh.invokeExact(proxy, params);
+-        } catch (ClassCastException | NullPointerException e) {
+-            throw new IllegalArgumentException(e.getMessage(), e);
+-        } catch (Proxy.InvocationException e) {
+-            // unwrap and throw the exception thrown by the default method
+-            throw e.getCause();
+-        }
++        return Proxy.invokeDefault(proxy, method, args, Reflection.getCallerClass());
+     }
+ }
+diff --git a/src/java.base/share/classes/java/lang/reflect/Proxy.java b/src/java.base/share/classes/java/lang/reflect/Proxy.java
+index c9e3bb259ae..6dd5b3ef1db 100644
+--- a/src/java.base/share/classes/java/lang/reflect/Proxy.java
++++ b/src/java.base/share/classes/java/lang/reflect/Proxy.java
+@@ -1314,6 +1314,46 @@ public MethodHandles.Lookup run() {
+         });
+     }
+ 
++    /*
++     * Invoke the default method of the given proxy with an explicit caller class.
++     *
++     * @throws IllegalAccessException if the proxy interface is inaccessible to the caller
++     *         if caller is non-null
++     */
++    static Object invokeDefault(Object proxy, Method method, Object[] args, Class<?> caller)
++            throws Throwable {
++        // verify that the object is actually a proxy instance
++        if (!Proxy.isProxyClass(proxy.getClass())) {
++            throw new IllegalArgumentException("'proxy' is not a proxy instance");
++        }
++        if (!method.isDefault()) {
++            throw new IllegalArgumentException("\"" + method + "\" is not a default method");
++        }
++        @SuppressWarnings("unchecked")
++        Class<? extends Proxy> proxyClass = (Class<? extends Proxy>)proxy.getClass();
++
++        // skip access check if caller is null
++        if (caller != null) {
++            Class<?> intf = method.getDeclaringClass();
++            // access check on the default method
++            method.checkAccess(caller, intf, proxyClass, method.getModifiers());
++        }
++
++        MethodHandle mh = Proxy.defaultMethodHandle(proxyClass, method);
++        // invoke the super method
++        try {
++            // the args array can be null if the number of formal parameters required by
++            // the method is zero (consistent with Method::invoke)
++            Object[] params = args != null ? args : Proxy.EMPTY_ARGS;
++            return mh.invokeExact(proxy, params);
++        } catch (ClassCastException | NullPointerException e) {
++            throw new IllegalArgumentException(e.getMessage(), e);
++        } catch (Proxy.InvocationException e) {
++            // unwrap and throw the exception thrown by the default method
++            throw e.getCause();
++        }
++    }
++
+     /**
+      * Internal exception type to wrap the exception thrown by the default method
+      * so that it can distinguish CCE and NPE thrown due to the arguments
+diff --git a/src/java.base/share/classes/java/lang/reflect/ReflectAccess.java b/src/java.base/share/classes/java/lang/reflect/ReflectAccess.java
+index 6ac890156b0..fa5a5d453ec 100644
+--- a/src/java.base/share/classes/java/lang/reflect/ReflectAccess.java
++++ b/src/java.base/share/classes/java/lang/reflect/ReflectAccess.java
+@@ -127,4 +127,9 @@ public <T> T newInstance(Constructor<T> ctor, Object[] args, Class<?> caller)
+     {
+         return ctor.newInstanceWithCaller(args, true, caller);
+     }
++
++    public Object invokeDefault(Object proxy, Method method, Object[] args, Class<?> caller)
++            throws Throwable {
++        return Proxy.invokeDefault(proxy, method, args, caller);
++    }
+ }
+diff --git a/src/java.base/share/classes/jdk/internal/access/JavaLangReflectAccess.java b/src/java.base/share/classes/jdk/internal/access/JavaLangReflectAccess.java
+index 4082fae336f..9e3ce846f02 100644
+--- a/src/java.base/share/classes/jdk/internal/access/JavaLangReflectAccess.java
++++ b/src/java.base/share/classes/jdk/internal/access/JavaLangReflectAccess.java
+@@ -102,4 +102,11 @@ public void setConstructorAccessor(Constructor<?> c,
+     /** Returns a new instance created by the given constructor with access check */
+     public <T> T newInstance(Constructor<T> ctor, Object[] args, Class<?> caller)
+         throws IllegalAccessException, InstantiationException, InvocationTargetException;
++
++    /** Invokes the given default method if the method's declaring interface is
++     *  accessible to the given caller.  Otherwise, IllegalAccessException will
++     *  be thrown.  If the caller is null, no access check is performed.
++     */
++    public Object invokeDefault(Object proxy, Method method, Object[] args, Class<?> caller)
++        throws Throwable;
+ }
+diff --git a/test/jdk/java/lang/invoke/MethodHandleProxies/Driver.java b/test/jdk/java/lang/invoke/MethodHandleProxies/Driver.java
+new file mode 100644
+index 00000000000..6acd4fb30e1
+--- /dev/null
++++ b/test/jdk/java/lang/invoke/MethodHandleProxies/Driver.java
+@@ -0,0 +1,32 @@
++/*
++ * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
++ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
++ *
++ * This code is free software; you can redistribute it and/or modify it
++ * under the terms of the GNU General Public License version 2 only, as
++ * published by the Free Software Foundation.
++ *
++ * This code is distributed in the hope that it will be useful, but WITHOUT
++ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
++ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
++ * version 2 for more details (a copy is included in the LICENSE file that
++ * accompanied this code).
++ *
++ * You should have received a copy of the GNU General Public License version
++ * 2 along with this work; if not, write to the Free Software Foundation,
++ * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
++ *
++ * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
++ * or visit www.oracle.com if you need additional information or have any
++ * questions.
++ */
++
++/**
++ * @test
++ * @bug 8280377
++ * @build m1/* m2/* Unnamed
++ * @run testng/othervm m1/p1.Main
++ * @run testng/othervm Unnamed
++ * @summary Test MethodHandleProxies::asInterfaceInstance with a default
++ *          method with varargs
++ */
+diff --git a/test/jdk/java/lang/invoke/MethodHandlesProxiesTest.java b/test/jdk/java/lang/invoke/MethodHandleProxies/MethodHandlesProxiesTest.java
+similarity index 100%
+rename from test/jdk/java/lang/invoke/MethodHandlesProxiesTest.java
+rename to test/jdk/java/lang/invoke/MethodHandleProxies/MethodHandlesProxiesTest.java
+diff --git a/test/jdk/java/lang/invoke/MethodHandleProxies/Unnamed.java b/test/jdk/java/lang/invoke/MethodHandleProxies/Unnamed.java
+new file mode 100644
+index 00000000000..f42071f0427
+--- /dev/null
++++ b/test/jdk/java/lang/invoke/MethodHandleProxies/Unnamed.java
+@@ -0,0 +1,45 @@
++/*
++ * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
++ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
++ *
++ * This code is free software; you can redistribute it and/or modify it
++ * under the terms of the GNU General Public License version 2 only, as
++ * published by the Free Software Foundation.
++ *
++ * This code is distributed in the hope that it will be useful, but WITHOUT
++ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
++ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
++ * version 2 for more details (a copy is included in the LICENSE file that
++ * accompanied this code).
++ *
++ * You should have received a copy of the GNU General Public License version
++ * 2 along with this work; if not, write to the Free Software Foundation,
++ * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
++ *
++ * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
++ * or visit www.oracle.com if you need additional information or have any
++ * questions.
++ */
++
++import java.lang.invoke.MethodHandle;
++import java.lang.invoke.MethodHandleProxies;
++import java.lang.invoke.MethodHandles;
++import java.lang.reflect.Method;
++
++import static org.testng.Assert.*;
++
++/*
++ * Test MethodHandleProxies::asInterfaceInstance with an inaccessible interface
++ */
++public class Unnamed {
++    public static void main(String... args) throws Throwable {
++        MethodHandle target = MethodHandles.constant(String.class, "test");
++        Class<?> intf = Class.forName("p2.TestIntf");
++        Object t = MethodHandleProxies.asInterfaceInstance(intf, target);
++
++        // verify that the caller has no access to the proxy created on an
++        // inaccessible interface
++        Method m = intf.getMethod("test", Object[].class);
++        assertFalse(m.canAccess(null));
++    }
++}
+diff --git a/test/jdk/java/lang/invoke/MethodHandleProxies/m1/module-info.java b/test/jdk/java/lang/invoke/MethodHandleProxies/m1/module-info.java
+new file mode 100644
+index 00000000000..1bdeddce28f
+--- /dev/null
++++ b/test/jdk/java/lang/invoke/MethodHandleProxies/m1/module-info.java
+@@ -0,0 +1,27 @@
++/*
++ * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
++ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
++ *
++ * This code is free software; you can redistribute it and/or modify it
++ * under the terms of the GNU General Public License version 2 only, as
++ * published by the Free Software Foundation.
++ *
++ * This code is distributed in the hope that it will be useful, but WITHOUT
++ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
++ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
++ * version 2 for more details (a copy is included in the LICENSE file that
++ * accompanied this code).
++ *
++ * You should have received a copy of the GNU General Public License version
++ * 2 along with this work; if not, write to the Free Software Foundation,
++ * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
++ *
++ * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
++ * or visit www.oracle.com if you need additional information or have any
++ * questions.
++ */
++module m1 {
++    requires m2;
++    requires org.testng;
++    exports p1;
++}
+diff --git a/test/jdk/java/lang/invoke/MethodHandleProxies/m1/p1/Main.java b/test/jdk/java/lang/invoke/MethodHandleProxies/m1/p1/Main.java
+new file mode 100644
+index 00000000000..df71809996b
+--- /dev/null
++++ b/test/jdk/java/lang/invoke/MethodHandleProxies/m1/p1/Main.java
+@@ -0,0 +1,80 @@
++/*
++ * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
++ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
++ *
++ * This code is free software; you can redistribute it and/or modify it
++ * under the terms of the GNU General Public License version 2 only, as
++ * published by the Free Software Foundation.
++ *
++ * This code is distributed in the hope that it will be useful, but WITHOUT
++ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
++ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
++ * version 2 for more details (a copy is included in the LICENSE file that
++ * accompanied this code).
++ *
++ * You should have received a copy of the GNU General Public License version
++ * 2 along with this work; if not, write to the Free Software Foundation,
++ * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
++ *
++ * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
++ * or visit www.oracle.com if you need additional information or have any
++ * questions.
++ */
++
++package p1;
++
++import java.lang.invoke.MethodHandle;
++import java.lang.invoke.MethodHandleProxies;
++import java.lang.invoke.MethodHandles;
++import java.lang.invoke.MethodType;
++import java.util.Arrays;
++import java.util.stream.Collectors;
++
++import p2.TestIntf;
++
++import org.testng.annotations.Test;
++
++import static org.testng.Assert.*;
++
++public class Main {
++    public interface A {
++        default String aConcat(Object... objs) { return Arrays.deepToString(objs); }
++    }
++
++    public interface B {
++        default String bConcat(Object[] objs) { return Arrays.deepToString(objs); }
++    }
++
++    public interface C extends A, B {
++        String c(Object... objs);
++    }
++
++    private static String concat(Object... objs) {
++        return Arrays.stream(objs).map(Object::toString).collect(Collectors.joining());
++    }
++
++    /*
++     * Test the invocation of default methods with varargs
++     */
++    @Test
++    public static void testVarargsMethods() throws Throwable {
++        MethodHandle target = MethodHandles.lookup().findStatic(Main.class,
++                "concat", MethodType.methodType(String.class, Object[].class));
++        C proxy = MethodHandleProxies.asInterfaceInstance(C.class, target);
++
++        assertEquals(proxy.c("a", "b", "c"), "abc");
++        assertEquals(proxy.aConcat("a", "b", "c"), "[a, b, c]");
++        assertEquals(proxy.aConcat(new Object[] { "a", "b", "c" }), "[a, b, c]");
++        assertEquals(proxy.bConcat(new Object[] { "a", "b", "c" }), "[a, b, c]");
++    }
++
++    /*
++     * Test the invocation of a default method of an accessible interface
++     */
++    @Test
++    public static void modulePrivateInterface() {
++        MethodHandle target = MethodHandles.constant(String.class, "test");
++        TestIntf t = MethodHandleProxies.asInterfaceInstance(TestIntf.class, target);
++        assertEquals(t.test(), "test");
++    }
++}
+diff --git a/test/jdk/java/lang/invoke/MethodHandleProxies/m2/module-info.java b/test/jdk/java/lang/invoke/MethodHandleProxies/m2/module-info.java
+new file mode 100644
+index 00000000000..1015757fc9c
+--- /dev/null
++++ b/test/jdk/java/lang/invoke/MethodHandleProxies/m2/module-info.java
+@@ -0,0 +1,25 @@
++/*
++ * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
++ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
++ *
++ * This code is free software; you can redistribute it and/or modify it
++ * under the terms of the GNU General Public License version 2 only, as
++ * published by the Free Software Foundation.
++ *
++ * This code is distributed in the hope that it will be useful, but WITHOUT
++ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
++ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
++ * version 2 for more details (a copy is included in the LICENSE file that
++ * accompanied this code).
++ *
++ * You should have received a copy of the GNU General Public License version
++ * 2 along with this work; if not, write to the Free Software Foundation,
++ * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
++ *
++ * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
++ * or visit www.oracle.com if you need additional information or have any
++ * questions.
++ */
++module m2 {
++    exports p2 to m1;
++}
+diff --git a/test/jdk/java/lang/invoke/MethodHandleProxies/m2/p2/TestIntf.java b/test/jdk/java/lang/invoke/MethodHandleProxies/m2/p2/TestIntf.java
+new file mode 100644
+index 00000000000..a87d248e0c8
+--- /dev/null
++++ b/test/jdk/java/lang/invoke/MethodHandleProxies/m2/p2/TestIntf.java
+@@ -0,0 +1,27 @@
++/*
++ * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
++ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
++ *
++ * This code is free software; you can redistribute it and/or modify it
++ * under the terms of the GNU General Public License version 2 only, as
++ * published by the Free Software Foundation.
++ *
++ * This code is distributed in the hope that it will be useful, but WITHOUT
++ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
++ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
++ * version 2 for more details (a copy is included in the LICENSE file that
++ * accompanied this code).
++ *
++ * You should have received a copy of the GNU General Public License version
++ * 2 along with this work; if not, write to the Free Software Foundation,
++ * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
++ *
++ * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
++ * or visit www.oracle.com if you need additional information or have any
++ * questions.
++ */
++package p2;
++
++public interface TestIntf {
++    String test();
++}

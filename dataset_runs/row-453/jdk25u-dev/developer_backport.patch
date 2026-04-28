@@ -1,0 +1,355 @@
+diff --git a/src/java.desktop/share/classes/java/awt/color/ICC_Profile.java b/src/java.desktop/share/classes/java/awt/color/ICC_Profile.java
+index c641e469972..29f6b1e91f0 100644
+--- a/src/java.desktop/share/classes/java/awt/color/ICC_Profile.java
++++ b/src/java.desktop/share/classes/java/awt/color/ICC_Profile.java
+@@ -41,6 +41,7 @@
+ import java.io.FileOutputStream;
+ import java.io.IOException;
+ import java.io.InputStream;
++import java.io.InvalidObjectException;
+ import java.io.ObjectInputStream;
+ import java.io.ObjectOutputStream;
+ import java.io.ObjectStreamException;
+@@ -1567,33 +1568,19 @@ private void writeObject(ObjectOutputStream s) throws IOException {
+     private void readObject(ObjectInputStream s)
+             throws IOException, ClassNotFoundException {
+         s.defaultReadObject();
+-
+-        String csName = (String) s.readObject();
+-        byte[] data = (byte[]) s.readObject();
+-
+-        int cspace = 0;         // ColorSpace.CS_* constant if known
+-        boolean isKnownPredefinedCS = false;
+-        if (csName != null) {
+-            isKnownPredefinedCS = true;
+-            if (csName.equals("CS_sRGB")) {
+-                cspace = ColorSpace.CS_sRGB;
+-            } else if (csName.equals("CS_CIEXYZ")) {
+-                cspace = ColorSpace.CS_CIEXYZ;
+-            } else if (csName.equals("CS_PYCC")) {
+-                cspace = ColorSpace.CS_PYCC;
+-            } else if (csName.equals("CS_GRAY")) {
+-                cspace = ColorSpace.CS_GRAY;
+-            } else if (csName.equals("CS_LINEAR_RGB")) {
+-                cspace = ColorSpace.CS_LINEAR_RGB;
+-            } else {
+-                isKnownPredefinedCS = false;
+-            }
+-        }
+-
+-        if (isKnownPredefinedCS) {
+-            resolvedDeserializedProfile = getInstance(cspace);
+-        } else {
+-            resolvedDeserializedProfile = getInstance(data);
++        try {
++            String csName = (String) s.readObject();
++            byte[] data = (byte[]) s.readObject();
++            resolvedDeserializedProfile = switch (csName) {
++                case "CS_sRGB" -> getInstance(ColorSpace.CS_sRGB);
++                case "CS_CIEXYZ" -> getInstance(ColorSpace.CS_CIEXYZ);
++                case "CS_PYCC" -> getInstance(ColorSpace.CS_PYCC);
++                case "CS_GRAY" -> getInstance(ColorSpace.CS_GRAY);
++                case "CS_LINEAR_RGB" -> getInstance(ColorSpace.CS_LINEAR_RGB);
++                case null, default -> getInstance(data);
++            };
++        } catch (ClassCastException | IllegalArgumentException e) {
++            throw new InvalidObjectException("Invalid ICC Profile Data", e);
+         }
+     }
+ 
+diff --git a/test/jdk/java/awt/color/ICC_Profile/Serialization/SerializationSpecTest/SerializationSpecTest.java b/test/jdk/java/awt/color/ICC_Profile/Serialization/SerializationSpecTest/SerializationSpecTest.java
+new file mode 100644
+index 00000000000..aa50d814264
+--- /dev/null
++++ b/test/jdk/java/awt/color/ICC_Profile/Serialization/SerializationSpecTest/SerializationSpecTest.java
+@@ -0,0 +1,99 @@
++/*
++ * Copyright Amazon.com Inc. or its affiliates. All Rights Reserved.
++ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
++ *
++ * This code is free software; you can redistribute it and/or modify it
++ * under the terms of the GNU General Public License version 2 only, as
++ * published by the Free Software Foundation.
++ *
++ * This code is distributed in the hope that it will be useful, but WITHOUT
++ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
++ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
++ * version 2 for more details (a copy is included in the LICENSE file that
++ * accompanied this code).
++ *
++ * You should have received a copy of the GNU General Public License version
++ * 2 along with this work; if not, write to the Free Software Foundation,
++ * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
++ *
++ * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
++ * or visit www.oracle.com if you need additional information or have any
++ * questions.
++ */
++
++import java.io.File;
++import java.io.FileInputStream;
++import java.io.InvalidObjectException;
++import java.io.ObjectInputStream;
++import java.io.OptionalDataException;
++
++/**
++ * @test
++ * @bug 8367384
++ * @summary Verify ICC_Profile serialization per spec, all name/data cases
++ */
++public final class SerializationSpecTest {
++
++    public static void main(String[] args) throws Exception {
++        // Serialization form for ICC_Profile includes version, profile name,
++        // and profile data. If the name is invalid or does not match a standard
++        // profile, the data is used. An exception is thrown only if both the
++        // name and the data are invalid, or if one of them is missing or is of
++        // the wrong type.
++
++        // Naming conventions used in test file names:
++        // null     : null reference
++        // valid    : valid standard profile name or valid profile data (byte[])
++        // invalid  : unrecognized name or data with incorrect ICC header
++        // wrongType: incorrect type, e.g., int[] instead of String or byte[]
++
++        // No name or data
++        test("empty", OptionalDataException.class);
++
++        // Cases where only the profile name is present (no profile data)
++        test("null", OptionalDataException.class);
++        test("valid", OptionalDataException.class);
++        test("invalid", OptionalDataException.class);
++        test("wrongType", InvalidObjectException.class);
++
++        // The test files are named as <name>_<data>.ser
++        test("null_null", InvalidObjectException.class);
++        test("null_valid", null); // valid data is enough if name is null
++        test("null_invalid", InvalidObjectException.class);
++        test("null_wrongType", InvalidObjectException.class);
++
++        test("invalid_null", InvalidObjectException.class);
++        test("invalid_valid", null); // valid data is enough if name is invalid
++        test("invalid_invalid", InvalidObjectException.class);
++        test("invalid_wrongType", InvalidObjectException.class);
++
++        test("wrongType_null", InvalidObjectException.class);
++        test("wrongType_valid", InvalidObjectException.class);
++        test("wrongType_invalid", InvalidObjectException.class);
++        test("wrongType_wrongType", InvalidObjectException.class);
++
++        test("valid_null", null); // the valid name is enough
++        test("valid_valid", null); // the valid name is enough
++        test("valid_invalid", null); // the valid name is enough
++        test("valid_wrongType", InvalidObjectException.class);
++    }
++
++    private static void test(String test, Class<?> expected) {
++        String fileName = test + ".ser";
++        File file = new File(System.getProperty("test.src", "."), fileName);
++        Class<?> actual = null;
++        try (var fis = new FileInputStream(file);
++             var ois = new ObjectInputStream(fis))
++        {
++            ois.readObject();
++        } catch (Exception e) {
++            actual = e.getClass();
++        }
++        if (actual != expected) {
++            System.err.println("Test: " + test);
++            System.err.println("Expected: " + expected);
++            System.err.println("Actual: " + actual);
++            throw new RuntimeException("Test failed");
++        }
++    }
++}
+diff --git a/test/jdk/java/awt/color/ICC_Profile/Serialization/SerializationSpecTest/empty.ser b/test/jdk/java/awt/color/ICC_Profile/Serialization/SerializationSpecTest/empty.ser
+new file mode 100644
+index 00000000000..3fd70024d65
+Binary files /dev/null and b/test/jdk/java/awt/color/ICC_Profile/Serialization/SerializationSpecTest/empty.ser differ
+diff --git a/test/jdk/java/awt/color/ICC_Profile/Serialization/SerializationSpecTest/invalid.ser b/test/jdk/java/awt/color/ICC_Profile/Serialization/SerializationSpecTest/invalid.ser
+new file mode 100644
+index 00000000000..dfe071e69dc
+Binary files /dev/null and b/test/jdk/java/awt/color/ICC_Profile/Serialization/SerializationSpecTest/invalid.ser differ
+diff --git a/test/jdk/java/awt/color/ICC_Profile/Serialization/SerializationSpecTest/invalid_invalid.ser b/test/jdk/java/awt/color/ICC_Profile/Serialization/SerializationSpecTest/invalid_invalid.ser
+new file mode 100644
+index 00000000000..60fb02f7783
+Binary files /dev/null and b/test/jdk/java/awt/color/ICC_Profile/Serialization/SerializationSpecTest/invalid_invalid.ser differ
+diff --git a/test/jdk/java/awt/color/ICC_Profile/Serialization/SerializationSpecTest/invalid_null.ser b/test/jdk/java/awt/color/ICC_Profile/Serialization/SerializationSpecTest/invalid_null.ser
+new file mode 100644
+index 00000000000..60fb02f7783
+Binary files /dev/null and b/test/jdk/java/awt/color/ICC_Profile/Serialization/SerializationSpecTest/invalid_null.ser differ
+diff --git a/test/jdk/java/awt/color/ICC_Profile/Serialization/SerializationSpecTest/invalid_valid.ser b/test/jdk/java/awt/color/ICC_Profile/Serialization/SerializationSpecTest/invalid_valid.ser
+new file mode 100644
+index 00000000000..e01b5766f62
+Binary files /dev/null and b/test/jdk/java/awt/color/ICC_Profile/Serialization/SerializationSpecTest/invalid_valid.ser differ
+diff --git a/test/jdk/java/awt/color/ICC_Profile/Serialization/SerializationSpecTest/invalid_wrongType.ser b/test/jdk/java/awt/color/ICC_Profile/Serialization/SerializationSpecTest/invalid_wrongType.ser
+new file mode 100644
+index 00000000000..65485f041d7
+Binary files /dev/null and b/test/jdk/java/awt/color/ICC_Profile/Serialization/SerializationSpecTest/invalid_wrongType.ser differ
+diff --git a/test/jdk/java/awt/color/ICC_Profile/Serialization/SerializationSpecTest/null.ser b/test/jdk/java/awt/color/ICC_Profile/Serialization/SerializationSpecTest/null.ser
+new file mode 100644
+index 00000000000..1fc2022f868
+Binary files /dev/null and b/test/jdk/java/awt/color/ICC_Profile/Serialization/SerializationSpecTest/null.ser differ
+diff --git a/test/jdk/java/awt/color/ICC_Profile/Serialization/SerializationSpecTest/null_invalid.ser b/test/jdk/java/awt/color/ICC_Profile/Serialization/SerializationSpecTest/null_invalid.ser
+new file mode 100644
+index 00000000000..b2847de4f46
+Binary files /dev/null and b/test/jdk/java/awt/color/ICC_Profile/Serialization/SerializationSpecTest/null_invalid.ser differ
+diff --git a/test/jdk/java/awt/color/ICC_Profile/Serialization/SerializationSpecTest/null_null.ser b/test/jdk/java/awt/color/ICC_Profile/Serialization/SerializationSpecTest/null_null.ser
+new file mode 100644
+index 00000000000..31c87a6cb65
+Binary files /dev/null and b/test/jdk/java/awt/color/ICC_Profile/Serialization/SerializationSpecTest/null_null.ser differ
+diff --git a/test/jdk/java/awt/color/ICC_Profile/Serialization/SerializationSpecTest/null_valid.ser b/test/jdk/java/awt/color/ICC_Profile/Serialization/SerializationSpecTest/null_valid.ser
+new file mode 100644
+index 00000000000..b32c838c80a
+Binary files /dev/null and b/test/jdk/java/awt/color/ICC_Profile/Serialization/SerializationSpecTest/null_valid.ser differ
+diff --git a/test/jdk/java/awt/color/ICC_Profile/Serialization/SerializationSpecTest/null_wrongType.ser b/test/jdk/java/awt/color/ICC_Profile/Serialization/SerializationSpecTest/null_wrongType.ser
+new file mode 100644
+index 00000000000..3279eec381d
+Binary files /dev/null and b/test/jdk/java/awt/color/ICC_Profile/Serialization/SerializationSpecTest/null_wrongType.ser differ
+diff --git a/test/jdk/java/awt/color/ICC_Profile/Serialization/SerializationSpecTest/valid.ser b/test/jdk/java/awt/color/ICC_Profile/Serialization/SerializationSpecTest/valid.ser
+new file mode 100644
+index 00000000000..a6512d244cf
+Binary files /dev/null and b/test/jdk/java/awt/color/ICC_Profile/Serialization/SerializationSpecTest/valid.ser differ
+diff --git a/test/jdk/java/awt/color/ICC_Profile/Serialization/SerializationSpecTest/valid_invalid.ser b/test/jdk/java/awt/color/ICC_Profile/Serialization/SerializationSpecTest/valid_invalid.ser
+new file mode 100644
+index 00000000000..dbe11f2c6d6
+Binary files /dev/null and b/test/jdk/java/awt/color/ICC_Profile/Serialization/SerializationSpecTest/valid_invalid.ser differ
+diff --git a/test/jdk/java/awt/color/ICC_Profile/Serialization/SerializationSpecTest/valid_null.ser b/test/jdk/java/awt/color/ICC_Profile/Serialization/SerializationSpecTest/valid_null.ser
+new file mode 100644
+index 00000000000..dbe11f2c6d6
+Binary files /dev/null and b/test/jdk/java/awt/color/ICC_Profile/Serialization/SerializationSpecTest/valid_null.ser differ
+diff --git a/test/jdk/java/awt/color/ICC_Profile/Serialization/SerializationSpecTest/valid_valid.ser b/test/jdk/java/awt/color/ICC_Profile/Serialization/SerializationSpecTest/valid_valid.ser
+new file mode 100644
+index 00000000000..fbe90d0eb6e
+Binary files /dev/null and b/test/jdk/java/awt/color/ICC_Profile/Serialization/SerializationSpecTest/valid_valid.ser differ
+diff --git a/test/jdk/java/awt/color/ICC_Profile/Serialization/SerializationSpecTest/valid_wrongType.ser b/test/jdk/java/awt/color/ICC_Profile/Serialization/SerializationSpecTest/valid_wrongType.ser
+new file mode 100644
+index 00000000000..3538676276f
+Binary files /dev/null and b/test/jdk/java/awt/color/ICC_Profile/Serialization/SerializationSpecTest/valid_wrongType.ser differ
+diff --git a/test/jdk/java/awt/color/ICC_Profile/Serialization/SerializationSpecTest/wrongType.ser b/test/jdk/java/awt/color/ICC_Profile/Serialization/SerializationSpecTest/wrongType.ser
+new file mode 100644
+index 00000000000..3469f871ef6
+Binary files /dev/null and b/test/jdk/java/awt/color/ICC_Profile/Serialization/SerializationSpecTest/wrongType.ser differ
+diff --git a/test/jdk/java/awt/color/ICC_Profile/Serialization/SerializationSpecTest/wrongType_invalid.ser b/test/jdk/java/awt/color/ICC_Profile/Serialization/SerializationSpecTest/wrongType_invalid.ser
+new file mode 100644
+index 00000000000..7da24ee9b96
+Binary files /dev/null and b/test/jdk/java/awt/color/ICC_Profile/Serialization/SerializationSpecTest/wrongType_invalid.ser differ
+diff --git a/test/jdk/java/awt/color/ICC_Profile/Serialization/SerializationSpecTest/wrongType_null.ser b/test/jdk/java/awt/color/ICC_Profile/Serialization/SerializationSpecTest/wrongType_null.ser
+new file mode 100644
+index 00000000000..2c1536cc094
+Binary files /dev/null and b/test/jdk/java/awt/color/ICC_Profile/Serialization/SerializationSpecTest/wrongType_null.ser differ
+diff --git a/test/jdk/java/awt/color/ICC_Profile/Serialization/SerializationSpecTest/wrongType_valid.ser b/test/jdk/java/awt/color/ICC_Profile/Serialization/SerializationSpecTest/wrongType_valid.ser
+new file mode 100644
+index 00000000000..2c1536cc094
+Binary files /dev/null and b/test/jdk/java/awt/color/ICC_Profile/Serialization/SerializationSpecTest/wrongType_valid.ser differ
+diff --git a/test/jdk/java/awt/color/ICC_Profile/Serialization/SerializationSpecTest/wrongType_wrongType.ser b/test/jdk/java/awt/color/ICC_Profile/Serialization/SerializationSpecTest/wrongType_wrongType.ser
+new file mode 100644
+index 00000000000..8520dffcf4c
+Binary files /dev/null and b/test/jdk/java/awt/color/ICC_Profile/Serialization/SerializationSpecTest/wrongType_wrongType.ser differ
+diff --git a/test/jdk/java/awt/color/ICC_Profile/Serialization/StandardProfilesRoundTrip.java b/test/jdk/java/awt/color/ICC_Profile/Serialization/StandardProfilesRoundTrip.java
+new file mode 100644
+index 00000000000..6b29fd7f22a
+--- /dev/null
++++ b/test/jdk/java/awt/color/ICC_Profile/Serialization/StandardProfilesRoundTrip.java
+@@ -0,0 +1,73 @@
++/*
++ * Copyright Amazon.com Inc. or its affiliates. All Rights Reserved.
++ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
++ *
++ * This code is free software; you can redistribute it and/or modify it
++ * under the terms of the GNU General Public License version 2 only, as
++ * published by the Free Software Foundation.
++ *
++ * This code is distributed in the hope that it will be useful, but WITHOUT
++ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
++ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
++ * version 2 for more details (a copy is included in the LICENSE file that
++ * accompanied this code).
++ *
++ * You should have received a copy of the GNU General Public License version
++ * 2 along with this work; if not, write to the Free Software Foundation,
++ * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
++ *
++ * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
++ * or visit www.oracle.com if you need additional information or have any
++ * questions.
++ */
++
++import java.awt.color.ColorSpace;
++import java.awt.color.ICC_Profile;
++import java.io.ByteArrayInputStream;
++import java.io.ByteArrayOutputStream;
++import java.io.ObjectInputStream;
++import java.io.ObjectOutputStream;
++
++/**
++ * @test
++ * @bug 8367384
++ * @summary Checks ICC_Profile serialization for standard profiles
++ */
++public final class StandardProfilesRoundTrip {
++
++    private static final ICC_Profile[] PROFILES = {
++            ICC_Profile.getInstance(ColorSpace.CS_sRGB),
++            ICC_Profile.getInstance(ColorSpace.CS_LINEAR_RGB),
++            ICC_Profile.getInstance(ColorSpace.CS_CIEXYZ),
++            ICC_Profile.getInstance(ColorSpace.CS_PYCC),
++            ICC_Profile.getInstance(ColorSpace.CS_GRAY)
++    };
++
++    public static void main(String[] args) throws Exception {
++        // Test profiles one by one
++        for (ICC_Profile profile : PROFILES) {
++            test(profile);
++        }
++        // Test all profiles at once
++        test(PROFILES);
++    }
++
++    private static void test(ICC_Profile... profiles) throws Exception {
++        byte[] data;
++        try (var bos = new ByteArrayOutputStream();
++             var oos = new ObjectOutputStream(bos))
++        {
++            for (ICC_Profile p : profiles) {
++                oos.writeObject(p);
++            }
++            data = bos.toByteArray();
++        }
++        try (var ois = new ObjectInputStream(new ByteArrayInputStream(data))) {
++            for (ICC_Profile p : profiles) {
++                if (p != ois.readObject()) {
++                    throw new RuntimeException("Wrong deserialized object");
++                }
++            }
++        }
++    }
++}
+diff --git a/test/jdk/java/awt/color/ICC_Profile/ValidateICCHeaderData/ValidateICCHeaderData.java b/test/jdk/java/awt/color/ICC_Profile/ValidateICCHeaderData/ValidateICCHeaderData.java
+index 9867b727a09..62c5d4962e4 100644
+--- a/test/jdk/java/awt/color/ICC_Profile/ValidateICCHeaderData/ValidateICCHeaderData.java
++++ b/test/jdk/java/awt/color/ICC_Profile/ValidateICCHeaderData/ValidateICCHeaderData.java
+@@ -161,8 +161,8 @@ public static void main(String[] args) throws Exception {
+         testProfileCreation(false);
+         System.out.println("CASE 14: Passed \n");
+ 
+-        System.out.println("CASE 15: Testing Deserialization of ICC_Profile ...");
+-        testDeserialization();
++        System.out.println("CASE 15: Testing loading of ICC_Profile from file ...");
++        testLoading();
+         System.out.println("CASE 15: Passed \n");
+ 
+         System.out.println("Successfully completed testing all 15 cases. Test Passed !!");
+@@ -261,9 +261,9 @@ private static void testInvalidHeaderSize() {
+         }
+     }
+ 
+-    private static void testDeserialization() throws IOException {
+-        //invalidSRGB.icc is serialized on older version of JDK
+-        //Upon deserialization, the invalid profile is expected to throw IAE
++    private static void testLoading() throws IOException {
++        // invalidSRGB.icc is a profile file that was produced by an older JDK
++        // When attempting to load it, the current JDK is expected to throw IAE
+         try {
+             ICC_Profile.getInstance("./invalidSRGB.icc");
+             throw new RuntimeException("Test Failed ! Expected IAE NOT thrown");

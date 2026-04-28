@@ -94,9 +94,36 @@ def _process_row(
     try:
         repo = git.Repo(project_dir)
 
-        new_patch_parent = _get_parent_hexsha(repo, original_commit, args.original_parent_index)
+        # target_release always comes from the project repo (backport commit lives there)
         target_release = _get_parent_hexsha(repo, backport_commit, args.backport_parent_index)
         project_url = _get_remote_url(repo)
+
+        # new_patch_parent: try the project repo first; fall back to a separate mainline
+        # repo when the original commit doesn't exist there (e.g. JDK cross-repo backports
+        # where Original Commit is in the 'jdk' mainline repo, not in 'jdk17u-dev').
+        cross_repo_config = None
+        new_patch_for_config = original_commit
+        try:
+            new_patch_parent = _get_parent_hexsha(repo, original_commit, args.original_parent_index)
+        except Exception:
+            original_repo_name = getattr(args, "original_repo_name", "").strip()
+            if not original_repo_name:
+                raise
+            logger.info(
+                f"Row {row_index}: original commit {original_commit[:8]} not found in "
+                f"'{project}' repo — looking up in '{original_repo_name}'"
+            )
+            original_repo_dir = _resolve_project_dir(original_repo_name, args.repo_root, repo_map)
+            original_repo = git.Repo(original_repo_dir)
+            # Pre-compute the real patch from the mainline repo
+            original_patch_text = _get_patch_against_parent(
+                original_repo, original_commit, args.original_parent_index
+            )
+            cross_repo_config = {"original_patch": original_patch_text}
+            # new_patch and new_patch_parent must resolve in project_dir for pipeline
+            # validation; use target_release as a stable anchor that always exists there.
+            new_patch_parent = target_release
+            new_patch_for_config = target_release
 
         patch_dataset_dir = os.path.expanduser(
             os.path.join(args.dataset_root, f"row-{row_index}", project)
@@ -123,7 +150,7 @@ def _process_row(
             "project": project,
             "type": patch_type,
             "project_url": project_url,
-            "new_patch": original_commit,
+            "new_patch": new_patch_for_config,
             "new_patch_parent": new_patch_parent,
             "target_release": target_release,
             "error_message": "",
@@ -171,7 +198,7 @@ def _process_row(
 
         try:
             data = load_yml(config_path)
-            run_pipeline(data, args.debug, extra_validation_config, java_preprocessing_config)
+            run_pipeline(data, args.debug, extra_validation_config, java_preprocessing_config, cross_repo_config)
         finally:
             try:
                 os.remove(config_path)
@@ -213,6 +240,15 @@ def main():
     parser.add_argument(
         "--repo-root", type=str, default="",
         help="Root directory containing project clones as subfolders",
+    )
+    parser.add_argument(
+        "--original-repo-name", type=str, default="",
+        help=(
+            "Name of the mainline/source repo folder (under --repo-root or in --repo-map-file) "
+            "to use when the Original Commit does not exist in the project repo. "
+            "E.g. 'jdk' for JDK cross-repo backports where fixes land in the mainline 'jdk' "
+            "repo before being cherry-picked into 'jdk17u-dev' etc."
+        ),
     )
     parser.add_argument(
         "--repo-map-file", type=str, default="",

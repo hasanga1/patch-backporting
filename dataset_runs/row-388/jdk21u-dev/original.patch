@@ -1,0 +1,59 @@
+diff --git a/src/jdk.compiler/share/classes/com/sun/tools/javac/comp/DeferredAttr.java b/src/jdk.compiler/share/classes/com/sun/tools/javac/comp/DeferredAttr.java
+index bc43c427a34..56249fefad9 100644
+--- a/src/jdk.compiler/share/classes/com/sun/tools/javac/comp/DeferredAttr.java
++++ b/src/jdk.compiler/share/classes/com/sun/tools/javac/comp/DeferredAttr.java
+@@ -1089,7 +1089,10 @@ private Type recover(DeferredType dt, Type pt) {
+             boolean isLambdaOrMemberRef =
+                     dt.tree.hasTag(REFERENCE) || dt.tree.hasTag(LAMBDA);
+             boolean needsRecoveryType =
+-                    pt == null || (isLambdaOrMemberRef && !types.isFunctionalInterface(pt));
++                    pt == null ||
++                            ((dt instanceof ArgumentAttr.ArgumentType<?> at) &&
++                            at.speculativeTypes.values().stream().allMatch(type -> type.hasTag(ERROR))) ||
++                            (isLambdaOrMemberRef && !types.isFunctionalInterface(pt));
+             Type ptRecovery = needsRecoveryType ? Type.recoveryType: pt;
+             dt.check(attr.new RecoveryInfo(deferredAttrContext, ptRecovery) {
+                 @Override
+diff --git a/test/langtools/tools/javac/recovery/CrashDueToUnreportedError.java b/test/langtools/tools/javac/recovery/CrashDueToUnreportedError.java
+new file mode 100644
+index 00000000000..4520a01f7ec
+--- /dev/null
++++ b/test/langtools/tools/javac/recovery/CrashDueToUnreportedError.java
+@@ -0,0 +1,29 @@
++/**
++ * @test /nodynamiccopyright/
++ * @bug 8320948
++ * @summary NPE due to unreported compiler error
++ * @compile/fail/ref=CrashDueToUnreportedError.out -XDrawDiagnostics CrashDueToUnreportedError.java
++ */
++
++import java.util.List;
++
++public class CrashDueToUnreportedError {
++    class Builder {
++        private Builder(Person person, String unused) {}
++        public Builder withTypes(Entity<String> entities) {
++            return new Builder(Person.make(Entity.combineAll(entities)));
++        }
++    }
++
++    interface Person {
++        static <E> Person make(List<? extends Entity<E>> eventSubtypes) {
++            return null;
++        }
++    }
++
++    class Entity<E> {
++        public static <Root> List<? extends Entity<Root>> combineAll(Entity<Root> subtypes) {
++            return null;
++        }
++    }
++}
+diff --git a/test/langtools/tools/javac/recovery/CrashDueToUnreportedError.out b/test/langtools/tools/javac/recovery/CrashDueToUnreportedError.out
+new file mode 100644
+index 00000000000..83655eb07ba
+--- /dev/null
++++ b/test/langtools/tools/javac/recovery/CrashDueToUnreportedError.out
+@@ -0,0 +1,2 @@
++CrashDueToUnreportedError.java:14:43: compiler.err.prob.found.req: (compiler.misc.infer.no.conforming.assignment.exists: E,compiler.misc.type.captureof: 1, ? extends CrashDueToUnreportedError.Entity<Root>,Root, (compiler.misc.inconvertible.types: java.util.List<compiler.misc.type.captureof: 2, ? extends CrashDueToUnreportedError.Entity<Root>>, java.util.List<? extends CrashDueToUnreportedError.Entity<java.lang.Object>>))
++1 error

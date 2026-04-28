@@ -1,0 +1,2063 @@
+diff --git a/src/java.base/share/classes/com/sun/crypto/provider/RSACipherAdaptor.java b/src/java.base/share/classes/com/sun/crypto/provider/RSACipherAdaptor.java
+new file mode 100644
+index 00000000000..c0fd9ffa599
+--- /dev/null
++++ b/src/java.base/share/classes/com/sun/crypto/provider/RSACipherAdaptor.java
+@@ -0,0 +1,146 @@
++/*
++ * Copyright (c) 2025, Oracle and/or its affiliates. All rights reserved.
++ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
++ *
++ * This code is free software; you can redistribute it and/or modify it
++ * under the terms of the GNU General Public License version 2 only, as
++ * published by the Free Software Foundation.  Oracle designates this
++ * particular file as subject to the "Classpath" exception as provided
++ * by Oracle in the LICENSE file that accompanied this code.
++ *
++ * This code is distributed in the hope that it will be useful, but WITHOUT
++ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
++ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
++ * version 2 for more details (a copy is included in the LICENSE file that
++ * accompanied this code).
++ *
++ * You should have received a copy of the GNU General Public License version
++ * 2 along with this work; if not, write to the Free Software Foundation,
++ * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
++ *
++ * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
++ * or visit www.oracle.com if you need additional information or have any
++ * questions.
++ */
++
++package com.sun.crypto.provider;
++
++import java.io.ByteArrayOutputStream;
++import java.security.MessageDigest;
++import java.security.PrivateKey;
++import java.security.PublicKey;
++import java.security.SecureRandom;
++import java.security.SignatureSpi;
++import java.security.InvalidKeyException;
++import java.security.InvalidAlgorithmParameterException;
++import java.security.InvalidParameterException;
++import java.security.SignatureException;
++import java.security.spec.AlgorithmParameterSpec;
++import javax.crypto.Cipher;
++import javax.crypto.BadPaddingException;
++import javax.crypto.IllegalBlockSizeException;
++
++/**
++ * NONEwithRSA Signature implementation using the RSA/ECB/PKCS1Padding Cipher
++ * implementation from SunJCE.
++ */
++public final class RSACipherAdaptor extends SignatureSpi {
++
++    private final RSACipher c;
++    private ByteArrayOutputStream verifyBuf;
++
++    public RSACipherAdaptor() {
++        c = new RSACipher();
++    }
++
++    @Override
++    protected void engineInitVerify(PublicKey publicKey)
++            throws InvalidKeyException {
++        c.engineInit(Cipher.DECRYPT_MODE, publicKey, null);
++        if (verifyBuf == null) {
++            verifyBuf = new ByteArrayOutputStream(128);
++        } else {
++            verifyBuf.reset();
++        }
++    }
++
++    @Override
++    protected void engineInitSign(PrivateKey privateKey)
++            throws InvalidKeyException {
++        c.engineInit(Cipher.ENCRYPT_MODE, privateKey, null);
++        verifyBuf = null;
++    }
++
++    @Override
++    protected void engineInitSign(PrivateKey privateKey, SecureRandom random)
++            throws InvalidKeyException {
++        c.engineInit(Cipher.ENCRYPT_MODE, privateKey, random);
++        verifyBuf = null;
++    }
++
++    @Override
++    protected void engineUpdate(byte b) throws SignatureException {
++        engineUpdate(new byte[] {b}, 0, 1);
++    }
++
++    @Override
++    protected void engineUpdate(byte[] b, int off, int len)
++            throws SignatureException {
++        if (verifyBuf != null) {
++            verifyBuf.write(b, off, len);
++        } else {
++            byte[] out = c.engineUpdate(b, off, len);
++            if ((out != null) && (out.length != 0)) {
++                throw new SignatureException
++                       ("Cipher unexpectedly returned data");
++            }
++        }
++    }
++
++    @Override
++    protected byte[] engineSign() throws SignatureException {
++        try {
++            return c.engineDoFinal(null, 0, 0);
++        } catch (IllegalBlockSizeException | BadPaddingException e) {
++           throw new SignatureException("doFinal() failed", e);
++        }
++    }
++
++    @Override
++    protected boolean engineVerify(byte[] sigBytes) throws SignatureException {
++        try {
++            byte[] out = c.engineDoFinal(sigBytes, 0, sigBytes.length);
++            byte[] data = verifyBuf.toByteArray();
++            verifyBuf.reset();
++            return MessageDigest.isEqual(out, data);
++        } catch (BadPaddingException e) {
++            // e.g. wrong public key used
++            // return false rather than throwing exception
++            return false;
++        } catch (IllegalBlockSizeException e) {
++            throw new SignatureException("doFinal() failed", e);
++        }
++    }
++
++    @Override
++    protected void engineSetParameter(AlgorithmParameterSpec params)
++            throws InvalidAlgorithmParameterException {
++        if (params != null) {
++            throw new InvalidParameterException("Parameters not supported");
++        }
++    }
++
++    @Override
++    @SuppressWarnings("deprecation")
++    protected void engineSetParameter(String param, Object value)
++            throws InvalidParameterException {
++        throw new InvalidParameterException("Parameters not supported");
++    }
++
++    @Override
++    @SuppressWarnings("deprecation")
++    protected Object engineGetParameter(String param)
++            throws InvalidParameterException {
++        throw new InvalidParameterException("Parameters not supported");
++    }
++}
+diff --git a/src/java.base/share/classes/com/sun/crypto/provider/SunJCE.java b/src/java.base/share/classes/com/sun/crypto/provider/SunJCE.java
+index cc99464dff3..22d5f17c6e0 100644
+--- a/src/java.base/share/classes/com/sun/crypto/provider/SunJCE.java
++++ b/src/java.base/share/classes/com/sun/crypto/provider/SunJCE.java
+@@ -136,6 +136,12 @@ public SunJCE() {
+     void putEntries() {
+         // reuse attribute map and reset before each reuse
+         HashMap<String, String> attrs = new HashMap<>(3);
++        attrs.put("SupportedKeyClasses",
++                "java.security.interfaces.RSAPublicKey" +
++                "|java.security.interfaces.RSAPrivateKey");
++        ps("Signature", "NONEwithRSA",
++                "com.sun.crypto.provider.RSACipherAdaptor", null, attrs);
++        // continue adding cipher specific attributes
+         attrs.put("SupportedModes", "ECB");
+         attrs.put("SupportedPaddings", "NOPADDING|PKCS1PADDING|OAEPPADDING"
+                 + "|OAEPWITHMD5ANDMGF1PADDING"
+@@ -147,9 +153,6 @@ void putEntries() {
+                 + "|OAEPWITHSHA-512ANDMGF1PADDING"
+                 + "|OAEPWITHSHA-512/224ANDMGF1PADDING"
+                 + "|OAEPWITHSHA-512/256ANDMGF1PADDING");
+-        attrs.put("SupportedKeyClasses",
+-                "java.security.interfaces.RSAPublicKey" +
+-                "|java.security.interfaces.RSAPrivateKey");
+         ps("Cipher", "RSA",
+                 "com.sun.crypto.provider.RSACipher", null, attrs);
+ 
+diff --git a/src/java.base/share/classes/java/security/KeyStore.java b/src/java.base/share/classes/java/security/KeyStore.java
+index 9e50a1588e7..8f3d4ba29fd 100644
+--- a/src/java.base/share/classes/java/security/KeyStore.java
++++ b/src/java.base/share/classes/java/security/KeyStore.java
+@@ -37,6 +37,7 @@
+ import javax.security.auth.callback.*;
+ 
+ import sun.security.util.Debug;
++import sun.security.util.CryptoAlgorithmConstraints;
+ 
+ /**
+  * This class represents a storage facility for cryptographic
+@@ -841,12 +842,21 @@ private String getProviderName() {
+      * the {@link Security#getProviders() Security.getProviders()} method.
+      *
+      * @implNote
+-     * The JDK Reference Implementation additionally uses the
+-     * {@code jdk.security.provider.preferred}
++     * The JDK Reference Implementation additionally uses
++     * <ul>
++     * <li>the {@code jdk.security.provider.preferred}
+      * {@link Security#getProperty(String) Security} property to determine
+-     * the preferred provider order for the specified algorithm. This
++     * the preferred provider order for the specified keystore type. This
+      * may be different from the order of providers returned by
+      * {@link Security#getProviders() Security.getProviders()}.
++     * </li>
++     * <li>the {@code jdk.crypto.disabledAlgorithms}
++     * {@link Security#getProperty(String) Security} property to determine
++     * if the specified keystore type is allowed. If the
++     * {@systemProperty jdk.crypto.disabledAlgorithms} is set, it supersedes
++     * the security property value.
++     * </li>
++     * </ul>
+      *
+      * @param type the type of keystore.
+      * See the KeyStore section in the <a href=
+@@ -869,6 +879,11 @@ public static KeyStore getInstance(String type)
+         throws KeyStoreException
+     {
+         Objects.requireNonNull(type, "null type name");
++
++        if (!CryptoAlgorithmConstraints.permits("KEYSTORE", type)) {
++            throw new KeyStoreException(type + " is disabled");
++        }
++
+         try {
+             Object[] objs = Security.getImpl(type, "KeyStore", (String)null);
+             return new KeyStore((KeyStoreSpi)objs[0], (Provider)objs[1], type);
+@@ -888,6 +903,14 @@ public static KeyStore getInstance(String type)
+      * <p> Note that the list of registered providers may be retrieved via
+      * the {@link Security#getProviders() Security.getProviders()} method.
+      *
++     * @implNote
++     * The JDK Reference Implementation additionally uses
++     * the {@code jdk.crypto.disabledAlgorithms}
++     * {@link Security#getProperty(String) Security} property to determine
++     * if the specified keystore type is allowed. If the
++     * {@systemProperty jdk.crypto.disabledAlgorithms} is set, it supersedes
++     * the security property value.
++     *
+      * @param type the type of keystore.
+      * See the KeyStore section in the <a href=
+      * "{@docRoot}/../specs/security/standard-names.html#keystore-types">
+@@ -917,8 +940,15 @@ public static KeyStore getInstance(String type, String provider)
+         throws KeyStoreException, NoSuchProviderException
+     {
+         Objects.requireNonNull(type, "null type name");
+-        if (provider == null || provider.isEmpty())
++
++        if (provider == null || provider.isEmpty()) {
+             throw new IllegalArgumentException("missing provider");
++        }
++
++        if (!CryptoAlgorithmConstraints.permits("KEYSTORE", type)) {
++            throw new KeyStoreException(type + " is disabled");
++        }
++
+         try {
+             Object[] objs = Security.getImpl(type, "KeyStore", provider);
+             return new KeyStore((KeyStoreSpi)objs[0], (Provider)objs[1], type);
+@@ -935,6 +965,14 @@ public static KeyStore getInstance(String type, String provider)
+      * object is returned.  Note that the specified provider object
+      * does not have to be registered in the provider list.
+      *
++     * @implNote
++     * The JDK Reference Implementation additionally uses
++     * the {@code jdk.crypto.disabledAlgorithms}
++     * {@link Security#getProperty(String) Security} property to determine
++     * if the specified keystore type is allowed. If the
++     * {@systemProperty jdk.crypto.disabledAlgorithms} is set, it supersedes
++     * the security property value.
++     *
+      * @param type the type of keystore.
+      * See the KeyStore section in the <a href=
+      * "{@docRoot}/../specs/security/standard-names.html#keystore-types">
+@@ -963,8 +1001,15 @@ public static KeyStore getInstance(String type, Provider provider)
+         throws KeyStoreException
+     {
+         Objects.requireNonNull(type, "null type name");
+-        if (provider == null)
++
++        if (provider == null) {
+             throw new IllegalArgumentException("missing provider");
++        }
++
++        if (!CryptoAlgorithmConstraints.permits("KEYSTORE", type)) {
++            throw new KeyStoreException(type + " is disabled");
++        }
++
+         try {
+             Object[] objs = Security.getImpl(type, "KeyStore", provider);
+             return new KeyStore((KeyStoreSpi)objs[0], (Provider)objs[1], type);
+@@ -1677,6 +1722,14 @@ public final void setEntry(String alias, Entry entry,
+      * <p> Note that the list of registered providers may be retrieved via
+      * the {@link Security#getProviders() Security.getProviders()} method.
+      *
++     * @implNote
++     * The JDK Reference Implementation additionally uses
++     * the {@code jdk.crypto.disabledAlgorithms}
++     * {@link Security#getProperty(String) Security} property to determine
++     * if the specified keystore type is allowed. If the
++     * {@systemProperty jdk.crypto.disabledAlgorithms} is set, it supersedes
++     * the security property value. Disallowed type will be skipped.
++     *
+      * @param  file the keystore file
+      * @param  password the keystore password, which may be {@code null}
+      *
+@@ -1730,6 +1783,14 @@ public static final KeyStore getInstance(File file, char[] password)
+      * <p> Note that the list of registered providers may be retrieved via
+      * the {@link Security#getProviders() Security.getProviders()} method.
+      *
++     * @implNote
++     * The JDK Reference Implementation additionally uses
++     * the {@code jdk.crypto.disabledAlgorithms}
++     * {@link Security#getProperty(String) Security} property to determine
++     * if the specified keystore type is allowed. If the
++     * {@systemProperty jdk.crypto.disabledAlgorithms} is set, it supersedes
++     * the security property value. Disallowed type will be skipped.
++     *
+      * @param  file the keystore file
+      * @param  param the {@code LoadStoreParameter} that specifies how to load
+      *             the keystore, which may be {@code null}
+@@ -1798,8 +1859,12 @@ private static final KeyStore getInstance(File file, char[] password,
+                                     kdebug.println(s.getAlgorithm()
+                                             + " keystore detected: " + file);
+                                 }
+-                                keystore = new KeyStore(impl, p, s.getAlgorithm());
+-                                break;
++                                String ksAlgo = s.getAlgorithm();
++                                if (CryptoAlgorithmConstraints.permits(
++                                        "KEYSTORE", ksAlgo)) {
++                                    keystore = new KeyStore(impl, p, ksAlgo);
++                                    break;
++                                }
+                             }
+                         } catch (NoSuchAlgorithmException e) {
+                             // ignore
+diff --git a/src/java.base/share/classes/java/security/MessageDigest.java b/src/java.base/share/classes/java/security/MessageDigest.java
+index fa8d3dea8fd..6e8f64f7ebe 100644
+--- a/src/java.base/share/classes/java/security/MessageDigest.java
++++ b/src/java.base/share/classes/java/security/MessageDigest.java
+@@ -33,6 +33,7 @@
+ import sun.security.jca.GetInstance;
+ import sun.security.util.Debug;
+ import sun.security.util.MessageDigestSpi2;
++import sun.security.util.CryptoAlgorithmConstraints;
+ 
+ import javax.crypto.SecretKey;
+ 
+@@ -155,12 +156,22 @@ private MessageDigest(String algorithm, Provider p) {
+      * the {@link Security#getProviders() Security.getProviders()} method.
+      *
+      * @implNote
+-     * The JDK Reference Implementation additionally uses the
+-     * {@code jdk.security.provider.preferred}
++     * The JDK Reference Implementation additionally uses the following
++     * security properties:
++     * <ul>
++     * <li>the {@code jdk.security.provider.preferred}
+      * {@link Security#getProperty(String) Security} property to determine
+      * the preferred provider order for the specified algorithm. This
+      * may be different from the order of providers returned by
+      * {@link Security#getProviders() Security.getProviders()}.
++     * </li>
++     * <li>the {@code jdk.crypto.disabledAlgorithms}
++     * {@link Security#getProperty(String) Security} property to determine
++     * if the specified algorithm is allowed. If the
++     * {@systemProperty jdk.crypto.disabledAlgorithms} is set, it supersedes
++     * the security property value.
++     * </li>
++     * </ul>
+      *
+      * @param algorithm the name of the algorithm requested.
+      * See the MessageDigest section in the <a href=
+@@ -184,10 +195,14 @@ public static MessageDigest getInstance(String algorithm)
+         throws NoSuchAlgorithmException
+     {
+         Objects.requireNonNull(algorithm, "null algorithm name");
+-        MessageDigest md;
++
++        if (!CryptoAlgorithmConstraints.permits("MessageDigest", algorithm)) {
++            throw new NoSuchAlgorithmException(algorithm + " is disabled");
++        }
+ 
+         GetInstance.Instance instance = GetInstance.getInstance("MessageDigest",
+                 MessageDigestSpi.class, algorithm);
++        MessageDigest md;
+         if (instance.impl instanceof MessageDigest messageDigest) {
+             md = messageDigest;
+             md.provider = instance.provider;
+@@ -216,6 +231,14 @@ public static MessageDigest getInstance(String algorithm)
+      * <p> Note that the list of registered providers may be retrieved via
+      * the {@link Security#getProviders() Security.getProviders()} method.
+      *
++     * @implNote
++     * The JDK Reference Implementation additionally uses
++     * the {@code jdk.crypto.disabledAlgorithms}
++     * {@link Security#getProperty(String) Security} property to determine
++     * if the specified algorithm is allowed. If the
++     * {@systemProperty jdk.crypto.disabledAlgorithms} is set, it supersedes
++     * the security property value.
++     *
+      * @param algorithm the name of the algorithm requested.
+      * See the MessageDigest section in the <a href=
+      * "{@docRoot}/../specs/security/standard-names.html#messagedigest-algorithms">
+@@ -246,12 +269,18 @@ public static MessageDigest getInstance(String algorithm, String provider)
+         throws NoSuchAlgorithmException, NoSuchProviderException
+     {
+         Objects.requireNonNull(algorithm, "null algorithm name");
+-        if (provider == null || provider.isEmpty())
++
++        if (provider == null || provider.isEmpty()) {
+             throw new IllegalArgumentException("missing provider");
++        }
++
++        if (!CryptoAlgorithmConstraints.permits("MessageDigest", algorithm)) {
++            throw new NoSuchAlgorithmException(algorithm + " is disabled");
++        }
+ 
+-        MessageDigest md;
+         GetInstance.Instance instance = GetInstance.getInstance("MessageDigest",
+                 MessageDigestSpi.class, algorithm, provider);
++        MessageDigest md;
+         if (instance.impl instanceof MessageDigest messageDigest) {
+             md = messageDigest;
+             md.provider = instance.provider;
+@@ -271,6 +300,14 @@ public static MessageDigest getInstance(String algorithm, String provider)
+      * is returned.  Note that the specified provider does not
+      * have to be registered in the provider list.
+      *
++     * @implNote
++     * The JDK Reference Implementation additionally uses
++     * the {@code jdk.crypto.disabledAlgorithms}
++     * {@link Security#getProperty(String) Security} property to determine
++     * if the specified algorithm is allowed. If the
++     * {@systemProperty jdk.crypto.disabledAlgorithms} is set, it supersedes
++     * the security property value.
++     *
+      * @param algorithm the name of the algorithm requested.
+      * See the MessageDigest section in the <a href=
+      * "{@docRoot}/../specs/security/standard-names.html#messagedigest-algorithms">
+@@ -301,8 +338,15 @@ public static MessageDigest getInstance(String algorithm,
+         throws NoSuchAlgorithmException
+     {
+         Objects.requireNonNull(algorithm, "null algorithm name");
+-        if (provider == null)
++
++        if (provider == null) {
+             throw new IllegalArgumentException("missing provider");
++        }
++
++        if (!CryptoAlgorithmConstraints.permits("MessageDigest", algorithm)) {
++            throw new NoSuchAlgorithmException(algorithm + " is disabled");
++        }
++
+         Object[] objs = Security.getImpl(algorithm, "MessageDigest", provider);
+         if (objs[0] instanceof MessageDigest md) {
+             md.provider = (Provider)objs[1];
+diff --git a/src/java.base/share/classes/java/security/Signature.java b/src/java.base/share/classes/java/security/Signature.java
+index 52aa4328b2c..228d6fff82b 100644
+--- a/src/java.base/share/classes/java/security/Signature.java
++++ b/src/java.base/share/classes/java/security/Signature.java
+@@ -36,14 +36,12 @@
+ 
+ import java.security.Provider.Service;
+ 
+-import javax.crypto.Cipher;
+-import javax.crypto.IllegalBlockSizeException;
+-import javax.crypto.BadPaddingException;
+-import javax.crypto.NoSuchPaddingException;
+ import jdk.internal.access.JavaSecuritySignatureAccess;
+ import jdk.internal.access.SharedSecrets;
+ 
+ import sun.security.util.Debug;
++import sun.security.util.CryptoAlgorithmConstraints;
++
+ import sun.security.jca.*;
+ import sun.security.jca.GetInstance.Instance;
+ import sun.security.util.KnownOIDs;
+@@ -213,20 +211,6 @@ protected Signature(String algorithm) {
+         this.algorithm = algorithm;
+     }
+ 
+-    // name of the special signature alg
+-    private static final String RSA_SIGNATURE = "NONEwithRSA";
+-
+-    // name of the equivalent cipher alg
+-    private static final String RSA_CIPHER = "RSA/ECB/PKCS1Padding";
+-
+-    // all the services we need to lookup for compatibility with Cipher
+-    private static final List<ServiceId> rsaIds = List.of(
+-        new ServiceId("Signature", "NONEwithRSA"),
+-        new ServiceId("Cipher", "RSA/ECB/PKCS1Padding"),
+-        new ServiceId("Cipher", "RSA/ECB"),
+-        new ServiceId("Cipher", "RSA//PKCS1Padding"),
+-        new ServiceId("Cipher", "RSA"));
+-
+     /**
+      * Returns a {@code Signature} object that implements the specified
+      * signature algorithm.
+@@ -241,12 +225,22 @@ protected Signature(String algorithm) {
+      * the {@link Security#getProviders() Security.getProviders()} method.
+      *
+      * @implNote
+-     * The JDK Reference Implementation additionally uses the
+-     * {@code jdk.security.provider.preferred}
++     * The JDK Reference Implementation additionally uses the following
++     * security properties:
++     * <ul>
++     * <li>the {@code jdk.security.provider.preferred}
+      * {@link Security#getProperty(String) Security} property to determine
+      * the preferred provider order for the specified algorithm. This
+      * may be different from the order of providers returned by
+      * {@link Security#getProviders() Security.getProviders()}.
++     * </li>
++     * <li>the {@code jdk.crypto.disabledAlgorithms}
++     * {@link Security#getProperty(String) Security} property to determine
++     * if the specified algorithm is allowed. If the
++     * {@systemProperty jdk.crypto.disabledAlgorithms} is set, it supersedes
++     * the security property value.
++     * </li>
++     * </ul>
+      *
+      * @param algorithm the standard name of the algorithm requested.
+      * See the Signature section in the <a href=
+@@ -268,12 +262,12 @@ protected Signature(String algorithm) {
+     public static Signature getInstance(String algorithm)
+             throws NoSuchAlgorithmException {
+         Objects.requireNonNull(algorithm, "null algorithm name");
+-        Iterator<Service> t;
+-        if (algorithm.equalsIgnoreCase(RSA_SIGNATURE)) {
+-            t = GetInstance.getServices(rsaIds);
+-        } else {
+-            t = GetInstance.getServices("Signature", algorithm);
++
++        if (!CryptoAlgorithmConstraints.permits("Signature", algorithm)) {
++            throw new NoSuchAlgorithmException(algorithm + " is disabled");
+         }
++
++        Iterator<Service> t = GetInstance.getServices("Signature", algorithm);
+         if (!t.hasNext()) {
+             throw new NoSuchAlgorithmException
+                 (algorithm + " Signature not available");
+@@ -329,10 +323,6 @@ private static Signature getInstance(Instance instance, String algorithm) {
+     }
+ 
+     private static boolean isSpi(Service s) {
+-        if (s.getType().equals("Cipher")) {
+-            // must be a CipherSpi, which we can wrap with the CipherAdapter
+-            return true;
+-        }
+         String className = s.getClassName();
+         Boolean result = signatureInfo.get(className);
+         if (result == null) {
+@@ -370,6 +360,14 @@ private static boolean isSpi(Service s) {
+      * <p> Note that the list of registered providers may be retrieved via
+      * the {@link Security#getProviders() Security.getProviders()} method.
+      *
++     * @implNote
++     * The JDK Reference Implementation additionally uses
++     * the {@code jdk.crypto.disabledAlgorithms}
++     * {@link Security#getProperty(String) Security} property to determine
++     * if the specified algorithm is allowed. If the
++     * {@systemProperty jdk.crypto.disabledAlgorithms} is set, it supersedes
++     * the security property value.
++     *
+      * @param algorithm the name of the algorithm requested.
+      * See the Signature section in the <a href=
+      * "{@docRoot}/../specs/security/standard-names.html#signature-algorithms">
+@@ -398,18 +396,11 @@ private static boolean isSpi(Service s) {
+     public static Signature getInstance(String algorithm, String provider)
+             throws NoSuchAlgorithmException, NoSuchProviderException {
+         Objects.requireNonNull(algorithm, "null algorithm name");
+-        if (algorithm.equalsIgnoreCase(RSA_SIGNATURE)) {
+-            // exception compatibility with existing code
+-            if (provider == null || provider.isEmpty()) {
+-                throw new IllegalArgumentException("missing provider");
+-            }
+-            Provider p = Security.getProvider(provider);
+-            if (p == null) {
+-                throw new NoSuchProviderException
+-                    ("no such provider: " + provider);
+-            }
+-            return getInstanceRSA(p);
++
++        if (!CryptoAlgorithmConstraints.permits("Signature", algorithm)) {
++            throw new NoSuchAlgorithmException(algorithm + " is disabled");
+         }
++
+         Instance instance = GetInstance.getInstance
+                 ("Signature", SignatureSpi.class, algorithm, provider);
+         return getInstance(instance, algorithm);
+@@ -424,6 +415,14 @@ public static Signature getInstance(String algorithm, String provider)
+      * is returned.  Note that the specified provider does not
+      * have to be registered in the provider list.
+      *
++     * @implNote
++     * The JDK Reference Implementation additionally uses
++     * the {@code jdk.crypto.disabledAlgorithms}
++     * {@link Security#getProperty(String) Security} property to determine
++     * if the specified algorithm is allowed. If the
++     * {@systemProperty jdk.crypto.disabledAlgorithms} is set, it supersedes
++     * the security property value.
++     *
+      * @param algorithm the name of the algorithm requested.
+      * See the Signature section in the <a href=
+      * "{@docRoot}/../specs/security/standard-names.html#signature-algorithms">
+@@ -450,40 +449,16 @@ public static Signature getInstance(String algorithm, String provider)
+     public static Signature getInstance(String algorithm, Provider provider)
+             throws NoSuchAlgorithmException {
+         Objects.requireNonNull(algorithm, "null algorithm name");
+-        if (algorithm.equalsIgnoreCase(RSA_SIGNATURE)) {
+-            // exception compatibility with existing code
+-            if (provider == null) {
+-                throw new IllegalArgumentException("missing provider");
+-            }
+-            return getInstanceRSA(provider);
++
++        if (!CryptoAlgorithmConstraints.permits("Signature", algorithm)) {
++            throw new NoSuchAlgorithmException(algorithm + " is disabled");
+         }
++
+         Instance instance = GetInstance.getInstance
+                 ("Signature", SignatureSpi.class, algorithm, provider);
+         return getInstance(instance, algorithm);
+     }
+ 
+-    // return an implementation for NONEwithRSA, which is a special case
+-    // because of the Cipher.RSA/ECB/PKCS1Padding compatibility wrapper
+-    private static Signature getInstanceRSA(Provider p)
+-            throws NoSuchAlgorithmException {
+-        // try Signature first
+-        Service s = p.getService("Signature", RSA_SIGNATURE);
+-        if (s != null) {
+-            Instance instance = GetInstance.getInstance(s, SignatureSpi.class);
+-            return getInstance(instance, RSA_SIGNATURE);
+-        }
+-        // check Cipher
+-        try {
+-            Cipher c = Cipher.getInstance(RSA_CIPHER, p);
+-            return Delegate.of(new CipherAdapter(c), RSA_SIGNATURE);
+-        } catch (GeneralSecurityException e) {
+-            // throw Signature style exception message to avoid confusion,
+-            // but append Cipher exception as cause
+-            throw new NoSuchAlgorithmException("no such algorithm: "
+-                + RSA_SIGNATURE + " for provider " + p.getName(), e);
+-        }
+-    }
+-
+     /**
+      * Returns the provider of this {@code Signature} object.
+      *
+@@ -1179,22 +1154,12 @@ public Object clone() throws CloneNotSupportedException {
+ 
+         private static SignatureSpi newInstance(Service s)
+                 throws NoSuchAlgorithmException {
+-            if (s.getType().equals("Cipher")) {
+-                // must be NONEwithRSA
+-                try {
+-                    Cipher c = Cipher.getInstance(RSA_CIPHER, s.getProvider());
+-                    return new CipherAdapter(c);
+-                } catch (NoSuchPaddingException e) {
+-                    throw new NoSuchAlgorithmException(e);
+-                }
+-            } else {
+-                Object o = s.newInstance(null);
+-                if (!(o instanceof SignatureSpi)) {
+-                    throw new NoSuchAlgorithmException
+-                        ("Not a SignatureSpi: " + o.getClass().getName());
+-                }
+-                return (SignatureSpi)o;
++            Object o = s.newInstance(null);
++            if (!(o instanceof SignatureSpi)) {
++                throw new NoSuchAlgorithmException
++                    ("Not a SignatureSpi: " + o.getClass().getName());
+             }
++            return (SignatureSpi)o;
+         }
+ 
+         // max number of debug warnings to print from chooseFirstProvider()
+@@ -1471,92 +1436,4 @@ protected AlgorithmParameters engineGetParameters() {
+             return sigSpi.engineGetParameters();
+         }
+     }
+-
+-    // adapter for RSA/ECB/PKCS1Padding ciphers
+-    @SuppressWarnings("deprecation")
+-    private static class CipherAdapter extends SignatureSpi {
+-
+-        private final Cipher cipher;
+-
+-        private ByteArrayOutputStream data;
+-
+-        CipherAdapter(Cipher cipher) {
+-            this.cipher = cipher;
+-        }
+-
+-        protected void engineInitVerify(PublicKey publicKey)
+-                throws InvalidKeyException {
+-            cipher.init(Cipher.DECRYPT_MODE, publicKey);
+-            if (data == null) {
+-                data = new ByteArrayOutputStream(128);
+-            } else {
+-                data.reset();
+-            }
+-        }
+-
+-        protected void engineInitSign(PrivateKey privateKey)
+-                throws InvalidKeyException {
+-            cipher.init(Cipher.ENCRYPT_MODE, privateKey);
+-            data = null;
+-        }
+-
+-        protected void engineInitSign(PrivateKey privateKey,
+-                SecureRandom random) throws InvalidKeyException {
+-            cipher.init(Cipher.ENCRYPT_MODE, privateKey, random);
+-            data = null;
+-        }
+-
+-        protected void engineUpdate(byte b) throws SignatureException {
+-            engineUpdate(new byte[] {b}, 0, 1);
+-        }
+-
+-        protected void engineUpdate(byte[] b, int off, int len)
+-                throws SignatureException {
+-            if (data != null) {
+-                data.write(b, off, len);
+-                return;
+-            }
+-            byte[] out = cipher.update(b, off, len);
+-            if ((out != null) && (out.length != 0)) {
+-                throw new SignatureException
+-                    ("Cipher unexpectedly returned data");
+-            }
+-        }
+-
+-        protected byte[] engineSign() throws SignatureException {
+-            try {
+-                return cipher.doFinal();
+-            } catch (IllegalBlockSizeException | BadPaddingException e) {
+-                throw new SignatureException("doFinal() failed", e);
+-            }
+-        }
+-
+-        protected boolean engineVerify(byte[] sigBytes)
+-                throws SignatureException {
+-            try {
+-                byte[] out = cipher.doFinal(sigBytes);
+-                byte[] dataBytes = data.toByteArray();
+-                data.reset();
+-                return MessageDigest.isEqual(out, dataBytes);
+-            } catch (BadPaddingException e) {
+-                // e.g. wrong public key used
+-                // return false rather than throwing exception
+-                return false;
+-            } catch (IllegalBlockSizeException e) {
+-                throw new SignatureException("doFinal() failed", e);
+-            }
+-        }
+-
+-        protected void engineSetParameter(String param, Object value)
+-                throws InvalidParameterException {
+-            throw new InvalidParameterException("Parameters not supported");
+-        }
+-
+-        protected Object engineGetParameter(String param)
+-                throws InvalidParameterException {
+-            throw new InvalidParameterException("Parameters not supported");
+-        }
+-
+-    }
+-
+ }
+diff --git a/src/java.base/share/classes/javax/crypto/Cipher.java b/src/java.base/share/classes/javax/crypto/Cipher.java
+index 82a607a5553..902c3998fbe 100644
+--- a/src/java.base/share/classes/javax/crypto/Cipher.java
++++ b/src/java.base/share/classes/javax/crypto/Cipher.java
+@@ -30,7 +30,6 @@
+ import java.util.concurrent.ConcurrentMap;
+ import java.util.regex.*;
+ 
+-
+ import java.security.*;
+ import java.security.Provider.Service;
+ import java.security.spec.AlgorithmParameterSpec;
+@@ -46,6 +45,7 @@
+ import sun.security.util.Debug;
+ import sun.security.jca.*;
+ import sun.security.util.KnownOIDs;
++import sun.security.util.CryptoAlgorithmConstraints;
+ 
+ /**
+  * This class provides the functionality of a cryptographic cipher for
+@@ -297,6 +297,7 @@ private static String[] tokenizeTransformation(String transformation)
+         if (transformation == null) {
+             throw new NoSuchAlgorithmException("No transformation given");
+         }
++
+         /*
+          * Components of a cipher transformation:
+          *
+@@ -482,8 +483,10 @@ private static Transform getTransform(Service s,
+      * requirements of your application.
+      *
+      * @implNote
+-     * The JDK Reference Implementation additionally uses the
+-     * {@code jdk.security.provider.preferred}
++     * The JDK Reference Implementation additionally uses the following
++     * security properties:
++     * <ul>
++     * <li>the {@code jdk.security.provider.preferred}
+      * {@link Security#getProperty(String) Security} property to determine
+      * the preferred provider order for the specified algorithm. This
+      * may be different than the order of providers returned by
+@@ -491,6 +494,14 @@ private static Transform getTransform(Service s,
+      * See also the Cipher Transformations section of the {@extLink
+      * security_guide_jdk_providers JDK Providers} document for information
+      * on the transformation defaults used by JDK providers.
++     * </li>
++     * <li>the {@code jdk.crypto.disabledAlgorithms}
++     * {@link Security#getProperty(String) Security} property to determine
++     * if the specified algorithm is allowed. If the
++     * {@systemProperty jdk.crypto.disabledAlgorithms} is set, it supersedes
++     * the security property value.
++     * </li>
++     * </ul>
+      *
+      * @param transformation the name of the transformation, e.g.,
+      * <i>AES/CBC/PKCS5Padding</i>.
+@@ -519,6 +530,13 @@ public static final Cipher getInstance(String transformation)
+         if ((transformation == null) || transformation.isEmpty()) {
+             throw new NoSuchAlgorithmException("Null or empty transformation");
+         }
++
++        // throws NoSuchAlgorithmException if java.security disables it
++        if (!CryptoAlgorithmConstraints.permits("Cipher", transformation)) {
++            throw new NoSuchAlgorithmException(transformation +
++                    " is disabled");
++        }
++
+         List<Transform> transforms = getTransforms(transformation);
+         List<ServiceId> cipherServices = new ArrayList<>(transforms.size());
+         for (Transform transform : transforms) {
+@@ -582,6 +600,14 @@ public static final Cipher getInstance(String transformation)
+      * security_guide_jdk_providers JDK Providers} document for information
+      * on the transformation defaults used by JDK providers.
+      *
++     * @implNote
++     * The JDK Reference Implementation additionally uses
++     * the {@code jdk.crypto.disabledAlgorithms}
++     * {@link Security#getProperty(String) Security} property to determine
++     * if the specified algorithm is allowed. If the
++     * {@systemProperty jdk.crypto.disabledAlgorithms} is set, it supersedes
++     * the security property value.
++     *
+      * @param transformation the name of the transformation,
+      * e.g., <i>AES/CBC/PKCS5Padding</i>.
+      * See the Cipher section in the <a href=
+@@ -655,6 +681,14 @@ private String getProviderName() {
+      * security_guide_jdk_providers JDK Providers} document for information
+      * on the transformation defaults used by JDK providers.
+      *
++     * @implNote
++     * The JDK Reference Implementation additionally uses
++     * the {@code jdk.crypto.disabledAlgorithms}
++     * {@link Security#getProperty(String) Security} property to determine
++     * if the specified algorithm is allowed. If the
++     * {@systemProperty jdk.crypto.disabledAlgorithms} is set, it supersedes
++     * the security property value.
++     *
+      * @param transformation the name of the transformation,
+      * e.g., <i>AES/CBC/PKCS5Padding</i>.
+      * See the Cipher section in the <a href=
+@@ -692,6 +726,13 @@ public static final Cipher getInstance(String transformation,
+         if (provider == null) {
+             throw new IllegalArgumentException("Missing provider");
+         }
++
++        // throws NoSuchAlgorithmException if java.security disables it
++        if (!CryptoAlgorithmConstraints.permits("Cipher", transformation)) {
++            throw new NoSuchAlgorithmException(transformation +
++                    " is disabled");
++        }
++
+         Exception failure = null;
+         List<Transform> transforms = getTransforms(transformation);
+         boolean providerChecked = false;
+diff --git a/src/java.base/share/classes/sun/security/util/AbstractAlgorithmConstraints.java b/src/java.base/share/classes/sun/security/util/AbstractAlgorithmConstraints.java
+index dc5b1aafb20..d05fb262fa8 100644
+--- a/src/java.base/share/classes/sun/security/util/AbstractAlgorithmConstraints.java
++++ b/src/java.base/share/classes/sun/security/util/AbstractAlgorithmConstraints.java
+@@ -1,5 +1,5 @@
+ /*
+- * Copyright (c) 2015, 2024, Oracle and/or its affiliates. All rights reserved.
++ * Copyright (c) 2015, 2025, Oracle and/or its affiliates. All rights reserved.
+  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+  *
+  * This code is free software; you can redistribute it and/or modify it
+@@ -46,7 +46,16 @@ protected AbstractAlgorithmConstraints(AlgorithmDecomposer decomposer) {
+ 
+     // Get algorithm constraints from the specified security property.
+     static Set<String> getAlgorithms(String propertyName) {
+-        String property = Security.getProperty(propertyName);
++        return getAlgorithms(propertyName, false);
++    }
++
++    // Get algorithm constraints from the specified security property or
++    // system property if allowSystemOverride == true.
++    static Set<String> getAlgorithms(String propertyName,
++            boolean allowSystemOverride) {
++        String property = allowSystemOverride ?
++                SecurityProperties.getOverridableProperty(propertyName) :
++                Security.getProperty(propertyName);
+ 
+         String[] algorithmsInProperty = null;
+         if (property != null && !property.isEmpty()) {
+@@ -65,7 +74,8 @@ static Set<String> getAlgorithms(String propertyName) {
+         if (algorithmsInProperty == null) {
+             return Collections.emptySet();
+         }
+-        Set<String> algorithmsInPropertySet = new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
++        Set<String> algorithmsInPropertySet =
++                new TreeSet<>(String.CASE_INSENSITIVE_ORDER);
+         algorithmsInPropertySet.addAll(Arrays.asList(algorithmsInProperty));
+         return algorithmsInPropertySet;
+     }
+@@ -80,17 +90,17 @@ static boolean checkAlgorithm(Set<String> algorithms, String algorithm,
+             return false;
+         }
+ 
+-        // decompose the algorithm into sub-elements
+-        Set<String> elements = decomposer.decompose(algorithm);
++        if (decomposer != null) {
++            // decompose the algorithm into sub-elements
++            Set<String> elements = decomposer.decompose(algorithm);
+ 
+-        // check the element of the elements
+-        for (String element : elements) {
+-            if (algorithms.contains(element)) {
+-                return false;
++            // check the element of the elements
++            for (String element : elements) {
++                if (algorithms.contains(element)) {
++                    return false;
++                }
+             }
+         }
+-
+         return true;
+     }
+-
+ }
+diff --git a/src/java.base/share/classes/sun/security/util/CryptoAlgorithmConstraints.java b/src/java.base/share/classes/sun/security/util/CryptoAlgorithmConstraints.java
+new file mode 100644
+index 00000000000..a8649106a38
+--- /dev/null
++++ b/src/java.base/share/classes/sun/security/util/CryptoAlgorithmConstraints.java
+@@ -0,0 +1,152 @@
++/*
++ * Copyright (c) 2025, Oracle and/or its affiliates. All rights reserved.
++ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
++ *
++ * This code is free software; you can redistribute it and/or modify it
++ * under the terms of the GNU General Public License version 2 only, as
++ * published by the Free Software Foundation.  Oracle designates this
++ * particular file as subject to the "Classpath" exception as provided
++ * by Oracle in the LICENSE file that accompanied this code.
++ *
++ * This code is distributed in the hope that it will be useful, but WITHOUT
++ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
++ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
++ * version 2 for more details (a copy is included in the LICENSE file that
++ * accompanied this code).
++ *
++ * You should have received a copy of the GNU General Public License version
++ * 2 along with this work; if not, write to the Free Software Foundation,
++ * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
++ *
++ * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
++ * or visit www.oracle.com if you need additional information or have any
++ * questions.
++ */
++
++package sun.security.util;
++
++import java.lang.ref.SoftReference;
++import java.security.AlgorithmParameters;
++import java.security.CryptoPrimitive;
++import java.security.Key;
++import java.util.Arrays;
++import java.util.Map;
++import java.util.Set;
++import java.util.concurrent.ConcurrentHashMap;
++
++/**
++ * This class implements the algorithm constraints for the
++ * "jdk.crypto.disabledAlgorithms" security property. This security property
++ * can be overridden by the system property of the same name. See the
++ * java.security file for the syntax of the property value.
++ */
++public class CryptoAlgorithmConstraints extends AbstractAlgorithmConstraints {
++    private static final Debug debug = Debug.getInstance("jca");
++
++    // for validating the service
++    private static final Set<String> SUPPORTED_SERVICES =
++            Set.of("Cipher", "KeyStore", "MessageDigest", "Signature");
++
++    // Disabled algorithm security property for JCE crypto services
++    private static final String PROPERTY_CRYPTO_DISABLED_ALGS =
++            "jdk.crypto.disabledAlgorithms";
++
++    private static class CryptoHolder {
++        static final CryptoAlgorithmConstraints CONSTRAINTS =
++                new CryptoAlgorithmConstraints(PROPERTY_CRYPTO_DISABLED_ALGS);
++    }
++
++    private static void debug(String msg) {
++        if (debug != null) {
++            debug.println("CryptoAlgoConstraints: ", msg);
++        }
++    }
++
++    public static boolean permits(String service, String algo) {
++        return CryptoHolder.CONSTRAINTS.cachedCheckAlgorithm(
++                service + "." + algo);
++    }
++
++    private final Set<String> disabledServices; // syntax is <service>.<algo>
++    private volatile SoftReference<Map<String, Boolean>> cacheRef =
++            new SoftReference<>(null);
++
++    /**
++     * Initialize algorithm constraints with the specified security property
++     * {@code propertyName}. Note that if a system property of the same name
++     * is set, it overrides the security property.
++     *
++     * @param propertyName the security property name that define the disabled
++     *        algorithm constraints
++     */
++    CryptoAlgorithmConstraints(String propertyName) {
++        super(null);
++        disabledServices = getAlgorithms(propertyName, true);
++        debug("Before " + Arrays.deepToString(disabledServices.toArray()));
++        for (String dk : disabledServices) {
++            int idx = dk.indexOf(".");
++            if (idx < 1 || idx == dk.length() - 1) {
++                // wrong syntax: missing "." or empty service or algorithm
++                throw new IllegalArgumentException("Invalid entry: " + dk);
++            }
++            String service = dk.substring(0, idx);
++            String algo = dk.substring(idx + 1);
++            if (SUPPORTED_SERVICES.stream().anyMatch(e -> e.equalsIgnoreCase
++                    (service))) {
++                KnownOIDs oid = KnownOIDs.findMatch(algo);
++                if (oid != null) {
++                    debug("Add oid: " + oid.value());
++                    disabledServices.add(service + "." + oid.value());
++                    debug("Add oid stdName: " + oid.stdName());
++                    disabledServices.add(service + "." + oid.stdName());
++                    for (String a : oid.aliases()) {
++                        debug("Add oid alias: " + a);
++                        disabledServices.add(service + "." + a);
++                    }
++                }
++            } else {
++                // unsupported service
++                throw new IllegalArgumentException("Invalid entry: " + dk);
++            }
++        }
++        debug("After " + Arrays.deepToString(disabledServices.toArray()));
++    }
++
++    @Override
++    public final boolean permits(Set<CryptoPrimitive> notUsed1,
++            String serviceDesc, AlgorithmParameters notUsed2) {
++        throw new UnsupportedOperationException("Unsupported permits() method");
++    }
++
++    @Override
++    public final boolean permits(Set<CryptoPrimitive> primitives, Key key) {
++        throw new UnsupportedOperationException("Unsupported permits() method");
++    }
++
++    @Override
++    public final boolean permits(Set<CryptoPrimitive> primitives,
++            String algorithm, Key key, AlgorithmParameters parameters) {
++        throw new UnsupportedOperationException("Unsupported permits() method");
++    }
++
++    // Return false if algorithm is found in the disabledServices Set.
++    // Otherwise, return true.
++    private boolean cachedCheckAlgorithm(String serviceDesc) {
++        Map<String, Boolean> cache;
++        if ((cache = cacheRef.get()) == null) {
++            synchronized (this) {
++                if ((cache = cacheRef.get()) == null) {
++                    cache = new ConcurrentHashMap<>();
++                    cacheRef = new SoftReference<>(cache);
++                }
++            }
++        }
++        Boolean result = cache.get(serviceDesc);
++        if (result != null) {
++            return result;
++        }
++        result = checkAlgorithm(disabledServices, serviceDesc, null);
++        cache.put(serviceDesc, result);
++        return result;
++    }
++}
+diff --git a/src/java.base/share/classes/sun/security/util/KnownOIDs.java b/src/java.base/share/classes/sun/security/util/KnownOIDs.java
+index 8e764b75730..cbb0c1e0b57 100644
+--- a/src/java.base/share/classes/sun/security/util/KnownOIDs.java
++++ b/src/java.base/share/classes/sun/security/util/KnownOIDs.java
+@@ -184,7 +184,7 @@ public enum KnownOIDs {
+     // RSASecurity
+     // PKCS1 1.2.840.113549.1.1.*
+     PKCS1("1.2.840.113549.1.1", "RSA", false), // RSA KeyPairGenerator and KeyFactory
+-    RSA("1.2.840.113549.1.1.1"), // RSA encryption
++    RSA("1.2.840.113549.1.1.1", "RSA", "RSA/ECB/PKCS1Padding"), // RSA encryption
+ 
+     MD2withRSA("1.2.840.113549.1.1.2"),
+     MD5withRSA("1.2.840.113549.1.1.4"),
+diff --git a/src/java.base/share/conf/security/java.security b/src/java.base/share/conf/security/java.security
+index 5d96d74539e..32d1ddaf0f7 100644
+--- a/src/java.base/share/conf/security/java.security
++++ b/src/java.base/share/conf/security/java.security
+@@ -771,6 +771,54 @@ jdk.tls.disabledAlgorithms=SSLv3, TLSv1, TLSv1.1, DTLSv1.0, RC4, DES, \
+     ECDH, TLS_RSA_*, rsa_pkcs1_sha1 usage HandshakeSignature, \
+     ecdsa_sha1 usage HandshakeSignature, dsa_sha1 usage HandshakeSignature
+ 
++#
++# Algorithm restrictions for Java Crypto API services
++#
++# In some environments, certain algorithms may be undesirable for certain
++# cryptographic services. For example, "MD2" is generally no longer considered
++# to be a secure hash algorithm.  This section describes the mechanism for
++# disabling algorithms at the JCA/JCE level based on service name and algorithm
++# name.
++#
++# If a system property of the same name is also specified, it supersedes the
++# security property value defined here.
++#
++# The syntax of the disabled services string is described as follows:
++#       "DisabledService {, DisabledService}"
++#
++#   DisabledService:
++#       Service.AlgorithmName
++#
++# Service:  (one of the following, more services may be added later)
++#     Cipher | KeyStore | MessageDigest | Signature
++#
++#   AlgorithmName:
++#       (see below)
++#
++# The "AlgorithmName" is the standard algorithm name of the disabled
++# service. See the Java Security Standard Algorithm Names Specification
++# for information about Standard Algorithm Names.  Matching is
++# performed using a case-insensitive exact matching rule. For Cipher service,
++# its algorithm is the transformation string.
++#
++# Note: If the property value contains entries with invalid syntax or
++# unsupported services at the time of checking, an ExceptionInInitializerError
++# with a cause of IllegalArgumentException will be thrown.
++#
++# Note: The restriction is applied in the various getInstance(...) methods
++# of the supported Service classes, i.e. Cipher, KeyStore, MessageDigest,
++# and Signature. If the algorithm is disabled, a NoSuchAlgorithmException will
++# be thrown by the getInstance methods of Cipher, MessageDigest, and Signature
++# and a KeyStoreException by the getInstance methods of KeyStore.
++#
++# Note: This property is currently used by the JDK Reference implementation.
++# It is not guaranteed to be examined and used by other implementations.
++#
++# Example:
++#   jdk.crypto.disabledAlgorithms=Cipher.RSA/ECB/PKCS1Padding, MessageDigest.MD2
++#
++#jdk.crypto.disabledAlgorithms=
++
+ #
+ # Legacy algorithms for Secure Socket Layer/Transport Layer Security (SSL/TLS)
+ # processing in JSSE implementation.
+diff --git a/src/jdk.crypto.cryptoki/share/classes/sun/security/pkcs11/RSACipherAdaptor.java b/src/jdk.crypto.cryptoki/share/classes/sun/security/pkcs11/RSACipherAdaptor.java
+new file mode 100644
+index 00000000000..183a71ee806
+--- /dev/null
++++ b/src/jdk.crypto.cryptoki/share/classes/sun/security/pkcs11/RSACipherAdaptor.java
+@@ -0,0 +1,155 @@
++/*
++ * Copyright (c) 2025, Oracle and/or its affiliates. All rights reserved.
++ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
++ *
++ * This code is free software; you can redistribute it and/or modify it
++ * under the terms of the GNU General Public License version 2 only, as
++ * published by the Free Software Foundation.  Oracle designates this
++ * particular file as subject to the "Classpath" exception as provided
++ * by Oracle in the LICENSE file that accompanied this code.
++ *
++ * This code is distributed in the hope that it will be useful, but WITHOUT
++ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
++ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
++ * version 2 for more details (a copy is included in the LICENSE file that
++ * accompanied this code).
++ *
++ * You should have received a copy of the GNU General Public License version
++ * 2 along with this work; if not, write to the Free Software Foundation,
++ * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
++ *
++ * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
++ * or visit www.oracle.com if you need additional information or have any
++ * questions.
++ */
++
++package sun.security.pkcs11;
++
++import java.io.ByteArrayOutputStream;
++import java.security.MessageDigest;
++import java.security.PrivateKey;
++import java.security.PublicKey;
++import java.security.SecureRandom;
++import java.security.SignatureSpi;
++import java.security.InvalidKeyException;
++import java.security.InvalidAlgorithmParameterException;
++import java.security.InvalidParameterException;
++import java.security.ProviderException;
++import java.security.SignatureException;
++import java.security.spec.AlgorithmParameterSpec;
++import javax.crypto.Cipher;
++import javax.crypto.BadPaddingException;
++import javax.crypto.IllegalBlockSizeException;
++import javax.crypto.NoSuchPaddingException;
++import sun.security.pkcs11.wrapper.PKCS11Exception;
++
++/**
++ * NONEwithRSA Signature implementation using the RSA/ECB/PKCS1Padding Cipher
++ * implementation from SunPKCS11.
++ */
++public final class RSACipherAdaptor extends SignatureSpi {
++
++    private final P11RSACipher c;
++    private ByteArrayOutputStream verifyBuf;
++
++    public RSACipherAdaptor(Token token, long mechanism) {
++        try {
++            c = new P11RSACipher(token, "", mechanism);
++            c.engineSetPadding("pkcs1padding");
++        } catch (PKCS11Exception | NoSuchPaddingException e) {
++            // should not happen, but wrap and re-throw if it were to happen
++            throw new ProviderException(e);
++        }
++    }
++
++    @Override
++    protected void engineInitVerify(PublicKey publicKey)
++            throws InvalidKeyException {
++        c.engineInit(Cipher.DECRYPT_MODE, publicKey, null);
++        if (verifyBuf == null) {
++            verifyBuf = new ByteArrayOutputStream(128);
++        } else {
++            verifyBuf.reset();
++        }
++    }
++
++    @Override
++    protected void engineInitSign(PrivateKey privateKey)
++            throws InvalidKeyException {
++        c.engineInit(Cipher.ENCRYPT_MODE, privateKey, null);
++        verifyBuf = null;
++    }
++
++    @Override
++    protected void engineInitSign(PrivateKey privateKey, SecureRandom random)
++            throws InvalidKeyException {
++        c.engineInit(Cipher.ENCRYPT_MODE, privateKey, random);
++        verifyBuf = null;
++    }
++
++    @Override
++    protected void engineUpdate(byte b) throws SignatureException {
++        engineUpdate(new byte[] {b}, 0, 1);
++    }
++
++    @Override
++    protected void engineUpdate(byte[] b, int off, int len)
++            throws SignatureException {
++        if (verifyBuf != null) {
++            verifyBuf.write(b, off, len);
++        } else {
++            byte[] out = c.engineUpdate(b, off, len);
++            if ((out != null) && (out.length != 0)) {
++                throw new SignatureException
++                       ("Cipher unexpectedly returned data");
++            }
++        }
++    }
++
++    @Override
++    protected byte[] engineSign() throws SignatureException {
++        try {
++            return c.engineDoFinal(null, 0, 0);
++        } catch (IllegalBlockSizeException | BadPaddingException e) {
++           throw new SignatureException("doFinal() failed", e);
++        }
++    }
++
++    @Override
++    protected boolean engineVerify(byte[] sigBytes) throws SignatureException {
++        try {
++            byte[] out = c.engineDoFinal(sigBytes, 0, sigBytes.length);
++            byte[] data = verifyBuf.toByteArray();
++            verifyBuf.reset();
++            return MessageDigest.isEqual(out, data);
++        } catch (BadPaddingException e) {
++            // e.g. wrong public key used
++            // return false rather than throwing exception
++            return false;
++        } catch (IllegalBlockSizeException e) {
++            throw new SignatureException("doFinal() failed", e);
++        }
++    }
++
++    @Override
++    protected void engineSetParameter(AlgorithmParameterSpec params)
++            throws InvalidAlgorithmParameterException {
++        if (params != null) {
++            throw new InvalidParameterException("Parameters not supported");
++        }
++    }
++
++    @Override
++    @SuppressWarnings("deprecation")
++    protected void engineSetParameter(String param, Object value)
++            throws InvalidParameterException {
++        throw new InvalidParameterException("Parameters not supported");
++    }
++
++    @Override
++    @SuppressWarnings("deprecation")
++    protected Object engineGetParameter(String param)
++            throws InvalidParameterException {
++        throw new InvalidParameterException("Parameters not supported");
++    }
++}
+diff --git a/src/jdk.crypto.cryptoki/share/classes/sun/security/pkcs11/SunPKCS11.java b/src/jdk.crypto.cryptoki/share/classes/sun/security/pkcs11/SunPKCS11.java
+index eb0569ec0d4..00d8559e696 100644
+--- a/src/jdk.crypto.cryptoki/share/classes/sun/security/pkcs11/SunPKCS11.java
++++ b/src/jdk.crypto.cryptoki/share/classes/sun/security/pkcs11/SunPKCS11.java
+@@ -974,6 +974,8 @@ private static void register(Descriptor d) {
+         d(SIG, "SHA3-512withECDSAinP1363Format", P11Signature,
+                 m(CKM_ECDSA_SHA3_512, CKM_ECDSA));
+ 
++        d(SIG, "NONEwithRSA",    "sun.security.pkcs11.RSACipherAdaptor",
++                m(CKM_RSA_PKCS));
+         dA(SIG, "MD2withRSA",    P11Signature,
+                 m(CKM_MD2_RSA_PKCS, CKM_RSA_PKCS, CKM_RSA_X_509));
+         dA(SIG, "MD5withRSA",    P11Signature,
+@@ -1425,6 +1427,8 @@ public Object newInstance0(Object param) throws
+             } else if (type == SIG) {
+                 if (algorithm.contains("RSASSA-PSS")) {
+                     return new P11PSSSignature(token, algorithm, mechanism);
++                } else if (algorithm.equals("NONEwithRSA")) {
++                    return new RSACipherAdaptor(token, mechanism);
+                 } else {
+                     return new P11Signature(token, algorithm, mechanism);
+                 }
+diff --git a/test/jdk/java/security/KeyStore/TestDisabledAlgorithms.java b/test/jdk/java/security/KeyStore/TestDisabledAlgorithms.java
+new file mode 100644
+index 00000000000..0c060a45b7e
+--- /dev/null
++++ b/test/jdk/java/security/KeyStore/TestDisabledAlgorithms.java
+@@ -0,0 +1,120 @@
++/*
++ * Copyright (c) 2025, Oracle and/or its affiliates. All rights reserved.
++ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
++ *
++ * This code is free software; you can redistribute it and/or modify it
++ * under the terms of the GNU General Public License version 2 only, as
++ * published by the Free Software Foundation.
++ *
++ * This code is distributed in the hope that it will be useful, but WITHOUT
++ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
++ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
++ * version 2 for more details (a copy is included in the LICENSE file that
++ * accompanied this code).
++ *
++ * You should have received a copy of the GNU General Public License version
++ * 2 along with this work; if not, write to the Free Software Foundation,
++ * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
++ *
++ * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
++ * or visit www.oracle.com if you need additional information or have any
++ * questions.
++ */
++
++/**
++ * @test
++ * @bug 8244336
++ * @summary Test JCE layer algorithm restriction
++ * @library /test/lib
++ * @run main/othervm TestDisabledAlgorithms KEYSTORE.JKs true
++ * @run main/othervm TestDisabledAlgorithms keySTORE.what false
++ * @run main/othervm TestDisabledAlgorithms kEYstoRe.jceKS false
++ * @run main/othervm -Djdk.crypto.disabledAlgorithms="keystore.jkS" TestDisabledAlgorithms keySTORE.jceKs true
++ * @run main/othervm -Djdk.crypto.disabledAlgorithms="KEYstORE.what" TestDisabledAlgorithms KeYStore.JKs false
++ * @run main/othervm -Djdk.crypto.disabledAlgorithms="keystOre.jceKS" TestDisabledAlgorithms KEysTORE.JKS false
++ */
++import java.io.File;
++import java.util.List;
++import java.security.KeyStore;
++import java.security.KeyStoreException;
++import java.security.Provider;
++import java.security.Security;
++import jdk.test.lib.Utils;
++
++public class TestDisabledAlgorithms {
++
++    private static final String PROP_NAME = "jdk.crypto.disabledAlgorithms";
++
++    // reuse existing JKS test keystore
++    private final static String DIR = System.getProperty("test.src", ".");
++    private static final char[] PASSWD = "passphrase".toCharArray();
++    private static final String JKS_FN = "keystore.jks";
++
++    private static void test(List<String> algos, Provider p,
++            boolean shouldThrow) throws Exception {
++
++        for (String a : algos) {
++            System.out.println("Testing " + (p != null ? p.getName() : "") +
++                    ": " + a + ", shouldThrow=" + shouldThrow);
++            if (shouldThrow) {
++                if (p == null) {
++                    Utils.runAndCheckException(() -> KeyStore.getInstance(a),
++                            KeyStoreException.class);
++                    Utils.runAndCheckException(
++                            () -> KeyStore.getInstance(new File(DIR, JKS_FN),
++                                PASSWD),
++                            KeyStoreException.class);
++                    Utils.runAndCheckException(
++                            () -> KeyStore.getInstance(new File(DIR, JKS_FN),
++                                () -> {
++                                    return new KeyStore.PasswordProtection(PASSWD);
++                                }),
++                            KeyStoreException.class);
++                } else {
++                    // with a provider argument
++                    Utils.runAndCheckException(() -> KeyStore.getInstance(a, p),
++                            KeyStoreException.class);
++                    Utils.runAndCheckException(() -> KeyStore.getInstance(a,
++                            p.getName()), KeyStoreException.class);
++                }
++            } else {
++                KeyStore k;
++                if (p == null) {
++                    k = KeyStore.getInstance(a);
++                    System.out.println("Got KeyStore w/ algo " + k.getType());
++                    k = KeyStore.getInstance(new File(DIR, JKS_FN), PASSWD);
++                    System.out.println("Got KeyStore w/ algo " + k.getType());
++                    k = KeyStore.getInstance(new File(DIR, JKS_FN),
++                        () -> {
++                            return new KeyStore.PasswordProtection(PASSWD);
++                        });
++                    System.out.println("Got KeyStore w/ algo " + k.getType());
++                } else {
++                    // with a provider argument
++                    k = KeyStore.getInstance(a, p);
++                    k = KeyStore.getInstance(a, p.getName());
++                    System.out.println("Got KeyStore w/ algo " + k.getType());
++                }
++            }
++        }
++    }
++
++    public static void main(String[] args) throws Exception {
++        String propValue = args[0];
++        System.out.println("Setting Security Prop " + PROP_NAME + " = " +
++                propValue);
++        Security.setProperty(PROP_NAME, propValue);
++
++        boolean shouldThrow = Boolean.valueOf(args[1]);
++
++        List<String> algos = List.of("JKS", "jkS");
++        // test w/o provider
++        test(algos, null, shouldThrow);
++
++        // test w/ provider
++        Provider[] providers = Security.getProviders("KeyStore.JKS");
++        for (Provider p : providers) {
++            test(algos, p, shouldThrow);
++        }
++    }
++}
+diff --git a/test/jdk/java/security/MessageDigest/TestDisabledAlgorithms.java b/test/jdk/java/security/MessageDigest/TestDisabledAlgorithms.java
+new file mode 100644
+index 00000000000..413898e0c70
+--- /dev/null
++++ b/test/jdk/java/security/MessageDigest/TestDisabledAlgorithms.java
+@@ -0,0 +1,93 @@
++/*
++ * Copyright (c) 2025, Oracle and/or its affiliates. All rights reserved.
++ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
++ *
++ * This code is free software; you can redistribute it and/or modify it
++ * under the terms of the GNU General Public License version 2 only, as
++ * published by the Free Software Foundation.
++ *
++ * This code is distributed in the hope that it will be useful, but WITHOUT
++ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
++ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
++ * version 2 for more details (a copy is included in the LICENSE file that
++ * accompanied this code).
++ *
++ * You should have received a copy of the GNU General Public License version
++ * 2 along with this work; if not, write to the Free Software Foundation,
++ * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
++ *
++ * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
++ * or visit www.oracle.com if you need additional information or have any
++ * questions.
++ */
++
++/**
++ * @test
++ * @bug 8244336
++ * @summary Test JCE layer algorithm restriction
++ * @library /test/lib
++ * @run main/othervm TestDisabledAlgorithms MESSAGEdigest.Sha-512 true
++ * @run main/othervm TestDisabledAlgorithms messageDIGest.what false
++ * @run main/othervm TestDisabledAlgorithms meSSagedIgest.sHA-512/224 false
++ */
++import java.util.List;
++import java.security.NoSuchAlgorithmException;
++import java.security.MessageDigest;
++import java.security.Provider;
++import java.security.Security;
++import jdk.test.lib.Utils;
++
++public class TestDisabledAlgorithms {
++
++    private static final String PROP_NAME = "jdk.crypto.disabledAlgorithms";
++
++    private static void test(List<String> algos, Provider p,
++            boolean shouldThrow) throws Exception {
++
++        for (String a : algos) {
++            System.out.println("Testing " + (p != null ? p.getName() : "") +
++                    ": " + a + ", shouldThrow=" + shouldThrow);
++            if (shouldThrow) {
++                if (p == null) {
++                    Utils.runAndCheckException(() -> MessageDigest.getInstance(a),
++                            NoSuchAlgorithmException.class);
++                } else {
++                    Utils.runAndCheckException(() -> MessageDigest.getInstance(a, p),
++                            NoSuchAlgorithmException.class);
++                    Utils.runAndCheckException(() -> MessageDigest.getInstance(a,
++                            p.getName()), NoSuchAlgorithmException.class);
++                }
++            } else {
++                MessageDigest m;
++                if (p == null) {
++                    m = MessageDigest.getInstance(a);
++                } else {
++                    m = MessageDigest.getInstance(a, p);
++                    m = MessageDigest.getInstance(a, p.getName());
++                }
++                System.out.println("Got MessageDigest w/ algo " +
++                        m.getAlgorithm());
++            }
++        }
++    }
++
++    public static void main(String[] args) throws Exception {
++        String propValue = args[0];
++        System.out.println("Setting Security Prop " + PROP_NAME + " = " +
++                propValue);
++        Security.setProperty(PROP_NAME, propValue);
++
++        boolean shouldThrow = Boolean.valueOf(args[1]);
++
++        List<String> algos = List.of("sHA-512", "shA-512",
++                "2.16.840.1.101.3.4.2.3");
++        // test w/o provider
++        test(algos, null, shouldThrow);
++
++        // test w/ provider
++        Provider[] providers = Security.getProviders("MessageDigest.SHA-512");
++        for (Provider p : providers) {
++            test(algos, p, shouldThrow);
++        }
++    }
++}
+diff --git a/test/jdk/java/security/Signature/TestDisabledAlgorithms.java b/test/jdk/java/security/Signature/TestDisabledAlgorithms.java
+new file mode 100644
+index 00000000000..cdecf113d80
+--- /dev/null
++++ b/test/jdk/java/security/Signature/TestDisabledAlgorithms.java
+@@ -0,0 +1,91 @@
++/*
++ * Copyright (c) 2025, Oracle and/or its affiliates. All rights reserved.
++ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
++ *
++ * This code is free software; you can redistribute it and/or modify it
++ * under the terms of the GNU General Public License version 2 only, as
++ * published by the Free Software Foundation.
++ *
++ * This code is distributed in the hope that it will be useful, but WITHOUT
++ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
++ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
++ * version 2 for more details (a copy is included in the LICENSE file that
++ * accompanied this code).
++ *
++ * You should have received a copy of the GNU General Public License version
++ * 2 along with this work; if not, write to the Free Software Foundation,
++ * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
++ *
++ * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
++ * or visit www.oracle.com if you need additional information or have any
++ * questions.
++ */
++
++/**
++ * @test
++ * @bug 8244336
++ * @summary Test JCE layer algorithm restriction
++ * @library /test/lib
++ * @run main/othervm TestDisabledAlgorithms SIGNATURe.sha512withRSA true
++ * @run main/othervm TestDisabledAlgorithms signaturE.what false
++ * @run main/othervm TestDisabledAlgorithms SiGnAtUrE.SHa512/224withRSA false
++ */
++import java.util.List;
++import java.security.NoSuchAlgorithmException;
++import java.security.Signature;
++import java.security.Provider;
++import java.security.Security;
++import jdk.test.lib.Utils;
++
++public class TestDisabledAlgorithms {
++
++    private static final String PROP_NAME = "jdk.crypto.disabledAlgorithms";
++
++    private static void test(List<String> algos, Provider p,
++            boolean shouldThrow) throws Exception {
++
++        for (String a : algos) {
++            System.out.println("Testing " + (p != null ? p.getName() : "") +
++                    ": " + a + ", shouldThrow=" + shouldThrow);
++            if (shouldThrow) {
++                if (p == null) {
++                    Utils.runAndCheckException(() -> Signature.getInstance(a),
++                            NoSuchAlgorithmException.class);
++                } else {
++                    Utils.runAndCheckException(() -> Signature.getInstance(a, p),
++                            NoSuchAlgorithmException.class);
++                    Utils.runAndCheckException(() -> Signature.getInstance(a,
++                            p.getName()), NoSuchAlgorithmException.class);
++                }
++            } else {
++                Signature s;
++                if (p == null) {
++                    s = Signature.getInstance(a);
++                } else {
++                    s = Signature.getInstance(a, p);
++                    s = Signature.getInstance(a, p.getName());
++                }
++                System.out.println("Got Signature w/ algo " + s.getAlgorithm());
++            }
++        }
++    }
++
++    public static void main(String[] args) throws Exception {
++        String propValue = args[0];
++        System.out.println("Setting Security Prop " + PROP_NAME + " = " +
++                propValue);
++        Security.setProperty(PROP_NAME, propValue);
++
++        boolean shouldThrow = Boolean.valueOf(args[1]);
++
++        List<String> algos = List.of("sha512withRsa", "1.2.840.113549.1.1.13");
++        // test w/o provider
++        test(algos, null, shouldThrow);
++
++        // test w/ provider
++        Provider[] providers = Security.getProviders("Signature.SHA512withRSA");
++        for (Provider p : providers) {
++            test(algos, p, shouldThrow);
++        }
++    }
++}
+diff --git a/test/jdk/javax/crypto/Cipher/TestDisabledAlgorithms.java b/test/jdk/javax/crypto/Cipher/TestDisabledAlgorithms.java
+new file mode 100644
+index 00000000000..3505552d1b1
+--- /dev/null
++++ b/test/jdk/javax/crypto/Cipher/TestDisabledAlgorithms.java
+@@ -0,0 +1,116 @@
++/*
++ * Copyright (c) 2025, Oracle and/or its affiliates. All rights reserved.
++ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
++ *
++ * This code is free software; you can redistribute it and/or modify it
++ * under the terms of the GNU General Public License version 2 only, as
++ * published by the Free Software Foundation.
++ *
++ * This code is distributed in the hope that it will be useful, but WITHOUT
++ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
++ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
++ * version 2 for more details (a copy is included in the LICENSE file that
++ * accompanied this code).
++ *
++ * You should have received a copy of the GNU General Public License version
++ * 2 along with this work; if not, write to the Free Software Foundation,
++ * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
++ *
++ * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
++ * or visit www.oracle.com if you need additional information or have any
++ * questions.
++ */
++
++/**
++ * @test
++ * @bug 8244336
++ * @summary Test JCE layer algorithm restriction
++ * @library /test/lib
++ * @run main/othervm TestDisabledAlgorithms CIPHEr.Rsa/ECB/PKCS1Padding true
++ * @run main/othervm TestDisabledAlgorithms cipheR.rsA true
++ * @run main/othervm TestDisabledAlgorithms CIPher.what false
++ * @run main/othervm TestDisabledAlgorithms cipHER.RSA/ECB/PKCS1Padding2 false
++ */
++import java.util.List;
++import java.security.NoSuchAlgorithmException;
++import java.security.Provider;
++import java.security.Security;
++import java.security.Signature;
++import javax.crypto.Cipher;
++import javax.crypto.NoSuchPaddingException;
++import jdk.test.lib.Utils;
++
++public class TestDisabledAlgorithms {
++
++    private static final String PROP_NAME = "jdk.crypto.disabledAlgorithms";
++
++    private static final String TARGET = "Cipher.RSA/ECB/PKCS1Padding";
++
++    private static void test(List<String> algos, Provider p,
++            boolean shouldThrow) throws Exception {
++
++        for (String a : algos) {
++            System.out.println("Testing " + (p != null ? p.getName() : "") +
++                    ": " + a + ", shouldThrow=" + shouldThrow);
++            if (shouldThrow) {
++                if (p == null) {
++                    Utils.runAndCheckException(() -> Cipher.getInstance(a),
++                            NoSuchAlgorithmException.class);
++                } else {
++                    Utils.runAndCheckException(() -> Cipher.getInstance(a, p),
++                            NoSuchAlgorithmException.class);
++                    Utils.runAndCheckException(() -> Cipher.getInstance(a,
++                            p.getName()), NoSuchAlgorithmException.class);
++
++                }
++            } else {
++                Cipher c;
++                if (p == null) {
++                    c = Cipher.getInstance(a);
++                } else {
++                    c = Cipher.getInstance(a, p);
++                    c = Cipher.getInstance(a, p.getName());
++                }
++                System.out.println("Got cipher w/ algo " + c.getAlgorithm());
++            }
++        }
++    }
++
++    public static void main(String[] args) throws Exception {
++        String propValue = args[0];
++        System.out.println("Setting Security Prop " + PROP_NAME + " = " +
++                propValue);
++        Security.setProperty(PROP_NAME, propValue);
++
++        boolean shouldThrow = Boolean.valueOf(args[1]);
++
++        List<String> algos = List.of("Rsa/ECB/PKCS1Padding", "rSA");
++
++        // test w/o provider
++        test(algos, null, shouldThrow);
++
++        // test w/ provider
++        Provider[] providers = Security.getProviders();
++        for (Provider p : providers) {
++            if (p.getService("Cipher", "RSA/ECB/PKCS1Padding") != null) {
++                test(algos, p, shouldThrow);
++            }
++        }
++
++        // make sure NONEwithRSA signature is still available from SunJCE and
++        // SunMSCAPI (windows)
++        if (shouldThrow) {
++            System.out.println("Testing NONEwithRSA signature support");
++            for (String pn : List.of("SunJCE", "SunMSCAPI")) {
++                Provider p = Security.getProvider(pn);
++                if (p != null) {
++                    Signature s = Signature.getInstance("NONEwithRSA", p);
++                    System.out.println(pn + "=> yes");
++                } else {
++                    System.out.println(pn + "=> skip; not found");
++                }
++            }
++        }
++        System.out.println("Done");
++    }
++}
+diff --git a/test/jdk/sun/security/pkcs11/Cipher/TestDisabledAlgorithms.java b/test/jdk/sun/security/pkcs11/Cipher/TestDisabledAlgorithms.java
+new file mode 100644
+index 00000000000..7d489cd2bb4
+--- /dev/null
++++ b/test/jdk/sun/security/pkcs11/Cipher/TestDisabledAlgorithms.java
+@@ -0,0 +1,81 @@
++/*
++ * Copyright (c) 2025, Oracle and/or its affiliates. All rights reserved.
++ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
++ *
++ * This code is free software; you can redistribute it and/or modify it
++ * under the terms of the GNU General Public License version 2 only, as
++ * published by the Free Software Foundation.
++ *
++ * This code is distributed in the hope that it will be useful, but WITHOUT
++ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
++ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
++ * version 2 for more details (a copy is included in the LICENSE file that
++ * accompanied this code).
++ *
++ * You should have received a copy of the GNU General Public License version
++ * 2 along with this work; if not, write to the Free Software Foundation,
++ * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
++ *
++ * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
++ * or visit www.oracle.com if you need additional information or have any
++ * questions.
++ */
++
++/**
++ * @test
++ * @bug 8244336
++ * @summary Test JCE layer algorithm restriction
++ * @library /test/lib ..
++ * @run main/othervm TestDisabledAlgorithms CiPhEr.RSA/ECB/PKCS1Padding true
++ * @run main/othervm TestDisabledAlgorithms cIpHeR.rsA true
++ * @run main/othervm TestDisabledAlgorithms Cipher.what false
++ * @run main/othervm TestDisabledAlgorithms CiPhER.RSA/ECB/PKCS1Padding2 false
++ */
++import java.util.List;
++import java.security.NoSuchAlgorithmException;
++import java.security.Provider;
++import java.security.Security;
++import javax.crypto.Cipher;
++import javax.crypto.NoSuchPaddingException;
++import jdk.test.lib.Utils;
++
++public class TestDisabledAlgorithms extends PKCS11Test {
++
++    boolean shouldThrow;
++
++    TestDisabledAlgorithms(boolean shouldThrow) {
++        this.shouldThrow = shouldThrow;
++    }
++
++    private static final String PROP_NAME = "jdk.crypto.disabledAlgorithms";
++
++    private static void test(String alg, Provider p, boolean shouldThrow)
++            throws Exception {
++        System.out.println("Testing " + p.getName() + ": " + alg +
++                ", shouldThrow=" + shouldThrow);
++        if (shouldThrow) {
++            Utils.runAndCheckException(() -> Cipher.getInstance(alg, p),
++                    NoSuchAlgorithmException.class);
++        } else {
++            Cipher c = Cipher.getInstance(alg, p);
++            System.out.println("Got cipher w/ algo " + c.getAlgorithm());
++        }
++    }
++
++    @Override
++    public void main(Provider p) throws Exception {
++        for (String a : List.of("RSA/ECB/PKCS1Padding", "RSA")) {
++            test(a, p, shouldThrow);
++        }
++        System.out.println("Done");
++    }
++
++    public static void main(String[] args) throws Exception {
++        String propValue = args[0];
++        System.out.println("Setting Security Prop " + PROP_NAME + " = " +
++                propValue);
++        Security.setProperty(PROP_NAME, propValue);
++        boolean shouldThrow = Boolean.valueOf(args[1]);
++        main(new TestDisabledAlgorithms(shouldThrow), args);
++    }
++}
+diff --git a/test/jdk/sun/security/pkcs11/Signature/TestNONEwithRSA.java b/test/jdk/sun/security/pkcs11/Signature/TestNONEwithRSA.java
+new file mode 100644
+index 00000000000..8274602c09f
+--- /dev/null
++++ b/test/jdk/sun/security/pkcs11/Signature/TestNONEwithRSA.java
+@@ -0,0 +1,96 @@
++/*
++ * Copyright (c) 2025, Oracle and/or its affiliates. All rights reserved.
++ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
++ *
++ * This code is free software; you can redistribute it and/or modify it
++ * under the terms of the GNU General Public License version 2 only, as
++ * published by the Free Software Foundation.
++ *
++ * This code is distributed in the hope that it will be useful, but WITHOUT
++ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
++ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
++ * version 2 for more details (a copy is included in the LICENSE file that
++ * accompanied this code).
++ *
++ * You should have received a copy of the GNU General Public License version
++ * 2 along with this work; if not, write to the Free Software Foundation,
++ * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
++ *
++ * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
++ * or visit www.oracle.com if you need additional information or have any
++ * questions.
++ */
++import java.security.*;
++import java.security.interfaces.*;
++import java.security.spec.*;
++import java.util.stream.IntStream;
++import jtreg.SkippedException;
++
++/**
++ * @test
++ * @bug 8244336
++ * @summary Test the NONEwithRSA signature refactoring for JCE layer
++ *     algorithm restriction
++ * @library /test/lib ..
++ * @modules jdk.crypto.cryptoki
++ */
++public class TestNONEwithRSA extends PKCS11Test {
++
++    private static final String SIGALG = "NONEwithRSA";
++
++    private static final int[] KEYSIZES = { 2048, 3072 };
++    private static final byte[] DATA = generateData(100);
++
++    public static void main(String[] args) throws Exception {
++        main(new TestNONEwithRSA(), args);
++    }
++
++    @Override
++    public void main(Provider p) throws Exception {
++        try {
++            Signature.getInstance(SIGALG, p);
++        } catch (NoSuchAlgorithmException nsae) {
++            throw new SkippedException("Skip due to no support for " + SIGALG);
++        }
++
++        for (int kSize : KEYSIZES) {
++            System.out.println("[KEYSIZE = " + kSize + "]");
++            KeyPairGenerator kpg = KeyPairGenerator.getInstance("RSA", p);
++            kpg.initialize(kSize);
++            KeyPair kp = kpg.generateKeyPair();
++            PrivateKey privKey = kp.getPrivate();
++            PublicKey pubKey = kp.getPublic();
++            checkSignature(p, DATA, pubKey, privKey);
++        }
++    }
++
++    private static void checkSignature(Provider p, byte[] data, PublicKey pub,
++            PrivateKey priv)
++            throws NoSuchAlgorithmException, InvalidKeyException,
++            SignatureException, NoSuchProviderException,
++            InvalidAlgorithmParameterException {
++
++        Signature sig = Signature.getInstance(SIGALG, p);
++        sig.initSign(priv);
++
++        sig.update(data);
++        byte[] signedData = sig.sign();
++
++        // Make sure signature verifies with original data
++        sig.initVerify(pub);
++        sig.update(data);
++        if (!sig.verify(signedData)) {
++            throw new RuntimeException("Failed to verify signature");
++        }
++
++        // Make sure signature does NOT verify when the original data
++        // has changed
++        sig.initVerify(pub);
++        sig.update(data);
++        sig.update(data);
++        if (sig.verify(signedData)) {
++            throw new RuntimeException("Failed to detect bad signature");
++        }
++        System.out.println("    => Passed");
++    }
++}
+diff --git a/test/jdk/sun/security/util/AlgorithmConstraints/InvalidCryptoDisabledAlgos.java b/test/jdk/sun/security/util/AlgorithmConstraints/InvalidCryptoDisabledAlgos.java
+new file mode 100644
+index 00000000000..16c9bd65532
+--- /dev/null
++++ b/test/jdk/sun/security/util/AlgorithmConstraints/InvalidCryptoDisabledAlgos.java
+@@ -0,0 +1,59 @@
++/*
++ * Copyright (c) 2025, Oracle and/or its affiliates. All rights reserved.
++ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
++ *
++ * This code is free software; you can redistribute it and/or modify it
++ * under the terms of the GNU General Public License version 2 only, as
++ * published by the Free Software Foundation.
++ *
++ * This code is distributed in the hope that it will be useful, but WITHOUT
++ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
++ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
++ * version 2 for more details (a copy is included in the LICENSE file that
++ * accompanied this code).
++ *
++ * You should have received a copy of the GNU General Public License version
++ * 2 along with this work; if not, write to the Free Software Foundation,
++ * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
++ *
++ * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
++ * or visit www.oracle.com if you need additional information or have any
++ * questions.
++ */
++
++/*
++ * @test
++ * @bug 8244336
++ * @modules java.base/sun.security.util
++ * @summary Check that invalid property values for
++ *         "jdk.crypto.disabledAlgorithms" are rejected
++ * @library /test/lib
++ * @run main/othervm InvalidCryptoDisabledAlgos "*"
++ * @run main/othervm InvalidCryptoDisabledAlgos "."
++ * @run main/othervm InvalidCryptoDisabledAlgos ".AES"
++ * @run main/othervm InvalidCryptoDisabledAlgos "Cipher."
++ * @run main/othervm InvalidCryptoDisabledAlgos "A.B"
++ * @run main/othervm InvalidCryptoDisabledAlgos "KeyStore.MY,."
++ * @run main/othervm InvalidCryptoDisabledAlgos "KeyStore.MY,.AES"
++ * @run main/othervm InvalidCryptoDisabledAlgos "KeyStore.MY,Cipher."
++ * @run main/othervm InvalidCryptoDisabledAlgos "KeyStore.MY,A.B"
++ */
++import java.security.MessageDigest;
++import java.security.Security;
++import jdk.test.lib.Asserts;
++import jdk.test.lib.Utils;
++import sun.security.util.CryptoAlgorithmConstraints;
++
++public class InvalidCryptoDisabledAlgos {
++
++    public static void main(String[] args) throws Exception {
++        System.out.println("Invalid Property Value = " + args[0]);
++        Security.setProperty("jdk.crypto.disabledAlgorithms", args[0]);
++        // Trigger the check to parse and validate property value
++        Utils.runAndCheckException(() -> CryptoAlgorithmConstraints.permits(
++                "x", "y"),
++                t -> Asserts.assertTrue(
++                        t instanceof ExceptionInInitializerError &&
++                        t.getCause() instanceof IllegalArgumentException));
++    }
++}

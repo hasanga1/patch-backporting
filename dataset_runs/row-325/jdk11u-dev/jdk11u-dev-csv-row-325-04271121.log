@@ -1,0 +1,72 @@
+2026-04-27 11:21:29,284 - backport - INFO - Using openrouter API: https://openrouter.ai/api/v1 (model: openai/gpt-4.1-mini)
+2026-04-27 11:21:31,989 - backport - INFO - Aplly all hunks in the patch      PASS
+2026-04-27 11:21:32,825 - backport - INFO - Successfully backport the patch to the target release bee8d326bf97460c1d55b1c8cd0eeb4bd9a0b5c2
+2026-04-27 11:21:32,827 - backport - INFO - --- a/src/jdk.compiler/share/classes/com/sun/tools/javac/main/Option.java
++++ b/src/jdk.compiler/share/classes/com/sun/tools/javac/main/Option.java
+@@ -285,7 +285,7 @@ public void process(OptionHelper helper, String option, String arg) throws Inval
+         }
+     },
+ 
+-    PROC("-proc:", "opt.proc.none.only", STANDARD, BASIC,  ONEOF, "none", "only"),
++    PROC("-proc:", "opt.proc.none.only", STANDARD, BASIC, ONEOF, "none", "only", "full"),
+ 
+     PROCESSOR("-processor", "opt.arg.class.list", "opt.processor", STANDARD, BASIC),
+ 
+
+--- a/test/langtools/tools/javac/processing/environment/round/TestContext.java
++++ b/test/langtools/tools/javac/processing/environment/round/TestContext.java
+@@ -31,7 +31,7 @@
+  *          jdk.compiler/com.sun.tools.javac.processing
+  *          jdk.compiler/com.sun.tools.javac.util
+  * @build JavacTestingAbstractProcessor TestContext
+- * @compile/process -processor TestContext -XprintRounds TestContext
++ * @compile/process -processor TestContext -XprintRounds -proc:full TestContext
+  */
+ 
+ import java.io.*;
+
+--- /dev/null
++++ b/test/langtools/tools/javac/processing/options/TestProcOption.java
+@@ -0,0 +1,41 @@
++/*
++ * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
++ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
++ *
++ * This code is free software; you can redistribute it and/or modify it
++ * under the terms of the GNU General Public License version 2 only, as
++ * published by the Free Software Foundation.
++ *
++ * This code is distributed in the hope that it will be useful, but WITHOUT
++ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
++ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
++ * version 2 for more details (a copy is included in the LICENSE file that
++ * accompanied this code).
++ *
++ * You should have received a copy of the GNU General Public License version
++ * 2 along with this work; if not, write to the Free Software Foundation,
++ * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
++ *
++ * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
++ * or visit www.oracle.com if you need additional information or have any
++ * questions.
++ */
++
++/*
++ * @test
++ * @bug 8308245
++ * @summary Test trivial handling of -proc:full option
++ * @compile -proc:full TestProcOption.java
++ * @run main TestProcOption
++ */
++
++/*
++ * The test verifies that compilation takes place when -proc:full is used.
++ */
++public class TestProcOption {
++    private TestProcOption(){};
++
++    public static void main(String... args) {
++        ; // do nothing
++    }
++}
+

@@ -1,0 +1,224 @@
+--- a/src/jdk.compiler/share/classes/com/sun/tools/javac/code/Flags.java
++++ b/src/jdk.compiler/share/classes/com/sun/tools/javac/code/Flags.java
+@@ -250,7 +250,7 @@ public static EnumSet<Flag> asFlagSet(long flags) {
+     /**
+      * Flag that marks either a default method or an interface containing default methods.
+      */
+-    public static final long DEFAULT = 1L<<43;
++    public static final long DEFAULT = 1L<<43; // part of ExtendedStandardFlags, cannot be reused
+ 
+     /**
+      * Flag that marks class as auxiliary, ie a non-public class following
+
+--- a/src/jdk.compiler/share/classes/com/sun/tools/javac/code/Flags.java
++++ b/src/jdk.compiler/share/classes/com/sun/tools/javac/code/Flags.java
+@@ -278,9 +278,10 @@ public static EnumSet<Flag> asFlagSet(long flags) {
+      */
+     public static final long THROWS = 1L<<47;
+ 
+-    /*
+-     * Currently available: Bit 48.
++    /**
++     * Flag to indicate sealed class/interface declaration.
+      */
++    public static final long SEALED = 1L<<48; // part of ExtendedStandardFlags, cannot be reused
+ 
+     /**
+      * Flag that marks a synthetic method body for a lambda expression
+
+--- a/src/jdk.compiler/share/classes/com/sun/tools/javac/code/Flags.java
++++ b/src/jdk.compiler/share/classes/com/sun/tools/javac/code/Flags.java
+@@ -389,11 +390,6 @@ public static EnumSet<Flag> asFlagSet(long flags) {
+      */
+     public static final int GENERATED_MEMBER = 1<<24; // MethodSymbols and VarSymbols
+ 
+-    /**
+-     * Flag to indicate sealed class/interface declaration.
+-     */
+-    public static final long SEALED = 1L<<62; // ClassSymbols
+-
+     /**
+      * Flag to indicate restricted method declaration.
+      */
+
+--- a/src/jdk.compiler/share/classes/com/sun/tools/javac/code/Flags.java
++++ b/src/jdk.compiler/share/classes/com/sun/tools/javac/code/Flags.java
+@@ -412,7 +408,7 @@ public static EnumSet<Flag> asFlagSet(long flags) {
+     /**
+      * Flag to indicate that the class/interface was declared with the non-sealed modifier.
+      */
+-    public static final long NON_SEALED = 1L<<63; // ClassSymbols
++    public static final long NON_SEALED = 1L<<63;  // part of ExtendedStandardFlags, cannot be reused
+ 
+     /**
+      * Describe modifier flags as they might appear in source code, i.e.,
+
+--- a/src/jdk.compiler/share/classes/com/sun/tools/javac/code/Flags.java
++++ b/src/jdk.compiler/share/classes/com/sun/tools/javac/code/Flags.java
+@@ -443,6 +439,7 @@ public static String toSource(long flags) {
+         RecordMethodFlags                 = AccessFlags | ABSTRACT | STATIC |
+                                             SYNCHRONIZED | FINAL | STRICTFP;
+     public static final long
++        //NOTE: flags in ExtendedStandardFlags cannot be overlayed across Symbol kinds:
+         ExtendedStandardFlags             = (long)StandardFlags | DEFAULT | SEALED | NON_SEALED,
+         ExtendedMemberClassFlags          = (long)MemberClassFlags | SEALED | NON_SEALED,
+         ExtendedMemberStaticClassFlags    = (long) MemberStaticClassFlags | SEALED | NON_SEALED,
+
+--- a/src/jdk.compiler/share/classes/com/sun/tools/javac/code/Flags.java
++++ b/src/jdk.compiler/share/classes/com/sun/tools/javac/code/Flags.java
+@@ -550,7 +547,7 @@ public enum Flag {
+         DEPRECATED_ANNOTATION(Flags.DEPRECATED_ANNOTATION),
+         DEPRECATED_REMOVAL(Flags.DEPRECATED_REMOVAL),
+         HAS_RESOURCE(Flags.HAS_RESOURCE),
+-        // Bit 48 is currently available
++        SEALED(Flags.SEALED),
+         ANONCONSTR_BASED(Flags.ANONCONSTR_BASED),
+         NAME_FILLED(Flags.NAME_FILLED),
+         PREVIEW_API(Flags.PREVIEW_API),
+
+--- a/src/jdk.compiler/share/classes/com/sun/tools/javac/code/Flags.java
++++ b/src/jdk.compiler/share/classes/com/sun/tools/javac/code/Flags.java
+@@ -559,7 +556,7 @@ public enum Flag {
+         MATCH_BINDING_TO_OUTER(Flags.MATCH_BINDING_TO_OUTER),
+         RECORD(Flags.RECORD),
+         RECOVERABLE(Flags.RECOVERABLE),
+-        SEALED(Flags.SEALED),
++        RESTRICTED(Flags.RESTRICTED),
+         NON_SEALED(Flags.NON_SEALED) {
+             @Override
+             public String toString() {
+
+--- /dev/null
++++ b/test/langtools/tools/javac/flags/ExtendedStandardFlagsOverlayFlagsConflict.java
+@@ -0,0 +1,82 @@
++/*
++ * Copyright (c) 2025, Oracle and/or its affiliates. All rights reserved.
++ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
++ *
++ * This code is free software; you can redistribute it and/or modify it
++ * under the terms of the GNU General Public License version 2 only, as
++ * published by the Free Software Foundation.
++ *
++ * This code is distributed in the hope that it will be useful, but WITHOUT
++ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
++ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
++ * version 2 for more details (a copy is included in the LICENSE file that
++ * accompanied this code).
++ *
++ * You should have received a copy of the GNU General Public License version
++ * 2 along with this work; if not, write to the Free Software Foundation,
++ * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
++ *
++ * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
++ * or visit www.oracle.com if you need additional information or have any
++ * questions.
++ */
++
++/*
++ * @test
++ * @bug 8361570
++ * @summary Verify no flags in ExtendedStandardFlags have overlays for different
++ *          Symbol kinds.
++ * @library /tools/lib
++ * @modules jdk.compiler/com.sun.tools.javac.code
++ * @compile ExtendedStandardFlagsOverlayFlagsConflict.java
++ * @run main ExtendedStandardFlagsOverlayFlagsConflict
++ */
++
++import com.sun.tools.javac.code.Flags;
++import java.lang.reflect.Field;
++import java.lang.reflect.Modifier;
++import java.util.ArrayList;
++import java.util.HashMap;
++import java.util.List;
++import java.util.Map;
++
++/* Flags in ExtendedStandardFlags are checked using masks, and if they have
++ * Symbol-kind specific meaning, they can lead to confusing errors. Hence,
++ * Flags in ExtendedStandardFlags should have the same meaning for all Symbols.
++ */
++public class ExtendedStandardFlagsOverlayFlagsConflict {
++
++    public static void main(String... args) throws Exception {
++        ExtendedStandardFlagsOverlayFlagsConflict t =
++                new ExtendedStandardFlagsOverlayFlagsConflict();
++        t.run();
++    }
++
++    public void run() throws Exception {
++        Map<Long, List<Field>> value2FlagFields = new HashMap<>();
++
++        for (Field f : Flags.class.getFields()) {
++            if (!Modifier.isStatic(f.getModifiers())) {
++                continue;
++            }
++            if (f.getName().startsWith("ACC_")) {
++                continue;
++            }
++            long flag = ((Number) f.get(null)).longValue();
++            value2FlagFields.computeIfAbsent(flag, _ -> new ArrayList<>())
++                            .add(f);
++        }
++
++        long pendingFlags2Check = Flags.ExtendedStandardFlags;
++
++        while (pendingFlags2Check != 0) {
++            long flag = Long.highestOneBit(pendingFlags2Check);
++            List<Field> flagFields = value2FlagFields.get(flag);
++            if (flagFields.size() != 1) {
++                throw new AssertionError("Flag: " + flag +
++                                         " has more than one flag field: " + flagFields);
++            }
++            pendingFlags2Check &= ~flag;
++        }
++    }
++}
+
+--- /dev/null
++++ b/test/langtools/tools/javac/flags/NoFalseSealedError.java
+@@ -0,0 +1,21 @@
++/**
++ * @test /nodynamiccopyright/
++ * @bug 8361570
++ * @summary Verify there's no fake sealed not allowed here error when sealed
++ *          and requires-identity Flags clash
++ * @modules java.base/jdk.internal
++ * @compile NoFalseSealedError.java
++ */
++
++import java.lang.ref.WeakReference;
++import java.util.WeakHashMap;
++
++void main(String[] args) {
++    new RequiresIdentity(null) {};
++    new WeakReference<>(null) {};
++    new WeakHashMap<>() {};
++}
++
++static class RequiresIdentity {
++    RequiresIdentity(@jdk.internal.RequiresIdentity Object o) {}
++}
+
+--- a/test/langtools/tools/javac/platform/RequiresIdentityTest.java
++++ b/test/langtools/tools/javac/platform/RequiresIdentityTest.java
+@@ -132,7 +132,7 @@ public void testModel(Path base) throws Exception {
+ 
+             List<String> expected = List.of(
+                 "public class WeakHashMap<@jdk.internal.RequiresIdentity K, V> extends java.util.AbstractMap<K,V> implements java.util.Map<K,V> {",
+-                "  public V put(@jdk.internal.RequiresIdentity sealed K key,"
++                "  public V put(@jdk.internal.RequiresIdentity K key,"
+             );
+             if (!expected.equals(printed)) {
+                 throw new AssertionError("Expected: " + expected +
+
+--- a/test/langtools/tools/javac/platform/RequiresIdentityTest.java
++++ b/test/langtools/tools/javac/platform/RequiresIdentityTest.java
+@@ -154,7 +154,7 @@ public void testModel(Path base) throws Exception {
+ 
+             List<String> expected = List.of(
+                 "public class WeakHashMap<K, V> extends java.util.AbstractMap<K,V> implements java.util.Map<K,V> {",
+-                "  public V put(sealed K arg0,"
++                "  public V put(K arg0,"
+             );
+             if (!expected.equals(printed)) {
+                 throw new AssertionError("Expected: " + expected +

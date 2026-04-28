@@ -1,0 +1,109 @@
+diff --git a/src/java.base/share/classes/java/util/concurrent/LinkedTransferQueue.java b/src/java.base/share/classes/java/util/concurrent/LinkedTransferQueue.java
+index 5aef5cd12a1..a0d3176c762 100644
+--- a/src/java.base/share/classes/java/util/concurrent/LinkedTransferQueue.java
++++ b/src/java.base/share/classes/java/util/concurrent/LinkedTransferQueue.java
+@@ -1143,7 +1143,8 @@ public class LinkedTransferQueue<E> extends AbstractQueue<E>
+      * @throws NullPointerException if the specified element is null
+      */
+     public void put(E e) {
+-        offer(e);
++        Objects.requireNonNull(e);
++        xfer(e, -1L);
+     }
+ 
+     /**
+@@ -1156,7 +1157,9 @@ public class LinkedTransferQueue<E> extends AbstractQueue<E>
+      * @throws NullPointerException if the specified element is null
+      */
+     public boolean offer(E e, long timeout, TimeUnit unit) {
+-        return offer(e);
++        Objects.requireNonNull(e);
++        xfer(e, -1L);
++        return true;
+     }
+ 
+     /**
+@@ -1181,7 +1184,9 @@ public class LinkedTransferQueue<E> extends AbstractQueue<E>
+      * @throws NullPointerException if the specified element is null
+      */
+     public boolean add(E e) {
+-        return offer(e);
++        Objects.requireNonNull(e);
++        xfer(e, -1L);
++        return true;
+     }
+ 
+     /**
+diff --git a/test/jdk/java/util/concurrent/LinkedTransferQueue/SubclassTest.java b/test/jdk/java/util/concurrent/LinkedTransferQueue/SubclassTest.java
+new file mode 100644
+index 00000000000..ed9897f6291
+--- /dev/null
++++ b/test/jdk/java/util/concurrent/LinkedTransferQueue/SubclassTest.java
+@@ -0,0 +1,67 @@
++/*
++ * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
++ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
++ *
++ * This code is free software; you can redistribute it and/or modify it
++ * under the terms of the GNU General Public License version 2 only, as
++ * published by the Free Software Foundation.
++ *
++ * This code is distributed in the hope that it will be useful, but WITHOUT
++ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
++ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
++ * version 2 for more details (a copy is included in the LICENSE file that
++ * accompanied this code).
++ *
++ * You should have received a copy of the GNU General Public License version
++ * 2 along with this work; if not, write to the Free Software Foundation,
++ * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
++ *
++ * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
++ * or visit www.oracle.com if you need additional information or have any
++ * questions.
++ */
++
++/*
++ * @test
++ * @bug 8323659
++ * @summary Ensures that the implementation of LTQ add and put methods does
++ *  not call overridable offer. This test specifically asserts implementation
++ *  details of LTQ. It's not that such impl details cannot change, just that
++ *  such a change should be deliberately done with suitable consideration
++ *  to compatibility.
++ * @run testng SubclassTest
++ */
++
++import java.util.concurrent.LinkedTransferQueue;
++import java.util.concurrent.TimeUnit;
++import org.testng.annotations.Test;
++import static org.testng.Assert.assertEquals;
++
++@Test
++public class SubclassTest {
++
++    public void testPut() {
++        var queue = new TestLinkedTransferQueue();
++        queue.put(new Object());
++        assertEquals(queue.size(), 1);
++    }
++
++    public void testAdd() {
++        var queue = new TestLinkedTransferQueue();
++        queue.add(new Object());
++        assertEquals(queue.size(), 1);
++    }
++
++    public void testTimedOffer() {
++        var queue = new TestLinkedTransferQueue();
++        queue.offer(new Object(), 60, TimeUnit.SECONDS);
++        assertEquals(queue.size(), 1);
++    }
++
++    static class TestLinkedTransferQueue extends LinkedTransferQueue<Object> {
++        @Override
++        public boolean offer(Object obj) {
++            return false;  //  simulate fails to add the given obj
++        }
++    }
++}

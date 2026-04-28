@@ -1,0 +1,1097 @@
+diff --git a/src/java.base/share/classes/java/lang/invoke/MethodType.java b/src/java.base/share/classes/java/lang/invoke/MethodType.java
+index 951d209b69f..447a26e7600 100644
+--- a/src/java.base/share/classes/java/lang/invoke/MethodType.java
++++ b/src/java.base/share/classes/java/lang/invoke/MethodType.java
+@@ -33,7 +33,9 @@ import java.lang.ref.ReferenceQueue;
+ import java.lang.ref.WeakReference;
+ import java.util.Arrays;
+ import java.util.Collections;
++import java.util.function.Supplier;
+ import java.util.List;
++import java.util.Map;
+ import java.util.NoSuchElementException;
+ import java.util.Objects;
+ import java.util.Optional;
+@@ -42,7 +44,8 @@ import java.util.concurrent.ConcurrentHashMap;
+ import java.util.concurrent.ConcurrentMap;
+ import java.util.stream.Stream;
+ 
+-import jdk.internal.access.SharedSecrets;
++import jdk.internal.util.ReferencedKeySet;
++import jdk.internal.util.ReferenceKey;
+ import jdk.internal.vm.annotation.Stable;
+ import sun.invoke.util.BytecodeDescriptor;
+ import sun.invoke.util.VerifyType;
+@@ -227,7 +230,13 @@ class MethodType
+         return new IndexOutOfBoundsException(num.toString());
+     }
+ 
+-    static final ConcurrentWeakInternSet<MethodType> internTable = new ConcurrentWeakInternSet<>();
++    static final ReferencedKeySet<MethodType> internTable =
++        ReferencedKeySet.create(false, true, new Supplier<>() {
++            @Override
++            public Map<ReferenceKey<MethodType>, ReferenceKey<MethodType>> get() {
++                return new ConcurrentHashMap<>(512);
++            }
++        });
+ 
+     static final Class<?>[] NO_PTYPES = {};
+ 
+@@ -405,7 +414,7 @@ class MethodType
+             mt = new MethodType(rtype, ptypes);
+         }
+         mt.form = MethodTypeForm.findForm(mt);
+-        return internTable.add(mt);
++        return internTable.intern(mt);
+     }
+     private static final @Stable MethodType[] objectOnlyTypes = new MethodType[20];
+ 
+@@ -883,10 +892,6 @@ class MethodType
+      * @param x object to compare
+      * @see Object#equals(Object)
+      */
+-    // This implementation may also return true if x is a WeakEntry containing
+-    // a method type that is equal to this. This is an internal implementation
+-    // detail to allow for faster method type lookups.
+-    // See ConcurrentWeakInternSet.WeakEntry#equals(Object)
+     @Override
+     public boolean equals(Object x) {
+         if (this == x) {
+@@ -895,12 +900,6 @@ class MethodType
+         if (x instanceof MethodType) {
+             return equals((MethodType)x);
+         }
+-        if (x instanceof ConcurrentWeakInternSet.WeakEntry) {
+-            Object o = ((ConcurrentWeakInternSet.WeakEntry)x).get();
+-            if (o instanceof MethodType) {
+-                return equals((MethodType)o);
+-            }
+-        }
+         return false;
+     }
+ 
+@@ -1392,112 +1391,4 @@ s.writeObject(this.parameterArray());
+         wrapAlt = null;
+         return mt;
+     }
+-
+-    /**
+-     * Simple implementation of weak concurrent intern set.
+-     *
+-     * @param <T> interned type
+-     */
+-    private static class ConcurrentWeakInternSet<T> {
+-
+-        private final ConcurrentMap<WeakEntry<T>, WeakEntry<T>> map;
+-        private final ReferenceQueue<T> stale;
+-
+-        public ConcurrentWeakInternSet() {
+-            this.map = new ConcurrentHashMap<>(512);
+-            this.stale = SharedSecrets.getJavaLangRefAccess().newNativeReferenceQueue();
+-        }
+-
+-        /**
+-         * Get the existing interned element.
+-         * This method returns null if no element is interned.
+-         *
+-         * @param elem element to look up
+-         * @return the interned element
+-         */
+-        public T get(T elem) {
+-            if (elem == null) throw new NullPointerException();
+-            expungeStaleElements();
+-
+-            WeakEntry<T> value = map.get(elem);
+-            if (value != null) {
+-                T res = value.get();
+-                if (res != null) {
+-                    return res;
+-                }
+-            }
+-            return null;
+-        }
+-
+-        /**
+-         * Interns the element.
+-         * Always returns non-null element, matching the one in the intern set.
+-         * Under the race against another add(), it can return <i>different</i>
+-         * element, if another thread beats us to interning it.
+-         *
+-         * @param elem element to add
+-         * @return element that was actually added
+-         */
+-        public T add(T elem) {
+-            if (elem == null) throw new NullPointerException();
+-
+-            // Playing double race here, and so spinloop is required.
+-            // First race is with two concurrent updaters.
+-            // Second race is with GC purging weak ref under our feet.
+-            // Hopefully, we almost always end up with a single pass.
+-            T interned;
+-            WeakEntry<T> e = new WeakEntry<>(elem, stale);
+-            do {
+-                expungeStaleElements();
+-                WeakEntry<T> exist = map.putIfAbsent(e, e);
+-                interned = (exist == null) ? elem : exist.get();
+-            } while (interned == null);
+-            return interned;
+-        }
+-
+-        private void expungeStaleElements() {
+-            Reference<? extends T> reference;
+-            while ((reference = stale.poll()) != null) {
+-                map.remove(reference);
+-            }
+-        }
+-
+-        private static class WeakEntry<T> extends WeakReference<T> {
+-
+-            public final int hashcode;
+-
+-            public WeakEntry(T key, ReferenceQueue<T> queue) {
+-                super(key, queue);
+-                hashcode = key.hashCode();
+-            }
+-
+-            /**
+-             * This implementation returns {@code true} if {@code obj} is another
+-             * {@code WeakEntry} whose referent is equal to this referent, or
+-             * if {@code obj} is equal to the referent of this. This allows
+-             * lookups to be made without wrapping in a {@code WeakEntry}.
+-             *
+-             * @param obj the object to compare
+-             * @return true if {@code obj} is equal to this or the referent of this
+-             * @see MethodType#equals(Object)
+-             * @see Object#equals(Object)
+-             */
+-            @Override
+-            public boolean equals(Object obj) {
+-                Object mine = get();
+-                if (obj instanceof WeakEntry) {
+-                    Object that = ((WeakEntry) obj).get();
+-                    return (that == null || mine == null) ? (this == obj) : mine.equals(that);
+-                }
+-                return (mine == null) ? (obj == null) : mine.equals(obj);
+-            }
+-
+-            @Override
+-            public int hashCode() {
+-                return hashcode;
+-            }
+-
+-        }
+-    }
+-
+ }
+diff --git a/src/java.base/share/classes/java/lang/runtime/Carriers.java b/src/java.base/share/classes/java/lang/runtime/Carriers.java
+index e0ebc998ee5..a74144fcbeb 100644
+--- a/src/java.base/share/classes/java/lang/runtime/Carriers.java
++++ b/src/java.base/share/classes/java/lang/runtime/Carriers.java
+@@ -35,6 +35,7 @@ import java.util.Objects;
+ import java.util.concurrent.ConcurrentHashMap;
+ 
+ import jdk.internal.misc.Unsafe;
++import jdk.internal.util.ReferencedKeyMap;
+ 
+ import static java.lang.invoke.MethodType.methodType;
+ 
+@@ -366,7 +367,7 @@ final class Carriers {
+          * Cache mapping {@link MethodType} to previously defined {@link CarrierElements}.
+          */
+         private static final Map<MethodType, CarrierElements>
+-                methodTypeCache = ReferencedKeyMap.create(ConcurrentHashMap::new);
++                methodTypeCache = ReferencedKeyMap.create(false, ConcurrentHashMap::new);
+ 
+         /**
+          * Permute a raw constructor and component accessor {@link MethodHandle MethodHandles} to
+diff --git a/src/java.base/share/classes/jdk/internal/access/JavaLangRefAccess.java b/src/java.base/share/classes/jdk/internal/access/JavaLangRefAccess.java
+index b9b180fc2da..ed9967ec3eb 100644
+--- a/src/java.base/share/classes/jdk/internal/access/JavaLangRefAccess.java
++++ b/src/java.base/share/classes/jdk/internal/access/JavaLangRefAccess.java
+@@ -54,7 +54,7 @@ public interface JavaLangRefAccess {
+     /**
+      * Constructs a new NativeReferenceQueue.
+      *
+-     * Invoked by MethodType.ConcurrentWeakInternSet
++     * Invoked by jdk.internal.util.ReferencedKeyMap
+      */
+     <T> ReferenceQueue<T> newNativeReferenceQueue();
+ }
+diff --git a/src/java.base/share/classes/java/lang/runtime/ReferenceKey.java b/src/java.base/share/classes/jdk/internal/util/ReferenceKey.java
+similarity index 81%
+rename from src/java.base/share/classes/java/lang/runtime/ReferenceKey.java
+rename to src/java.base/share/classes/jdk/internal/util/ReferenceKey.java
+index 983d81d3a0f..a193794fe70 100644
+--- a/src/java.base/share/classes/java/lang/runtime/ReferenceKey.java
++++ b/src/java.base/share/classes/jdk/internal/util/ReferenceKey.java
+@@ -23,12 +23,9 @@
+  * questions.
+  */
+ 
+-package java.lang.runtime;
++package jdk.internal.util;
+ 
+-import java.lang.ref.ReferenceQueue;
+-import java.lang.ref.SoftReference;
+-import java.lang.ref.WeakReference;
+-import java.util.Objects;
++import java.lang.ref.Reference;
+ 
+ /**
+  * View/wrapper of keys used by the backing {@link ReferencedKeyMap}.
+@@ -39,11 +36,8 @@ import java.util.Objects;
+  * @param <T> key type
+  *
+  * @since 21
+- *
+- * Warning: This class is part of PreviewFeature.Feature.STRING_TEMPLATES.
+- *          Do not rely on its availability.
+  */
+-sealed interface ReferenceKey<T> permits StrongReferenceKey, WeakReferenceKey, SoftReferenceKey {
++public sealed interface ReferenceKey<T> permits StrongReferenceKey, WeakReferenceKey, SoftReferenceKey {
+     /**
+      * {@return the value of the unwrapped key}
+      */
+diff --git a/src/java.base/share/classes/java/lang/runtime/ReferencedKeyMap.java b/src/java.base/share/classes/jdk/internal/util/ReferencedKeyMap.java
+similarity index 63%
+rename from src/java.base/share/classes/java/lang/runtime/ReferencedKeyMap.java
+rename to src/java.base/share/classes/jdk/internal/util/ReferencedKeyMap.java
+index 1ded08c4cba..f102e3c94e1 100644
+--- a/src/java.base/share/classes/java/lang/runtime/ReferencedKeyMap.java
++++ b/src/java.base/share/classes/jdk/internal/util/ReferencedKeyMap.java
+@@ -23,7 +23,7 @@
+  * questions.
+  */
+ 
+-package java.lang.runtime;
++package jdk.internal.util;
+ 
+ import java.lang.ref.Reference;
+ import java.lang.ref.ReferenceQueue;
+@@ -37,9 +37,12 @@ import java.util.Map;
+ import java.util.Set;
+ import java.util.concurrent.ConcurrentHashMap;
+ import java.util.function.Supplier;
++import java.util.function.UnaryOperator;
+ import java.util.stream.Collectors;
+ import java.util.stream.Stream;
+ 
++import jdk.internal.access.SharedSecrets;
++
+ /**
+  * This class provides management of {@link Map maps} where it is desirable to
+  * remove entries automatically when the key is garbage collected. This is
+@@ -78,11 +81,8 @@ import java.util.stream.Stream;
+  * @param <V> the type of mapped values
+  *
+  * @since 21
+- *
+- * Warning: This class is part of PreviewFeature.Feature.STRING_TEMPLATES.
+- *          Do not rely on its availability.
+  */
+-final class ReferencedKeyMap<K, V> implements Map<K, V> {
++public final class ReferencedKeyMap<K, V> implements Map<K, V> {
+     /**
+      * true if {@link SoftReference} keys are to be used,
+      * {@link WeakReference} otherwise.
+@@ -95,54 +95,61 @@ final class ReferencedKeyMap<K, V> implements Map<K, V> {
+     private final Map<ReferenceKey<K>, V> map;
+ 
+     /**
+-     * {@link ReferenceQueue} for cleaning up {@link WeakReferenceKey EntryKeys}.
++     * {@link ReferenceQueue} for cleaning up entries.
+      */
+     private final ReferenceQueue<K> stale;
+ 
+     /**
+      * Private constructor.
+      *
+-     * @param isSoft  true if {@link SoftReference} keys are to
+-     *                be used, {@link WeakReference} otherwise.
+-     * @param map     backing map
++     * @param isSoft          true if {@link SoftReference} keys are to
++     *                        be used, {@link WeakReference} otherwise.
++     * @param map             backing map
++     * @param stale           {@link ReferenceQueue} for cleaning up entries
+      */
+-    private ReferencedKeyMap(boolean isSoft, Map<ReferenceKey<K>, V> map) {
++    private ReferencedKeyMap(boolean isSoft, Map<ReferenceKey<K>, V> map, ReferenceQueue<K> stale) {
+         this.isSoft = isSoft;
+         this.map = map;
+-        this.stale = new ReferenceQueue<>();
++        this.stale = stale;
+     }
+ 
+     /**
+      * Create a new {@link ReferencedKeyMap} map.
+      *
+-     * @param isSoft    true if {@link SoftReference} keys are to
+-     *                  be used, {@link WeakReference} otherwise.
+-     * @param supplier  {@link Supplier} of the backing map
++     * @param isSoft          true if {@link SoftReference} keys are to
++     *                        be used, {@link WeakReference} otherwise.
++     * @param supplier        {@link Supplier} of the backing map
+      *
+      * @return a new map with {@link Reference} keys
+      *
+      * @param <K> the type of keys maintained by the new map
+      * @param <V> the type of mapped values
+      */
+-    static <K, V> ReferencedKeyMap<K, V>
++    public static <K, V> ReferencedKeyMap<K, V>
+     create(boolean isSoft, Supplier<Map<ReferenceKey<K>, V>> supplier) {
+-        return new ReferencedKeyMap<K, V>(isSoft, supplier.get());
++        return create(isSoft, false, supplier);
+     }
+ 
+     /**
+-     * Create a new {@link ReferencedKeyMap} map using
+-     * {@link WeakReference} keys.
++     * Create a new {@link ReferencedKeyMap} map.
+      *
+-     * @param supplier  {@link Supplier} of the backing map
++     * @param isSoft          true if {@link SoftReference} keys are to
++     *                        be used, {@link WeakReference} otherwise.
++     * @param useNativeQueue  true if uses NativeReferenceQueue
++     *                        otherwise use {@link ReferenceQueue}.
++     * @param supplier        {@link Supplier} of the backing map
+      *
+      * @return a new map with {@link Reference} keys
+      *
+      * @param <K> the type of keys maintained by the new map
+      * @param <V> the type of mapped values
+      */
+-    static <K, V> ReferencedKeyMap<K, V>
+-    create(Supplier<Map<ReferenceKey<K>, V>> supplier) {
+-        return new ReferencedKeyMap<K, V>(false, supplier.get());
++    public static <K, V> ReferencedKeyMap<K, V>
++    create(boolean isSoft, boolean useNativeQueue, Supplier<Map<ReferenceKey<K>, V>> supplier) {
++        return new ReferencedKeyMap<K, V>(isSoft, supplier.get(),
++                useNativeQueue ? SharedSecrets.getJavaLangRefAccess().newNativeReferenceQueue()
++                               : new ReferenceQueue<>()
++                );
+     }
+ 
+     /**
+@@ -320,10 +327,9 @@ final class ReferencedKeyMap<K, V> implements Map<K, V> {
+     /**
+      * Removes enqueued weak references from map.
+      */
+-    @SuppressWarnings("unchecked")
+     public void removeStaleReferences() {
+         while (true) {
+-            WeakReferenceKey<K> key = (WeakReferenceKey<K>)stale.poll();
++            Object key = stale.poll();
+             if (key == null) {
+                 break;
+             }
+@@ -331,4 +337,106 @@ final class ReferencedKeyMap<K, V> implements Map<K, V> {
+         }
+     }
+ 
++    /**
++     * Puts an entry where the key and the value are the same. Used for
++     * interning values in a set.
++     *
++     * @implNote Requires a {@link ReferencedKeyMap} whose {@code V} type
++     * is a {@code ReferenceKey<K>}. Otherwise, a {@link ClassCastException} will
++     * be thrown.
++     *
++     * @param setMap    {@link ReferencedKeyMap} where interning takes place
++     * @param key       key to add
++     *
++     * @param <T> type of key
++     *
++     * @return the old key instance if found otherwise the new key instance
++     *
++     * @throws ClassCastException if {@code V} is not {@code EntryKey<T>}
++     */
++    static <T> T intern(ReferencedKeyMap<T, ReferenceKey<T>> setMap, T key) {
++        T value = existingKey(setMap, key);
++        if (value != null) {
++            return value;
++        }
++        return internKey(setMap, key);
++    }
++
++    /**
++     * Puts an entry where the key and the value are the same. Used for
++     * interning values in a set.
++     *
++     * @implNote Requires a {@link ReferencedKeyMap} whose {@code V} type
++     * is a {@code ReferenceKey<K>}. Otherwise, a {@link ClassCastException} will
++     * be thrown.
++     *
++     * @param setMap    {@link ReferencedKeyMap} where interning takes place
++     * @param key       key to add
++     * @param interner  operation to apply to key before adding to map
++     *
++     * @param <T> type of key
++     *
++     * @return the old key instance if found otherwise the new key instance
++     *
++     * @throws ClassCastException if {@code V} is not {@code EntryKey<T>}
++     *
++     * @implNote This version of intern should not be called during phase1
++     * using a lambda. Use an UnaryOperator instance instead.
++     */
++    static <T> T intern(ReferencedKeyMap<T, ReferenceKey<T>> setMap, T key, UnaryOperator<T> interner) {
++        T value = existingKey(setMap, key);
++        if (value != null) {
++            return value;
++        }
++        key = interner.apply(key);
++        return internKey(setMap, key);
++    }
++
++    /**
++     * Check if the key already exists in the map.
++     *
++     * @param setMap    {@link ReferencedKeyMap} where interning takes place
++     * @param key       key to test
++     *
++     * @param <T> type of key
++     *
++     * @return key if found otherwise null
++     */
++    private static <T> T existingKey(ReferencedKeyMap<T, ReferenceKey<T>> setMap, T key) {
++        setMap.removeStaleReferences();
++        ReferenceKey<T> entryKey = setMap.get(setMap.lookupKey(key));
++        return entryKey != null ? entryKey.get() : null;
++    }
++
++    /**
++     * Attempt to add key to map.
++     *
++     * @param setMap    {@link ReferencedKeyMap} where interning takes place
++     * @param key       key to add
++     *
++     * @param <T> type of key
++     *
++     * @return the old key instance if found otherwise the new key instance
++     */
++    private static <T> T internKey(ReferencedKeyMap<T, ReferenceKey<T>> setMap, T key) {
++        ReferenceKey<T> entryKey = setMap.entryKey(key);
++        T interned;
++        do {
++            setMap.removeStaleReferences();
++            ReferenceKey<T> existing = setMap.map.putIfAbsent(entryKey, entryKey);
++            if (existing == null) {
++                return key;
++            } else {
++                // If {@code putIfAbsent} returns non-null then was actually a
++                // {@code replace} and older key was used. In that case the new
++                // key was not used and the reference marked stale.
++                interned = existing.get();
++                if (interned != null) {
++                    entryKey.unused();
++                }
++            }
++        } while (interned == null);
++        return interned;
++    }
++
+ }
+diff --git a/src/java.base/share/classes/jdk/internal/util/ReferencedKeySet.java b/src/java.base/share/classes/jdk/internal/util/ReferencedKeySet.java
+new file mode 100644
+index 00000000000..807eea87dfe
+--- /dev/null
++++ b/src/java.base/share/classes/jdk/internal/util/ReferencedKeySet.java
+@@ -0,0 +1,205 @@
++/*
++ * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
++ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
++ *
++ * This code is free software; you can redistribute it and/or modify it
++ * under the terms of the GNU General Public License version 2 only, as
++ * published by the Free Software Foundation.  Oracle designates this
++ * particular file as subject to the "Classpath" exception as provided
++ * by Oracle in the LICENSE file that accompanied this code.
++ *
++ * This code is distributed in the hope that it will be useful, but WITHOUT
++ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
++ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
++ * version 2 for more details (a copy is included in the LICENSE file that
++ * accompanied this code).
++ *
++ * You should have received a copy of the GNU General Public License version
++ * 2 along with this work; if not, write to the Free Software Foundation,
++ * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
++ *
++ * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
++ * or visit www.oracle.com if you need additional information or have any
++ * questions.
++ */
++
++package jdk.internal.util;
++
++import java.lang.ref.Reference;
++import java.lang.ref.ReferenceQueue;
++import java.lang.ref.SoftReference;
++import java.lang.ref.WeakReference;
++import java.util.*;
++import java.util.concurrent.ConcurrentHashMap;
++import java.util.function.Supplier;
++import java.util.function.UnaryOperator;
++
++/**
++ * This class provides management of {@link Set set} where it is desirable to
++ * remove elements automatically when the element is garbage collected. This is
++ * accomplished by using a backing map where the keys and values are either a
++ * {@link WeakReference} or a {@link SoftReference}.
++ * <p>
++ * To create a {@link ReferencedKeySet} the user must provide a {@link Supplier}
++ * of the backing map and whether {@link WeakReference} or
++ * {@link SoftReference} is to be used.
++ * {@snippet :
++ * Set<Long> set;
++ *
++ * set = ReferencedKeySet.create(false, HashMap::new);
++ * set.add(30_000_000L);
++ * set.add(30_000_001L);
++ * set.add(30_000_002L);
++ * set.add(30_000_003L);
++ * set.add(30_000_004L);
++ *
++ * set = ReferencedKeySet.create(true, ConcurrentHashMap::new);
++ * set.add(40_000_000L);
++ * set.add(40_000_001L);
++ * set.add(40_000_002L);
++ * set.add(40_000_003L);
++ * set.add(40_000_004L);
++ * }
++ *
++ * @implNote Care must be given that the backing map does replacement by
++ * replacing the value in the map entry instead of deleting the old entry and
++ * adding a new entry, otherwise replaced entries may end up with a strongly
++ * referenced key. {@link HashMap} and {@link ConcurrentHashMap} are known
++ * to be safe.
++ *
++ * @param <T> the type of elements maintained by this set
++ */
++public final class ReferencedKeySet<T> extends AbstractSet<T> {
++    /**
++     * Backing {@link ReferencedKeySet} map.
++     */
++    final ReferencedKeyMap<T, ReferenceKey<T>> map;
++
++    /**
++     * Private constructor.
++     *
++     * @param map     backing map
++     */
++    private ReferencedKeySet(ReferencedKeyMap<T, ReferenceKey<T>> map) {
++        this.map = map;
++    }
++
++    /**
++     * Create a new {@link ReferencedKeySet} elements.
++     *
++     * @param isSoft          true if {@link SoftReference} elements are to
++     *                        be used, {@link WeakReference} otherwise.
++     * @param supplier        {@link Supplier} of the backing map
++     *
++     * @return a new set with {@link Reference} elements
++     *
++     * @param <E> the type of elements maintained by this set
++     */
++    public static <E> ReferencedKeySet<E>
++    create(boolean isSoft, Supplier<Map<ReferenceKey<E>, ReferenceKey<E>>> supplier) {
++        return create(isSoft, false, supplier);
++    }
++
++    /**
++     * Create a new {@link ReferencedKeySet} elements.
++     *
++     * @param isSoft          true if {@link SoftReference} elements are to
++     *                        be used, {@link WeakReference} otherwise.
++     * @param useNativeQueue  true if uses NativeReferenceQueue
++     *                        otherwise use {@link ReferenceQueue}.
++     * @param supplier        {@link Supplier} of the backing map
++     *
++     * @return a new set with {@link Reference} elements
++     *
++     * @param <E> the type of elements maintained by this set
++     */
++    public static <E> ReferencedKeySet<E>
++    create(boolean isSoft, boolean useNativeQueue, Supplier<Map<ReferenceKey<E>, ReferenceKey<E>>> supplier) {
++         return new ReferencedKeySet<>(ReferencedKeyMap.create(isSoft, useNativeQueue, supplier));
++    }
++
++    /**
++     * Removes enqueued weak references from set.
++     */
++    public void removeStaleReferences() {
++        map.removeStaleReferences();
++    }
++
++    @Override
++    public Iterator<T> iterator() {
++        return map.keySet().iterator();
++    }
++
++    @Override
++    public int size() {
++        return map.size();
++    }
++
++    @Override
++    public boolean isEmpty() {
++        return map.isEmpty();
++    }
++
++    @Override
++    @SuppressWarnings("unchecked")
++    public boolean contains(Object o) {
++        return map.containsKey((T)o);
++    }
++
++    @Override
++    public boolean add(T e) {
++        return intern(e) == null;
++    }
++
++    @Override
++    public boolean remove(Object o) {
++        return map.remove(o) != null;
++    }
++
++    @Override
++    public void clear() {
++        map.clear();
++    }
++
++    /**
++     * Gets an existing element from the set, returning null if not present or
++     * the old element if previously added.
++     *
++     * @param e  element to get
++     *
++     * @return the old element if present, otherwise, null
++     */
++    public T get(T e) {
++        ReferenceKey<T> key = map.get(e);
++
++        return key == null ? null : key.get();
++    }
++
++    /**
++     * Intern an element to the set, returning the element if newly added or the
++     * old element if previously added.
++     *
++     * @param e  element to add
++     *
++     * @return the old element if present, otherwise, the new element
++     */
++    public T intern(T e) {
++        return ReferencedKeyMap.intern(map, e);
++    }
++
++    /**
++     * Intern an element to the set, returning the element if newly added or the
++     * old element if previously added.
++     *
++     * @param e         element to add
++     * @param interner  operation to apply to key before adding to set
++     *
++     * @return the old element if present, otherwise, the new element
++     *
++     * @implNote This version of intern should not be called during phase1
++     * using a lambda. Use an UnaryOperator instance instead.
++     */
++    public T intern(T e, UnaryOperator<T> interner) {
++        return ReferencedKeyMap.intern(map, e, interner);
++    }
++}
+diff --git a/src/java.base/share/classes/java/lang/runtime/SoftReferenceKey.java b/src/java.base/share/classes/jdk/internal/util/SoftReferenceKey.java
+similarity index 94%
+rename from src/java.base/share/classes/java/lang/runtime/SoftReferenceKey.java
+rename to src/java.base/share/classes/jdk/internal/util/SoftReferenceKey.java
+index 3bb524e13dd..f7e94e79f0b 100644
+--- a/src/java.base/share/classes/java/lang/runtime/SoftReferenceKey.java
++++ b/src/java.base/share/classes/jdk/internal/util/SoftReferenceKey.java
+@@ -23,7 +23,7 @@
+  * questions.
+  */
+ 
+-package java.lang.runtime;
++package jdk.internal.util;
+ 
+ import java.lang.ref.ReferenceQueue;
+ import java.lang.ref.SoftReference;
+@@ -35,9 +35,6 @@ import java.util.Objects;
+  * @param <T> key type
+  *
+  * @since 21
+- *
+- * Warning: This class is part of PreviewFeature.Feature.STRING_TEMPLATES.
+- *          Do not rely on its availability.
+  */
+ final class SoftReferenceKey<T> extends SoftReference<T> implements ReferenceKey<T> {
+     /**
+@@ -76,6 +73,8 @@ final class SoftReferenceKey<T> extends SoftReference<T> implements ReferenceKey
+         if (obj instanceof ReferenceKey<?> key) {
+             obj = key.get();
+         }
++        // Note: refersTo is insufficient since keys require equivalence.
++        // refersTo would also require a cast to type T.
+         return Objects.equals(get(), obj);
+     }
+ 
+diff --git a/src/java.base/share/classes/java/lang/runtime/StrongReferenceKey.java b/src/java.base/share/classes/jdk/internal/util/StrongReferenceKey.java
+similarity index 93%
+rename from src/java.base/share/classes/java/lang/runtime/StrongReferenceKey.java
+rename to src/java.base/share/classes/jdk/internal/util/StrongReferenceKey.java
+index 3665cad96cc..e3264cd0dca 100644
+--- a/src/java.base/share/classes/java/lang/runtime/StrongReferenceKey.java
++++ b/src/java.base/share/classes/jdk/internal/util/StrongReferenceKey.java
+@@ -23,7 +23,7 @@
+  * questions.
+  */
+ 
+-package java.lang.runtime;
++package jdk.internal.util;
+ 
+ import java.util.Objects;
+ 
+@@ -34,9 +34,6 @@ import java.util.Objects;
+  * @param <T> key type
+  *
+  * @since 21
+- *
+- * Warning: This class is part of PreviewFeature.Feature.STRING_TEMPLATES.
+- *          Do not rely on its availability.
+  */
+ final class StrongReferenceKey<T> implements ReferenceKey<T> {
+     T key;
+diff --git a/src/java.base/share/classes/java/lang/runtime/WeakReferenceKey.java b/src/java.base/share/classes/jdk/internal/util/WeakReferenceKey.java
+similarity index 94%
+rename from src/java.base/share/classes/java/lang/runtime/WeakReferenceKey.java
+rename to src/java.base/share/classes/jdk/internal/util/WeakReferenceKey.java
+index 5d18c2e45a0..3fe6d6026d7 100644
+--- a/src/java.base/share/classes/java/lang/runtime/WeakReferenceKey.java
++++ b/src/java.base/share/classes/jdk/internal/util/WeakReferenceKey.java
+@@ -23,7 +23,7 @@
+  * questions.
+  */
+ 
+-package java.lang.runtime;
++package jdk.internal.util;
+ 
+ import java.lang.ref.ReferenceQueue;
+ import java.lang.ref.WeakReference;
+@@ -35,9 +35,6 @@ import java.util.Objects;
+  * @param <T> key type
+  *
+  * @since 21
+- *
+- * Warning: This class is part of PreviewFeature.Feature.STRING_TEMPLATES.
+- *          Do not rely on its availability.
+  */
+ final class WeakReferenceKey<T> extends WeakReference<T> implements ReferenceKey<T> {
+     /**
+@@ -76,6 +73,8 @@ final class WeakReferenceKey<T> extends WeakReference<T> implements ReferenceKey
+         if (obj instanceof ReferenceKey<?> key) {
+             obj = key.get();
+         }
++        // Note: refersTo is insufficient since keys require equivalence.
++        // refersTo would also require a cast to type T.
+         return Objects.equals(get(), obj);
+     }
+ 
+diff --git a/test/jdk/java/lang/runtime/ReferencedKeyTest.java b/test/jdk/java/lang/runtime/ReferencedKeyTest.java
+deleted file mode 100644
+index 9234cffb98a..00000000000
+--- a/test/jdk/java/lang/runtime/ReferencedKeyTest.java
++++ /dev/null
+@@ -1,109 +0,0 @@
+-/*
+- * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
+- * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+- *
+- * This code is free software; you can redistribute it and/or modify it
+- * under the terms of the GNU General Public License version 2 only, as
+- * published by the Free Software Foundation.
+- *
+- * This code is distributed in the hope that it will be useful, but WITHOUT
+- * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
+- * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
+- * version 2 for more details (a copy is included in the LICENSE file that
+- * accompanied this code).
+- *
+- * You should have received a copy of the GNU General Public License version
+- * 2 along with this work; if not, write to the Free Software Foundation,
+- * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
+- *
+- * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
+- * or visit www.oracle.com if you need additional information or have any
+- * questions.
+- */
+-
+-/*
+- * @test
+- * @summary Test features provided by the ReferencedKeyMap class.
+- * @modules java.base/java.lang.runtime
+- * @enablePreview
+- * @compile --patch-module java.base=${test.src} ReferencedKeyTest.java
+- * @run main/othervm --patch-module java.base=${test.class.path} java.lang.runtime.ReferencedKeyTest
+- */
+-
+-package java.lang.runtime;
+-
+-import java.util.HashMap;
+-import java.util.Map;
+-import java.util.concurrent.ConcurrentHashMap;
+-import java.util.function.Supplier;
+-
+-public class ReferencedKeyTest {
+-    static long BASE_KEY = 10_000_000L;
+-
+-    public static void main(String[] args) throws Throwable {
+-        mapTest(false, HashMap::new);
+-        mapTest(true, HashMap::new);
+-        mapTest(false, ConcurrentHashMap::new);
+-        mapTest(true, ConcurrentHashMap::new);
+-    }
+-
+-    static void assertTrue(boolean test, String message) {
+-        if (!test) {
+-            throw new RuntimeException(message);
+-        }
+-    }
+-
+-    static void  mapTest(boolean isSoft, Supplier<Map<ReferenceKey<Long>, String>> supplier) {
+-        Map<Long, String> map = ReferencedKeyMap.create(isSoft, supplier);
+-        populate(map);
+-        collect();
+-        // assertTrue(map.isEmpty() || isSoft, "Weak not collecting");
+-        populate(map);
+-        methods(map);
+-    }
+-
+-    static void methods(Map<Long, String> map) {
+-        assertTrue(map.size() == 26, "missing key");
+-        assertTrue(map.containsKey(BASE_KEY + 'a' -'a'), "missing key");
+-        assertTrue(map.get(BASE_KEY + 'b' -'a').equals("b"), "wrong key");
+-        assertTrue(map.containsValue("c"), "missing value");
+-        map.remove(BASE_KEY + 'd' -'a');
+-        assertTrue(map.get(BASE_KEY + 'd' -'a') == null, "not removed");
+-        map.putAll(Map.of(1L, "A", 2L, "B"));
+-        assertTrue(map.get(2L).equals("B"), "collection not added");
+-        assertTrue(map.keySet().contains(1L), "key missing");
+-        assertTrue(map.values().contains("A"), "key missing");
+-        assertTrue(map.entrySet().contains(Map.entry(1L, "A")), "key missing");
+-        map.putIfAbsent(3L, "C");
+-        assertTrue(map.get(3L).equals("C"), "key missing");
+-        map.putIfAbsent(2L, "D");
+-        assertTrue(map.get(2L).equals("B"), "key replaced");
+-        map.remove(3L);
+-        assertTrue(map.get(3L) == null, "key not removed");
+-        map.replace(2L, "D");
+-        assertTrue(map.get(2L).equals("D"), "key not replaced");
+-        map.replace(2L, "B", "E");
+-        assertTrue(map.get(2L).equals("D"), "key replaced");
+-    }
+-
+-    static void collect() {
+-        System.gc();
+-        sleep();
+-    }
+-
+-    static void sleep() {
+-        try {
+-            Thread.sleep(100L);
+-        } catch (InterruptedException e) {
+-            throw new RuntimeException(e);
+-        }
+-    }
+-
+-    static void populate(Map<Long, String> map) {
+-        for (int i = 0; i < 26; i++) {
+-            Long key = BASE_KEY + i;
+-            String value = String.valueOf((char) ('a' + i));
+-            map.put(key, value);
+-        }
+-    }
+-}
+diff --git a/test/jdk/jdk/internal/util/ReferencedKeyTest.java b/test/jdk/jdk/internal/util/ReferencedKeyTest.java
+new file mode 100644
+index 00000000000..c5edaedd2e2
+--- /dev/null
++++ b/test/jdk/jdk/internal/util/ReferencedKeyTest.java
+@@ -0,0 +1,175 @@
++/*
++ * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
++ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
++ *
++ * This code is free software; you can redistribute it and/or modify it
++ * under the terms of the GNU General Public License version 2 only, as
++ * published by the Free Software Foundation.
++ *
++ * This code is distributed in the hope that it will be useful, but WITHOUT
++ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
++ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
++ * version 2 for more details (a copy is included in the LICENSE file that
++ * accompanied this code).
++ *
++ * You should have received a copy of the GNU General Public License version
++ * 2 along with this work; if not, write to the Free Software Foundation,
++ * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
++ *
++ * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
++ * or visit www.oracle.com if you need additional information or have any
++ * questions.
++ */
++
++/*
++ * @test
++ * @bug 8285932 8310913
++ * @summary Test features provided by the ReferencedKeyMap/ReferencedKeySet classes.
++ * @modules java.base/jdk.internal.util
++ * @compile --patch-module java.base=${test.src} ReferencedKeyTest.java
++ * @run main/othervm --patch-module java.base=${test.class.path} jdk.internal.util.ReferencedKeyTest
++ */
++
++package jdk.internal.util;
++
++import java.lang.ref.PhantomReference;
++import java.lang.ref.Reference;
++import java.lang.ref.ReferenceQueue;
++import java.util.HashMap;
++import java.util.Map;
++import java.util.Set;
++import java.util.concurrent.ConcurrentHashMap;
++import java.util.function.BooleanSupplier;
++import java.util.function.Supplier;
++
++public class ReferencedKeyTest {
++    static long BASE_KEY = 10_000_000L;
++
++    public static void main(String[] args) {
++        mapTest(false, HashMap::new);
++        mapTest(true, HashMap::new);
++        mapTest(false, ConcurrentHashMap::new);
++        mapTest(true, ConcurrentHashMap::new);
++
++        setTest(false, HashMap::new);
++        setTest(true, HashMap::new);
++        setTest(false, ConcurrentHashMap::new);
++        setTest(true, ConcurrentHashMap::new);
++    }
++
++    static void assertTrue(boolean test, String message) {
++        if (!test) {
++            throw new RuntimeException(message);
++        }
++    }
++
++    static void mapTest(boolean isSoft, Supplier<Map<ReferenceKey<Long>, String>> supplier) {
++        Map<Long, String> map = ReferencedKeyMap.create(isSoft, supplier);
++        populate(map);
++        if (!isSoft) {
++            if (!collect(() -> map.isEmpty())) {
++                throw new RuntimeException("WeakReference map not collecting!");
++            }
++        }
++        populate(map);
++        methods(map);
++    }
++
++    static void setTest(boolean isSoft, Supplier<Map<ReferenceKey<Long>, ReferenceKey<Long>>> supplier) {
++        ReferencedKeySet<Long> set = ReferencedKeySet.create(isSoft, supplier);
++        populate(set);
++        if (!isSoft) {
++            if (!collect(() -> set.isEmpty())) {
++                throw new RuntimeException("WeakReference set not collecting!");
++            }
++        }
++        populate(set);
++        methods(set);
++    }
++
++    static void methods(Map<Long, String> map) {
++        assertTrue(map.size() == 26, "missing key");
++        assertTrue(map.containsKey(BASE_KEY + 'a' -'a'), "missing key");
++        assertTrue(map.get(BASE_KEY + 'b' -'a').equals("b"), "wrong key");
++        assertTrue(map.containsValue("c"), "missing value");
++        map.remove(BASE_KEY + 'd' -'a');
++        assertTrue(map.get(BASE_KEY + 'd' -'a') == null, "not removed");
++        map.putAll(Map.of(1L, "A", 2L, "B"));
++        assertTrue(map.get(2L).equals("B"), "collection not added");
++        assertTrue(map.containsKey(1L), "key missing");
++        assertTrue(map.containsValue("A"), "key missing");
++        assertTrue(map.entrySet().contains(Map.entry(1L, "A")), "key missing");
++        map.putIfAbsent(3L, "C");
++        assertTrue(map.get(3L).equals("C"), "key missing");
++        map.putIfAbsent(2L, "D");
++        assertTrue(map.get(2L).equals("B"), "key replaced");
++        map.remove(3L);
++        assertTrue(map.get(3L) == null, "key not removed");
++        map.replace(2L, "D");
++        assertTrue(map.get(2L).equals("D"), "key not replaced");
++        map.replace(2L, "B", "E");
++        assertTrue(map.get(2L).equals("D"), "key replaced");
++    }
++
++    static void methods(ReferencedKeySet<Long> set) {
++        assertTrue(set.size() == 26, "missing key");
++        assertTrue(set.contains(BASE_KEY + 3), "missing key");
++        set.remove(BASE_KEY + 3);
++        assertTrue(!set.contains(BASE_KEY + 3), "not removed");
++        Long element1 = set.get(BASE_KEY + 2);
++        Long element2 = set.get(BASE_KEY + 3);
++        Long element3 = set.get(BASE_KEY + 4);
++        Long intern1 = set.intern(BASE_KEY + 2);
++        Long intern2 = set.intern(BASE_KEY + 3);
++        Long intern3 = set.intern(BASE_KEY + 4, e -> e);
++        assertTrue(element1 != null, "missing key");
++        assertTrue(element2 == null, "not removed");
++        assertTrue(element1 == intern1, "intern failed"); // must be same object
++        assertTrue(intern2 != null, "intern failed");
++        assertTrue(element3 == intern3, "intern failed");
++    }
++
++    // Borrowed from jdk.test.lib.util.ForceGC but couldn't use from java.base/jdk.internal.util
++    static boolean collect(BooleanSupplier booleanSupplier) {
++        ReferenceQueue<Object> queue = new ReferenceQueue<>();
++        Object obj = new Object();
++        PhantomReference<Object> ref = new PhantomReference<>(obj, queue);
++        obj = null;
++        Reference.reachabilityFence(obj);
++        Reference.reachabilityFence(ref);
++        long timeout = 1000L;
++        long quanta = 200L;
++        long retries = timeout / quanta;
++
++        for (; retries >= 0; retries--) {
++            if (booleanSupplier.getAsBoolean()) {
++                return true;
++            }
++
++            System.gc();
++
++            try {
++                queue.remove(quanta);
++            } catch (InterruptedException ie) {
++                // ignore, the loop will try again
++            }
++        }
++
++        return booleanSupplier.getAsBoolean();
++    }
++
++    static void populate(Map<Long, String> map) {
++        for (int i = 0; i < 26; i++) {
++            Long key = BASE_KEY + i;
++            String value = String.valueOf((char) ('a' + i));
++            map.put(key, value);
++        }
++    }
++
++    static void populate(Set<Long> set) {
++        for (int i = 0; i < 26; i++) {
++            Long value = BASE_KEY + i;
++            set.add(value);
++        }
++    }
++}
