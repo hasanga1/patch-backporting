@@ -954,6 +954,9 @@ def main() -> None:
                         help="OpenRouter model, e.g. anthropic/claude-3.5-sonnet")
     parser.add_argument("--skip-validation", action="store_true",
                         help="Skip Docker build/test; rely on git-apply check only")
+    parser.add_argument("--skip-types", nargs="+", metavar="TYPE", default=[],
+                        help="Skip rows whose Type column matches any of these values "
+                             "(case-insensitive). E.g. --skip-types TYPE-I TYPE-II")
     parser.add_argument("--debug",      action="store_true",
                         help="Enable DEBUG logging and verbose agent output")
     args = parser.parse_args()
@@ -991,15 +994,25 @@ def main() -> None:
     if start > end:
         parser.error(f"--start-row ({start}) > --end-row ({end})")
 
+    skip_types = {t.upper() for t in args.skip_types}
+
     logger.info(
         f"Processing rows {start}–{end} of {total} "
         f"| model: {model} | output: {args.output}"
         + (" | validation: SKIPPED" if args.skip_validation else "")
+        + (f" | skipping types: {sorted(skip_types)}" if skip_types else "")
     )
 
     results = []
     for row_num in range(start, end + 1):
         row = rows[row_num - 1]
+        row_type = row.get("Type", "").strip().upper()
+        if skip_types and row_type in skip_types:
+            logger.info(
+                f"=== Row {row_num}/{end}  project={row.get('Project','?')}  "
+                f"type={row_type} — SKIPPED (--skip-types) ==="
+            )
+            continue
         logger.info(
             f"=== Row {row_num}/{end}  project={row.get('Project','?')}  "
             f"orig={row.get('Original Commit','?')[:8]}  "
