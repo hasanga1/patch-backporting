@@ -180,6 +180,23 @@ def _filter_source_only_patch(patch_text: str) -> str:
 # Helpers
 # ---------------------------------------------------------------------------
 
+def _safe_clean(repo: git.Repo) -> None:
+    """
+    Run 'git clean -fdx', tolerating permission-denied errors on Docker-created
+    build artifacts (target/, .gradle/, etc.) that are owned by root inside the
+    container but not by the host user.  Source files are already reset to a clean
+    state by the preceding 'git reset --hard', so leftover build dirs are harmless.
+    """
+    try:
+        repo.git.clean("-fdx")
+    except git.exc.GitCommandError as exc:
+        stderr = getattr(exc, "stderr", str(exc))
+        if "Permission denied" in stderr or "Directory not empty" in stderr:
+            logger.debug(f"git clean -fdx: ignoring permission error on Docker artifacts: {stderr[:300]}")
+        else:
+            raise
+
+
 def _resolve_commit(repo: git.Repo, ref: str) -> str:
     try:
         return repo.git.rev_parse(ref)
@@ -433,7 +450,7 @@ def _do_backport_java(
     complete_patch = "\n".join(portgpt_project.succeeded_patches)
 
     # patch_dataset_dir is always empty → copy loop is a no-op
-    portgpt_project.repo.git.clean("-fdx")
+    _safe_clean(portgpt_project.repo)
     for filename in os.listdir(data.patch_dataset_dir):
         src = os.path.join(data.patch_dataset_dir, filename)
         dst = os.path.join(data.project_dir, filename)
@@ -752,7 +769,7 @@ def process_row(
 
         # ── 7. Run PortGPT on the FILTERED patch ─────────────────────────────
         portgpt_project = Project(data)
-        portgpt_project.repo.git.clean("-fdx")
+        _safe_clean(portgpt_project.repo)
 
         logger.info(f"Row {row_num}: starting PortGPT backport agent")
         portgpt_success, llm_was_called, hunk_details, portgpt_validation, num_applied = (
@@ -848,8 +865,11 @@ def process_row(
         if original_head:
             try:
                 restore_repo = git.Repo(repo_path)
-                restore_repo.git.checkout(original_head)
+                # Reset any uncommitted changes first so the checkout can't be
+                # blocked by "your changes would be overwritten" errors.
                 restore_repo.git.reset("--hard")
+                restore_repo.git.checkout("-f", original_head)
+                _safe_clean(restore_repo)
             except Exception as exc:
                 logger.warning(
                     f"Row {row_num}: could not restore repo to "
