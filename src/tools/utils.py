@@ -162,7 +162,7 @@ def revise_patch(
     def revise_hunk(lines: list[str], target_file_lines: list[str]) -> tuple[str, bool]:
         """fix lines from "@@" to the end"""
         fixed = False
-        if len(lines[-1]) == 0 or "\ No newline at end of file" in lines[-1]:
+        if len(lines[-1]) == 0 or "\\ No newline at end of file" in lines[-1]:
             lines = lines[:-1]
 
         # fix corrupt patch
