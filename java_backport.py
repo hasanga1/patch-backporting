@@ -232,6 +232,12 @@ def _save_text(path: str, text: str) -> None:
         fh.write(text)
 
 
+def _ensure_trailing_newline(text: str) -> str:
+    if not text:
+        return text
+    return text if text.endswith("\n") else text + "\n"
+
+
 def _count_hunks(patch_text: str) -> int:
     return len(list(split_patch(patch_text, True)))
 
@@ -824,6 +830,7 @@ def process_row(
         # taken verbatim from the ground-truth developer.patch and applied
         # to the working tree after the generated patch is already in place.
         dev_non_source_text = _filter_non_source_patch(developer_patch_text)
+        dev_non_source_text = _ensure_trailing_newline(dev_non_source_text)
         _save_text(
             os.path.join(sample_dir, "developer_non_source.patch"),
             dev_non_source_text,
