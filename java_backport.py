@@ -874,7 +874,7 @@ def process_row(
         if portgpt_success and not skip_validation:
             logger.info(f"Row {row_num}: running build/test validation via helpers/")
             build_meta, test_meta = _run_build_and_tests(
-                repo_path, project_name, target_info
+                repo_path, project_name, target_info, sample_dir
             )
             metadata["build_validation"] = build_meta
             metadata["test_validation"]  = test_meta
