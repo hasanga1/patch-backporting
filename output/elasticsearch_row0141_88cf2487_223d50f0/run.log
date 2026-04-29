@@ -1,0 +1,684 @@
+2026-04-28 23:39:22,691 - backport - INFO - Row 141 [elasticsearch]: extracting original.patch
+2026-04-28 23:39:22,700 - backport - INFO - Row 141: 3 total hunks, 2 after filtering (test/non-Java removed)
+2026-04-28 23:39:22,702 - backport - INFO - Row 141 [elasticsearch]: extracting developer.patch
+2026-04-28 23:39:22,758 - backport - INFO - Row 141: detected 1 test target(s) from developer.patch
+2026-04-28 23:39:22,931 - backport - INFO - Row 141: starting PortGPT backport agent
+
+
+[1m> Entering new AgentExecutor chain...[0m
+
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `git_history` with `{}`
+
+
+[0m[36;1m[1;3mc0553d47215 Remove ChunkedToXContentBuilder  (#119310)
+
+diff --git a/server/src/main/java/org/elasticsearch/script/ScriptStats.java b/server/src/main/java/org/elasticsearch/script/ScriptStats.java
+--- a/server/src/main/java/org/elasticsearch/script/ScriptStats.java
++++ b/server/src/main/java/org/elasticsearch/script/ScriptStats.java
+@@ -26,5 +28,6 @@
+ import java.util.Objects;
+ 
++import static org.elasticsearch.common.collect.Iterators.single;
+ import static org.elasticsearch.script.ScriptContextStats.Fields.COMPILATIONS_HISTORY;
+ import static org.elasticsearch.script.ScriptStats.Fields.CACHE_EVICTIONS;
+ import static org.elasticsearch.script.ScriptStats.Fields.COMPILATIONS;
+8c378754ab3 Remove ChunkedToXContentHelper.array method, swap for ChunkedToXContentBuilder (#114319)
+
+diff --git a/server/src/main/java/org/elasticsearch/script/ScriptStats.java b/server/src/main/java/org/elasticsearch/script/ScriptStats.java
+--- a/server/src/main/java/org/elasticsearch/script/ScriptStats.java
++++ b/server/src/main/java/org/elasticsearch/script/ScriptStats.java
+@@ -28,6 +26,5 @@
+ import java.util.Objects;
+ 
+-import static org.elasticsearch.common.collect.Iterators.single;
+ import static org.elasticsearch.script.ScriptContextStats.Fields.COMPILATIONS_HISTORY;
+ import static org.elasticsearch.script.ScriptStats.Fields.CACHE_EVICTIONS;
+ import static org.elasticsearch.script.ScriptStats.Fields.COMPILATIONS
+You need to do the following analysis based on the information in the last commit:
+Analyze the code logic of the context of the patch to be ported in this commit step by step.
+If code logic already existed before this commit, the patch context can be assumed to remain in a similar location. Use `locate` and `viewcode` to check your results.
+If code logic were added in this commit, then you need to `git_show` for further details.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': '1348993ab5d62b19dc1a2f8f8690237272cb97fd', 'path': 'server/src/main/java/org/elasticsearch/script/ScriptStats.java', 'startline': 20, 'endline': 40}`
+responded: The git history shows that the import line `import static org.elasticsearch.common.collect.Iterators.single;` was added in commit c0553d47215, which is after the older ref 1348993ab5d62b19dc1a2f8f8690237272cb97fd. So this import is not present in the older version.
+
+The patch to backport adds another import line:
+```java
+import static org.elasticsearch.script.ScriptContextStats.Fields.CACHE_EVICTIONS_HISTORY;
+```
+This is similar to existing imports in the older version, but this specific import is not present there.
+
+Since the new import line is added alongside other similar imports, and the older version already has many of those imports but not this one, it is likely that this import line can be added in a similar location in the older version.
+
+I will now locate the file `server/src/main/java/org/elasticsearch/script/ScriptStats.java` in the older ref 1348993ab5d62b19dc1a2f8f8690237272cb97fd and view the lines around the imports to confirm the exact position for adding this new import.
+
+I will view lines 20-40 in that file to see the import section and confirm the context for adding the new import line.
+
+[0m[36;1m[1;3mHere are lines 20 through 40.
+
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+
+import static org.elasticsearch.script.ScriptContextStats.Fields.COMPILATIONS_HISTORY;
+import static org.elasticsearch.script.ScriptStats.Fields.CACHE_EVICTIONS;
+import static org.elasticsearch.script.ScriptStats.Fields.COMPILATIONS;
+import static org.elasticsearch.script.ScriptStats.Fields.COMPILATION_LIMIT_TRIGGERED;
+import static org.elasticsearch.script.ScriptStats.Fields.CONTEXTS;
+import static org.elasticsearch.script.ScriptStats.Fields.SCRIPT_STATS;
+
+/**
+ * Record object that holds global statistics of the scripts in a node.
+ *
+ * @param contextStats               A list of different {@link ScriptContextStats}
+ * @param compilations               Total number of compilations.
+ * @param cacheEvictions             Total number of evictions.
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `validate` with `{'ref': '1348993ab5d62b19dc1a2f8f8690237272cb97fd', 'patch': '--- a/server/src/main/java/org/elasticsearch/script/ScriptStats.java\n+++ b/server/src/main/java/org/elasticsearch/script/ScriptStats.java\n@@ -28,6 +28,7 @@\n-import static org.elasticsearch.script.ScriptContextStats.Fields.COMPILATIONS_HISTORY;\n-import static org.elasticsearch.script.ScriptStats.Fields.CACHE_EVICTIONS;\n-import static org.elasticsearch.script.ScriptStats.Fields.COMPILATIONS;\n-import static org.elasticsearch.script.ScriptStats.Fields.COMPILATION_LIMIT_TRIGGERED;\n-import static org.elasticsearch.script.ScriptStats.Fields.CONTEXTS;\n+import static org.elasticsearch.script.ScriptContextStats.Fields.COMPILATIONS_HISTORY;\n+import static org.elasticsearch.script.ScriptContextStats.Fields.CACHE_EVICTIONS_HISTORY;\n+import static org.elasticsearch.script.ScriptStats.Fields.CACHE_EVICTIONS;\n+import static org.elasticsearch.script.ScriptStats.Fields.COMPILATIONS;\n+import static org.elasticsearch.script.ScriptStats.Fields.COMPILATION_LIMIT_TRIGGERED;\n+import static org.elasticsearch.script.ScriptStats.Fields.CONTEXTS;\n '}`
+responded: The target patch is about adding the import line:
+
+```java
+import static org.elasticsearch.script.ScriptContextStats.Fields.CACHE_EVICTIONS_HISTORY;
+```
+
+In the older version (ref 1348993ab5d62b19dc1a2f8f8690237272cb97fd), from the code snippet I viewed, I see the current imports in the file include:
+
+```java
+import static org.elasticsearch.script.ScriptContextStats.Fields.COMPILATIONS_HISTORY;
+import static org.elasticsearch.script.ScriptStats.Fields.CACHE_EVICTIONS;
+import static org.elasticsearch.script.ScriptStats.Fields.COMPILATIONS;
+import static org.elasticsearch.script.ScriptStats.Fields.COMPILATION_LIMIT_TRIGGERED;
+import static org.elasticsearch.script.ScriptStats.Fields.CONTEXTS;
+```
+
+The patch in the newer version adds the import of `CACHE_EVICTIONS_HISTORY` from `ScriptContextStats.Fields`.
+
+Since the older version already has similar imports from `ScriptContextStats.Fields` and `ScriptStats.Fields`, the patch can be backported by adding the line:
+
+```java
+import static org.elasticsearch.script.ScriptContextStats.Fields.CACHE_EVICTIONS_HISTORY;
+```
+
+right after the existing imports from `ScriptContextStats.Fields`.
+
+This is a simple import addition and does not involve any code logic changes.
+
+Therefore, the backport patch for this hunk would be to add this import line in the appropriate place in the imports section.
+
+Now I will generate the patch for this backport.
+
+[0m[38;5;200m[1;3mThis patch does not apply because of CONTEXT MISMATCH. Context are patch lines that already exist in the file, that is, lines starting with ` ` and `-`. You should modify the error patch according to the context of older version.
+Here are lines 27 through 34 of file server/src/main/java/org/elasticsearch/script/ScriptStats.java for commit 1348993ab5d62b19dc1a2f8f8690237272cb97fd.
+```code snippet
+import static org.elasticsearch.script.ScriptContextStats.Fields.COMPILATIONS_HISTORY;
+import static org.elasticsearch.script.ScriptStats.Fields.CACHE_EVICTIONS;
+import static org.elasticsearch.script.ScriptStats.Fields.COMPILATIONS;
+import static org.elasticsearch.script.ScriptStats.Fields.COMPILATION_LIMIT_TRIGGERED;
+import static org.elasticsearch.script.ScriptStats.Fields.CONTEXTS;
+import static org.elasticsearch.script.ScriptStats.Fields.SCRIPT_STATS;
+
+```
+Besides, here is detailed info about how the context differs between the patch and the old version.
+```context diff
+On the line 15 of your patch.
+          Your patch:
+Original source code:import static org.elasticsearch.script.ScriptStats.Fields.SCRIPT_STATS;
+```
+Please eliminate these diffs step by step. Be sure to eliminate these diffs the next time you generate a patch!
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `validate` with `{'ref': '1348993ab5d62b19dc1a2f8f8690237272cb97fd', 'patch': '--- a/server/src/main/java/org/elasticsearch/script/ScriptStats.java\n+++ b/server/src/main/java/org/elasticsearch/script/ScriptStats.java\n@@ -27,7 +27,8 @@\n-import static org.elasticsearch.script.ScriptContextStats.Fields.COMPILATIONS_HISTORY;\n+import static org.elasticsearch.script.ScriptContextStats.Fields.COMPILATIONS_HISTORY;\n+import static org.elasticsearch.script.ScriptContextStats.Fields.CACHE_EVICTIONS_HISTORY;\n import static org.elasticsearch.script.ScriptStats.Fields.CACHE_EVICTIONS;\n import static org.elasticsearch.script.ScriptStats.Fields.COMPILATIONS;\n import static org.elasticsearch.script.ScriptStats.Fields.COMPILATION_LIMIT_TRIGGERED;\n import static org.elasticsearch.script.ScriptStats.Fields.CONTEXTS;\n import static org.elasticsearch.script.ScriptStats.Fields.SCRIPT_STATS;\n'}`
+responded: The patch is adding an import line:
+
+```java
+import static org.elasticsearch.script.ScriptContextStats.Fields.CACHE_EVICTIONS_HISTORY;
+```
+
+to the existing imports.
+
+In the old version, the imports are:
+
+```java
+import static org.elasticsearch.script.ScriptContextStats.Fields.COMPILATIONS_HISTORY;
+import static org.elasticsearch.script.ScriptStats.Fields.CACHE_EVICTIONS;
+import static org.elasticsearch.script.ScriptStats.Fields.COMPILATIONS;
+import static org.elasticsearch.script.ScriptStats.Fields.COMPILATION_LIMIT_TRIGGERED;
+import static org.elasticsearch.script.ScriptStats.Fields.CONTEXTS;
+import static org.elasticsearch.script.ScriptStats.Fields.SCRIPT_STATS;
+```
+
+The patch should add the new import line after the existing import of COMPILATIONS_HISTORY from ScriptContextStats.Fields, and before the imports of CACHE_EVICTIONS etc.
+
+Also, the import of SCRIPT_STATS is present in the old version but missing in the patch snippet from the newer version. Possibly the patch snippet just didn't show that line.
+
+So the correct patch should keep all existing imports and only add the new import line.
+
+I will generate the patch with the correct context lines and add the new import line after COMPILATIONS_HISTORY.
+
+The patch should look like this:
+
+```diff
+--- a/server/src/main/java/org/elasticsearch/script/ScriptStats.java
++++ b/server/src/main/java/org/elasticsearch/script/ScriptStats.java
+@@ -27,7 +27,8 @@
+ import static org.elasticsearch.script.ScriptContextStats.Fields.COMPILATIONS_HISTORY;
++import static org.elasticsearch.script.ScriptContextStats.Fields.CACHE_EVICTIONS_HISTORY;
+ import static org.elasticsearch.script.ScriptStats.Fields.CACHE_EVICTIONS;
+ import static org.elasticsearch.script.ScriptStats.Fields.COMPILATIONS;
+ import static org.elasticsearch.script.ScriptStats.Fields.COMPILATION_LIMIT_TRIGGERED;
+ import static org.elasticsearch.script.ScriptStats.Fields.CONTEXTS;
+ import static org.elasticsearch.script.ScriptStats.Fields.SCRIPT_STATS;
+```
+
+I will now validate this patch.
+
+[0m[38;5;200m[1;3mPatch applied successfully
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3mI have successfully created the patch for the old version ref 1348993ab5d62b19dc1a2f8f8690237272cb97fd based on the context of the old code and the patch from the newer version. The patch adds the import of CACHE_EVICTIONS_HISTORY from ScriptContextStats.Fields while keeping the context consistent with the old version.
+
+Here is the backported patch:
+
+```diff
+--- a/server/src/main/java/org/elasticsearch/script/ScriptStats.java
++++ b/server/src/main/java/org/elasticsearch/script/ScriptStats.java
+@@ -27,7 +27,8 @@
+-import static org.elasticsearch.script.ScriptContextStats.Fields.COMPILATIONS_HISTORY;
++import static org.elasticsearch.script.ScriptContextStats.Fields.COMPILATIONS_HISTORY;
++import static org.elasticsearch.script.ScriptContextStats.Fields.CACHE_EVICTIONS_HISTORY;
+ import static org.elasticsearch.script.ScriptStats.Fields.CACHE_EVICTIONS;
+ import static org.elasticsearch.script.ScriptStats.Fields.COMPILATIONS;
+ import static org.elasticsearch.script.ScriptStats.Fields.COMPILATION_LIMIT_TRIGGERED;
+ import static org.elasticsearch.script.ScriptStats.Fields.CONTEXTS;
+ import static org.elasticsearch.script.ScriptStats.Fields.SCRIPT_STATS;
+```
+
+I have validated the patch on the target ref and it applies cleanly without conflicts. If you need further assistance with other hunks or files, please let me know.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new AgentExecutor chain...[0m
+
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `git_history` with `{}`
+
+
+[0m[36;1m[1;3mS_HISTORY, cacheEvictionsHistory);
++                builder.startObject(COMPILATIONS_HISTORY);
++                cacheEvictionsHistory.toXContent(builder, params);
++                builder.endObject();
+             }
+8c378754ab3 Remove ChunkedToXContentHelper.array method, swap for ChunkedToXContentBuilder (#114319)
+
+diff --git a/server/src/main/java/org/elasticsearch/script/ScriptStats.java b/server/src/main/java/org/elasticsearch/script/ScriptStats.java
+--- a/server/src/main/java/org/elasticsearch/script/ScriptStats.java
++++ b/server/src/main/java/org/elasticsearch/script/ScriptStats.java
+@@ -196,22 +199,5 @@
+-    public Iterator<? extends ToXContent> toXContentChunked(ToXContent.Params outerParams) {
+-        return Iterators.concat(
+-            ChunkedToXContentHelper.startObject(SCRIPT_STATS),
+-            ChunkedToXContentHelper.field(COMPILATIONS, compilations),
+-            ChunkedToXContentHelper.field(CACHE_EVICTIONS, cacheEvictions),
+-            ChunkedToXContentHelper.field(COMPILATION_LIMIT_TRIGGERED, compilationLimitTriggered),
+-            single((builder, params) -> {
+-                if (compilationsHistory != null && compilationsHistory.areTimingsEmpty() == false) {
+-                    builder.startObject(COMPILATIONS_HISTORY);
+-                    compilationsHistory.toXContent(builder, params);
+-                    builder.endObject();
+-                }
+-                if (cacheEvictionsHistory != null && cacheEvictionsHistory.areTimingsEmpty() == false) {
+-                    builder.startObject(COMPILATIONS_HISTORY);
+-                    cacheEvictionsHistory.toXContent(builder, params);
+-                    builder.endObject();
+-                }
+-                return builder;
+-            }),
+-            ChunkedToXContentHelper.array(CONTEXTS, contextStats.iterator()),
+-            ChunkedToXContentHelper.endObject()
+-        );
++                ob.xContentObject(COMPILATIONS_HISTORY, compilationsHistory);
++            }
++            if (cacheEvictionsHistory != null && cacheEvictionsHistory.areTimingsEmpty() == false) {
++                ob.xContentObject(COMPILATIONS_HISTORY, cacheEvictionsHistory);
++            
+You need to do the following analysis based on the information in the last commit:
+Analyze the code logic of the context of the patch to be ported in this commit step by step.
+If code logic already existed before this commit, the patch context can be assumed to remain in a similar location. Use `locate` and `viewcode` to check your results.
+If code logic were added in this commit, then you need to `git_show` for further details.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `locate_symbol` with `{'ref': '1348993ab5d62b19dc1a2f8f8690237272cb97fd', 'symbol': 'toXContentChunked'}`
+responded: The git_history result shows a commit that removed the method `toXContentChunked` and replaced it with a different implementation using `ChunkedToXContentHelper`. The patch we want to backport changes the object name from `COMPILATIONS_HISTORY` to `CACHE_EVICTIONS_HISTORY` in the code block inside this method.
+
+The commit 8c378754ab3 removed the old code block that contained this logic and replaced it with a new implementation. This means the patch is fixing a bug in the old code block that was removed later.
+
+Since the code logic already existed before this commit, the patch context should still be in a similar location in the older version 1348993ab5d62b19dc1a2f8f8690237272cb97fd.
+
+Next step is to locate this method or code block in the older version using `locate_symbol` to confirm the exact location and then use `viewcode` to see the full code snippet for the patch.
+
+[0m[33;1m[1;3mmodules/data-streams/src/main/java/org/elasticsearch/datastreams/lifecycle/action/GetDataStreamLifecycleStatsAction.java:111
+modules/data-streams/src/main/java/org/elasticsearch/datastreams/options/action/GetDataStreamOptionsAction.java:197
+modules/ingest-geoip/src/main/java/org/elasticsearch/ingest/geoip/IngestGeoIpMetadata.java:93
+qa/smoke-test-http/src/javaRestTest/java/org/elasticsearch/http/ClusterStateRestCancellationIT.java:121
+server/src/internalClusterTest/java/org/elasticsearch/cluster/SimpleClusterStateIT.java:389
+server/src/main/java/org/elasticsearch/action/admin/cluster/allocation/ClusterAllocationExplainResponse.java:50
+server/src/main/java/org/elasticsearch/action/admin/cluster/allocation/ClusterAllocationExplanation.java:171
+server/src/main/java/org/elasticsearch/action/admin/cluster/allocation/DesiredBalanceResponse.java:89
+server/src/main/java/org/elasticsearch/action/admin/cluster/node/stats/NodeStats.java:344
+server/src/main/java/org/elasticsearch/action/admin/cluster/reroute/ClusterRerouteResponse.java:89
+server/src/main/java/org/elasticsearch/action/admin/cluster/snapshots/get/GetSnapshotsResponse.java:116
+server/src/main/java/org/elasticsearch/action/admin/cluster/snapshots/status/SnapshotStatus.java:184
+server/src/main/java/org/elasticsearch/action/admin/cluster/snapshots/status/SnapshotsStatusResponse.java:68
+server/src/main/java/org/elasticsearch/action/admin/cluster/tasks/PendingClusterTasksResponse.java:59
+server/src/main/java/org/elasticsearch/action/admin/indices/get/GetIndexResponse.java:184
+server/src/main/java/org/elasticsearch/action/admin/indices/mapping/get/GetMappingsResponse.java:71
+server/src/main/java/org/elasticsearch/action/admin/indices/recovery/RecoveryResponse.java:69
+server/src/main/java/org/elasticsearch/action/admin/indices/settings/get/GetSettingsResponse.java:108
+server/src/main/java/org/elasticsearch/action/admin/indices/settings/get/GetSettingsResponse.java:113
+server/src/main/java/org/elasticsearch/action/admin/indices/shards/IndicesShardStoresResponse.java:278
+server/src/main/java/org/elasticsearch/action/bulk/BulkResponse.java:160
+server/src/main/java/org/elasticsearch/action/datastreams/lifecycle/ExplainDataStreamLifecycleAction.java:212
+server/src/main/java/org/elasticsearch/action/datastreams/lifecycle/GetDataStreamLifecycleAction.java:274
+server/src/main/java/org/elasticsearch/action/fieldcaps/FieldCapabilitiesResponse.java:161
+server/src/main/java/org/elasticsearch/action/search/MultiSearchResponse.java:207
+server/src/main/java/org/elasticsearch/action/search/MultiSearchResponse.java:77
+server/src/main/java/org/elasticsearch/action/search/SearchResponse.java:383
+server/src/main/java/org/elasticsearch/action/support/broadcast/ChunkedBroadcastResponse.java:37
+server/src/main/java/org/elasticsearch/action/support/nodes/BaseNodesXContentResponse.java:31
+server/src/main/java/org/elasticsearch/cluster/ClusterFeatures.java:288
+server/src/main/java/org/elasticsearch/cluster/ClusterInfo.java:140
+server/src/main/java/org/elasticsearch/cluster/ClusterState.java:132
+server/src/main/java/org/elasticsearch/cluster/ClusterState.java:623
+server/src/main/java/org/elasticsearch/cluster/RepositoryCleanupInProgress.java:76
+server/src/main/java/org/elasticsearch/cluster/RestoreInProgress.java:318
+server/src/main/java/org/elasticsearch/cluster/SnapshotDeletionsInProgress.java:171
+server/src/main/java/org/elasticsearch/cluster/SnapshotsInProgress.java:292
+server/src/main/java/org/elasticsearch/cluster/metadata/ComponentTemplateMetadata.java:105
+server/src/main/java/org/elasticsearch/cluster/metadata/ComposableIndexTemplateMetadata.java:106
+server/src/main/java/org/elasticsearch/cluster/metadata/DataStreamMetadata.java:234
+server/src/main/java/org/elasticsearch/cluster/metadata/DesiredNodesMetadata.java:74
+server/src/main/java/org/elasticsearch/cluster/metadata/IndexGraveyard.java:131
+server/src/main/java/org/elasticsearch/cluster/metadata/Metadata.java:1503
+server/src/main/java/org/elasticsearch/cluster/metadata/NodesShutdownMetadata.java:193
+server/src/main/java/org/elasticsearch/cluster/metadata/RepositoriesMetadata.java:263
+server/src/main/java/org/elasticsearch/cluster/metadata/ShutdownShardMigrationStatus.java:168
+server/src/main/java/org/elasticsearch/cluster/routing/allocation/AllocateUnassignedDecision.java:297
+server/src/main/java/org/elasticsearch/cluster/routing/allocation/MoveDecision.java:261
+server/src/main/java/org/elasticsearch/cluster/routing/allocation/ShardAllocationDecision.java:89
+server/src/main/java/org/elasticsearch/common/xcontent/ChunkedToXContent.java:48
+server/src/main/java/org/elasticsearch/health/GetHealthAction.java:103
+server/src/main/java/org/elasticsearch/health/metadata/HealthMetadata.java:83
+server/src/main/java/org/elasticsearch/indices/NodeIndicesStats.java:247
+server/src/main/java/org/elasticsearch/inference/InferenceServiceResults.java:63
+server/src/main/java/org/elasticsearch/ingest/IngestMetadata.java:101
+server/src/main/java/org/elasticsearch/persistent/PersistentTasksCustomMetadata.java:554
+server/src/main/java/org/elasticsearch/rest/action/admin/cluster/RestClusterStateAction.java:154
+server/src/main/java/org/elasticsearch/script/ScriptMetadata.java:267
+server/src/main/java/org/elasticsearch/search/SearchHits.java:285
+server/src/main/java/org/elasticsearch/snapshots/RegisteredPolicySnapshots.java:113
+server/src/main/java/org/elasticsearch/transport/TransportStats.java:185
+server/src/main/java/org/elasticsearch/upgrades/FeatureMigrationResults.java:60
+server/src/test/java/org/elasticsearch/cluster/coordination/CoordinatorTests.java:1602
+server/src/test/java/org/elasticsearch/cluster/metadata/MetadataTests.java:2550
+server/src/test/java/org/elasticsearch/cluster/serialization/ClusterSerializationTests.java:401
+server/src/test/java/org/elasticsearch/cluster/serialization/ClusterSerializationTests.java:440
+test/framework/src/main/java/org/elasticsearch/test/TestCustomMetadata.java:97
+x-pack/plugin/autoscaling/src/main/java/org/elasticsearch/xpack/autoscaling/AutoscalingMetadata.java:121
+x-pack/plugin/autoscaling/src/main/java/org/elasticsearch/xpack/autoscaling/storage/ReactiveStorageDeciderService.java:980
+x-pack/plugin/core/src/main/java/org/elasticsearch/license/LicensesMetadata.java:145
+x-pack/plugin/core/src/main/java/org/elasticsearch/xpack/core/ccr/AutoFollowMetadata.java:151
+x-pack/plugin/core/src/main/java/org/elasticsearch/xpack/core/ccr/action/CcrStatsAction.java:127
+x-pack/plugin/core/src/main/java/org/elasticsearch/xpack/core/ccr/action/FollowInfoAction.java:112
+x-pack/plugin/core/src/main/java/org/elasticsearch/xpack/core/ccr/action/FollowStatsAction.java:77
+x-pack/plugin/core/src/main/java/org/elasticsearch/xpack/core/enrich/EnrichMetadata.java:103
+x-pack/plugin/core/src/main/java/org/elasticsearch/xpack/core/ilm/IndexLifecycleMetadata.java:118
+x-pack/plugin/core/src/main/java/org/elasticsearch/xpack/core/ilm/LifecycleOperationMetadata.java:121
+x-pack/plugin/core/src/main/java/org/elasticsearch/xpack/core/ilm/action/GetLifecycleAction.java:87
+x-pack/plugin/core/src/main/java/org/elasticsearch/xpack/core/inference/action/InferenceAction.java:452
+x-pack/plugin/core/src/main/java/org/elasticsearch/xpack/core/inference/results/RankedDocsResults.java:180
+x-pack/plugin/core/src/main/java/org/elasticsearch/xpack/core/inference/results/UnifiedChatCompletionException.java:66
+x-pack/plugin/core/src/main/java/org/elasticsearch/xpack/core/inference/results/XContentFormattedException.java:56
+x-pack/plugin/core/src/main/java/org/elasticsearch/xpack/core/ml/MlMetadata.java:124
+x-pack/plugin/core/src/main/java/org/elasticsearch/xpack/core/ml/inference/ModelAliasMetadata.java:95
+x-pack/plugin/core/src/main/java/org/elasticsearch/xpack/core/ml/inference/TrainedModelCacheMetadata.java:73
+x-pack/plugin/core/src/main/java/org/elasticsearch/xpack/core/ml/inference/assignment/TrainedModelAssignmentMetadata.java:134
+x-pack/plugin/core/src/main/java/org/elasticsearch/xpack/core/search/action/AsyncSearchResponse.java:234
+x-pack/plugin/core/src/main/java/org/elasticsearch/xpack/core/security/authc/TokenMetadata.java:69
+x-pack/plugin/core/src/main/java/org/elasticsearch/xpack/core/security/authz/RoleMappingMetadata.java:98
+x-pack/plugin/core/src/main/java/org/elasticsearch/xpack/core/slm/SnapshotLifecycleMetadata.java:145
+x-pack/plugin/core/src/main/java/org/elasticsearch/xpack/core/transform/TransformMetadata.java:102
+x-pack/plugin/core/src/main/java/org/elasticsearch/xpack/core/watcher/WatcherMetadata.java:111
+x-pack/plugin/esql/compute/src/main/java/org/elasticsearch/compute/operator/DriverProfile.java:169
+x-pack/plugin/esql/src/main/java/org/elasticsearch/xpack/esql/action/EsqlExecutionInfo.java:256
+x-pack/plugin/esql/src/main/java/org/elasticsearch/xpack/esql/action/EsqlQueryResponse.java:192
+x-pack/plugin/esql/src/main/java/org/elasticsearch/xpack/esql/action/EsqlQueryResponse.java:361
+x-pack/plugin/inference/src/internalClusterTest/java/org/elasticsearch/xpack/inference/rest/ServerSentEventsRestActionListenerTests.java:222
+x-pack/plugin/inference/src/internalClusterTest/java/org/elasticsearch/xpack/inference/rest/ServerSentEventsRestActionListenerTests.java:308
+x-pack/plugin/inference/src/main/java/org/elasticsearch/xpack/inference/external/response/elastic/ElasticInferenceServiceAuthorizationResponseEntity.java:138
+x-pack/plugin/profiling/src/main/java/org/elasticsearch/xpack/profiling/action/GetFlamegraphResponse.java:179
+x-pack/plugin/profiling/src/main/java/org/elasticsearch/xpack/profiling/action/GetStackTracesResponse.java:93
+x-pack/plugin/shutdown/src/main/java/org/elasticsearch/xpack/shutdown/GetShutdownStatusAction.java:127
+x-pack/plugin/shutdown/src/main/java/org/elasticsearch/xpack/shutdown/SingleNodeShutdownStatus.java:113[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': '1348993ab5d62b19dc1a2f8f8690237272cb97fd', 'path': 'server/src/main/java/org/elasticsearch/script/ScriptStats.java', 'startline': 190, 'endline': 210}`
+
+
+[0m[36;1m[1;3mHere are lines 190 through 210.
+
+    }
+
+    @Override
+    public Iterator<? extends ToXContent> toXContentChunked(ToXContent.Params params) {
+        return ChunkedToXContent.builder(params).object(SCRIPT_STATS, ob -> {
+            ob.field(COMPILATIONS, compilations);
+            ob.field(CACHE_EVICTIONS, cacheEvictions);
+            ob.field(COMPILATION_LIMIT_TRIGGERED, compilationLimitTriggered);
+            if (compilationsHistory != null && compilationsHistory.areTimingsEmpty() == false) {
+                ob.xContentObject(COMPILATIONS_HISTORY, compilationsHistory);
+            }
+            if (cacheEvictionsHistory != null && cacheEvictionsHistory.areTimingsEmpty() == false) {
+                ob.xContentObject(COMPILATIONS_HISTORY, cacheEvictionsHistory);
+            }
+            ob.array(CONTEXTS, contextStats.iterator());
+        });
+    }
+
+    static final class Fields {
+        static final String SCRIPT_STATS = "script";
+        static final String CONTEXTS = "contexts";
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3mI have found the relevant method toXContentChunked in the older version at the approximate location. The code block includes the lines:
+
+```java
+if (cacheEvictionsHistory != null && cacheEvictionsHistory.areTimingsEmpty() == false) {
+    ob.xContentObject(COMPILATIONS_HISTORY, cacheEvictionsHistory);
+}
+```
+
+which corresponds to the part of the patch that needs to be changed. The patch changes the field name from COMPILATIONS_HISTORY to CACHE_EVICTIONS_HISTORY in the builder.startObject call.
+
+This means the patch is about changing the field name used in the output from COMPILATIONS_HISTORY to CACHE_EVICTIONS_HISTORY for the cacheEvictionsHistory object.
+
+In the older version, the method uses the builder method ob.xContentObject(fieldName, object), whereas in the newer version, it uses builder.startObject(fieldName) and builder.endObject() with toXContent in between.
+
+The logical change is the field name in the output from COMPILATIONS_HISTORY to CACHE_EVICTIONS_HISTORY for the cacheEvictionsHistory.
+
+The older code uses ob.xContentObject(COMPILATIONS_HISTORY, cacheEvictionsHistory); which is likely incorrect and should be ob.xContentObject(CACHE_EVICTIONS_HISTORY, cacheEvictionsHistory);
+
+Therefore, the patch to backport is to fix the field name in the older version from COMPILATIONS_HISTORY to CACHE_EVICTIONS_HISTORY.
+
+I will generate the patch accordingly.[0m
+
+[1m> Finished chain.[0m
+2026-04-28 23:40:28,731 - backport - ERROR - Hunk 1: agent failed (max iterations or error)
+2026-04-28 23:40:28,734 - backport - WARNING - Row 141: PARTIAL — 0/2 hunk(s) succeeded

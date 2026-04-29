@@ -1,0 +1,558 @@
+2026-04-29 00:42:47,873 - backport - INFO - Row 167 [elasticsearch]: extracting original.patch
+2026-04-29 00:42:47,886 - backport - INFO - Row 167: 16 total hunks, 12 after filtering (test/non-Java removed)
+2026-04-29 00:42:47,889 - backport - INFO - Row 167 [elasticsearch]: extracting developer.patch
+2026-04-29 00:42:47,956 - backport - INFO - Row 167: detected 2 test target(s) from developer.patch
+2026-04-29 00:42:48,140 - backport - INFO - Row 167: starting PortGPT backport agent
+
+
+[1m> Entering new AgentExecutor chain...[0m
+
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `git_history` with `{}`
+
+
+[0m[36;1m[1;3medIndexPredicate.java b/x-pack/plugin/core/src/main/java/org/elasticsearch/xpack/core/deprecation/DeprecatedIndexPredicate.java
+--- a/x-pack/plugin/core/src/main/java/org/elasticsearch/xpack/core/deprecation/DeprecatedIndexPredicate.java
++++ b/x-pack/plugin/core/src/main/java/org/elasticsearch/xpack/core/deprecation/DeprecatedIndexPredicate.java
+@@ -20,28 +20,29 @@
+ 
+     public static final IndexVersion MINIMUM_WRITEABLE_VERSION_AFTER_UPGRADE = IndexVersions.UPGRADE_TO_LUCENE_10_0_0;
+ 
+     /*
+      * This predicate allows through only indices that were created with a previous lucene version, meaning that they need to be reindexed
+      * in order to be writable in the _next_ lucene version.
+      *
+      * It ignores searchable snapshots as they are not writable.
+      */
+     public static Predicate<Index> getReindexRequiredPredicate(Metadata metadata) {
+         return index -> {
+             IndexMetadata indexMetadata = metadata.index(index);
+             return reindexRequired(indexMetadata);
+         };
+     }
+ 
+     public static boolean reindexRequired(IndexMetadata indexMetadata) {
+         return creationVersionBeforeMinimumWritableVersion(indexMetadata)
+             && isNotSearchableSnapshot(indexMetadata)
++            && isNotClosed(indexMetadata)
+             && isNotVerifiedReadOnly(indexMetadata);
+     }
+ 
+     private static boolean isNotVerifiedReadOnly(IndexMetadata indexMetadata) {
+         // no need to check blocks.
+         return MetadataIndexStateService.VERIFIED_READ_ONLY_SETTING.get(indexMetadata.getSettings()) == false;
+     }
+ 
+     private static boolean isNotSearchableSnapshot(IndexMetadata indexMetadata) {
+5e8cce2187a Mark read-only flush and verify (#119743)
+
+diff --git a/x-pack/plugin/core/src/main/java/org/elasticsearch/xpack/core/deprecation/DeprecatedIndexPredicate.java b/x-pack/plugin/core/src/main/java/org/elasticsearch/xpack/core/deprecation/DeprecatedIndexPredicate.java
+--- a/x-pack/plugin/core/src/main/java/org/elasticsearch/xpack/core/deprecation/DeprecatedIndexPredicate.java
++++ b/x-pack/plugin/core/src/main/java/org/elasticsearch/xpack/core/deprecation/DeprecatedIndexPredicate.java
+@@ -19,21 +20,28 @@
+ 
+     public static final IndexVersion MINIMUM_WRITEABLE_VERSION_AFTER_UPGRADE = IndexVersions.UPGRADE_TO_LUCENE_10_0_0;
+ 
+     /*
+      * This predicate allows through only indices that were created with a previous lucene version, meaning that they need to be reindexed
+      * in order to be writable in the _next_ lucene version.
+      *
+      * It ignores searchable snapshots as they are not writable.
+      */
+     public static Predicate<Index> getReindexRequiredPredicate(Metadata metadata) {
+         return index -> {
+             IndexMetadata indexMetadata = metadata.index(index);
+             return reindexRequired(indexMetadata);
+         };
+     }
+ 
+     public static boolean reindexRequired(IndexMetadata indexMetadata) {
+-        return creationVersionBeforeMinimumWritableVersion(indexMetadata) && isNotSearchableSnapshot(indexMetadata);
++        return creationVersionBeforeMinimumWritableVersion(indexMetadata)
++            && isNotSearchableSnapshot(indexMetadata)
++            && isNotVerifiedReadOnly(indexMetadata);
++    }
++
++    private static boolean isNotVerifiedReadOnly(IndexMetadata indexMetadata) {
++        // no need to check blocks.
++        return MetadataIndexStateService.VERIFIED_READ_ONLY_SETTING.get(indexMetadata.getSettings()) == false;
+     }
+ 
+     private static boolean isNotSearchableSnapshot(IndexMetadata indexMetadata) {
+54879278b1c Update data stream deprecations warnings to new format and filter searchable snapshots from response (#118562)
+
+diff --git a/x-pack/plugin/core/src/main/java/org/elasticsearch/xpack/core/deprecation/DeprecatedIndexPredicate.java b/x-pack/plugin/core/src/main/java/org/elasticsearch/xpack/core/deprecation/DeprecatedIndexPredicate.java
+--- /dev/null
++++ b/x-pack/plugin/core/src/main/java/org/elasticsearch/xpack/core/deprecation/DeprecatedIndexPredicate.java
+@@ -0,0 +19,21 @@
++
++    public static final IndexVersion MINIMUM_WRITEABLE_VERSION_AFTER_UPGRADE = IndexVersions.UPGRADE_TO_LUCENE_10_0_0;
++
++    /*
++     * This predicate allows through only indices that were created with a previous lucene version, meaning that they need to be reindexed
++     * in order to be writable in the _next_ lucene version.
++     *
++     * It ignores searchable snapshots as they are not writable.
++     */
++    public static Predicate<Index> getReindexRequiredPredicate(Metadata metadata) {
++        return index -> {
++            IndexMetadata indexMetadata = metadata.index(index);
++            return reindexRequired(indexMetadata);
++        };
++    }
++
++    public static boolean reindexRequired(IndexMetadata indexMetadata) {
++        return creationVersionBeforeMinimumWritableVersion(indexMetadata) && isNotSearchableSnapshot(indexMetadata);
++    }
++
++    private static boolean isNotSearchableSnapshot(IndexMetadata indexMetadata) 
+You need to do the following analysis based on the information in the last commit:
+Analyze the code logic of the context of the patch to be ported in this commit step by step.
+If code logic already existed before this commit, the patch context can be assumed to remain in a similar location. Use `locate` and `viewcode` to check your results.
+If code logic were added in this commit, then you need to `git_show` for further details.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `locate_symbol` with `{'ref': '6d2106d31fbaf9c46d251f644fae3d62f5237674', 'symbol': 'matchBlockedStatus'}`
+responded: The git_history shows the evolution of the code in DeprecatedIndexPredicate.java. The patch we want to backport added a new parameter `filterToBlockedStatus` to the method `getReindexRequiredPredicate` and `reindexRequired`. It also replaced the call to `isNotVerifiedReadOnly` with a call to `matchBlockedStatus` and added JavaDoc comments.
+
+From the history, the `isNotVerifiedReadOnly` method existed before, and the `reindexRequired` method existed but without the boolean parameter. The `filterToBlockedStatus` logic and the `matchBlockedStatus` method are new additions in the patch to be backported.
+
+So, the main changes to backport are:
+1. Add the boolean parameter `filterToBlockedStatus` to `getReindexRequiredPredicate` and `reindexRequired`.
+2. Replace the call to `isNotVerifiedReadOnly` with `matchBlockedStatus` in `reindexRequired`.
+3. Add the JavaDoc comments.
+4. Remove the `isNotVerifiedReadOnly` method usage and replace with `matchBlockedStatus`.
+
+Next, I will locate the `matchBlockedStatus` method in the old version to understand its location and if it needs to be backported or adapted. I will also view the full context of `DeprecatedIndexPredicate.java` around lines 19-49 for the old version to ensure the patch fits well.
+
+[0m[33;1m[1;3mThe symbol matchBlockedStatus you are looking for does not exist in the current ref.
+But here is a symbol similar to it. It's `WatchStatus`.
+The file where this symbol is located is: 
+x-pack/plugin/core/src/main/java/org/elasticsearch/xpack/core/watcher/watch/WatchStatus.java:41
+x-pack/plugin/core/src/main/java/org/elasticsearch/xpack/core/watcher/watch/WatchStatus.java:59
+x-pack/plugin/core/src/main/java/org/elasticsearch/xpack/core/watcher/watch/WatchStatus.java:81
+x-pack/plugin/core/src/main/java/org/elasticsearch/xpack/core/watcher/watch/WatchStatus.java:85
+Please be careful to check that this symbol indicates the same thing as the previous symbol.
+[0m[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': '6d2106d31fbaf9c46d251f644fae3d62f5237674', 'path': 'x-pack/plugin/core/src/main/java/org/elasticsearch/xpack/core/deprecation/DeprecatedIndexPredicate.java', 'startline': 15, 'endline': 60}`
+responded: The git_history shows the evolution of the code in DeprecatedIndexPredicate.java. The patch we want to backport added a new parameter `filterToBlockedStatus` to the method `getReindexRequiredPredicate` and `reindexRequired`. It also replaced the call to `isNotVerifiedReadOnly` with a call to `matchBlockedStatus` and added JavaDoc comments.
+
+From the history, the `isNotVerifiedReadOnly` method existed before, and the `reindexRequired` method existed but without the boolean parameter. The `filterToBlockedStatus` logic and the `matchBlockedStatus` method are new additions in the patch to be backported.
+
+So, the main changes to backport are:
+1. Add the boolean parameter `filterToBlockedStatus` to `getReindexRequiredPredicate` and `reindexRequired`.
+2. Replace the call to `isNotVerifiedReadOnly` with `matchBlockedStatus` in `reindexRequired`.
+3. Add the JavaDoc comments.
+4. Remove the `isNotVerifiedReadOnly` method usage and replace with `matchBlockedStatus`.
+
+Next, I will locate the `matchBlockedStatus` method in the old version to understand its location and if it needs to be backported or adapted. I will also view the full context of `DeprecatedIndexPredicate.java` around lines 19-49 for the old version to ensure the patch fits well.
+
+[0m[36;1m[1;3mHere are lines 15 through 60.
+
+import org.elasticsearch.index.IndexVersions;
+
+import java.util.function.Predicate;
+
+public class DeprecatedIndexPredicate {
+
+    public static final IndexVersion MINIMUM_WRITEABLE_VERSION_AFTER_UPGRADE = IndexVersions.V_8_0_0;
+
+    /*
+     * This predicate allows through only indices that were created with a previous lucene version, meaning that they need to be reindexed
+     * in order to be writable in the _next_ lucene version.
+     *
+     * It ignores searchable snapshots as they are not writable.
+     */
+    public static Predicate<Index> getReindexRequiredPredicate(Metadata metadata) {
+        return index -> {
+            IndexMetadata indexMetadata = metadata.index(index);
+            return reindexRequired(indexMetadata);
+        };
+    }
+
+    public static boolean reindexRequired(IndexMetadata indexMetadata) {
+        return creationVersionBeforeMinimumWritableVersion(indexMetadata)
+            && isNotSearchableSnapshot(indexMetadata)
+            && isNotClosed(indexMetadata)
+            && isNotVerifiedReadOnly(indexMetadata);
+    }
+
+    private static boolean isNotVerifiedReadOnly(IndexMetadata indexMetadata) {
+        // no need to check blocks.
+        return MetadataIndexStateService.VERIFIED_READ_ONLY_SETTING.get(indexMetadata.getSettings()) == false;
+    }
+
+    private static boolean isNotSearchableSnapshot(IndexMetadata indexMetadata) {
+        return indexMetadata.isSearchableSnapshot() == false;
+    }
+
+    private static boolean creationVersionBeforeMinimumWritableVersion(IndexMetadata metadata) {
+        return metadata.getCreationVersion().before(MINIMUM_WRITEABLE_VERSION_AFTER_UPGRADE);
+    }
+
+    private static boolean isNotClosed(IndexMetadata indexMetadata) {
+        return indexMetadata.getState().equals(IndexMetadata.State.CLOSE) == false;
+    }
+
+}
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `locate_symbol` with `{'ref': '2002510d4a42658002091d3ce38ad84c0f2b4c52', 'symbol': 'matchBlockedStatus'}`
+responded: I have found the code block in the old version (ref 6d2106d31fbaf9c46d251f644fae3d62f5237674) in file `x-pack/plugin/core/src/main/java/org/elasticsearch/xpack/core/deprecation/DeprecatedIndexPredicate.java`. 
+
+The old version's code for the relevant functions is similar but not exactly the same as the new patch. Key differences:
+- The constant MINIMUM_WRITEABLE_VERSION_AFTER_UPGRADE has a different value.
+- The method getReindexRequiredPredicate only takes Metadata parameter, no filterToBlockedStatus boolean.
+- The method reindexRequired only takes IndexMetadata parameter, no filterToBlockedStatus boolean.
+- The method reindexRequired in the old version calls isNotVerifiedReadOnly, while the new version replaces it with matchBlockedStatus.
+- The method isNotVerifiedReadOnly exists in the old version but is removed in the new.
+- The method matchBlockedStatus does not exist in the old version.
+
+This indicates that the patch introduces a new boolean parameter filterToBlockedStatus to filter indices based on their blocked status, and the logic for checking verified read-only status is replaced by matching blocked status.
+
+Since matchBlockedStatus does not exist in the old version, I need to locate where it is defined in the new version to understand its logic, so I can backport it properly.
+
+Next, I will locate the matchBlockedStatus method in the new version (commit 2002510d4a42658002091d3ce38ad84c0f2b4c52) to understand its implementation.
+
+I will use `locate_symbol` to find matchBlockedStatus in the new version.
+
+[0m[33;1m[1;3mThe symbol matchBlockedStatus you are looking for does not exist in the current ref.
+But here is a symbol similar to it. It's `WatchStatus`.
+The file where this symbol is located is: 
+x-pack/plugin/core/src/main/java/org/elasticsearch/xpack/core/watcher/watch/WatchStatus.java:41
+x-pack/plugin/core/src/main/java/org/elasticsearch/xpack/core/watcher/watch/WatchStatus.java:59
+x-pack/plugin/core/src/main/java/org/elasticsearch/xpack/core/watcher/watch/WatchStatus.java:81
+x-pack/plugin/core/src/main/java/org/elasticsearch/xpack/core/watcher/watch/WatchStatus.java:85
+Please be careful to check that this symbol indicates the same thing as the previous symbol.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': '2002510d4a42658002091d3ce38ad84c0f2b4c52', 'path': 'x-pack/plugin/core/src/main/java/org/elasticsearch/xpack/core/deprecation/DeprecatedIndexPredicate.java', 'startline': 15, 'endline': 60}`
+
+
+[0m[36;1m[1;3mHere are lines 15 through 60.
+
+import org.elasticsearch.index.IndexVersions;
+
+import java.util.function.Predicate;
+
+public class DeprecatedIndexPredicate {
+
+    public static final IndexVersion MINIMUM_WRITEABLE_VERSION_AFTER_UPGRADE = IndexVersions.UPGRADE_TO_LUCENE_10_0_0;
+
+    /*
+     * This predicate allows through only indices that were created with a previous lucene version, meaning that they need to be reindexed
+     * in order to be writable in the _next_ lucene version.
+     *
+     * It ignores searchable snapshots as they are not writable.
+     */
+    public static Predicate<Index> getReindexRequiredPredicate(Metadata metadata) {
+        return index -> {
+            IndexMetadata indexMetadata = metadata.index(index);
+            return reindexRequired(indexMetadata);
+        };
+    }
+
+    public static boolean reindexRequired(IndexMetadata indexMetadata) {
+        return creationVersionBeforeMinimumWritableVersion(indexMetadata)
+            && isNotSearchableSnapshot(indexMetadata)
+            && isNotClosed(indexMetadata)
+            && isNotVerifiedReadOnly(indexMetadata);
+    }
+
+    private static boolean isNotVerifiedReadOnly(IndexMetadata indexMetadata) {
+        // no need to check blocks.
+        return MetadataIndexStateService.VERIFIED_READ_ONLY_SETTING.get(indexMetadata.getSettings()) == false;
+    }
+
+    private static boolean isNotSearchableSnapshot(IndexMetadata indexMetadata) {
+        return indexMetadata.isSearchableSnapshot() == false;
+    }
+
+    private static boolean creationVersionBeforeMinimumWritableVersion(IndexMetadata metadata) {
+        return metadata.getCreationVersion().before(MINIMUM_WRITEABLE_VERSION_AFTER_UPGRADE);
+    }
+
+    private static boolean isNotClosed(IndexMetadata indexMetadata) {
+        return indexMetadata.getState().equals(IndexMetadata.State.CLOSE) == false;
+    }
+
+}
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `locate_symbol` with `{'ref': '2002510d4a42658002091d3ce38ad84c0f2b4c52', 'symbol': 'matchBlockedStatus'}`
+responded: I have reviewed the patch for the newer version and the similar code block from the older version. Here is my analysis step-by-step:
+
+1. The patch in the newer version changes the constant MINIMUM_WRITEABLE_VERSION_AFTER_UPGRADE from IndexVersions.V_8_0_0 to IndexVersions.UPGRADE_TO_LUCENE_10_0_0. This constant is defined in both versions, so we need to update it in the old version as well.
+
+2. The patch changes the comment style from /* ... */ to /** ... */ and adds more detailed JavaDoc comments to the getReindexRequiredPredicate and reindexRequired methods. This is mostly documentation improvement and can be adapted in the old version.
+
+3. The patch changes the signature of getReindexRequiredPredicate to accept an additional boolean parameter filterToBlockedStatus and passes it to reindexRequired.
+
+4. The patch changes reindexRequired to accept the boolean parameter filterToBlockedStatus and adds a call to matchBlockedStatus(indexMetadata, filterToBlockedStatus) in the return condition.
+
+5. The patch removes the isNotVerifiedReadOnly method call and the method itself, replacing it with the matchBlockedStatus call.
+
+6. The patch adds the private method matchBlockedStatus, which is not present in the old version.
+
+7. The rest of the methods, such as isNotSearchableSnapshot, creationVersionBeforeMinimumWritableVersion, and isNotClosed, are present in both versions with similar logic.
+
+8. The method isNotVerifiedReadOnly exists in the old version but is removed in the patch.
+
+9. The new method matchBlockedStatus is not present in the old version, and searching for it shows it does not exist in the old version.
+
+Therefore, the patch introduces a new method and changes the behavior by replacing isNotVerifiedReadOnly with matchBlockedStatus and adding a boolean parameter to the predicate methods.
+
+To backport this patch, we need to:
+
+- Update the constant MINIMUM_WRITEABLE_VERSION_AFTER_UPGRADE to IndexVersions.UPGRADE_TO_LUCENE_10_0_0.
+- Change the method signatures of getReindexRequiredPredicate and reindexRequired to accept the boolean filterToBlockedStatus parameter.
+- Replace the call to isNotVerifiedReadOnly with matchBlockedStatus.
+- Add the private method matchBlockedStatus with the same logic as in the newer version.
+- Remove isNotVerifiedReadOnly method.
+- Adapt comments accordingly.
+
+Next, I want to locate the matchBlockedStatus method in the newer version to see its implementation to backport it.
+
+I will locate the symbol matchBlockedStatus in the newer version.
+
+[0m[33;1m[1;3mThe symbol matchBlockedStatus you are looking for does not exist in the current ref.
+But here is a symbol similar to it. It's `WatchStatus`.
+The file where this symbol is located is: 
+x-pack/plugin/core/src/main/java/org/elasticsearch/xpack/core/watcher/watch/WatchStatus.java:41
+x-pack/plugin/core/src/main/java/org/elasticsearch/xpack/core/watcher/watch/WatchStatus.java:59
+x-pack/plugin/core/src/main/java/org/elasticsearch/xpack/core/watcher/watch/WatchStatus.java:81
+x-pack/plugin/core/src/main/java/org/elasticsearch/xpack/core/watcher/watch/WatchStatus.java:85
+Please be careful to check that this symbol indicates the same thing as the previous symbol.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': '2002510d4a42658002091d3ce38ad84c0f2b4c52', 'path': 'x-pack/plugin/core/src/main/java/org/elasticsearch/xpack/core/deprecation/DeprecatedIndexPredicate.java', 'startline': 60, 'endline': 80}`
+
+
+[0m[36;1m[1;3mThis file only has 61 lines. Here are lines 60 through 61.
+
+}
+
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3mThe function matchBlockedStatus used in the patch does not exist in the older version of the code. The patch in the newer version introduces a new parameter `filterToBlockedStatus` to the `getReindexRequiredPredicate` and `reindexRequired` methods and adds a check for blocked status using the new function `matchBlockedStatus`. This function is not present in the older version.
+
+The older version uses a method `isNotVerifiedReadOnly` to check the verified read-only setting, which is removed in the newer version.
+
+The rest of the logic for checking creation version, searchable snapshot, and closed state is largely the same but with some reordering.
+
+Given these observations, the backport patch should:
+- Add the new parameter `filterToBlockedStatus` to the relevant methods.
+- Replace the call to `isNotVerifiedReadOnly` with a call to `matchBlockedStatus` with the new parameter.
+- Include the updated comments from the newer version.
+- Keep the rest of the code logic consistent with the older version style and structure.
+
+Next, I will generate the patch for the older version based on this analysis and the code snippet from the older version.[0m
+
+[1m> Finished chain.[0m
+2026-04-29 00:43:58,019 - backport - ERROR - Hunk 0: agent failed (max iterations or error)
+2026-04-29 00:43:58,022 - backport - ERROR - Row 167: FAILED
