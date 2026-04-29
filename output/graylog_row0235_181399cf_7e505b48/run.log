@@ -642,3 +642,538 @@ If you want, I can assist you with further backporting or any other questions.[
 2026-04-29 03:53:39,428 - backport - INFO -   Running build for graylog (helper: graylog2-server)
 2026-04-29 03:54:20,416 - backport - WARNING -   Build failed — skipping test run
 2026-04-29 03:54:20,418 - backport - WARNING - Row 235: PARTIAL — 8/8 hunk(s) succeeded
+2026-04-29 06:15:27,333 - backport - INFO - Row 235 [graylog]: extracting original.patch
+2026-04-29 06:15:27,342 - backport - INFO - Row 235: 13 total hunks, 8 after filtering (test/non-Java removed)
+2026-04-29 06:15:27,343 - backport - INFO - Row 235 [graylog]: extracting developer.patch
+2026-04-29 06:15:27,392 - backport - INFO - Row 235: detected 1 test target(s) from developer.patch
+2026-04-29 06:15:27,658 - backport - INFO - Row 235: starting PortGPT backport agent
+
+
+[1m> Entering new AgentExecutor chain...[0m
+
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `git_history` with `{}`
+
+
+[0m[36;1m[1;3mb4e1e075f9 Refactor data node startup, add startup mechanism for new node types (#20181)
+
+diff --git a/graylog2-server/src/main/java/org/graylog2/bindings/ServerBindings.java b/graylog2-server/src/main/java/org/graylog2/bindings/ServerBindings.java
+--- a/graylog2-server/src/main/java/org/graylog2/bindings/ServerBindings.java
++++ b/graylog2-server/src/main/java/org/graylog2/bindings/ServerBindings.java
+@@ -31,7 +31,6 @@
+ import org.graylog2.alerts.AlertSender;
+ import org.graylog2.alerts.EmailRecipients;
+ import org.graylog2.alerts.FormattedEmailAlertSender;
+-import org.graylog2.bindings.providers.ClusterEventBusProvider;
+ import org.graylog2.bindings.providers.DefaultSecurityManagerProvider;
+ import org.graylog2.bindings.providers.DefaultStreamProvider;
+ import org.graylog2.bindings.providers.HtmlSafeJmteEngineProvider
+You need to do the following analysis based on the information in the last commit:
+Analyze the code logic of the context of the patch to be ported in this commit step by step.
+If code logic already existed before this commit, the patch context can be assumed to remain in a similar location. Use `locate` and `viewcode` to check your results.
+If code logic were added in this commit, then you need to `git_show` for further details.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `git_show` with `{}`
+
+
+[0m[33;1m[1;3mcommit b4e1e075f9a18382c55add16ad0bf1265c462fc3
+Author: Matthias Oesterheld <33032967+moesterheld@users.noreply.github.com>
+Date:   Thu Dec 12 16:02:32 2024 +0100
+
+    Refactor data node startup, add startup mechanism for new node types (#20181)
+    
+    * Initial reworked, simplified abstract node startup
+    
+    * use Graylog CmdLineTool in data node
+    
+    * remove unused pid file declaration
+    
+    * remove freshInstallation check as it doesn't make sense since it checks for fresh installation of the Graylog cluster
+    
+    * move mongo preflight check into regular preflight checks since it doesn't do the fresh installation detection any more
+    
+    * remove migration feature for data node
+    
+    * code cleanup
+    
+    * remove unused local flag, code cleaup
+    
+    * rename server to datanode for better clarification
+    
+    * fix feature flag test to use config for env/sys props
+    
+    * remove Graylog path configuration from data node configuration
+    
+    * temporary fix for excluding zstd library fix from data node
+    
+    * add requireexplicitbindings for new node types
+    
+    * remove unneeded settings bean
+    
+    * do not use `pluginLoaderConfig` for fixing zstd temp directory
+    
+    * do tls protocols configuration and setting of netty defaults only in Graylog node
+    
+    * remove ExampleCommand, replace with MinimalNode test
+    
+    * change forbidden method invocation
+    
+    * adjust log
+    
+    Co-authored-by: Bernd Ahlers <bernd@users.noreply.github.com>
+    
+    * Change cmdline option description
+    
+    Co-authored-by: Bernd Ahlers <bernd@users.noreply.github.com>
+    
+    * Change cmdline option description
+    
+    Co-authored-by: Bernd Ahlers <bernd@users.noreply.github.com>
+    
+    * Change cmdline option description
+    
+    Co-authored-by: Bernd Ahlers <bernd@users.noreply.github.com>
+    
+    * make usage of NodeIdFile configurable
+    
+    * adjust ServerStatus and provide common node command test
+    
+    * code cleanup
+    
+    * make configuration a field, remove unused constructor
+    
+    * code cleanup
+    
+    * use parent field
+    
+    * make Datanode and Server extend AbstractNodeCommand
+    
+    * change field names to camel case
+    
+    * remove redundant bindings, make journal commands extends AbstractNodeCommand
+    
+    * remove static field
+    
+    * remove redundant bindings
+    
+    * always applySecuritySettings
+    
+    * add javadocs to GraylogNodeModule
+    
+    ---------
+    
+    Co-authored-by: Tomas Dvorak <tomas.dvorak@graylog.com>
+    Co-authored-by: Bernd Ahlers <bernd@users.noreply.github.com>
+
+ .../java/org/graylog/datanode/Configuration.java   |  13 +-
+ ...erBindings.java => DatanodeServerBindings.java} |  39 +-
+ .../datanode/bindings/PreflightChecksBindings.java |   2 +
+ .../graylog/datanode/bootstrap/CmdLineTool.java    | 509 ---------------------
+ ...ServerBootstrap.java => DatanodeBootstrap.java} | 132 +-----
+ .../datanode/bootstrap/commands/MigrateCmd
+[IMPORTANT] The relevant code shown by `git_history` is not fully `+` lines.
+[IMPORTANT] This means that the code in question was not added or migrated in this commit.
+[IMPORTANT] Please think step by step and check the abstract below carefully. If error exists in abstract, please ignore the info below.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `locate_symbol` with `{'ref': '1b2af126ebd1e4ea65826fb25e31a3b3760f1aeb', 'symbol': 'ServerBindings'}`
+
+
+[0m[33;1m[1;3mdata-node/src/main/java/org/graylog/datanode/bindings/ServerBindings.java:41
+data-node/src/main/java/org/graylog/datanode/bindings/ServerBindings.java:45
+graylog2-server/src/main/java/org/graylog2/bindings/ServerBindings.java:115
+graylog2-server/src/main/java/org/graylog2/bindings/ServerBindings.java:119[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': '1b2af126ebd1e4ea65826fb25e31a3b3760f1aeb', 'path': 'graylog2-server/src/main/java/org/graylog2/bindings/ServerBindings.java', 'startline': 20, 'endline': 40}`
+
+
+[0m[36;1m[1;3mHere are lines 20 through 40.
+
+import com.google.inject.Scopes;
+import com.google.inject.assistedinject.FactoryModuleBuilder;
+import com.google.inject.multibindings.Multibinder;
+import com.google.inject.multibindings.OptionalBinder;
+import com.google.inject.name.Names;
+import jakarta.ws.rs.container.DynamicFeature;
+import jakarta.ws.rs.ext.ExceptionMapper;
+import org.apache.shiro.mgt.DefaultSecurityManager;
+import org.glassfish.grizzly.http.server.ErrorPageGenerator;
+import org.graylog.scheduler.capabilities.ServerNodeCapabilitiesModule;
+import org.graylog2.Configuration;
+import org.graylog2.alerts.AlertSender;
+import org.graylog2.alerts.EmailRecipients;
+import org.graylog2.alerts.FormattedEmailAlertSender;
+import org.graylog2.bindings.providers.ClusterEventBusProvider;
+import org.graylog2.bindings.providers.DefaultSecurityManagerProvider;
+import org.graylog2.bindings.providers.DefaultStreamProvider;
+import org.graylog2.bindings.providers.HtmlSafeJmteEngineProvider;
+import org.graylog2.bindings.providers.JsonSafeEngineProvider;
+import org.graylog2.bindings.providers.SecureFreemarkerConfigProvider;
+import org.graylog2.bindings.providers.SystemJobFactoryProvider;
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': '1b2af126ebd1e4ea65826fb25e31a3b3760f1aeb', 'path': 'graylog2-server/src/main/java/org/graylog2/bindings/ServerBindings.java', 'startline': 25, 'endline': 38}`
+responded: The target patch is to add an import line:
+
+```java
++import org.graylog2.bindings.providers.DefaultJmteEngineProvider;
+```
+
+I have found the similar import block in the older version (ref 1b2af126ebd1e4ea65826fb25e31a3b3760f1aeb) in the file `graylog2-server/src/main/java/org/graylog2/bindings/ServerBindings.java` lines 20-40. The import block is very similar except that in the older version, there is an import of `ClusterEventBusProvider` which is removed in the newer version patch.
+
+The `DefaultJmteEngineProvider` import is missing in the older version and needs to be added.
+
+Since the patch is only about adding this import line, and the other import lines are very similar except for the removal of `ClusterEventBusProvider`, I think the backport patch should add the import line for `DefaultJmteEngineProvider` in the older version, keeping the rest of the imports as is.
+
+No other code logic changes are indicated in the patch for this hunk.
+
+Next, I will generate the patch adding the import line for `DefaultJmteEngineProvider` in the older version's import block, keeping the rest unchanged.
+
+Before that, I will validate the patch context lines around the import to make sure the patch will apply cleanly.
+
+I will view a few more lines around the import block to confirm the exact context to use in the patch.
+
+[0m[36;1m[1;3mHere are lines 25 through 38.
+
+import jakarta.ws.rs.container.DynamicFeature;
+import jakarta.ws.rs.ext.ExceptionMapper;
+import org.apache.shiro.mgt.DefaultSecurityManager;
+import org.glassfish.grizzly.http.server.ErrorPageGenerator;
+import org.graylog.scheduler.capabilities.ServerNodeCapabilitiesModule;
+import org.graylog2.Configuration;
+import org.graylog2.alerts.AlertSender;
+import org.graylog2.alerts.EmailRecipients;
+import org.graylog2.alerts.FormattedEmailAlertSender;
+import org.graylog2.bindings.providers.ClusterEventBusProvider;
+import org.graylog2.bindings.providers.DefaultSecurityManagerProvider;
+import org.graylog2.bindings.providers.DefaultStreamProvider;
+import org.graylog2.bindings.providers.HtmlSafeJmteEngineProvider;
+import org.graylog2.bindings.providers.JsonSafeEngineProvider;
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `validate` with `{'ref': '1b2af126ebd1e4ea65826fb25e31a3b3760f1aeb', 'patch': '--- a/graylog2-server/src/main/java/org/graylog2/bindings/ServerBindings.java\n+++ b/graylog2-server/src/main/java/org/graylog2/bindings/ServerBindings.java\n@@ -31,7 +31,8 @@\n import org.graylog2.alerts.AlertSender;\n import org.graylog2.alerts.EmailRecipients;\n import org.graylog2.alerts.FormattedEmailAlertSender;\n-import org.graylog2.bindings.providers.ClusterEventBusProvider;\n+import org.graylog2.bindings.providers.ClusterEventBusProvider;\n import org.graylog2.bindings.providers.DefaultSecurityManagerProvider;\n import org.graylog2.bindings.providers.DefaultStreamProvider;\n import org.graylog2.bindings.providers.HtmlSafeJmteEngineProvider;\n+import org.graylog2.bindings.providers.DefaultJmteEngineProvider;\n '}`
+responded: The original patch adds this import line in the new version:
+
+```java
+import org.graylog2.bindings.providers.DefaultJmteEngineProvider;
+```
+
+In the old version at ref 1b2af126ebd1e4ea65826fb25e31a3b3760f1aeb, the imports around this area are:
+
+```java
+import org.graylog2.bindings.providers.ClusterEventBusProvider;
+import org.graylog2.bindings.providers.DefaultSecurityManagerProvider;
+import org.graylog2.bindings.providers.DefaultStreamProvider;
+import org.graylog2.bindings.providers.HtmlSafeJmteEngineProvider;
+import org.graylog2.bindings.providers.JsonSafeEngineProvider;
+```
+
+So the `DefaultJmteEngineProvider` import does not exist here yet.
+
+The patch only adds the import statement, no other changes in this hunk.
+
+Since the import is missing in the older version, the patch to add this import is straightforward: add the import line after the last import in the same block.
+
+No other code logic changes are involved in this hunk.
+
+Hence, the backport patch for this hunk is to add the import line:
+
+```java
+import org.graylog2.bindings.providers.DefaultJmteEngineProvider;
+```
+
+between the existing imports.
+
+I will now generate the patch accordingly and then validate it.
+
+[0m[38;5;200m[1;3mThis patch does not apply because of CONTEXT MISMATCH. Context are patch lines that already exist in the file, that is, lines starting with ` ` and `-`. You should modify the error patch according to the context of older version.
+Here are lines 30 through 39 of file graylog2-server/src/main/java/org/graylog2/bindings/ServerBindings.java for commit 1b2af126ebd1e4ea65826fb25e31a3b3760f1aeb.
+```code snippet
+import org.graylog2.alerts.AlertSender;
+import org.graylog2.alerts.EmailRecipients;
+import org.graylog2.alerts.FormattedEmailAlertSender;
+import org.graylog2.bindings.providers.ClusterEventBusProvider;
+import org.graylog2.bindings.providers.DefaultSecurityManagerProvider;
+import org.graylog2.bindings.providers.DefaultStreamProvider;
+import org.graylog2.bindings.providers.HtmlSafeJmteEngineProvider;
+import org.graylog2.bindings.providers.JsonSafeEngineProvider;
+import org.graylog2.bindings.providers.SecureFreemarkerConfigProvider;
+```
+Besides, here is detailed info about how the context differs between the patch and the old version.
+```context diff
+On the line 13 of your patch.
+          Your patch:
+Original source code:import org.graylog2.bindings.providers.JsonSafeEngineProvider;
+```
+Please eliminate these diffs step by step. Be sure to eliminate these diffs the next time you generate a patch!
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `validate` with `{'ref': '1b2af126ebd1e4ea65826fb25e31a3b3760f1aeb', 'patch': '--- a/graylog2-server/src/main/java/org/graylog2/bindings/ServerBindings.java\n+++ b/graylog2-server/src/main/java/org/graylog2/bindings/ServerBindings.java\n@@ -36,7 +36,8 @@\n import org.graylog2.bindings.providers.HtmlSafeJmteEngineProvider;\n+import org.graylog2.bindings.providers.DefaultJmteEngineProvider;\n import org.graylog2.bindings.providers.JsonSafeEngineProvider;\n import org.graylog2.bindings.providers.SecureFreemarkerConfigProvider;\n import org.graylog2.bindings.providers.SystemJobFactoryProvider;\n'}`
+responded: The patch I generated does not match the context of the old version because the old version has more imports after HtmlSafeJmteEngineProvider, specifically JsonSafeEngineProvider and SecureFreemarkerConfigProvider, which are not in the new patch context.
+
+To fix this, I need to:
+- Keep all existing imports in the old version as they are.
+- Add the new import `org.graylog2.bindings.providers.DefaultJmteEngineProvider;` after `HtmlSafeJmteEngineProvider;` without removing the subsequent imports.
+
+I will generate a patch that inserts the new import line after the existing `HtmlSafeJmteEngineProvider` import line, preserving the rest of the imports in the old version.
+
+[0m[38;5;200m[1;3mPatch applied successfully
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3mI have generated the backport patch for the given hunk. The patch adds the import of DefaultJmteEngineProvider to the older version's ServerBindings.java file, adapting the context to the older version's import structure by placing the new import after HtmlSafeJmteEngineProvider and before JsonSafeEngineProvider.
+
+Here is the patch:
+
+```diff
+--- a/graylog2-server/src/main/java/org/graylog2/bindings/ServerBindings.java
++++ b/graylog2-server/src/main/java/org/graylog2/bindings/ServerBindings.java
+@@ -36,7 +36,8 @@
+ import org.graylog2.bindings.providers.HtmlSafeJmteEngineProvider;
++import org.graylog2.bindings.providers.DefaultJmteEngineProvider;
+ import org.graylog2.bindings.providers.JsonSafeEngineProvider;
+ import org.graylog2.bindings.providers.SecureFreemarkerConfigProvider;
+ import org.graylog2.bindings.providers.SystemJobFactoryProvider;
+```
+
+I have validated this patch on the target ref 1b2af126ebd1e4ea65826fb25e31a3b3760f1aeb and it applies cleanly without conflicts.[0m
+
+[1m> Finished chain.[0m
+2026-04-29 06:16:08,223 - backport - INFO - Row 235: merged 5 non-source hunk(s) from developer.patch into working tree
+2026-04-29 06:16:08,225 - backport - INFO - Row 235: running build/test validation via helpers/
+2026-04-29 06:16:08,227 - backport - INFO -   Running build for graylog (helper: graylog2-server)
+2026-04-29 06:22:38,858 - backport - INFO -   Running 1 test target(s) for graylog
+2026-04-29 06:23:00,121 - backport - INFO - Row 235: SUCCESS (llm_generated)

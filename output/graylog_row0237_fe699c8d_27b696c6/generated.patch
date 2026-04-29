@@ -11,11 +11,93 @@
 
 --- a/graylog2-server/src/main/java/org/graylog/events/processor/aggregation/PivotAggregationSearch.java
 +++ b/graylog2-server/src/main/java/org/graylog/events/processor/aggregation/PivotAggregationSearch.java
-@@ -100,6 +100,7 @@
+@@ -102,4 +102,5 @@
      private final NotificationService notificationService;
      private final QueryStringDecorators queryStringDecorators;
 +    private final SearchNormalization searchNormalization;
  
      @Inject
-     public PivotAggregationSearch(@Assisted AggregationEventProcessorConfig config,
-                                   @Assisted AggregationEventProcessorParameters parameters,
+
+--- a/graylog2-server/src/main/java/org/graylog/events/processor/aggregation/PivotAggregationSearch.java
++++ b/graylog2-server/src/main/java/org/graylog/events/processor/aggregation/PivotAggregationSearch.java
+@@ -111,8 +111,9 @@
+                                   QueryEngine queryEngine,
+                                   EventsConfigurationProvider configProvider,
+                                   MoreSearch moreSearch,
+                                   PermittedStreams permittedStreams,
++                                  SearchNormalization searchNormalization,
+                                   NotificationService notificationService,
+                                   QueryStringDecorators queryStringDecorators) {
+         this.config = config;
+         this.parameters = parameters;
+
+--- a/graylog2-server/src/main/java/org/graylog/events/processor/aggregation/PivotAggregationSearch.java
++++ b/graylog2-server/src/main/java/org/graylog/events/processor/aggregation/PivotAggregationSearch.java
+@@ -368,28 +368,31 @@
+-    private SearchJob getSearchJob(AggregationEventProcessorParameters parameters, User user,
+-                                   long searchWithinMs, long executeEveryMs) throws EventProcessorException {
+-        final var username = user.name();
+-        Search search = Search.builder()
+-                .queries(ImmutableSet.of(getAggregationQuery(parameters, searchWithinMs, executeEveryMs), getSourceStreamsQuery(parameters)))
+-                .parameters(config.queryParameters())
+-                .build();
++    protected SearchJob getSearchJob(AggregationEventProcessorParameters parameters, User user,
++                           long searchWithinMs, long executeEveryMs) throws EventProcessorException {
++        final var username = user.name();
++        final Query queryWithSearchFilters = searchNormalization.postValidation(
++                getAggregationQuery(parameters, searchWithinMs, executeEveryMs),
++                ParameterProvider.of(config.queryParameters()));
++        Search search = Search.builder()
++                .queries(ImmutableSet.of(queryWithSearchFilters, getSourceStreamsQuery(parameters)))
++                .parameters(config.queryParameters())
++                .build();
+         // This adds all streams if none were provided
+-        // TODO: Once we introduce "EventProcessor owners" this should only load the permitted streams of the
+-        //       user who created this EventProcessor.
+-        search = search.addStreamsToQueriesWithoutStreams(() -> permittedStreams.loadAllMessageStreams((streamId) -> true));
++        // TODO: Once we introduce "EventProcessor owners" this should only load the permitted streams of the
++        //       user who created this EventProcessor.
++        search = search.addStreamsToQueriesWithoutStreams(() -> permittedStreams.loadAllMessageStreams((streamId) -> true));
+         final SearchJob searchJob = queryEngine.execute(searchJobService.create(search, username), Collections.emptySet(), user.timezone());
+-        try {
+-            Uninterruptibles.getUninterruptibly(
+-                    searchJob.getResultFuture(),
+-                    configurationProvider.get().eventsSearchTimeout(),
+-                    TimeUnit.MILLISECONDS);
+-        } catch (ExecutionException e) {
+-            throw new EventProcessorException("Error executing search job: " + e.getMessage(), false, eventDefinition, e);
++        try {
++            Uninterruptibles.getUninterruptibly(
++                    searchJob.getResultFuture(),
++                    configurationProvider.get().eventsSearchTimeout(),
++                    TimeUnit.MILLISECONDS);
++        } catch (ExecutionException e) {
++            throw new EventProcessorException("Error executing search job: " + e.getMessage(), false, eventDefinition, e);
+         } catch (TimeoutException e) {
+-            throw new EventProcessorException("Timeout while executing search job.", false, eventDefinition, e);
+-        } catch (Exception e) {
+-            throw new EventProcessorException("Unhandled exception in search job.", false, eventDefinition, e);
+-        }
+-
+-        return searchJob;
++            throw new EventProcessorException("Timeout while executing search job.", false, eventDefinition, e);
++        } catch (Exception e) {
++            throw new EventProcessorException("Unhandled exception in search job.", false, eventDefinition, e);
++        }
++
++        return searchJob;
+     }
+ 
+
+--- a/graylog2-server/src/main/java/org/graylog/events/processor/aggregation/PivotAggregationSearch.java
++++ b/graylog2-server/src/main/java/org/graylog/events/processor/aggregation/PivotAggregationSearch.java
+@@ -521,7 +528,8 @@ public class PivotAggregationSearch implements AggregationSearch {
+                 .id(QUERY_ID)
+                 .searchTypes(searchTypes)
+                 .query(decorateQuery(config))
+-                .timerange(parameters.timerange());
++                .timerange(parameters.timerange())
++                .filters(config.filters());
+ 
+         final Set<String> streams = getStreams(parameters);
+         if (!streams.isEmpty()) {

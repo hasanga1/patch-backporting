@@ -1750,3 +1750,1136 @@ I will now generate this patch.[0m
 [1m> Finished chain.[0m
 2026-04-29 04:07:20,445 - backport - ERROR - Hunk 2: agent failed (max iterations or error)
 2026-04-29 04:07:20,448 - backport - WARNING - Row 240: PARTIAL — 0/11 hunk(s) succeeded
+2026-04-29 06:36:57,651 - backport - INFO - Row 240 [graylog]: extracting original.patch
+2026-04-29 06:36:57,661 - backport - INFO - Row 240: 22 total hunks, 11 after filtering (test/non-Java removed)
+2026-04-29 06:36:57,663 - backport - INFO - Row 240 [graylog]: extracting developer.patch
+2026-04-29 06:36:57,712 - backport - INFO - Row 240: detected 2 test target(s) from developer.patch
+2026-04-29 06:36:57,960 - backport - INFO - Row 240: starting PortGPT backport agent
+
+
+[1m> Entering new AgentExecutor chain...[0m
+
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `git_history` with `{}`
+
+
+[0m[36;1m[1;3ma4c16342e0 Datanode/opensearch configuration beans (#21082)
+
+diff --git a/data-node/src/main/java/org/graylog/datanode/configuration/TruststoreCreator.java b/data-node/src/main/java/org/graylog/datanode/configuration/TruststoreCreator.java
+--- a/data-node/src/main/java/org/graylog/datanode/configuration/TruststoreCreator.java
++++ b/data-node/src/main/java/org/graylog/datanode/configuration/TruststoreCreator.java
+@@ -22,7 +22,6 @@
+-import org.slf4j.Logger;
+-import org.slf4j.LoggerFactory;
++import org.graylog.security.certutil.csr.InMemoryKeystoreInformation;
++import org.graylog.security.certutil.csr.KeystoreInformation;
+ 
+-import java.io.FileInputStream;
+ import java.io.FileOutputStream;
+ import java.io.IOException;
+ import java.nio.file.Path
+You need to do the following analysis based on the information in the last commit:
+Analyze the code logic of the context of the patch to be ported in this commit step by step.
+If code logic already existed before this commit, the patch context can be assumed to remain in a similar location. Use `locate` and `viewcode` to check your results.
+If code logic were added in this commit, then you need to `git_show` for further details.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': '56041913396ab5e6d6c32d39da493cca25ef69bf', 'path': 'data-node/src/main/java/org/graylog/datanode/configuration/TruststoreCreator.java', 'startline': 20, 'endline': 35}`
+responded: The git history shows a commit "a4c16342e0" that made changes in the file `data-node/src/main/java/org/graylog/datanode/configuration/TruststoreCreator.java`. This commit involves import changes, specifically removing some imports and adding others. The patch I need to backport adds the import `java.io.FileInputStream`, which is removed in this commit.
+
+This suggests that the import `java.io.FileInputStream` existed before commit "a4c16342e0" and was removed in that commit. Since the target ref 56041913396ab5e6d6c32d39da493cca25ef69bf is older, it should still have the import `java.io.FileInputStream` in the file.
+
+Therefore, the patch hunk adding `import java.io.FileInputStream;` is likely not needed in the older ref because it already has this import.
+
+I will confirm this by viewing the code around the import statements in the target ref to confirm the presence of `java.io.FileInputStream`.
+
+Next, I will use `viewcode` to check the imports in `data-node/src/main/java/org/graylog/datanode/configuration/TruststoreCreator.java` at ref 56041913396ab5e6d6c32d39da493cca25ef69bf around line 22-30 to confirm the current imports.
+
+[0m[36;1m[1;3mHere are lines 20 through 35.
+
+import org.graylog.security.certutil.CertConstants;
+import org.graylog.security.certutil.csr.FilesystemKeystoreInformation;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.nio.file.Path;
+import java.security.GeneralSecurityException;
+import java.security.KeyStore;
+import java.security.KeyStoreException;
+import java.security.NoSuchAlgorithmException;
+import java.security.cert.Certificate;
+import java.security.cert.CertificateException;
+import java.security.cert.X509Certificate;
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `validate` with `{'ref': '56041913396ab5e6d6c32d39da493cca25ef69bf', 'patch': 'need not ported'}`
+responded: The import statement `import java.io.FileInputStream;` already exists in the older version at the corresponding location in the file `data-node/src/main/java/org/graylog/datanode/configuration/TruststoreCreator.java`. 
+
+The patch in the newer version adds this import, but it is already present in the older version, so this part of the patch does not need to be applied.
+
+Since the patch is only adding a single import statement and that import statement already exists in the older version, the patch for this hunk is effectively a no-op for the older version.
+
+I will validate this conclusion by testing the patch "need not ported" for this hunk on the older version.
+
+[0m[38;5;200m[1;3mPatch applied successfully
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3mThe patch to add the import line `import java.io.FileInputStream;` is not needed to be ported because this import line already exists in the older version at ref 56041913396ab5e6d6c32d39da493cca25ef69bf. The code context around the patch confirms that the import statement is present already.
+
+Hence, the appropriate action is that this patch hunk does not need to be ported.
+
+Final decision: need not ported.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new AgentExecutor chain...[0m
+
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `git_history` with `{}`
+
+
+[0m[36;1m[1;3ma4c16342e0 Datanode/opensearch configuration beans (#21082)
+
+diff --git a/data-node/src/main/java/org/graylog/datanode/configuration/TruststoreCreator.java b/data-node/src/main/java/org/graylog/datanode/configuration/TruststoreCreator.java
+--- a/data-node/src/main/java/org/graylog/datanode/configuration/TruststoreCreator.java
++++ b/data-node/src/main/java/org/graylog/datanode/configuration/TruststoreCreator.java
+@@ -60,17 +59,22 @@
+         }
+     }
+ 
+-    public TruststoreCreator addRootCert(final String name, FilesystemKeystoreInformation keystoreInformation,
+-                                         final String alias) throws IOException, GeneralSecurityException {
+-        final X509Certificate rootCert = findRootCert(keystoreInformation.location(), keystoreInformation.password(), alias);
++    public TruststoreCreator addRootCert(final String name, KeystoreInformation keystoreInformation,
++                                         final String alias) throws GeneralSecurityException {
++        final X509Certificate rootCert;
++        try {
++            rootCert = findRootCert(keystoreInformation, alias);
++        } catch (Exception e) {
++            throw new RuntimeException(e);
++        }
+         this.truststore.setCertificateEntry(name, rootCert);
+         return this;
+     }
+ 
+     public TruststoreCreator addCertificates(List<X509Certificate> trustedCertificates) {
+         trustedCertificates.forEach(cert -> {
+             try {
+                 this.truststore.setCertificateEntry(cert.getSubjectX500Principal().getName(), cert);
+             } catch (KeyStoreException e) {
+                 throw new RuntimeException(e);
+             
+You need to do the following analysis based on the information in the last commit:
+Analyze the code logic of the context of the patch to be ported in this commit step by step.
+If code logic already existed before this commit, the patch context can be assumed to remain in a similar location. Use `locate` and `viewcode` to check your results.
+If code logic were added in this commit, then you need to `git_show` for further details.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `locate_symbol` with `{'ref': '56041913396ab5e6d6c32d39da493cca25ef69bf', 'symbol': 'TruststoreCreator'}`
+responded: From the git_history, I see that the addRootCert method existed in the older version but with a different signature and implementation. The older version uses FilesystemKeystoreInformation and calls findRootCert with location and password parameters, while the newer version uses a more generic KeystoreInformation and calls findRootCert with the keystoreInformation and alias directly inside a try-catch.
+
+The addCertificates method also existed in the older version with similar logic for adding certificates to the truststore.
+
+The new method addFromKeystore and the private method toX509Certs do not appear in the older version from this history snippet, so they are likely added in a later commit.
+
+The change in addRootCert is more than just context; the parameter type changed and the implementation changed to include a try-catch block.
+
+The change in addCertificates is only in the alias generation for the certificate entry.
+
+Therefore, for the backport:
+- We need to adapt addRootCert to the older version's signature and implementation style but incorporate the try-catch logic from the newer version.
+- We need to add the addFromKeystore and toX509Certs methods to the older version.
+- We need to modify addCertificates to use generateAlias instead of cert.getSubjectX500Principal().getName().
+
+I will now locate the TruststoreCreator class in the older version (56041913396ab5e6d6c32d39da493cca25ef69bf) to view the full context around these methods for the patch.
+
+[0m[33;1m[1;3mdata-node/src/main/java/org/graylog/datanode/configuration/TruststoreCreator.java:39
+data-node/src/main/java/org/graylog/datanode/configuration/TruststoreCreator.java:43[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': '56041913396ab5e6d6c32d39da493cca25ef69bf', 'path': 'data-node/src/main/java/org/graylog/datanode/configuration/TruststoreCreator.java', 'startline': 30, 'endline': 70}`
+
+
+[0m[36;1m[1;3mHere are lines 30 through 70.
+
+import java.security.KeyStore;
+import java.security.KeyStoreException;
+import java.security.NoSuchAlgorithmException;
+import java.security.cert.Certificate;
+import java.security.cert.CertificateException;
+import java.security.cert.X509Certificate;
+import java.util.Arrays;
+import java.util.List;
+
+public class TruststoreCreator {
+
+    private final KeyStore truststore;
+
+    public TruststoreCreator(KeyStore truststore) {
+        this.truststore = truststore;
+    }
+
+    public static TruststoreCreator newDefaultJvm() {
+        return TruststoreUtils.loadJvmTruststore()
+                .map(TruststoreCreator::new)
+                .orElseGet(TruststoreCreator::newEmpty);
+    }
+
+    public static TruststoreCreator newEmpty() {
+        try {
+            KeyStore trustStore = KeyStore.getInstance(CertConstants.PKCS12);
+            trustStore.load(null, null);
+            return new TruststoreCreator(trustStore);
+        } catch (KeyStoreException | CertificateException | IOException | NoSuchAlgorithmException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public TruststoreCreator addRootCert(final String name, FilesystemKeystoreInformation keystoreInformation,
+                                         final String alias) throws IOException, GeneralSecurityException {
+        final X509Certificate rootCert = findRootCert(keystoreInformation.location(), keystoreInformation.password(), alias);
+        this.truststore.setCertificateEntry(name, rootCert);
+        return this;
+    }
+
+    public TruststoreCreator addCertificates(List<X509Certificate> trustedCertificates) {
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': '56041913396ab5e6d6c32d39da493cca25ef69bf', 'path': 'data-node/src/main/java/org/graylog/datanode/configuration/TruststoreCreator.java', 'startline': 70, 'endline': 90}`
+
+
+[0m[36;1m[1;3mHere are lines 70 through 90.
+
+    public TruststoreCreator addCertificates(List<X509Certificate> trustedCertificates) {
+        trustedCertificates.forEach(cert -> {
+            try {
+                this.truststore.setCertificateEntry(cert.getSubjectX500Principal().getName(), cert);
+            } catch (KeyStoreException e) {
+                throw new RuntimeException(e);
+            }
+        });
+        return this;
+    }
+
+    public FilesystemKeystoreInformation persist(final Path truststorePath, final char[] truststorePassword) throws IOException, GeneralSecurityException {
+
+        try (final FileOutputStream fileOutputStream = new FileOutputStream(truststorePath.toFile())) {
+            this.truststore.store(fileOutputStream, truststorePassword);
+        }
+        return new FilesystemKeystoreInformation(truststorePath, truststorePassword);
+    }
+
+    @Nonnull
+    public KeyStore getTruststore() {
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': '56041913396ab5e6d6c32d39da493cca25ef69bf', 'path': 'data-node/src/main/java/org/graylog/datanode/configuration/TruststoreCreator.java', 'startline': 90, 'endline': 110}`
+
+
+[0m[36;1m[1;3mHere are lines 90 through 110.
+
+    public KeyStore getTruststore() {
+        return this.truststore;
+    }
+
+
+    private static X509Certificate findRootCert(Path keystorePath,
+                                                char[] password,
+                                                final String alias) throws IOException, GeneralSecurityException {
+        final KeyStore keystore = loadKeystore(keystorePath, password);
+        final Certificate[] certs = keystore.getCertificateChain(alias);
+
+        return Arrays.stream(certs)
+                .filter(cert -> cert instanceof X509Certificate)
+                .map(cert -> (X509Certificate) cert)
+                .filter(cert -> isRootCaCertificate(cert) || certs.length == 1)
+                .findFirst()
+                .orElseThrow(() -> new KeyStoreException("Keystore does not contain root X509Certificate in the certificate chain!"));
+    }
+
+    private static boolean isRootCaCertificate(X509Certificate cert) {
+        return cert.getSubjectX500Principal().equals(cert.getIssuerX500Principal());
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `locate_symbol` with `{'ref': '8e3941d8a038f392839799586570da568509f53f', 'symbol': 'generateAlias'}`
+responded: From the code viewed in the older version (ref 56041913396ab5e6d6c32d39da493cca25ef69bf), the method `addRootCert` exists but it is different from the newer version patch. The older version's `addRootCert` method only adds the root certificate found via `findRootCert` while the newer version patch replaces it with a method `addFromKeystore` which adds the entire certificate chain from a keystore alias.
+
+The older version also has the method `addCertificates` which adds a list of certificates to the truststore with the alias being the subject name of the certificate. The patch changes this to use a `generateAlias` method instead.
+
+The new method `addFromKeystore` and the change in `addCertificates` logic do not exist in the older version, so we need to backport these changes.
+
+Next, I need to check if the `generateAlias` method exists in the older version or if it needs to be added as well. I will locate the `generateAlias` method in the newer version first and then check its existence in the older version.
+
+I will locate `generateAlias` in the newer version ref 8e3941d8a038f392839799586570da568509f53f.
+
+[0m[33;1m[1;3mThe symbol generateAlias you are looking for does not exist in the current ref.
+But here is a symbol similar to it. It's `generateAction`.
+The file where this symbol is located is: 
+graylog2-server/src/main/java/org/graylog/plugins/pipelineprocessor/rulebuilder/parser/ActionParser.java:57
+Please be careful to check that this symbol indicates the same thing as the previous symbol.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `locate_symbol` with `{'ref': '56041913396ab5e6d6c32d39da493cca25ef69bf', 'symbol': 'addFromKeystore'}`
+
+
+[0m[33;1m[1;3mThe symbol addFromKeystore you are looking for does not exist in the current ref.
+But here is a symbol similar to it. It's `CaKeystore`.
+The file where this symbol is located is: 
+graylog2-server/src/main/java/org/graylog/security/certutil/CaKeystore.java:45
+graylog2-server/src/main/java/org/graylog/security/certutil/CaKeystore.java:58
+Please be careful to check that this symbol indicates the same thing as the previous symbol.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `locate_symbol` with `{'ref': '56041913396ab5e6d6c32d39da493cca25ef69bf', 'symbol': 'generateAlias'}`
+responded: Analysis:
+- The old version (ref 5604191) has the method addRootCert with a different signature and simpler logic: it accepts FilesystemKeystoreInformation, extracts the root cert only, and adds it.
+- The new version (ref 8e3941d) replaces this with addFromKeystore which adds the entire certificate chain from a generic KeystoreInformation, plus a helper toX509Certs, and changes addCertificates to use generateAlias instead of the subject name as alias.
+- The old version does not have addFromKeystore or toX509Certs methods, and uses FilesystemKeystoreInformation specifically in addRootCert.
+- The helper method generateAlias used in the new version is not found in the old version, so it may need to be added or replaced with existing logic.
+- The old addCertificates uses cert.getSubjectX500Principal().getName() as alias, the new version uses generateAlias(this.truststore, cert).
+- The patch involves changing addRootCert to addFromKeystore with new logic, adding toX509Certs, and changing addCertificates to use generateAlias.
+
+Next steps:
+1. Check the context around addCertificates and addRootCert in the old version to confirm where to place new methods.
+2. Check if generateAlias exists or needs to be backported.
+3. View more lines around addCertificates and addRootCert in old version to confirm full context for patch.
+4. Prepare the patch for backport accordingly.
+
+I will first check if generateAlias exists or if there's a related method that can be used in the old version.
+
+[0m[33;1m[1;3mThe symbol generateAlias you are looking for does not exist in the current ref.
+But here is a symbol similar to it. It's `generateAction`.
+The file where this symbol is located is: 
+graylog2-server/src/main/java/org/graylog/plugins/pipelineprocessor/rulebuilder/parser/ActionParser.java:57
+Please be careful to check that this symbol indicates the same thing as the previous symbol.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': '8e3941d8a038f392839799586570da568509f53f', 'path': 'data-node/src/main/java/org/graylog/datanode/configuration/TruststoreCreator.java', 'startline': 1, 'endline': 40}`
+
+
+[0m[36;1m[1;3mHere are lines 1 through 40.
+
+/*
+ * Copyright (C) 2020 Graylog, Inc.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the Server Side Public License, version 1,
+ * as published by MongoDB, Inc.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * Server Side Public License for more details.
+ *
+ * You should have received a copy of the Server Side Public License
+ * along with this program. If not, see
+ * <http://www.mongodb.com/licensing/server-side-public-license>.
+ */
+package org.graylog.datanode.configuration;
+
+import jakarta.annotation.Nonnull;
+import org.graylog.security.certutil.CertConstants;
+import org.graylog.security.certutil.csr.FilesystemKeystoreInformation;
+import org.graylog.security.certutil.csr.InMemoryKeystoreInformation;
+import org.graylog.security.certutil.csr.KeystoreInformation;
+
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.nio.file.Path;
+import java.security.GeneralSecurityException;
+import java.security.KeyStore;
+import java.security.KeyStoreException;
+import java.security.NoSuchAlgorithmException;
+import java.security.cert.Certificate;
+import java.security.cert.CertificateException;
+import java.security.cert.X509Certificate;
+import java.util.Arrays;
+import java.util.List;
+
+public class TruststoreCreator {
+
+    private final KeyStore truststore;
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': '8e3941d8a038f392839799586570da568509f53f', 'path': 'data-node/src/main/java/org/graylog/datanode/configuration/TruststoreCreator.java', 'startline': 59, 'endline': 95}`
+
+
+[0m[36;1m[1;3mHere are lines 59 through 95.
+
+        }
+    }
+
+    public TruststoreCreator addRootCert(final String name, KeystoreInformation keystoreInformation,
+                                         final String alias) throws GeneralSecurityException {
+        final X509Certificate rootCert;
+        try {
+            rootCert = findRootCert(keystoreInformation, alias);
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+        this.truststore.setCertificateEntry(name, rootCert);
+        return this;
+    }
+
+    public TruststoreCreator addCertificates(List<X509Certificate> trustedCertificates) {
+        trustedCertificates.forEach(cert -> {
+            try {
+                this.truststore.setCertificateEntry(cert.getSubjectX500Principal().getName(), cert);
+            } catch (KeyStoreException e) {
+                throw new RuntimeException(e);
+            }
+        });
+        return this;
+    }
+
+    public FilesystemKeystoreInformation persist(final Path truststorePath, final char[] truststorePassword) throws IOException, GeneralSecurityException {
+
+        try (final FileOutputStream fileOutputStream = new FileOutputStream(truststorePath.toFile())) {
+            this.truststore.store(fileOutputStream, truststorePassword);
+        }
+        return new FilesystemKeystoreInformation(truststorePath, truststorePassword);
+    }
+
+    @Nonnull
+    public KeyStore getTruststore() {
+        return this.truststore;
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': '8e3941d8a038f392839799586570da568509f53f', 'path': 'data-node/src/main/java/org/graylog/datanode/configuration/TruststoreCreator.java', 'startline': 96, 'endline': 115}`
+
+
+[0m[36;1m[1;3mHere are lines 96 through 115.
+
+    }
+
+    public KeystoreInformation toKeystoreInformation(final char[] truststorePassword) {
+        return new InMemoryKeystoreInformation(this.truststore, truststorePassword);
+    }
+
+
+    private static X509Certificate findRootCert(KeystoreInformation keystoreInformation,
+                                                final String alias) throws Exception {
+        final KeyStore keystore = keystoreInformation.loadKeystore();
+        final Certificate[] certs = keystore.getCertificateChain(alias);
+
+        return Arrays.stream(certs)
+                .filter(cert -> cert instanceof X509Certificate)
+                .map(cert -> (X509Certificate) cert)
+                .filter(cert -> isRootCaCertificate(cert) || certs.length == 1)
+                .findFirst()
+                .orElseThrow(() -> new KeyStoreException("Keystore does not contain root X509Certificate in the certificate chain!"));
+    }
+
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': '8e3941d8a038f392839799586570da568509f53f', 'path': 'data-node/src/main/java/org/graylog/datanode/configuration/TruststoreCreator.java', 'startline': 116, 'endline': 130}`
+
+
+[0m[36;1m[1;3mThis file only has 120 lines. Here are lines 116 through 120.
+
+    private static boolean isRootCaCertificate(X509Certificate cert) {
+        return cert.getSubjectX500Principal().equals(cert.getIssuerX500Principal());
+    }
+}
+
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': '56041913396ab5e6d6c32d39da493cca25ef69bf', 'path': 'data-node/src/main/java/org/graylog/datanode/configuration/TruststoreCreator.java', 'startline': 40, 'endline': 59}`
+
+
+[0m[36;1m[1;3mHere are lines 40 through 59.
+
+
+    private final KeyStore truststore;
+
+    public TruststoreCreator(KeyStore truststore) {
+        this.truststore = truststore;
+    }
+
+    public static TruststoreCreator newDefaultJvm() {
+        return TruststoreUtils.loadJvmTruststore()
+                .map(TruststoreCreator::new)
+                .orElseGet(TruststoreCreator::newEmpty);
+    }
+
+    public static TruststoreCreator newEmpty() {
+        try {
+            KeyStore trustStore = KeyStore.getInstance(CertConstants.PKCS12);
+            trustStore.load(null, null);
+            return new TruststoreCreator(trustStore);
+        } catch (KeyStoreException | CertificateException | IOException | NoSuchAlgorithmException e) {
+            throw new RuntimeException(e);
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': '56041913396ab5e6d6c32d39da493cca25ef69bf', 'path': 'data-node/src/main/java/org/graylog/datanode/configuration/TruststoreCreator.java', 'startline': 1, 'endline': 40}`
+responded: The older version at ref 56041913396ab5e6d6c32d39da493cca25ef69bf has the following relevant code for the patch context:
+
+- The method `addRootCert` exists but has a different signature and implementation:
+  ```java
+  public TruststoreCreator addRootCert(final String name, FilesystemKeystoreInformation keystoreInformation,
+                                       final String alias) throws IOException, GeneralSecurityException {
+      final X509Certificate rootCert = findRootCert(keystoreInformation.location(), keystoreInformation.password(), alias);
+      this.truststore.setCertificateEntry(name, rootCert);
+      return this;
+  }
+  ```
+- The method `addCertificates` exists and uses the certificate's subject name as alias:
+  ```java
+  public TruststoreCreator addCertificates(List<X509Certificate> trustedCertificates) {
+      trustedCertificates.forEach(cert -> {
+          try {
+              this.truststore.setCertificateEntry(cert.getSubjectX500Principal().getName(), cert);
+          } catch (KeyStoreException e) {
+              throw new RuntimeException(e);
+          }
+      });
+      return this;
+  }
+  ```
+- The method `addFromKeystore` does not exist in the older version.
+- The method `generateAlias` used in the patch does not exist in the older version.
+- The `addRootCert` method in the older version uses `FilesystemKeystoreInformation` and calls `findRootCert` with location and password parameters, while the newer version uses `KeystoreInformation` and calls `findRootCert` with the `KeystoreInformation` object and alias.
+
+The patch in the newer version introduces a new method `addFromKeystore` that adds the whole certificate chain from the keystore, and changes the `addCertificates` method to use `generateAlias` instead of the subject name as the alias when adding certificates to the truststore.
+
+Since `addFromKeystore` and `generateAlias` do not exist in the older version, I need to:
+- Add the `addFromKeystore` method in the older version.
+- Adapt the `addCertificates` method to use the subject name as alias because `generateAlias` is not present.
+- Keep the existing `addRootCert` method but adjust its signature to match the newer method if possible, or keep the older signature if the type `KeystoreInformation` is not compatible.
+
+I will now check the imports and class members around this code in the older version to see if `KeystoreInformation` is available or if only `FilesystemKeystoreInformation` is used.
+
+I will view the first 40 lines of the older version to check imports and class members.
+
+[0m[36;1m[1;3mHere are lines 1 through 40.
+
+/*
+ * Copyright (C) 2020 Graylog, Inc.
+ *
+ * This program is free software: you can redistribute it and/or modify
+ * it under the terms of the Server Side Public License, version 1,
+ * as published by MongoDB, Inc.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+ * Server Side Public License for more details.
+ *
+ * You should have received a copy of the Server Side Public License
+ * along with this program. If not, see
+ * <http://www.mongodb.com/licensing/server-side-public-license>.
+ */
+package org.graylog.datanode.configuration;
+
+import jakarta.annotation.Nonnull;
+import org.graylog.security.certutil.CertConstants;
+import org.graylog.security.certutil.csr.FilesystemKeystoreInformation;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.nio.file.Path;
+import java.security.GeneralSecurityException;
+import java.security.KeyStore;
+import java.security.KeyStoreException;
+import java.security.NoSuchAlgorithmException;
+import java.security.cert.Certificate;
+import java.security.cert.CertificateException;
+import java.security.cert.X509Certificate;
+import java.util.Arrays;
+import java.util.List;
+
+public class TruststoreCreator {
+
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3mThe addRootCert method in the older version (ref 5604191) has a different signature and implementation compared to the newer version (ref 8e3941d). In the older version, it takes FilesystemKeystoreInformation and directly calls findRootCert with keystore location and password, while in the newer version it takes a more generic KeystoreInformation and calls a different findRootCert method.
+
+The addCertificates method is present in both versions but the way the alias is generated for setCertificateEntry is different. The newer version uses a generateAlias method that does not exist in the older version.
+
+The new method addFromKeystore in the newer version, which adds the whole certificate chain from the keystore, does not exist in the older version.
+
+The findRootCert method also differs in parameters and implementation between the two versions.
+
+The generateAlias method used in the newer version is not found in the older version.
+
+Given these differences, the patch cannot be applied directly. The backport needs to:
+
+1. Replace the addRootCert method in the older version with the logic from the newer version but adapted to the older method signatures and helper methods.
+2. Add the addFromKeystore method to the older version.
+3. Modify addCertificates to use the older method of alias generation (subject name) since generateAlias does not exist.
+4. Ensure the findRootCert method used in addRootCert matches the older version signature.
+
+I will now create a patch for the older version that adapts the changes in the newer version accordingly.
+
+---
+
+I will generate the patch now.[0m
+
+[1m> Finished chain.[0m
+2026-04-29 06:38:28,415 - backport - ERROR - Hunk 2: agent failed (max iterations or error)
+2026-04-29 06:38:28,418 - backport - WARNING - Row 240: PARTIAL — 0/11 hunk(s) succeeded

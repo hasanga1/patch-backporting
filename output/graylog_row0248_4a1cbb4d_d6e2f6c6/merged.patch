@@ -24,9 +24,9 @@
 
 --- a/graylog2-server/src/main/java/org/graylog/plugins/pipelineprocessor/functions/messages/RemoveField.java
 +++ b/graylog2-server/src/main/java/org/graylog/plugins/pipelineprocessor/functions/messages/RemoveField.java
-@@ -23,5 +23,6 @@
- import org.graylog.plugins.pipelineprocessor.ast.functions.ParameterDescriptor;
- import org.graylog2.plugin.Message;
+@@ -23,4 +23,5 @@
+-import org.graylog2.plugin.Message;
++import org.graylog2.plugin.Message;
 +import java.util.regex.Pattern;
  
  import java.util.stream.Collectors;
@@ -46,7 +46,7 @@
 +                .transform(Pattern::compile)
 +                .description("The field(s) to remove (name or regex)").build();
          messageParam = type("message", Message.class).optional().description("The message to use, defaults to '$message'").build();
-+        invertParam = ParameterDescriptor.bool(INVERT).optional().description("Invert: keep matching field(s) and remove all others").build();
++        invertParam = ParameterDescriptor.bool("invert").optional().description("Invert: keep matching field(s) and remove all others").build();
      }
  
      @Override
@@ -71,8 +71,7 @@
 
 --- a/graylog2-server/src/main/java/org/graylog/plugins/pipelineprocessor/functions/messages/RemoveField.java
 +++ b/graylog2-server/src/main/java/org/graylog/plugins/pipelineprocessor/functions/messages/RemoveField.java
-@@ -55,10 +55,16 @@
--    @Override
+@@ -56,9 +56,11 @@
 -    public FunctionDescriptor<Void> descriptor() {
 -        return FunctionDescriptor.<Void>builder()
 -                .name(NAME)
@@ -81,27 +80,21 @@
 -                .description("Removes a field from a message")
 -                .build();
 -    }
-+    @Override
 +    public FunctionDescriptor<Void> descriptor() {
 +        return FunctionDescriptor.<Void>builder()
 +                .name(NAME)
 +                .returnType(Void.class)
 +                .params(ImmutableList.of(fieldParam, messageParam))
 +                .description("Removes the named field from message, unless the field is reserved. " +
-+                        "If no specific message is provided, it uses the currently processed message. " +
-+                        "This function is deprecated - use the more performant remove_single_field or remove_multiple_fields.")
-+                .ruleBuilderEnabled()
-+                .ruleBuilderName("Remove field (deprecated)")
-+                .ruleBuilderTitle("Remove field '${field}'")
-+                .ruleBuilderFunctionGroup(RuleBuilderFunctionGroup.MESSAGE)
++                             "If no specific message is provided, it uses the currently processed message. " +
++                             "This function is deprecated - use the more performant remove_single_field or remove_multiple_fields.")
 +                .build();
 +    }
  }
 
 --- a/graylog2-server/src/main/java/org/graylog/plugins/pipelineprocessor/functions/messages/RemoveField.java
 +++ b/graylog2-server/src/main/java/org/graylog/plugins/pipelineprocessor/functions/messages/RemoveField.java
-@@ -55,10 +55,16 @@
--    @Override
+@@ -56,9 +56,11 @@
 -    public FunctionDescriptor<Void> descriptor() {
 -        return FunctionDescriptor.<Void>builder()
 -                .name(NAME)
@@ -110,19 +103,14 @@
 -                .description("Removes a field from a message")
 -                .build();
 -    }
-+    @Override
 +    public FunctionDescriptor<Void> descriptor() {
 +        return FunctionDescriptor.<Void>builder()
 +                .name(NAME)
 +                .returnType(Void.class)
 +                .params(ImmutableList.of(fieldParam, messageParam))
 +                .description("Removes the named field from message, unless the field is reserved. " +
-+                        "If no specific message is provided, it uses the currently processed message. " +
-+                        "This function is deprecated - use the more performant remove_single_field or remove_multiple_fields.")
-+                .ruleBuilderEnabled()
-+                .ruleBuilderName("Remove field (deprecated)")
-+                .ruleBuilderTitle("Remove field '${field}'")
-+                .ruleBuilderFunctionGroup(RuleBuilderFunctionGroup.MESSAGE)
++                             "If no specific message is provided, it uses the currently processed message. " +
++                             "This function is deprecated - use the more performant remove_single_field or remove_multiple_fields.")
 +                .build();
 +    }
  }
