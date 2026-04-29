@@ -1,0 +1,206 @@
+--- a/hibernate-core/src/main/java/org/hibernate/dialect/H2Dialect.java
++++ b/hibernate-core/src/main/java/org/hibernate/dialect/H2Dialect.java
+@@ -1025,6 +1025,11 @@
+ 	@Override
+ 	public String getDual() {
+ 		return "dual";
+ 	}
++
++	@Override
++	public boolean supportsBindingNullSqlTypeForSetNull() {
++		return true;
++	}
+ 
+ }
+
+--- a/hibernate-core/src/main/java/org/hibernate/dialect/MySQLDialect.java
++++ b/hibernate-core/src/main/java/org/hibernate/dialect/MySQLDialect.java
+@@ -1574,5 +1574,10 @@
+ 	@Override
+ 	public String getDual() {
+ 		return "dual";
+ 	}
++
++	@Override
++	public boolean supportsBindingNullSqlTypeForSetNull() {
++		return true;
++	}
+ }
+
+--- a/hibernate-core/src/main/java/org/hibernate/dialect/PostgreSQLDialect.java
++++ b/hibernate-core/src/main/java/org/hibernate/dialect/PostgreSQLDialect.java
+@@ -1498,4 +1498,9 @@ public DmlTargetColumnQualifierSupport getDmlTargetColumnQualifierSupport() {
+ 	public boolean supportsFromClauseInUpdate() {
+ 		return true;
+ 	}
++
++	@Override
++	public boolean supportsBindingNullSqlTypeForSetNull() {
++		return true;
++	}
+ }
+
+--- a/hibernate-core/src/main/java/org/hibernate/dialect/SQLServerDialect.java
++++ b/hibernate-core/src/main/java/org/hibernate/dialect/SQLServerDialect.java
+@@ -1167,17 +1167,22 @@
+ 	// (these would help if we used 'delete' instead of 'truncate')
+ 
+ //	@Override
+ //	public String getDisableConstraintStatement(String tableName, String name) {
+ //		return "alter table " + tableName + " nocheck constraint " + name;
+ //	}
+ //
+ //	@Override
+ //	public String getEnableConstraintStatement(String tableName, String name) {
+ //		return "alter table " + tableName + " with check check constraint " + name;
+ //	}
+ 
+ 
+ 	@Override
+ 	public MutationOperation createOptionalTableUpdateOperation(
+ 			EntityMutationTarget mutationTarget,
++
++	@Override
++	public boolean supportsBindingNullForSetObject() {
++		return true;
++	}
+ 			OptionalTableUpdate optionalTableUpdate,
+
+--- a/hibernate-core/src/main/java/org/hibernate/type/descriptor/jdbc/ObjectNullResolvingJdbcType.java
++++ b/hibernate-core/src/main/java/org/hibernate/type/descriptor/jdbc/ObjectNullResolvingJdbcType.java
+@@ -42,13 +42,27 @@ public <X> ValueBinder<X> getBinder(JavaType<X> javaType) {
+ 			@Override
+ 			protected void doBindNull(PreparedStatement st, int index, WrapperOptions options)
+ 					throws SQLException {
+-				st.setNull( index, st.getParameterMetaData().getParameterType( index ) );
++				if ( options.getDialect().supportsBindingNullForSetObject() ) {
++					st.setObject( index, null );
++				}
++				else {
++					final int sqlType = options.getDialect().supportsBindingNullSqlTypeForSetNull() ? Types.NULL
++							: st.getParameterMetaData().getParameterType( index );
++					st.setNull( index, sqlType );
++				}
+ 			}
+ 
+ 			@Override
+ 			protected void doBindNull(CallableStatement st, String name, WrapperOptions options)
+ 					throws SQLException {
+-				st.setNull( name, Types.JAVA_OBJECT );
++				if ( options.getDialect().supportsBindingNullForSetObject() ) {
++					st.setObject( name, null );
++				}
++				else {
++					final int sqlType = options.getDialect().supportsBindingNullSqlTypeForSetNull() ? Types.NULL
++							: Types.JAVA_OBJECT;
++					st.setNull( name, sqlType );
++				}
+ 			}
+ 
+ 			@Override
+diff --git a/hibernate-core/src/test/java/org/hibernate/orm/test/typedescriptor/NullTest.java b/hibernate-core/src/test/java/org/hibernate/orm/test/typedescriptor/NullTest.java
+new file mode 100644
+index 0000000000..77aa747e02
+--- /dev/null
++++ b/hibernate-core/src/test/java/org/hibernate/orm/test/typedescriptor/NullTest.java
+@@ -0,0 +1,100 @@
++/*
++ * Hibernate, Relational Persistence for Idiomatic Java
++ *
++ * License: GNU Lesser General Public License (LGPL), version 2.1 or later.
++ * See the lgpl.txt file in the root directory or <http://www.gnu.org/licenses/lgpl-2.1.html>.
++ */
++package org.hibernate.orm.test.typedescriptor;
++
++import org.hibernate.testing.orm.junit.DomainModel;
++import org.hibernate.testing.orm.junit.JiraKey;
++import org.hibernate.testing.orm.junit.SessionFactory;
++import org.hibernate.testing.orm.junit.SessionFactoryScope;
++import org.junit.jupiter.api.AfterEach;
++import org.junit.jupiter.api.BeforeEach;
++import org.junit.jupiter.api.Test;
++
++import jakarta.persistence.Entity;
++import jakarta.persistence.GeneratedValue;
++import jakarta.persistence.Id;
++
++import static org.junit.jupiter.api.Assertions.assertNotNull;
++
++/**
++ * @author Yanming Zhou
++ */
++@DomainModel(
++		annotatedClasses = NullTest.SimpleEntity.class
++)
++@SessionFactory
++public class NullTest {
++
++	@BeforeEach
++	public void setUp(SessionFactoryScope scope) {
++		scope.inTransaction(
++				session -> session.persist( new SimpleEntity() )
++		);
++	}
++
++	@AfterEach
++	public void tearDown(SessionFactoryScope scope) {
++		scope.inTransaction(
++				session ->
++						session.createMutationQuery( "delete from SimpleEntity" ).executeUpdate()
++		);
++	}
++
++	@Test
++	@JiraKey("HHH-18581")
++	public void passingNullAsParameterOfNativeQuery(SessionFactoryScope scope) {
++		scope.inTransaction(
++				session -> {
++					SimpleEntity persisted = session.createNativeQuery(
++							"select * from SimpleEntity where name is null or name=:name",
++							SimpleEntity.class
++					).setParameter( "name", null ).uniqueResult();
++
++					assertNotNull( persisted );
++				}
++		);
++	}
++
++	@Test
++	public void passingNullAsParameterOfQuery(SessionFactoryScope scope) {
++		scope.inTransaction(
++				session -> {
++					SimpleEntity persisted = session.createQuery(
++							"from SimpleEntity where name is null or name=:name",
++							SimpleEntity.class
++					).setParameter( "name", null ).uniqueResult();
++
++					assertNotNull( persisted );
++				}
++		);
++	}
++
++	@Entity(name = "SimpleEntity")
++	static class SimpleEntity {
++		@Id
++		@GeneratedValue
++		private Integer id;
++
++		private String name;
++
++		public Integer getId() {
++			return id;
++		}
++
++		public void setId(Integer id) {
++			this.id = id;
++		}
++
++		public String getName() {
++			return name;
++		}
++
++		public void setName(String name) {
++			this.name = name;
++		}
++	}
++}

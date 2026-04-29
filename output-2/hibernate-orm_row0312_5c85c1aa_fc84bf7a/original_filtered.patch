@@ -1,0 +1,96 @@
+diff --git a/hibernate-core/src/main/java/org/hibernate/dialect/OracleDialect.java b/hibernate-core/src/main/java/org/hibernate/dialect/OracleDialect.java
+index 5378f5a01b..da62a303db 100644
+--- a/hibernate-core/src/main/java/org/hibernate/dialect/OracleDialect.java
++++ b/hibernate-core/src/main/java/org/hibernate/dialect/OracleDialect.java
+@@ -16,6 +16,7 @@
+ import org.hibernate.dialect.aggregate.OracleAggregateSupport;
+ import org.hibernate.dialect.function.CommonFunctionFactory;
+ import org.hibernate.dialect.function.ModeStatsModeEmulation;
++import org.hibernate.dialect.function.OracleExtractFunction;
+ import org.hibernate.dialect.function.OracleTruncFunction;
+ import org.hibernate.dialect.identity.IdentityColumnSupport;
+ import org.hibernate.dialect.identity.Oracle12cIdentityColumnSupport;
+@@ -418,6 +419,11 @@ public void initializeFunctionRegistry(FunctionContributions functionContributio
+ 		functionFactory.hex( "rawtohex(?1)" );
+ 		functionFactory.sha( "standard_hash(?1, 'SHA256')" );
+ 		functionFactory.md5( "standard_hash(?1, 'MD5')" );
++
++		functionContributions.getFunctionRegistry().register(
++				"extract",
++				new OracleExtractFunction( this, typeConfiguration )
++		);
+ 	}
+ 
+ 	/**
+diff --git a/hibernate-core/src/main/java/org/hibernate/dialect/function/ExtractFunction.java b/hibernate-core/src/main/java/org/hibernate/dialect/function/ExtractFunction.java
+index c05ae16d40..095917d69b 100644
+--- a/hibernate-core/src/main/java/org/hibernate/dialect/function/ExtractFunction.java
++++ b/hibernate-core/src/main/java/org/hibernate/dialect/function/ExtractFunction.java
+@@ -48,7 +48,7 @@
+  */
+ public class ExtractFunction extends AbstractSqmFunctionDescriptor implements FunctionRenderer {
+ 
+-	private final Dialect dialect;
++	final Dialect dialect;
+ 
+ 	public ExtractFunction(Dialect dialect, TypeConfiguration typeConfiguration) {
+ 		super(
+diff --git a/hibernate-core/src/main/java/org/hibernate/dialect/function/OracleExtractFunction.java b/hibernate-core/src/main/java/org/hibernate/dialect/function/OracleExtractFunction.java
+new file mode 100644
+index 0000000000..ffd2da434b
+--- /dev/null
++++ b/hibernate-core/src/main/java/org/hibernate/dialect/function/OracleExtractFunction.java
+@@ -0,0 +1,53 @@
++/*
++ * SPDX-License-Identifier: Apache-2.0
++ * Copyright Red Hat Inc. and Hibernate Authors
++ */
++package org.hibernate.dialect.function;
++
++import jakarta.persistence.TemporalType;
++import org.hibernate.dialect.Dialect;
++import org.hibernate.metamodel.mapping.JdbcMappingContainer;
++import org.hibernate.metamodel.model.domain.ReturnableType;
++import org.hibernate.query.common.TemporalUnit;
++import org.hibernate.query.sqm.produce.function.internal.PatternRenderer;
++import org.hibernate.sql.ast.SqlAstTranslator;
++import org.hibernate.sql.ast.spi.SqlAppender;
++import org.hibernate.sql.ast.tree.SqlAstNode;
++import org.hibernate.sql.ast.tree.expression.Expression;
++import org.hibernate.sql.ast.tree.expression.ExtractUnit;
++import org.hibernate.type.spi.TypeConfiguration;
++
++import java.util.List;
++
++import static org.hibernate.query.common.TemporalUnit.EPOCH;
++import static org.hibernate.type.spi.TypeConfiguration.getSqlTemporalType;
++
++public class OracleExtractFunction extends ExtractFunction {
++	public OracleExtractFunction(Dialect dialect, TypeConfiguration typeConfiguration) {
++		super( dialect, typeConfiguration );
++	}
++
++	@Override
++	public void render(
++			SqlAppender sqlAppender,
++			List<? extends SqlAstNode> sqlAstArguments,
++			ReturnableType<?> returnType,
++			SqlAstTranslator<?> walker) {
++		new PatternRenderer( extractPattern( sqlAstArguments ) ).render( sqlAppender, sqlAstArguments, walker );
++	}
++
++	@SuppressWarnings("deprecation")
++	private String extractPattern(List<? extends SqlAstNode> sqlAstArguments) {
++		final ExtractUnit field = (ExtractUnit) sqlAstArguments.get( 0 );
++		final TemporalUnit unit = field.getUnit();
++		if ( unit == EPOCH ) {
++			final Expression expression = (Expression) sqlAstArguments.get( 1 );
++			final JdbcMappingContainer type = expression.getExpressionType();
++			final TemporalType temporalType = type != null ? getSqlTemporalType( type ) : null;
++			if ( temporalType == TemporalType.DATE ) {
++				return "trunc((cast(from_tz(cast(?2 as timestamp),'UTC') as date) - date '1970-1-1')*86400)";
++			}
++		}
++		return dialect.extractPattern( unit );
++	}
++}

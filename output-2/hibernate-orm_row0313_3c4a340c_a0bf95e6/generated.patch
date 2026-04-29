@@ -1,0 +1,100 @@
+--- a/hibernate-core/src/main/java/org/hibernate/dialect/H2Dialect.java
++++ b/hibernate-core/src/main/java/org/hibernate/dialect/H2Dialect.java
+@@ -1025,6 +1025,11 @@
+ 	@Override
+ 	public String getDual() {
+ 		return "dual";
+ 	}
++
++	@Override
++	public boolean supportsBindingNullSqlTypeForSetNull() {
++		return true;
++	}
+ 
+ }
+
+--- a/hibernate-core/src/main/java/org/hibernate/dialect/MySQLDialect.java
++++ b/hibernate-core/src/main/java/org/hibernate/dialect/MySQLDialect.java
+@@ -1574,5 +1574,10 @@
+ 	@Override
+ 	public String getDual() {
+ 		return "dual";
+ 	}
++
++	@Override
++	public boolean supportsBindingNullSqlTypeForSetNull() {
++		return true;
++	}
+ }
+
+--- a/hibernate-core/src/main/java/org/hibernate/dialect/PostgreSQLDialect.java
++++ b/hibernate-core/src/main/java/org/hibernate/dialect/PostgreSQLDialect.java
+@@ -1498,4 +1498,9 @@ public DmlTargetColumnQualifierSupport getDmlTargetColumnQualifierSupport() {
+ 	public boolean supportsFromClauseInUpdate() {
+ 		return true;
+ 	}
++
++	@Override
++	public boolean supportsBindingNullSqlTypeForSetNull() {
++		return true;
++	}
+ }
+
+--- a/hibernate-core/src/main/java/org/hibernate/dialect/SQLServerDialect.java
++++ b/hibernate-core/src/main/java/org/hibernate/dialect/SQLServerDialect.java
+@@ -1167,17 +1167,22 @@
+ 	// (these would help if we used 'delete' instead of 'truncate')
+ 
+ //	@Override
+ //	public String getDisableConstraintStatement(String tableName, String name) {
+ //		return "alter table " + tableName + " nocheck constraint " + name;
+ //	}
+ //
+ //	@Override
+ //	public String getEnableConstraintStatement(String tableName, String name) {
+ //		return "alter table " + tableName + " with check check constraint " + name;
+ //	}
+ 
+ 
+ 	@Override
+ 	public MutationOperation createOptionalTableUpdateOperation(
+ 			EntityMutationTarget mutationTarget,
++
++	@Override
++	public boolean supportsBindingNullForSetObject() {
++		return true;
++	}
+ 			OptionalTableUpdate optionalTableUpdate,
+
+--- a/hibernate-core/src/main/java/org/hibernate/type/descriptor/jdbc/ObjectNullResolvingJdbcType.java
++++ b/hibernate-core/src/main/java/org/hibernate/type/descriptor/jdbc/ObjectNullResolvingJdbcType.java
+@@ -42,13 +42,27 @@ public <X> ValueBinder<X> getBinder(JavaType<X> javaType) {
+ 			@Override
+ 			protected void doBindNull(PreparedStatement st, int index, WrapperOptions options)
+ 					throws SQLException {
+-				st.setNull( index, st.getParameterMetaData().getParameterType( index ) );
++				if ( options.getDialect().supportsBindingNullForSetObject() ) {
++					st.setObject( index, null );
++				}
++				else {
++					final int sqlType = options.getDialect().supportsBindingNullSqlTypeForSetNull() ? Types.NULL
++							: st.getParameterMetaData().getParameterType( index );
++					st.setNull( index, sqlType );
++				}
+ 			}
+ 
+ 			@Override
+ 			protected void doBindNull(CallableStatement st, String name, WrapperOptions options)
+ 					throws SQLException {
+-				st.setNull( name, Types.JAVA_OBJECT );
++				if ( options.getDialect().supportsBindingNullForSetObject() ) {
++					st.setObject( name, null );
++				}
++				else {
++					final int sqlType = options.getDialect().supportsBindingNullSqlTypeForSetNull() ? Types.NULL
++							: Types.JAVA_OBJECT;
++					st.setNull( name, sqlType );
++				}
+ 			}
+ 
+ 			@Override

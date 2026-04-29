@@ -1,0 +1,19 @@
+diff --git a/hibernate-core/src/main/java/org/hibernate/sql/results/graph/collection/internal/ListInitializer.java b/hibernate-core/src/main/java/org/hibernate/sql/results/graph/collection/internal/ListInitializer.java
+index fbcc113f21..f42550c1f0 100644
+--- a/hibernate-core/src/main/java/org/hibernate/sql/results/graph/collection/internal/ListInitializer.java
++++ b/hibernate-core/src/main/java/org/hibernate/sql/results/graph/collection/internal/ListInitializer.java
+@@ -121,10 +121,13 @@ protected void resolveInstanceSubInitializers(ImmediateCollectionInitializerData
+ 		final Initializer<?> initializer = elementAssembler.getInitializer();
+ 		if ( initializer != null ) {
+ 			final RowProcessingState rowProcessingState = data.getRowProcessingState();
+-			final Integer index = listIndexAssembler.assemble( rowProcessingState );
++			Integer index = listIndexAssembler.assemble( rowProcessingState );
+ 			if ( index != null ) {
+ 				final PersistentList<?> list = getCollectionInstance( data );
+ 				assert list != null;
++				if ( listIndexBase != 0 ) {
++					index -= listIndexBase;
++				}
+ 				initializer.resolveInstance( list.get( index ), rowProcessingState );
+ 			}
+ 		}

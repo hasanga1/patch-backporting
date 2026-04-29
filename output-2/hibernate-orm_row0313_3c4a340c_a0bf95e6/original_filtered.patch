@@ -1,0 +1,128 @@
+diff --git a/hibernate-core/src/main/java/org/hibernate/dialect/Dialect.java b/hibernate-core/src/main/java/org/hibernate/dialect/Dialect.java
+index 5838943cc7..1520d48d65 100644
+--- a/hibernate-core/src/main/java/org/hibernate/dialect/Dialect.java
++++ b/hibernate-core/src/main/java/org/hibernate/dialect/Dialect.java
+@@ -5577,9 +5577,31 @@ public String appendCheckConstraintOptions(CheckConstraint checkConstraint, Stri
+ 	/**
+ 	 * Does this dialect support appending table options SQL fragment at the end of the SQL Table creation statement?
+ 	 *
+-	 *  @return {@code true} indicates it does; {@code false} indicates it does not;
++	 * @return {@code true} indicates it does; {@code false} indicates it does not;
+ 	 */
+-	public boolean supportsTableOptions(){
++	public boolean supportsTableOptions() {
++		return false;
++	}
++
++	/**
++	 * Does this dialect support binding {@link Types#NULL} for {@link PreparedStatement#setNull(int, int)}?
++	 * if it does, then call of {@link PreparedStatement#getParameterMetaData()} could be eliminated for better performance.
++	 *
++	 * @return {@code true} indicates it does; {@code false} indicates it does not;
++	 * @see org.hibernate.type.descriptor.jdbc.ObjectNullResolvingJdbcType
++	 */
++	public boolean supportsBindingNullSqlTypeForSetNull() {
++		return false;
++	}
++
++	/**
++	 * Does this dialect support binding {@code null} for {@link PreparedStatement#setObject(int, Object)}?
++	 * if it does, then call of {@link PreparedStatement#getParameterMetaData()} could be eliminated for better performance.
++	 *
++	 * @return {@code true} indicates it does; {@code false} indicates it does not;
++	 * @see org.hibernate.type.descriptor.jdbc.ObjectNullResolvingJdbcType
++	 */
++	public boolean supportsBindingNullForSetObject() {
+ 		return false;
+ 	}
+ 
+diff --git a/hibernate-core/src/main/java/org/hibernate/dialect/H2Dialect.java b/hibernate-core/src/main/java/org/hibernate/dialect/H2Dialect.java
+index 4e71a59999..92011616a5 100644
+--- a/hibernate-core/src/main/java/org/hibernate/dialect/H2Dialect.java
++++ b/hibernate-core/src/main/java/org/hibernate/dialect/H2Dialect.java
+@@ -1007,4 +1007,9 @@ public boolean supportsCaseInsensitiveLike(){
+ 		return true;
+ 	}
+ 
++	@Override
++	public boolean supportsBindingNullSqlTypeForSetNull() {
++		return true;
++	}
++
+ }
+diff --git a/hibernate-core/src/main/java/org/hibernate/dialect/MySQLDialect.java b/hibernate-core/src/main/java/org/hibernate/dialect/MySQLDialect.java
+index ec4c548fcb..5ccacaa7af 100644
+--- a/hibernate-core/src/main/java/org/hibernate/dialect/MySQLDialect.java
++++ b/hibernate-core/src/main/java/org/hibernate/dialect/MySQLDialect.java
+@@ -1513,4 +1513,9 @@ public String appendCheckConstraintOptions(CheckConstraint checkConstraint, Stri
+ 				? sqlCheckConstraint + " " + checkConstraint.getOptions()
+ 				: sqlCheckConstraint;
+ 	}
++
++	@Override
++	public boolean supportsBindingNullSqlTypeForSetNull() {
++		return true;
++	}
+ }
+diff --git a/hibernate-core/src/main/java/org/hibernate/dialect/PostgreSQLDialect.java b/hibernate-core/src/main/java/org/hibernate/dialect/PostgreSQLDialect.java
+index 029bc53d77..2cc8f3ba8b 100644
+--- a/hibernate-core/src/main/java/org/hibernate/dialect/PostgreSQLDialect.java
++++ b/hibernate-core/src/main/java/org/hibernate/dialect/PostgreSQLDialect.java
+@@ -1498,4 +1498,9 @@ public DmlTargetColumnQualifierSupport getDmlTargetColumnQualifierSupport() {
+ 	public boolean supportsFromClauseInUpdate() {
+ 		return true;
+ 	}
++
++	@Override
++	public boolean supportsBindingNullSqlTypeForSetNull() {
++		return true;
++	}
+ }
+diff --git a/hibernate-core/src/main/java/org/hibernate/dialect/SQLServerDialect.java b/hibernate-core/src/main/java/org/hibernate/dialect/SQLServerDialect.java
+index 63962ddd88..2e6a68f5af 100644
+--- a/hibernate-core/src/main/java/org/hibernate/dialect/SQLServerDialect.java
++++ b/hibernate-core/src/main/java/org/hibernate/dialect/SQLServerDialect.java
+@@ -1136,4 +1136,9 @@ public String getCheckConstraintString(CheckConstraint checkConstraint) {
+ 	private String getCheckConstraintOptions(CheckConstraint checkConstraint) {
+ 		return isNotEmpty( checkConstraint.getOptions() ) ? checkConstraint.getOptions() + " " : "";
+ 	}
++
++	@Override
++	public boolean supportsBindingNullForSetObject() {
++		return true;
++	}
+ }
+diff --git a/hibernate-core/src/main/java/org/hibernate/type/descriptor/jdbc/ObjectNullResolvingJdbcType.java b/hibernate-core/src/main/java/org/hibernate/type/descriptor/jdbc/ObjectNullResolvingJdbcType.java
+index 00e6a3f14d..b1fd1bdb01 100644
+--- a/hibernate-core/src/main/java/org/hibernate/type/descriptor/jdbc/ObjectNullResolvingJdbcType.java
++++ b/hibernate-core/src/main/java/org/hibernate/type/descriptor/jdbc/ObjectNullResolvingJdbcType.java
+@@ -42,13 +42,27 @@ public <X> ValueBinder<X> getBinder(JavaType<X> javaType) {
+ 			@Override
+ 			protected void doBindNull(PreparedStatement st, int index, WrapperOptions options)
+ 					throws SQLException {
+-				st.setNull( index, st.getParameterMetaData().getParameterType( index ) );
++				if ( options.getDialect().supportsBindingNullForSetObject() ) {
++					st.setObject( index, null );
++				}
++				else {
++					final int sqlType = options.getDialect().supportsBindingNullSqlTypeForSetNull() ? Types.NULL
++							: st.getParameterMetaData().getParameterType( index );
++					st.setNull( index, sqlType );
++				}
+ 			}
+ 
+ 			@Override
+ 			protected void doBindNull(CallableStatement st, String name, WrapperOptions options)
+ 					throws SQLException {
+-				st.setNull( name, Types.JAVA_OBJECT );
++				if ( options.getDialect().supportsBindingNullForSetObject() ) {
++					st.setObject( name, null );
++				}
++				else {
++					final int sqlType = options.getDialect().supportsBindingNullSqlTypeForSetNull() ? Types.NULL
++							: Types.JAVA_OBJECT;
++					st.setNull( name, sqlType );
++				}
+ 			}
+ 
+ 			@Override

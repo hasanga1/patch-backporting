@@ -1,0 +1,14 @@
+diff --git a/hibernate-core/src/main/java/org/hibernate/sql/results/graph/embeddable/internal/EmbeddableAssembler.java b/hibernate-core/src/main/java/org/hibernate/sql/results/graph/embeddable/internal/EmbeddableAssembler.java
+index 104f2892a0..b3859c877b 100644
+--- a/hibernate-core/src/main/java/org/hibernate/sql/results/graph/embeddable/internal/EmbeddableAssembler.java
++++ b/hibernate-core/src/main/java/org/hibernate/sql/results/graph/embeddable/internal/EmbeddableAssembler.java
+@@ -32,6 +32,9 @@ public JavaType getAssembledJavaType() {
+ 	public Object assemble(RowProcessingState rowProcessingState) {
+ 		final InitializerData data = initializer.getData( rowProcessingState );
+ 		final Initializer.State state = data.getState();
++		if ( state == Initializer.State.UNINITIALIZED ) {
++			initializer.resolveKey( data );
++		}
+ 		if ( state == Initializer.State.KEY_RESOLVED ) {
+ 			initializer.resolveInstance( data );
+ 		}

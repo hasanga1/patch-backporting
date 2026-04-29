@@ -1,0 +1,28 @@
+--- a/hibernate-core/src/main/java/org/hibernate/boot/beanvalidation/BeanValidationEventListener.java
++++ b/hibernate-core/src/main/java/org/hibernate/boot/beanvalidation/BeanValidationEventListener.java
+@@ -13,6 +13,7 @@
+ import org.hibernate.boot.internal.ClassLoaderAccessImpl;
+ import org.hibernate.boot.registry.classloading.spi.ClassLoaderService;
+ import org.hibernate.engine.spi.SessionFactoryImplementor;
++import org.hibernate.engine.spi.SharedSessionContractImplementor;
+ import org.hibernate.event.spi.PreCollectionUpdateEvent;
+ import org.hibernate.event.spi.PreCollectionUpdateEventListener;
+ import org.hibernate.event.spi.PreDeleteEvent;
+
+--- a/hibernate-core/src/main/java/org/hibernate/boot/beanvalidation/BeanValidationEventListener.java
++++ b/hibernate-core/src/main/java/org/hibernate/boot/beanvalidation/BeanValidationEventListener.java
+@@ -56,12 +56,14 @@
+ 	private HibernateTraversableResolver traversableResolver;
+ 	private Validator validator;
+ 	private GroupsPerOperation groupsPerOperation;
++
++	private SessionFactoryImplementor sessionFactory;
+ 
+ 	public BeanValidationEventListener(
+ 			ValidatorFactory factory, Map<String, Object> settings, ClassLoaderService classLoaderService) {
+ 		traversableResolver = new HibernateTraversableResolver();
+ 		validator = factory.usingContext()
+ 				.traversableResolver( traversableResolver )
+ 				.getValidator();
+ 		groupsPerOperation = GroupsPerOperation.from( settings, new ClassLoaderAccessImpl( classLoaderService ) );
+ 	}
