@@ -1,0 +1,98 @@
+diff --git a/changelog/unreleased/issue-15301.toml b/changelog/unreleased/issue-15301.toml
+new file mode 100644
+index 0000000000..459a41bab1
+--- /dev/null
++++ b/changelog/unreleased/issue-15301.toml
+@@ -0,0 +1,5 @@
++type = "added"
++message = "Added multi_grok pipeline rule to support processing a string against many grok patterns at once."
++
++issues = ["15301"]
++pulls = ["20924"]
+diff --git a/graylog2-server/src/test/java/org/graylog/plugins/pipelineprocessor/functions/FunctionsSnippetsTest.java b/graylog2-server/src/test/java/org/graylog/plugins/pipelineprocessor/functions/FunctionsSnippetsTest.java
+index a1816c20dd..9e823fe40c 100644
+--- a/graylog2-server/src/test/java/org/graylog/plugins/pipelineprocessor/functions/FunctionsSnippetsTest.java
++++ b/graylog2-server/src/test/java/org/graylog/plugins/pipelineprocessor/functions/FunctionsSnippetsTest.java
+@@ -132,6 +132,7 @@ import org.graylog.plugins.pipelineprocessor.functions.strings.Join;
+ import org.graylog.plugins.pipelineprocessor.functions.strings.KeyValue;
+ import org.graylog.plugins.pipelineprocessor.functions.strings.Length;
+ import org.graylog.plugins.pipelineprocessor.functions.strings.Lowercase;
++import org.graylog.plugins.pipelineprocessor.functions.strings.MultiGrokMatch;
+ import org.graylog.plugins.pipelineprocessor.functions.strings.RegexMatch;
+ import org.graylog.plugins.pipelineprocessor.functions.strings.RegexReplace;
+ import org.graylog.plugins.pipelineprocessor.functions.strings.Replace;
+@@ -398,6 +399,7 @@ public class FunctionsSnippetsTest extends BaseParserTest {
+                 grokPatternService,
+                 Executors.newScheduledThreadPool(1));
+         functions.put(GrokMatch.NAME, new GrokMatch(grokPatternRegistry));
++        functions.put(MultiGrokMatch.NAME, new MultiGrokMatch(grokPatternRegistry));
+         functions.put(GrokExists.NAME, new GrokExists(grokPatternRegistry));
+ 
+         functions.put(MetricCounterIncrement.NAME, new MetricCounterIncrement(metricRegistry));
+@@ -907,6 +909,20 @@ public class FunctionsSnippetsTest extends BaseParserTest {
+                 .isNull();
+     }
+ 
++
++    @Test
++    public void multiGrok() {
++        final Rule rule = parser.parseRule(ruleForTest(), false);
++        final Message message = evaluateRule(rule);
++
++        assertThat(message).isNotNull();
++        assertThat(message.hasField("abc_message")).isTrue();
++        assertThat(message.hasField("abc_ip")).isTrue();
++        assertThat(message.hasField("abc2_message")).isFalse();
++        assertThat(message.hasField("abc2_ip")).isFalse();
++        assertThat(message.getField("123_ip")).isEqualTo("192.168.0.2");
++    }
++
+     @Test
+     public void urls() {
+         final Rule rule = parser.parseRule(ruleForTest(), false);
+diff --git a/graylog2-server/src/test/resources/org/graylog/plugins/pipelineprocessor/functions/multiGrok.txt b/graylog2-server/src/test/resources/org/graylog/plugins/pipelineprocessor/functions/multiGrok.txt
+new file mode 100644
+index 0000000000..51ba690eb1
+--- /dev/null
++++ b/graylog2-server/src/test/resources/org/graylog/plugins/pipelineprocessor/functions/multiGrok.txt
+@@ -0,0 +1,40 @@
++rule "multi_grok"
++when true
++then
++    set_fields(
++        fields: multi_grok(
++            patterns: [
++                "^ABC %{IPV4:abc_ip}: %{GREEDY:abc_message}",
++                "^123 %{IPV4:123_ip}: %{GREEDY:123_message}",
++                "^ABC %{IPV4:abc2_ip}: %{GREEDY:abc2_message}"
++            ],
++            value: "ABC 192.168.0.1: ABC message1",
++            only_named_captures: true
++        )
++    );
++
++    set_fields(
++        fields: multi_grok(
++            patterns: [
++                "^ABC %{IPV4:abc_ip}: %{GREEDY:abc_message}",
++                "^123 %{IPV4:123_ip}: %{GREEDY:123_message}",
++                "^ABC %{IPV4:abc2_ip}: %{GREEDY:abc2_message}"
++            ],
++            value: "123 192.168.0.2: 123 message",
++            only_named_captures: true
++        )
++    );
++
++    set_fields(
++        fields: multi_grok(
++            patterns: [
++                "^ABC %{IPV4:abc_ip}: %{GREEDY:abc_message}",
++                "^123 %{IPV4:123_ip}: %{GREEDY:123_message}",
++                "^ABC %{IPV4:abc2_ip}: %{GREEDY:abc2_message}"
++            ],
++            value: "XYZ 192.168.0.3: XYZ message",
++            only_named_captures: true
++        )
++    );
++
++end

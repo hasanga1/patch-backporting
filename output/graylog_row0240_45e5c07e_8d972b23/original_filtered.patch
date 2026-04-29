@@ -1,0 +1,187 @@
+diff --git a/data-node/src/main/java/org/graylog/datanode/configuration/TruststoreCreator.java b/data-node/src/main/java/org/graylog/datanode/configuration/TruststoreCreator.java
+index 57950d5dea..5cbb5b1f07 100644
+--- a/data-node/src/main/java/org/graylog/datanode/configuration/TruststoreCreator.java
++++ b/data-node/src/main/java/org/graylog/datanode/configuration/TruststoreCreator.java
+@@ -22,6 +22,7 @@ import org.graylog.security.certutil.csr.FilesystemKeystoreInformation;
+ import org.graylog.security.certutil.csr.InMemoryKeystoreInformation;
+ import org.graylog.security.certutil.csr.KeystoreInformation;
+ 
++import java.io.FileInputStream;
+ import java.io.FileOutputStream;
+ import java.io.IOException;
+ import java.nio.file.Path;
+@@ -34,6 +35,7 @@ import java.security.cert.CertificateException;
+ import java.security.cert.X509Certificate;
+ import java.util.Arrays;
+ import java.util.List;
++import java.util.concurrent.atomic.AtomicInteger;
+ 
+ public class TruststoreCreator {
+ 
+@@ -59,22 +61,33 @@ public class TruststoreCreator {
+         }
+     }
+ 
+-    public TruststoreCreator addRootCert(final String name, KeystoreInformation keystoreInformation,
+-                                         final String alias) throws GeneralSecurityException {
+-        final X509Certificate rootCert;
+-        try {
+-            rootCert = findRootCert(keystoreInformation, alias);
+-        } catch (Exception e) {
+-            throw new RuntimeException(e);
+-        }
+-        this.truststore.setCertificateEntry(name, rootCert);
+-        return this;
++    /**
++     * Originally we added only the root(=selfsigned) certificate to the truststore. But this causes problems with
++     * usage of intermediate CAs. There is nothing wrong adding the whole cert chain to the truststore.
++     *
++     * @param keystoreInformation access to the keystore, to obtain certificate chains by the given alias
++     * @param alias               which certificate chain should we extract from the provided keystore
++     */
++    public TruststoreCreator addFromKeystore(KeystoreInformation keystoreInformation,
++                                             final String alias) throws IOException, GeneralSecurityException {
++        final KeyStore keystore = keystoreInformation.loadKeystore();
++        final Certificate[] chain = keystore.getCertificateChain(alias);
++        final List<X509Certificate> x509Certs = toX509Certs(chain);
++        return addCertificates(x509Certs);
++    }
++
++    @Nonnull
++    private static List<X509Certificate> toX509Certs(Certificate[] certs) {
++        return Arrays.stream(certs)
++                .filter(c -> c instanceof X509Certificate)
++                .map(c -> (X509Certificate) c)
++                .toList();
+     }
+ 
+     public TruststoreCreator addCertificates(List<X509Certificate> trustedCertificates) {
+         trustedCertificates.forEach(cert -> {
+             try {
+-                this.truststore.setCertificateEntry(cert.getSubjectX500Principal().getName(), cert);
++                this.truststore.setCertificateEntry(generateAlias(this.truststore, cert), cert);
+             } catch (KeyStoreException e) {
+                 throw new RuntimeException(e);
+             }
+@@ -82,6 +95,24 @@ public class TruststoreCreator {
+         return this;
+     }
+ 
++    /**
++     * Alias has no meaning for the trust and validation purposes in the truststore. It's there only for managing
++     * the truststore content. We just need to make sure that we are using unique aliases, otherwise the
++     * truststore would override already present certificates.
++     *
++     * If there is no collision, we use the cname as given in the cert. In case of collisions, we'll append _i,
++     * where is index an incremented till it's unique in the truststore.
++     */
++    private static String generateAlias(KeyStore truststore, X509Certificate cert) throws KeyStoreException {
++        AtomicInteger counter = new AtomicInteger(1);
++        final String cname = cert.getSubjectX500Principal().getName();
++        String alias = cname;
++        while (truststore.containsAlias(alias)) {
++            alias = cname + "_" + counter.getAndIncrement();
++        }
++        return alias;
++    }
++
+     public FilesystemKeystoreInformation persist(final Path truststorePath, final char[] truststorePassword) throws IOException, GeneralSecurityException {
+ 
+         try (final FileOutputStream fileOutputStream = new FileOutputStream(truststorePath.toFile())) {
+diff --git a/data-node/src/main/java/org/graylog/datanode/opensearch/configuration/beans/impl/OpensearchSecurityConfigurationBean.java b/data-node/src/main/java/org/graylog/datanode/opensearch/configuration/beans/impl/OpensearchSecurityConfigurationBean.java
+index f026d2bda4..b48bbddd44 100644
+--- a/data-node/src/main/java/org/graylog/datanode/opensearch/configuration/beans/impl/OpensearchSecurityConfigurationBean.java
++++ b/data-node/src/main/java/org/graylog/datanode/opensearch/configuration/beans/impl/OpensearchSecurityConfigurationBean.java
+@@ -36,6 +36,7 @@ import org.graylog2.security.JwtSecret;
+ import org.slf4j.Logger;
+ import org.slf4j.LoggerFactory;
+ 
++import java.io.IOException;
+ import java.nio.file.Path;
+ import java.security.GeneralSecurityException;
+ import java.security.KeyStore;
+@@ -112,10 +113,10 @@ public class OpensearchSecurityConfigurationBean implements DatanodeConfiguratio
+             try {
+                 configurationBuilder.httpCertificate(cert);
+                 configurationBuilder.withConfigFile(new KeystoreConfigFile(Path.of(TARGET_DATANODE_HTTP_KEYSTORE_FILENAME), cert));
+-                truststoreCreator.addRootCert("http-cert", cert, CertConstants.DATANODE_KEY_ALIAS);
++                truststoreCreator.addFromKeystore(cert, CertConstants.DATANODE_KEY_ALIAS);
+                 logCertificateInformation("HTTP certificate", cert);
+-            } catch (GeneralSecurityException e) {
+-                throw new RuntimeException(e);
++            } catch (GeneralSecurityException | IOException e) {
++                throw new OpensearchConfigurationException(e);
+             }
+         });
+ 
+@@ -123,10 +124,10 @@ public class OpensearchSecurityConfigurationBean implements DatanodeConfiguratio
+             try {
+                 configurationBuilder.transportCertificate(cert);
+                 configurationBuilder.withConfigFile(new KeystoreConfigFile(Path.of(TARGET_DATANODE_TRANSPORT_KEYSTORE_FILENAME), cert));
+-                truststoreCreator.addRootCert("transport-cert", cert, CertConstants.DATANODE_KEY_ALIAS);
++                truststoreCreator.addFromKeystore(cert, CertConstants.DATANODE_KEY_ALIAS);
+                 logCertificateInformation("Transport certificate", cert);
+-            } catch (GeneralSecurityException e) {
+-                throw new RuntimeException(e);
++            } catch (GeneralSecurityException | IOException e) {
++                throw new OpensearchConfigurationException(e);
+             }
+         });
+ 
+diff --git a/graylog2-server/src/main/java/org/graylog/security/certutil/csr/FilesystemKeystoreInformation.java b/graylog2-server/src/main/java/org/graylog/security/certutil/csr/FilesystemKeystoreInformation.java
+index f46d7127bb..2fe48db6be 100644
+--- a/graylog2-server/src/main/java/org/graylog/security/certutil/csr/FilesystemKeystoreInformation.java
++++ b/graylog2-server/src/main/java/org/graylog/security/certutil/csr/FilesystemKeystoreInformation.java
+@@ -19,10 +19,8 @@ package org.graylog.security.certutil.csr;
+ import java.io.FileInputStream;
+ import java.io.IOException;
+ import java.nio.file.Path;
++import java.security.GeneralSecurityException;
+ import java.security.KeyStore;
+-import java.security.KeyStoreException;
+-import java.security.NoSuchAlgorithmException;
+-import java.security.cert.CertificateException;
+ import java.util.Arrays;
+ import java.util.Objects;
+ 
+@@ -38,7 +36,7 @@ public class FilesystemKeystoreInformation implements KeystoreInformation {
+     }
+ 
+     @Override
+-    public KeyStore loadKeystore() throws KeyStoreException, IOException, CertificateException, NoSuchAlgorithmException {
++    public KeyStore loadKeystore() throws IOException, GeneralSecurityException {
+         KeyStore keyStore = KeyStore.getInstance(PKCS12);
+         try (FileInputStream fis = new FileInputStream(location.toFile())) {
+             keyStore.load(fis, password);
+diff --git a/graylog2-server/src/main/java/org/graylog/security/certutil/csr/InMemoryKeystoreInformation.java b/graylog2-server/src/main/java/org/graylog/security/certutil/csr/InMemoryKeystoreInformation.java
+index f4f216ddaf..dad8af8b0a 100644
+--- a/graylog2-server/src/main/java/org/graylog/security/certutil/csr/InMemoryKeystoreInformation.java
++++ b/graylog2-server/src/main/java/org/graylog/security/certutil/csr/InMemoryKeystoreInformation.java
+@@ -29,7 +29,7 @@ public class InMemoryKeystoreInformation implements KeystoreInformation {
+     }
+ 
+     @Override
+-    public KeyStore loadKeystore() throws Exception {
++    public KeyStore loadKeystore()  {
+         return keyStore;
+     }
+ 
+diff --git a/graylog2-server/src/main/java/org/graylog/security/certutil/csr/KeystoreInformation.java b/graylog2-server/src/main/java/org/graylog/security/certutil/csr/KeystoreInformation.java
+index 746eb4ef77..424d94309e 100644
+--- a/graylog2-server/src/main/java/org/graylog/security/certutil/csr/KeystoreInformation.java
++++ b/graylog2-server/src/main/java/org/graylog/security/certutil/csr/KeystoreInformation.java
+@@ -16,11 +16,13 @@
+  */
+ package org.graylog.security.certutil.csr;
+ 
++import java.io.IOException;
++import java.security.GeneralSecurityException;
+ import java.security.KeyStore;
+ 
+ public interface KeystoreInformation {
+ 
+-    KeyStore loadKeystore() throws Exception;
++    KeyStore loadKeystore() throws IOException, GeneralSecurityException;
+ 
+     char[] password();
+ }

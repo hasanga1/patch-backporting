@@ -1,0 +1,39 @@
+diff --git a/changelog/unreleased/pr-23789.toml b/changelog/unreleased/pr-23789.toml
+new file mode 100644
+index 0000000000..a386edad0e
+--- /dev/null
++++ b/changelog/unreleased/pr-23789.toml
+@@ -0,0 +1,5 @@
++type = "f"
++message = "Fix search filters for 'Created At' and 'All time' in paginated searcheds."
++
++issues = ["23634"]
++pulls = ["23789"]
+diff --git a/graylog2-server/src/test/java/org/graylog2/database/filtering/inmemory/SingleFilterParserTest.java b/graylog2-server/src/test/java/org/graylog2/database/filtering/inmemory/SingleFilterParserTest.java
+index 1ce80cb3ff..52c1c56214 100644
+--- a/graylog2-server/src/test/java/org/graylog2/database/filtering/inmemory/SingleFilterParserTest.java
++++ b/graylog2-server/src/test/java/org/graylog2/database/filtering/inmemory/SingleFilterParserTest.java
+@@ -109,6 +109,23 @@ class SingleFilterParserTest {
+                 ));
+     }
+ 
++    @Test
++    void parsesFilterExpressionCorrectlyForAllTimeRange() {
++        final List<EntityAttribute> entityAttributes = List.of(EntityAttribute.builder()
++                .id("created_at")
++                .title("Creation Date")
++                .type(SearchQueryField.Type.DATE)
++                .filterable(true)
++                .build());
++
++        assertEquals(
++                new RangeFilter("created_at", null, null),
++
++                toTest.parseSingleExpression("created_at:" + RANGE_VALUES_SEPARATOR,
++                        entityAttributes
++                ));
++    }
++
+     @Test
+     void parsesFilterExpressionCorrectlyForDateRanges() {
+         final String fromString = "2012-12-12 12:12:12";

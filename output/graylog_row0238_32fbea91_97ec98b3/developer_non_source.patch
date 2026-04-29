@@ -1,0 +1,47 @@
+diff --git a/changelog/unreleased/issue-21565.toml b/changelog/unreleased/issue-21565.toml
+new file mode 100644
+index 0000000000..75d2958e90
+--- /dev/null
++++ b/changelog/unreleased/issue-21565.toml
+@@ -0,0 +1,5 @@
++type = "fixed"
++message = "Fixed issue preventing quoted entity search values from finding exact matches on various pages throughout Graylog."
++
++issues = ["21565"]
++pulls = ["21567"]
+diff --git a/graylog2-server/src/test/java/org/graylog2/search/SearchQueryParserTest.java b/graylog2-server/src/test/java/org/graylog2/search/SearchQueryParserTest.java
+index aa2aade2a2..67a53b1e39 100644
+--- a/graylog2-server/src/test/java/org/graylog2/search/SearchQueryParserTest.java
++++ b/graylog2-server/src/test/java/org/graylog2/search/SearchQueryParserTest.java
+@@ -299,6 +299,31 @@ public class SearchQueryParserTest {
+         assertThat(searchQuery.hasDisallowedKeys()).isFalse();
+     }
+ 
++    @Test
++    void unquotedEmptyFieldPrefixSingleSearchTerm() {
++        final SearchQueryParser parser = new SearchQueryParser("name", Set.of(), "");
++        // Verify unquoted term is split into two search values.
++        final SearchQuery searchQuery = parser.parse("Bobby testerson");
++        final Multimap<String, SearchQueryParser.FieldValue> queryMap = searchQuery.getQueryMap();
++        assertThat(queryMap.keySet().size()).isEqualTo(1);
++        final Collection<SearchQueryParser.FieldValue> values = queryMap.get("name");
++        assertThat(values.size()).isEqualTo(2);
++        assertThat(values).contains(new SearchQueryParser.FieldValue("Bobby", false));
++        assertThat(values).contains(new SearchQueryParser.FieldValue("testerson", false));
++    }
++
++    @Test
++    void quotedEmptyFieldPrefixSingleSearchTerm() {
++        final SearchQueryParser parser = new SearchQueryParser("name", Set.of(), "");
++        // Verify quoted term is maintained as a single search value.
++        final SearchQuery searchQuery = parser.parse("\"Bobby testerson\"");
++        final Multimap<String, SearchQueryParser.FieldValue> queryMap = searchQuery.getQueryMap();
++        assertThat(queryMap.keySet().size()).isEqualTo(1);
++        final Collection<SearchQueryParser.FieldValue> values = queryMap.get("name");
++        assertThat(values.size()).isEqualTo(1);
++        assertThat(values).containsOnly(new SearchQueryParser.FieldValue("Bobby testerson", false));
++    }
++
+     @Test
+     void booleanValuesSupported() {
+         final SearchQueryParser parser = new SearchQueryParser("name",

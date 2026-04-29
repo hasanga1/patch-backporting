@@ -1,0 +1,49 @@
+--- a/graylog2-server/src/main/java/org/graylog2/Configuration.java
++++ b/graylog2-server/src/main/java/org/graylog2/Configuration.java
+@@ -298,6 +298,9 @@ public class Configuration extends CaConfiguration implements CommonNodeConfigur
+     @Parameter(value = INSTALL_OUTPUT_BUFFER_DRAINING_MAX_RETRIES, validators = PositiveIntegerValidator.class)
+     private int installOutputBufferDrainingMaxRetries = DEFAULT_INSTALL_RETRIES;
+ 
++    @Parameter(value = "global_inputs_only")
++    private boolean globalInputsOnly = false;
++
+     public boolean maintainsStreamAwareFieldTypes() {
+         return streamAwareFieldTypes;
+     }
+
+--- a/graylog2-server/src/main/java/org/graylog2/Configuration.java
++++ b/graylog2-server/src/main/java/org/graylog2/Configuration.java
+@@ -721,4 +724,8 @@ public class Configuration extends CaConfiguration implements CommonNodeConfigur
+     public boolean withInputs() {
+         return true;
+     }
++
++    public boolean isGlobalInputsOnly() {
++        return globalInputsOnly;
++    }
+ }
+
+--- a/graylog2-server/src/main/java/org/graylog2/rest/resources/system/inputs/InputsResource.java
++++ b/graylog2-server/src/main/java/org/graylog2/rest/resources/system/inputs/InputsResource.java
+@@ -306,8 +306,8 @@ public class InputsResource extends AbstractInputsResource {
+     }
+ 
+     private void throwBadRequestIfNotGlobal(InputCreateRequest lr) {
+-        if (config.isCloud() && !lr.global()) {
+-            throw new BadRequestException("Only global inputs are allowed in the cloud environment!");
++        if ((config.isCloud() || config.isGlobalInputsOnly()) && !lr.global()) {
++            throw new BadRequestException("Only global inputs are allowed!");
+         }
+     }
+ }
+
+--- a/graylog2-server/src/main/java/org/graylog2/web/resources/AppConfigResource.java
++++ b/graylog2-server/src/main/java/org/graylog2/web/resources/AppConfigResource.java
+@@ -105,6 +105,7 @@ public class AppConfigResource {
+                 .put("telemetry", toPrettyJsonString(telemetryConfiguration.telemetryFrontendSettings()))
+                 .put("contentStream", toPrettyJsonString((contentStreamConfiguration.contentStreamFrontendSettings())))
+                 .put("branding", toPrettyJsonString(customizationConfig))
++                .put("globalInputsOnly", configuration.isGlobalInputsOnly())
+                 .build();
+         return templateEngine.transform(template, model);
+     }

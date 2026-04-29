@@ -1,0 +1,59 @@
+--- a/graylog2-server/src/main/java/org/graylog2/grok/GrokPatternRegistry.java
++++ b/graylog2-server/src/main/java/org/graylog2/grok/GrokPatternRegistry.java
+@@ -24,7 +24,11 @@
+-import javax.annotation.Nonnull;
+-import javax.inject.Inject;
+-import javax.inject.Named;
+-import javax.inject.Singleton;
++import jakarta.inject.Inject;
++import jakarta.inject.Named;
++import jakarta.inject.Singleton;
++
++import org.slf4j.Logger;
++import org.slf4j.LoggerFactory;
++
++import javax.annotation.Nonnull;
+ import java.util.Collections;
+ import java.util.Set;
+ import java.util.concurrent.ExecutionException;
+
+--- a/graylog2-server/src/main/java/org/graylog2/grok/GrokPatternRegistry.java
++++ b/graylog2-server/src/main/java/org/graylog2/grok/GrokPatternRegistry.java
+@@ -86,7 +84,7 @@ public class GrokPatternRegistry {
+     }
+ 
+     public boolean grokPatternExists(String patternName) {
+-        return patterns.get().stream().anyMatch(pattern -> pattern.name().contains(patternName));
++        return patterns.get().stream().anyMatch(pattern -> pattern.name().equals(patternName));
+     }
+ 
+     public Grok cachedGrokForPattern(String pattern) {
+diff --git a/changelog/unreleased/pr-20263.toml b/changelog/unreleased/pr-20263.toml
+new file mode 100644
+index 0000000000..1647f57485
+--- /dev/null
++++ b/changelog/unreleased/pr-20263.toml
+@@ -0,0 +1,5 @@
++type = "f"
++message = "Fixed issue where grok_exists pipeline rule would return true for substrings of pattern names."
++
++issues = ["20264"]
++pulls = ["20263"]
+diff --git a/graylog2-server/src/test/java/org/graylog2/grok/GrokPatternRegistryTest.java b/graylog2-server/src/test/java/org/graylog2/grok/GrokPatternRegistryTest.java
+index 0a2789dd98..950259d510 100644
+--- a/graylog2-server/src/test/java/org/graylog2/grok/GrokPatternRegistryTest.java
++++ b/graylog2-server/src/test/java/org/graylog2/grok/GrokPatternRegistryTest.java
+@@ -110,4 +110,11 @@ public class GrokPatternRegistryTest {
+     public void patterns() {
+         assertThat(grokPatternRegistry.patterns()).isEqualTo(GROK_PATTERNS);
+     }
+-}
+\ No newline at end of file
++
++    @Test
++    public void patternExists() {
++        assertThat(grokPatternRegistry.grokPatternExists("TEST")).isFalse();
++        assertThat(grokPatternRegistry.grokPatternExists("NUM")).isFalse();
++        assertThat(grokPatternRegistry.grokPatternExists("TESTNUM")).isTrue();
++    }
++}
