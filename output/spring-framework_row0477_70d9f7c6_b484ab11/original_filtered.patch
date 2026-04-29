@@ -1,0 +1,22 @@
+diff --git a/spring-web/src/main/java/org/springframework/web/client/RestTemplate.java b/spring-web/src/main/java/org/springframework/web/client/RestTemplate.java
+index caf5f48f8a..815a298498 100644
+--- a/spring-web/src/main/java/org/springframework/web/client/RestTemplate.java
++++ b/spring-web/src/main/java/org/springframework/web/client/RestTemplate.java
+@@ -880,7 +880,7 @@ public class RestTemplate extends InterceptingHttpAccessor implements RestOperat
+ 		Observation observation = ClientHttpObservationDocumentation.HTTP_CLIENT_EXCHANGES.observation(this.observationConvention,
+ 				DEFAULT_OBSERVATION_CONVENTION, () -> observationContext, this.observationRegistry).start();
+ 		ClientHttpResponse response = null;
+-		try {
++		try (Observation.Scope scope = observation.openScope()){
+ 			if (requestCallback != null) {
+ 				requestCallback.doWithRequest(request);
+ 			}
+@@ -894,7 +894,7 @@ public class RestTemplate extends InterceptingHttpAccessor implements RestOperat
+ 			observation.error(exception);
+ 			throw exception;
+ 		}
+-		catch (RestClientException exc) {
++		catch (Throwable exc) {
+ 			observation.error(exc);
+ 			throw exc;
+ 		}
