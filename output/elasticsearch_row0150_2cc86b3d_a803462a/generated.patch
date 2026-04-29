@@ -1,0 +1,38 @@
+--- a/x-pack/plugin/migrate/src/main/java/org/elasticsearch/xpack/migrate/action/ReindexDataStreamIndexTransportAction.java
++++ b/x-pack/plugin/migrate/src/main/java/org/elasticsearch/xpack/migrate/action/ReindexDataStreamIndexTransportAction.java
+@@ -24,6 +24,7 @@ import org.elasticsearch.action.admin.indices.readonly.AddIndexBlockResponse;
+ import org.elasticsearch.action.admin.indices.readonly.TransportAddIndexBlockAction;
+ import org.elasticsearch.action.admin.indices.refresh.RefreshAction;
+ import org.elasticsearch.action.admin.indices.refresh.RefreshRequest;
++import org.elasticsearch.action.admin.indices.settings.put.TransportUpdateSettingsAction;
+ import org.elasticsearch.action.admin.indices.settings.put.UpdateSettingsRequest;
+ import org.elasticsearch.action.bulk.BulkItemResponse;
+ import org.elasticsearch.action.search.SearchRequest;
+
+--- a/x-pack/plugin/migrate/src/main/java/org/elasticsearch/xpack/migrate/action/ReindexDataStreamIndexTransportAction.java
++++ b/x-pack/plugin/migrate/src/main/java/org/elasticsearch/xpack/migrate/action/ReindexDataStreamIndexTransportAction.java
+@@ -57,12 +57,15 @@
+-import org.elasticsearch.xpack.core.deprecation.DeprecatedIndexPredicate;
+-import org.elasticsearch.xpack.core.frozen.action.FreezeIndexAction;
+-import org.elasticsearch.xpack.migrate.MigrateTemplateRegistry;
+-
+-import java.util.Locale;
+-import java.util.Map;
+-import java.util.Objects;
+-
+-import static org.elasticsearch.cluster.metadata.IndexMetadata.APIBlock.WRITE;
++
++import org.elasticsearch.xpack.core.deprecation.DeprecatedIndexPredicate;
++import org.elasticsearch.xpack.core.frozen.action.FreezeIndexAction;
++import org.elasticsearch.xpack.migrate.MigrateTemplateRegistry;
++
++import java.util.Arrays;
++import java.util.Locale;
++import java.util.Map;
++import java.util.Objects;
++
++import static org.elasticsearch.cluster.metadata.IndexMetadata.APIBlock.METADATA;
++import static org.elasticsearch.cluster.metadata.IndexMetadata.APIBlock.READ_ONLY;
+ 
+ public class ReindexDataStreamIndexTransportAction extends HandledTransportAction<
+     ReindexDataStreamIndexAction.Request,

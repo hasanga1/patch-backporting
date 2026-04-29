@@ -1,0 +1,38 @@
+--- a/server/src/main/java/org/elasticsearch/action/admin/cluster/allocation/TransportGetAllocationStatsAction.java
++++ b/server/src/main/java/org/elasticsearch/action/admin/cluster/allocation/TransportGetAllocationStatsAction.java
+@@ -13,9 +13,12 @@ import org.elasticsearch.TransportVersions;
+ import org.elasticsearch.action.ActionListener;
+ import org.elasticsearch.action.ActionRequestValidationException;
+ import org.elasticsearch.action.ActionResponse;
++import org.elasticsearch.action.ActionRunnable;
+ import org.elasticsearch.action.ActionType;
++import org.elasticsearch.action.SingleResultDeduplicator;
+ import org.elasticsearch.action.admin.cluster.node.stats.NodesStatsRequestParameters.Metric;
+ import org.elasticsearch.action.support.ActionFilters;
++import org.elasticsearch.action.support.SubscribableListener;
+ import org.elasticsearch.action.support.master.MasterNodeReadRequest;
+ import org.elasticsearch.action.support.master.TransportMasterNodeReadAction;
+ import org.elasticsearch.cluster.ClusterState;
+
+--- a/server/src/main/java/org/elasticsearch/action/admin/cluster/allocation/TransportGetAllocationStatsAction.java
++++ b/server/src/main/java/org/elasticsearch/action/admin/cluster/allocation/TransportGetAllocationStatsAction.java
+@@ -28,6 +31,7 @@ import org.elasticsearch.cluster.routing.allocation.NodeAllocationStats;
+ import org.elasticsearch.cluster.service.ClusterService;
+ import org.elasticsearch.common.io.stream.StreamInput;
+ import org.elasticsearch.common.io.stream.StreamOutput;
++import org.elasticsearch.common.util.concurrent.EsExecutors;
+ import org.elasticsearch.core.Nullable;
+ import org.elasticsearch.core.TimeValue;
+ import org.elasticsearch.features.FeatureService;
+
+--- a/server/src/main/java/org/elasticsearch/action/admin/cluster/allocation/TransportGetAllocationStatsAction.java
++++ b/server/src/main/java/org/elasticsearch/action/admin/cluster/allocation/TransportGetAllocationStatsAction.java
+@@ -47,7 +51,7 @@ public class TransportGetAllocationStatsAction extends TransportMasterNodeReadAc
+ 
+     public static final ActionType<TransportGetAllocationStatsAction.Response> TYPE = new ActionType<>("cluster:monitor/allocation/stats");
+ 
+-    private final AllocationStatsService allocationStatsService;
++    private final SingleResultDeduplicator<Map<String, NodeAllocationStats>> allocationStatsSupplier;
+     private final DiskThresholdSettings diskThresholdSettings;
+     private final FeatureService featureService;
+ 
