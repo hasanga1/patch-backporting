@@ -12,9 +12,9 @@
   "llm_invoked": true,
   "num_hunks_original": 3,
   "num_hunks_filtered": 2,
-  "num_hunks_succeeded": 0,
+  "num_hunks_succeeded": 1,
   "num_non_source_hunks_developer": 1,
-  "dev_non_source_applied": false,
+  "dev_non_source_applied": true,
   "hunk_details": [
     {
       "index": 0,
@@ -25,8 +25,8 @@
     {
       "index": 1,
       "file": "server/src/main/java/org/elasticsearch/script/ScriptStats.java",
-      "outcome": "failed",
-      "llm_iterations": -1
+      "outcome": "llm_generated",
+      "llm_iterations": 2
     }
   ],
   "test_targets": {
@@ -40,15 +40,43 @@
       "server"
     ]
   },
-  "portgpt_validation": {},
-  "build_validation": {},
-  "test_validation": {},
+  "portgpt_validation": {
+    "apply_check": {
+      "result": "passed",
+      "meaning": "git apply succeeded for all source hunks on the target branch. Patch context lines match the target codebase exactly."
+    },
+    "compile_check": {
+      "result": "passed",
+      "has_build_sh": false,
+      "meaning": "No build.sh in repo \u2014 auto-passed. Real compile runs via helpers Docker."
+    },
+    "test_check": {
+      "result": "passed",
+      "has_test_sh": false
+    },
+    "poc_check": {
+      "result": "passed",
+      "has_poc_sh": false
+    }
+  },
+  "build_validation": {
+    "success": false,
+    "mode": "elasticsearch-helper",
+    "output_tail": "lugin:esql:qa:server:mixed-cluster:testClasses\n> Task :x-pack:plugin:sql:jdbc:shadowJar\n> Task :libs:x-content:impl:classes\n> Task :libs:x-content:impl:jar\n> Task :libs:x-content:impl:processTestResources NO-SOURCE\n> Task :test:fixtures:testcontainer-utils:compileJava\n> Task :test:fixtures:testcontainer-utils:processResources NO-SOURCE\n> Task :test:fixtures:testcontainer-utils:classes\n> Task :test:fixtures:testcontainer-utils:processTestResources NO-SOURCE\n> Task :libs:x-content:generateImplProviderManifest\n> Task :test:fixtures:minio-fixture:compileJava\n> Task :test:fixtures:minio-fixture:classes\n> Task :x-pack:test:smb-fixture:compileJava\n> Task :x-pack:test:smb-fixture:classes\n\n> Task :test:fixtures:krb5kdc-fixture:compileJava\nNote: /repo/test/fixtures/krb5kdc-fixture/src/main/java/org/elasticsearch/test/fixtures/krb5kdc/Krb5kDcContainer.java uses or overrides a deprecated API.\nNote: Recompile with -Xlint:deprecation for details.\n\n> Task :test:fixtures:krb5kdc-fixture:classes\n> Task :x-pack:test:smb-fixture:compileTestJava NO-SOURCE\n> Task :x-pack:test:smb-fixture:testClasses UP-TO-DATE\n\n> Task :x-pack:test:idp-fixture:compileJava\nNote: Some input files use or override a deprecated API.\nNote: Recompile with -Xlint:deprecation for details.\n\n> Task :x-pack:test:idp-fixture:classes\n> Task :libs:x-content:generateImplProviderImpl\n> Task :libs:x-content:classes\n> Task :test:fixtures:hdfs-fixture:processResources\n> Task :test:fixtures:hdfs-fixture:classes\n> Task :test:fixtures:hdfs-fixture:compileTestJava NO-SOURCE\n> Task :test:fixtures:hdfs-fixture:processTestResources NO-SOURCE\n> Task :test:fixtures:hdfs-fixture:testClasses UP-TO-DATE\n\n> Task :server:compileJava\n/repo/server/src/main/java/org/elasticsearch/script/ScriptStats.java:202: error: cannot find symbol\n                ob.xContentObject(CACHE_EVICTIONS_HISTORY, cacheEvictionsHistory);\n                                  ^\n  symbol:   variable CACHE_EVICTIONS_HISTORY\n  location: class ScriptStats\nNote: Some input files use or override a deprecated API.\nNote: Recompile with -Xlint:deprecation for details.\nNote: Some input files use or override a deprecated API that is marked for removal.\nNote: Recompile with -Xlint:removal for details.\n1 error\n\n> Task :server:compileJava FAILED\n\n[Incubating] Problems report is available at: file:///repo/build/reports/problems/problems-report.html\n\nFAILURE: Build failed with an exception.\n\n* What went wrong:\nExecution failed for task ':server:compileJava'.\n> Compilation failed; see the compiler output below.\n  /repo/server/src/main/java/org/elasticsearch/script/ScriptStats.java:202: error: cannot find symbol\n                  ob.xContentObject(CACHE_EVICTIONS_HISTORY, cacheEvictionsHistory);\n                                    ^\n    symbol:   variable CACHE_EVICTIONS_HISTORY\n    location: class ScriptStats\n  1 error\n\n* Try:\n> Check your code and dependencies to fix the compilation error(s)\n\nBUILD FAILED in 3m 38s\n396 actionable tasks: 396 executed\n\u274c Build Failed"
+  },
+  "test_validation": {
+    "success": false,
+    "mode": "skipped_build_failed",
+    "compile_error": true,
+    "test_state": {},
+    "output_tail": ""
+  },
   "patch_similarity": {
     "exact_match": false,
-    "changed_lines_precision": 0.3333,
-    "changed_lines_recall": 0.3333,
-    "changed_lines_f1": 0.3333,
-    "generated_changed_lines": 3,
+    "changed_lines_precision": 1.0,
+    "changed_lines_recall": 0.6667,
+    "changed_lines_f1": 0.8,
+    "generated_changed_lines": 2,
     "developer_changed_lines": 3,
     "generated_files_modified": [
       "server/src/main/java/org/elasticsearch/script/ScriptStats.java"
@@ -59,8 +87,8 @@
     "files_match": true
   },
   "model": "openai/gpt-4.1-mini",
-  "timestamp": "2026-04-28T23:39:22.688423",
-  "duration_seconds": 67,
+  "timestamp": "2026-04-29T10:32:16.734700",
+  "duration_seconds": 359,
   "sample_dir": "output/elasticsearch_row0141_88cf2487_223d50f0",
-  "notes": "0/2 hunk(s) succeeded"
+  "notes": "1/2 hunk(s) succeeded"
 }

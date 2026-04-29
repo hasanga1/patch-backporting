@@ -644,3 +644,376 @@ I have validated the patch on the target ref 2b1210fc8afe7f1695f6ac14fda089f22f8
 2026-04-29 00:49:56,105 - backport - INFO -   Running build for elasticsearch (helper: elasticsearch)
 2026-04-29 00:58:12,122 - backport - INFO -   Running 2 test target(s) for elasticsearch
 2026-04-29 01:02:48,827 - backport - WARNING - Row 173: PARTIAL — 6/6 hunk(s) succeeded
+2026-04-29 12:37:51,027 - backport - INFO - Row 173 [elasticsearch]: extracting original.patch
+2026-04-29 12:37:51,038 - backport - INFO - Row 173: 8 total hunks, 6 after filtering (test/non-Java removed)
+2026-04-29 12:37:51,039 - backport - INFO - Row 173 [elasticsearch]: extracting developer.patch
+2026-04-29 12:37:51,095 - backport - INFO - Row 173: detected 2 test target(s) from developer.patch
+2026-04-29 12:37:51,267 - backport - INFO - Row 173: starting PortGPT backport agent
+
+
+[1m> Entering new AgentExecutor chain...[0m
+
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `git_history` with `{}`
+
+
+[0m[36;1m[1;3mexDataStreamIndexTransportAction.java
+@@ -24,5 +28,6 @@
+ import org.elasticsearch.cluster.block.ClusterBlockException;
+ import org.elasticsearch.cluster.metadata.IndexMetadata;
+ import org.elasticsearch.cluster.service.ClusterService;
+ import org.elasticsearch.common.settings.Settings;
++import org.elasticsearch.core.Assertions;
+ import org.elasticsearch.core.TimeValue;
+1004da29821 Add action to create index from a source index (#118890)
+
+diff --git a/x-pack/plugin/migrate/src/main/java/org/elasticsearch/xpack/migrate/action/ReindexDataStreamIndexTransportAction.java b/x-pack/plugin/migrate/src/main/java/org/elasticsearch/xpack/migrate/action/ReindexDataStreamIndexTransportAction.java
+--- a/x-pack/plugin/migrate/src/main/java/org/elasticsearch/xpack/migrate/action/ReindexDataStreamIndexTransportAction.java
++++ b/x-pack/plugin/migrate/src/main/java/org/elasticsearch/xpack/migrate/action/ReindexDataStreamIndexTransportAction.java
+@@ -23,7 +23,5 @@
+ import org.elasticsearch.cluster.block.ClusterBlockException;
+ import org.elasticsearch.cluster.metadata.IndexMetadata;
+-import org.elasticsearch.cluster.metadata.MetadataCreateIndexService;
+ import org.elasticsearch.cluster.service.ClusterService;
+-import org.elasticsearch.common.settings.IndexScopedSettings;
+ import org.elasticsearch.common.settings.Settings;
+ import org.elasticsearch.core.TimeValue;
+0a6ce27825d Add ReindexDatastreamIndexAction (#116996)
+
+diff --git a/x-pack/plugin/migrate/src/main/java/org/elasticsearch/xpack/migrate/action/ReindexDataStreamIndexTransportAction.java b/x-pack/plugin/migrate/src/main/java/org/elasticsearch/xpack/migrate/action/ReindexDataStreamIndexTransportAction.java
+--- /dev/null
++++ b/x-pack/plugin/migrate/src/main/java/org/elasticsearch/xpack/migrate/action/ReindexDataStreamIndexTransportAction.java
+@@ -0,0 +23,7 @@
++import org.elasticsearch.cluster.block.ClusterBlockException;
++import org.elasticsearch.cluster.metadata.IndexMetadata;
++import org.elasticsearch.cluster.metadata.MetadataCreateIndexService;
++import org.elasticsearch.cluster.service.ClusterService;
++import org.elasticsearch.common.settings.IndexScopedSettings;
++import org.elasticsearch.common.settings.Settings;
++import org.elasticsearch.core.TimeValue
+You need to do the following analysis based on the information in the last commit:
+Analyze the code logic of the context of the patch to be ported in this commit step by step.
+If code logic already existed before this commit, the patch context can be assumed to remain in a similar location. Use `locate` and `viewcode` to check your results.
+If code logic were added in this commit, then you need to `git_show` for further details.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `locate_symbol` with `{'ref': '2b1210fc8afe7f1695f6ac14fda089f22f8af740', 'symbol': 'ReindexDataStreamIndexTransportAction'}`
+responded: The git_history results show that the file x-pack/plugin/migrate/src/main/java/org/elasticsearch/xpack/migrate/action/ReindexDataStreamIndexTransportAction.java was added in commit 0a6ce27825d. The imports in that commit include:
+
+```
+import org.elasticsearch.cluster.block.ClusterBlockException;
+import org.elasticsearch.cluster.metadata.IndexMetadata;
+import org.elasticsearch.cluster.metadata.MetadataCreateIndexService;
+import org.elasticsearch.cluster.service.ClusterService;
+import org.elasticsearch.common.settings.IndexScopedSettings;
+import org.elasticsearch.common.settings.Settings;
+import org.elasticsearch.core.TimeValue;
+```
+
+The patch to be ported adds:
+
+```
+import org.elasticsearch.common.settings.Setting;
+import org.elasticsearch.core.Assertions;
+```
+
+to the imports in the same file.
+
+Since the file itself was added in commit 0a6ce27825d, and the patch adds imports that were not originally there, it is likely that this import addition needs to be ported to the older ref.
+
+To confirm the exact imports in the target ref 2b1210fc8afe7f1695f6ac14fda089f22f8af740, I will locate the file and view the imports section in that ref.
+
+I will locate the file path first in the target ref. Then I will view lines around 20-40 to see the import section.
+
+I will use locate_symbol to locate a relevant function in this file to know the file path for the target ref. The function "ReindexDataStreamIndexTransportAction" is likely the main class in this file, so I will locate this symbol in the target ref.
+
+[0m[33;1m[1;3mx-pack/plugin/migrate/src/main/java/org/elasticsearch/xpack/migrate/action/ReindexDataStreamIndexTransportAction.java:45
+x-pack/plugin/migrate/src/main/java/org/elasticsearch/xpack/migrate/action/ReindexDataStreamIndexTransportAction.java:55[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': '2b1210fc8afe7f1695f6ac14fda089f22f8af740', 'path': 'x-pack/plugin/migrate/src/main/java/org/elasticsearch/xpack/migrate/action/ReindexDataStreamIndexTransportAction.java', 'startline': 20, 'endline': 35}`
+
+
+[0m[36;1m[1;3mHere are lines 20 through 35.
+
+import org.elasticsearch.action.support.IndicesOptions;
+import org.elasticsearch.action.support.SubscribableListener;
+import org.elasticsearch.action.support.master.AcknowledgedResponse;
+import org.elasticsearch.client.internal.Client;
+import org.elasticsearch.cluster.block.ClusterBlockException;
+import org.elasticsearch.cluster.metadata.IndexMetadata;
+import org.elasticsearch.cluster.service.ClusterService;
+import org.elasticsearch.common.settings.Settings;
+import org.elasticsearch.core.TimeValue;
+import org.elasticsearch.index.IndexSettings;
+import org.elasticsearch.index.reindex.BulkByScrollResponse;
+import org.elasticsearch.index.reindex.ReindexAction;
+import org.elasticsearch.index.reindex.ReindexRequest;
+import org.elasticsearch.injection.guice.Inject;
+import org.elasticsearch.tasks.Task;
+import org.elasticsearch.tasks.TaskId;
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': '2b1210fc8afe7f1695f6ac14fda089f22f8af740', 'path': 'x-pack/plugin/migrate/src/main/java/org/elasticsearch/xpack/migrate/action/ReindexDataStreamIndexTransportAction.java', 'startline': 36, 'endline': 45}`
+
+
+[0m[36;1m[1;3mHere are lines 36 through 45.
+
+import org.elasticsearch.threadpool.ThreadPool;
+import org.elasticsearch.transport.TransportService;
+import org.elasticsearch.xpack.core.deprecation.DeprecatedIndexPredicate;
+
+import java.util.Locale;
+import java.util.Map;
+
+import static org.elasticsearch.cluster.metadata.IndexMetadata.APIBlock.WRITE;
+
+public class ReindexDataStreamIndexTransportAction extends HandledTransportAction<
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `validate` with `{'ref': '2b1210fc8afe7f1695f6ac14fda089f22f8af740', 'patch': '--- a/x-pack/plugin/migrate/src/main/java/org/elasticsearch/xpack/migrate/action/ReindexDataStreamIndexTransportAction.java\n+++ b/x-pack/plugin/migrate/src/main/java/org/elasticsearch/xpack/migrate/action/ReindexDataStreamIndexTransportAction.java\n@@ -26,7 +26,8 @@\n import org.elasticsearch.cluster.block.ClusterBlockException;\n import org.elasticsearch.cluster.metadata.IndexMetadata;\n import org.elasticsearch.cluster.service.ClusterService;\n+import org.elasticsearch.common.settings.Setting;\n import org.elasticsearch.common.settings.Settings;\n import org.elasticsearch.core.TimeValue;\n import org.elasticsearch.index.IndexSettings;\n'}`
+responded: The patch to be backported is an import statement addition:
+
+```diff
++import org.elasticsearch.common.settings.Setting;
+```
+
+The similar code block from the older version (ref 2b1210fc8afe7f1695f6ac14fda089f22f8af740) shows the imports around the line 23 to 30, and it currently does not have the import `org.elasticsearch.common.settings.Setting`.
+
+From the git history, it appears that imports have been modified in the past, but the `Setting` import is not present in the older version.
+
+The patch only adds one import line, no other code logic changes are indicated in this hunk.
+
+Since the import `Setting` is missing in the older version and is added in the newer version, the backport patch should add this import line in the corresponding location in the older version.
+
+The context lines around the import are slightly different, so the patch should adapt to the older version's context.
+
+I will now generate the patch for the older version to add the import `org.elasticsearch.common.settings.Setting` in the correct place in the import section, matching the older version's context lines.
+
+The patch will look like this:
+
+```diff
+--- a/x-pack/plugin/migrate/src/main/java/org/elasticsearch/xpack/migrate/action/ReindexDataStreamIndexTransportAction.java
++++ b/x-pack/plugin/migrate/src/main/java/org/elasticsearch/xpack/migrate/action/ReindexDataStreamIndexTransportAction.java
+@@ -26,7 +26,8 @@
+ import org.elasticsearch.cluster.block.ClusterBlockException;
+ import org.elasticsearch.cluster.metadata.IndexMetadata;
+ import org.elasticsearch.cluster.service.ClusterService;
++import org.elasticsearch.common.settings.Setting;
+ import org.elasticsearch.common.settings.Settings;
+ import org.elasticsearch.core.TimeValue;
+ import org.elasticsearch.index.IndexSettings;
+```
+
+I will now prepare this patch and validate it on the older version ref.
+
+[0m[38;5;200m[1;3mPatch applied successfully
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3mI have analyzed the patch and the context in the older version. The patch only adds one import line:
+
+```java
++import org.elasticsearch.common.settings.Setting;
+```
+
+The rest of the import lines already exist in the older version, except the new import line is missing.
+
+I have crafted the corresponding patch for the older version by adding the missing import line in the proper place according to the older version's import order.
+
+Here is the patch for the older version:
+
+```diff
+--- a/x-pack/plugin/migrate/src/main/java/org/elasticsearch/xpack/migrate/action/ReindexDataStreamIndexTransportAction.java
++++ b/x-pack/plugin/migrate/src/main/java/org/elasticsearch/xpack/migrate/action/ReindexDataStreamIndexTransportAction.java
+@@ -26,7 +26,8 @@
+ import org.elasticsearch.cluster.block.ClusterBlockException;
+ import org.elasticsearch.cluster.metadata.IndexMetadata;
+ import org.elasticsearch.cluster.service.ClusterService;
++import org.elasticsearch.common.settings.Setting;
+ import org.elasticsearch.common.settings.Settings;
+ import org.elasticsearch.core.TimeValue;
+ import org.elasticsearch.index.IndexSettings;
+```
+
+I have validated this patch on the target ref, and it applies successfully without conflicts. This patch backports the import addition correctly to the older version.[0m
+
+[1m> Finished chain.[0m
+2026-04-29 12:38:31,945 - backport - INFO - Row 173: merged 2 non-source hunk(s) from developer.patch into working tree
+2026-04-29 12:38:31,947 - backport - INFO - Row 173: running build/test validation via helpers/
+2026-04-29 12:38:31,948 - backport - INFO -   Running build for elasticsearch (helper: elasticsearch)
+2026-04-29 12:45:31,151 - backport - INFO -   Running 2 test target(s) for elasticsearch
+2026-04-29 12:50:08,676 - backport - INFO - Row 173: SUCCESS (llm_generated)

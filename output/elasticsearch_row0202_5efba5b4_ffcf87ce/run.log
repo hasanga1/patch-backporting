@@ -1,0 +1,784 @@
+2026-04-29 14:02:58,241 - backport - INFO - Row 202 [elasticsearch]: extracting original.patch
+2026-04-29 14:02:58,255 - backport - INFO - Row 202: 15 total hunks, 8 after filtering (test/non-Java removed)
+2026-04-29 14:02:58,257 - backport - INFO - Row 202 [elasticsearch]: extracting developer.patch
+2026-04-29 14:02:58,327 - backport - INFO - Row 202: detected 4 test target(s) from developer.patch
+2026-04-29 14:02:58,506 - backport - INFO - Row 202: starting PortGPT backport agent
+
+
+[1m> Entering new AgentExecutor chain...[0m
+
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `git_history` with `{}`
+
+
+[0m[36;1m[1;3m74522c43d80 [ML] Pick best model variant for the default elser endpoint (#114690)
+
+diff --git a/x-pack/plugin/inference/src/main/java/org/elasticsearch/xpack/inference/services/elasticsearch/BaseElasticsearchInternalService.java b/x-pack/plugin/inference/src/main/java/org/elasticsearch/xpack/inference/services/elasticsearch/BaseElasticsearchInternalService.java
+--- a/x-pack/plugin/inference/src/main/java/org/elasticsearch/xpack/inference/services/elasticsearch/BaseElasticsearchInternalService.java
++++ b/x-pack/plugin/inference/src/main/java/org/elasticsearch/xpack/inference/services/elasticsearch/BaseElasticsearchInternalService.java
+@@ -228,9 +239,7 @@
+-            platformArchitectureListener.delegateFailureAndWrap((delegate, architectures) -> {
+-                if (architectures.isEmpty() && clusterIsInElasticCloud()) {
+-                    // In Elastic cloud ml nodes run on Linux x86
+-                    delegate.onResponse(Set.of("linux-x86_64"));
++                    // However, in Elastic cloud ml nodes run on Linux x86
++                    delegate.onResponse(PreferredModelVariant.LINUX_X86_OPTIMIZED);
+                 } else {
+-                    delegate.onResponse(architectures);
++                    delegate.onResponse(PreferredModelVariant.PLATFORM_AGNOSTIC);
+                 }
+             }),
+             client,
+071e7ce620b [ML] Move code specific to the Elasticsearch in cluster services to those sevices (#113749)
+
+diff --git a/x-pack/plugin/inference/src/main/java/org/elasticsearch/xpack/inference/services/elasticsearch/BaseElasticsearchInternalService.java b/x-pack/plugin/inference/src/main/java/org/elasticsearch/xpack/inference/services/elasticsearch/BaseElasticsearchInternalService.java
+--- a/x-pack/plugin/inference/src/main/java/org/elasticsearch/xpack/inference/services/elasticsearch/BaseElasticsearchInternalService.java
++++ b/x-pack/plugin/inference/src/main/java/org/elasticsearch/xpack/inference/services/elasticsearch/BaseElasticsearchInternalService.java
+@@ -190,0 +228,9 @@
++            platformArchitectureListener.delegateFailureAndWrap((delegate, architectures) -> {
++                if (architectures.isEmpty() && clusterIsInElasticCloud()) {
++                    // In Elastic cloud ml nodes run on Linux x86
++                    delegate.onResponse(Set.of("linux-x86_64"));
++                } else {
++                    delegate.onResponse(architectures);
++                }
++            }),
++            client
+You need to do the following analysis based on the information in the last commit:
+Analyze the code logic of the context of the patch to be ported in this commit step by step.
+If code logic already existed before this commit, the patch context can be assumed to remain in a similar location. Use `locate` and `viewcode` to check your results.
+If code logic were added in this commit, then you need to `git_show` for further details.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `locate_symbol` with `{'ref': '5babddff4d06c5090fb67073aeb40b28f095baf0', 'symbol': 'BaseElasticsearchInternalService'}`
+responded: The git history shows two relevant commits involving the file `BaseElasticsearchInternalService.java`.
+
+1. Commit `071e7ce620b` added code that sets up a platform architecture listener that delegates responses based on the detected architectures, with a special case for Elastic cloud where it responds with `"linux-x86_64"`.
+2. Commit `74522c43d8` modified the response handling to use `PreferredModelVariant.LINUX_X86_OPTIMIZED` and `PreferredModelVariant.PLATFORM_AGNOSTIC` instead of the raw architecture strings or sets.
+
+The patch to be backported involves the logic of choosing the preferred model variant based on the architectures detected. This logic appears to already be present in the older version (ref 5babddff4d06c5090fb67073aeb40b28f095baf0) as shown in the provided snippet:
+
+```java
+                    // However, in Elastic cloud ml nodes run on Linux x86
+                    delegate.onResponse(PreferredModelVariant.LINUX_X86_OPTIMIZED);
+                } else {
+                    boolean homogenous = architectures.size() == 1;
+                    if (homogenous && architectures.iterator().next().equals("linux-x86_64")) {
+                        delegate.onResponse(PreferredModelVariant.LINUX_X86_OPTIMIZED);
+                    } else {
+                        delegate.onResponse(PreferredModelVariant.PLATFORM_AGNOSTIC);
+```
+
+This is almost identical to the patch to be backported, except the patch adds the check for homogenous architectures inside the else branch, while the old version snippet already has it.
+
+Since the code logic already existed before the commit and the older version snippet shows the code already structured in the way the patch wants to change it to, it suggests the patch is partially applied or the logic is already implemented similarly in the older version.
+
+Next, I will locate the function containing this code in the older version to view the full function context around line 238-246 and confirm the exact location and surroundings for the patch.
+
+I will use `locate_symbol` to find the function in the older version ref 5babddff4d06c5090fb67073aeb40b28f095baf0 for `BaseElasticsearchInternalService.java`.
+
+[0m[33;1m[1;3mx-pack/plugin/inference/src/main/java/org/elasticsearch/xpack/inference/services/elasticsearch/BaseElasticsearchInternalService.java:49
+x-pack/plugin/inference/src/main/java/org/elasticsearch/xpack/inference/services/elasticsearch/BaseElasticsearchInternalService.java:63
+x-pack/plugin/inference/src/main/java/org/elasticsearch/xpack/inference/services/elasticsearch/BaseElasticsearchInternalService.java:75[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': '5babddff4d06c5090fb67073aeb40b28f095baf0', 'path': 'x-pack/plugin/inference/src/main/java/org/elasticsearch/xpack/inference/services/elasticsearch/BaseElasticsearchInternalService.java', 'startline': 230, 'endline': 250}`
+
+
+[0m[36;1m[1;3mHere are lines 230 through 250.
+
+    }
+
+    private void preferredVariantFromPlatformArchitecture(ActionListener<PreferredModelVariant> preferredVariantListener) {
+        // Find the cluster platform as the service may need that
+        // information when creating the model
+        MlPlatformArchitecturesUtil.getMlNodesArchitecturesSet(
+            preferredVariantListener.delegateFailureAndWrap((delegate, architectures) -> {
+                if (architectures.isEmpty() && isClusterInElasticCloud()) {
+                    // There are no ml nodes to check the current arch.
+                    // However, in Elastic cloud ml nodes run on Linux x86
+                    delegate.onResponse(PreferredModelVariant.LINUX_X86_OPTIMIZED);
+                } else {
+                    boolean homogenous = architectures.size() == 1;
+                    if (homogenous && architectures.iterator().next().equals("linux-x86_64")) {
+                        delegate.onResponse(PreferredModelVariant.LINUX_X86_OPTIMIZED);
+                    } else {
+                        delegate.onResponse(PreferredModelVariant.PLATFORM_AGNOSTIC);
+                    }
+                }
+            }),
+            client,
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `validate` with `{'ref': '5babddff4d06c5090fb67073aeb40b28f095baf0', 'patch': 'need not ported'}`
+responded: The code snippet from lines 230 to 250 in the older version (ref 5babddff4d06c5090fb67073aeb40b28f095baf0) already contains the logic that is very similar to the patch we want to backport.
+
+The snippet shows that inside the method `preferredVariantFromPlatformArchitecture`, there is a lambda function passing `delegate` and `architectures`. The logic checks if the architectures set is empty and the cluster is in Elastic Cloud, it responds with `PreferredModelVariant.LINUX_X86_OPTIMIZED`. Otherwise, it checks if the architectures set is homogenous and equals "linux-x86_64", then responds with `LINUX_X86_OPTIMIZED`. Else it responds with `PLATFORM_AGNOSTIC`.
+
+This matches the patch logic exactly.
+
+The only difference is the patch shows the change from a simpler else branch directly responding with `PLATFORM_AGNOSTIC` to the more detailed check for homogeneity and architecture type.
+
+Since the older version already contains this logic, it means the patch is already present in the older version at this location.
+
+Therefore, this patch does not need to be backported as it is already included in the target older ref.
+
+I will validate with "need not ported" since the patch is effectively already present.
+
+[0m[38;5;200m[1;3mPatch applied successfully
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3mThe code block related to the patch already exists in the target ref 5babddff4d06c5090fb67073aeb40b28f095baf0 with the same logic and structure as the patch from the newer version. The patch changes in the newer version are already present in the older version.
+
+Therefore, no patch is needed to be backported for this hunk.
+
+I will mark the patch as "need not ported" for this target ref. This means the fix is already included in the older version.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new AgentExecutor chain...[0m
+
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `git_history` with `{}`
+
+
+[0m[36;1m[1;3mviceSettingsMap, name());
+
+You need to do the following analysis based on the information in the last commit:
+Analyze the code logic of the context of the patch to be ported in this commit step by step.
+If code logic already existed before this commit, the patch context can be assumed to remain in a similar location. Use `locate` and `viewcode` to check your results.
+If code logic were added in this commit, then you need to `git_show` for further details.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `git_show` with `{}`
+
+
+[0m[33;1m[1;3mcommit fa06764bad714f73989b05a1deb6cdf6c55cd040
+Author: Max Hniebergall <137079448+maxhniebergall@users.noreply.github.com>
+Date:   Thu Oct 3 10:36:25 2024 -0400
+
+    [Inference API] Deprecate elser service (#113216)
+    
+    * merging
+    
+    * copy elser service files into elasticsearch service
+    
+    * Add deprecation log message for elser service
+    
+    * improve deprecation warning
+    
+    * change elasticsearch internal service elser case to use elser model
+    
+    * switch elasticsearch elser tests to use elasticsearch elser
+    
+    * Update docs/changelog/113216.yaml
+    
+    * alias elser service to elasticsearch
+    
+    * delete elser service package now that elasticsearch service supports it and has aliased it
+    
+    * Add deprecation warning to infer API for elser
+    
+    * Fix accidentally introduced NPE and retain BWC support for null model ID (with deprecation message)
+    
+    * change "area" to "REST API" because "Machine Learning" isn't an option for deprecation
+    
+    * change elser literals to static variable
+    
+    * change Put and Elasticsearch Internal service
+    
+     to pass the service name if it is elser or elasticsearch this will allow the elasticsearch service to maintain BWC for null model IDs if the service was elser.
+    
+    * fix up tests to match new elasticsearch service semantics regarding elser.
+    
+    * Move passing of service name
+    
+    * add persistence for elser models in elasticsearch
+    
+    * copy elser service files into elasticsearch service
+    
+    * Add deprecation log message for elser service
+    
+    * Add deprecation warning to infer API for elser
+    
+    * fix merge conflicts
+    
+    * fix merge
+
+ docs/changelog/113216.yaml                         |  10 +
+ .../inference/InferenceServiceRegistry.java        |   8 +-
+ .../inference/integration/ModelRegistryIT.java     |  27 +-
+ .../InferenceNamedWriteablesProvider.java          |   4 +-
+ .../xpack/inference/InferencePlugin.java           |   2 -
+ .../inference/action/TransportInferenceAction.java |   2 +
+ .../action/TransportPutInferenceModelAction.java   |   7 +
+ ...asticInferenceServiceSparseEmbeddingsModel.java |   2 +-
+ ...enceServiceSparseEmbeddingsServiceSettings.java |   2 +-
+ .../BaseElasticsearchInternalService.java          |   1 -
+ .../ElasticsearchInternalService.java              | 126 ++++-
+ .../ElasticsearchInternalServiceSettings.java      |   2 +-
+ .../ElserInternalModel.java                        |   3 +-
+ .../ElserInternalServiceSettings.java              |   5 +-
+ .../ElserMlNodeTaskSettings.java                   |   2 +-
+ .../{elser => elasticsearch}/ElserModels.java      |   4 +-
+ .../services/elser/ElserInternalService.java       | 300 -----------
+ .../xpack/inference/ModelConfigurationsTests.java  |   4 +-
+ ...InferenceServiceSparseEmbeddingsModelTests.java |   2 +-
+ ...erviceSparseEmbeddingsServiceSettingsTests.java |   4 +-
+ .../elastic/ElasticInferenceServiceTests.java      |   2 +-
+ .../Ela
+Because the commit's code change maybe too long, so I generate the abstract of the code change to show you how code changed in this commit.
+Commit shows that the patch code in old version maybe in the file x-pack/plugin/inference/src/main/java/org/elasticsearch/xpack/inference/services/elser/ElserInternalService.java around line number 112 to 133. The code is below
+                    );
+                }));
+            } else {
+                parsedModelListener.onResponse(
+                    new ElserInternalModel(
+                        inferenceEntityId,
+                        taskType,
+                        NAME,
+                        new ElserInternalServiceSettings(serviceSettingsBuilder.build()),
+                        taskSettings
+                    )
+                );
+            }
+        } catch (Exception e) {
+            parsedModelListener.onFailure(e);
+        }
+    }
+
+    @Override
+    public ElserInternalModel parsePersistedConfigWithSecrets(
+        String inferenceEntityId,
+You can call `viewcode` and `locate_symbol` to find the relevant code based on this information step by step.[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `locate_symbol` with `{'ref': '5babddff4d06c5090fb67073aeb40b28f095baf0', 'symbol': 'parsePersistedConfigWithSecrets'}`
+
+
+[0m[33;1m[1;3mserver/src/main/java/org/elasticsearch/inference/InferenceService.java:59
+x-pack/plugin/inference/qa/test-service-plugin/src/main/java/org/elasticsearch/xpack/inference/mock/AbstractTestInferenceService.java:59
+x-pack/plugin/inference/src/main/java/org/elasticsearch/xpack/inference/services/alibabacloudsearch/AlibabaCloudSearchService.java:182
+x-pack/plugin/inference/src/main/java/org/elasticsearch/xpack/inference/services/amazonbedrock/AmazonBedrockService.java:166
+x-pack/plugin/inference/src/main/java/org/elasticsearch/xpack/inference/services/anthropic/AnthropicService.java:130
+x-pack/plugin/inference/src/main/java/org/elasticsearch/xpack/inference/services/azureaistudio/AzureAiStudioService.java:153
+x-pack/plugin/inference/src/main/java/org/elasticsearch/xpack/inference/services/azureopenai/AzureOpenAiService.java:164
+x-pack/plugin/inference/src/main/java/org/elasticsearch/xpack/inference/services/cohere/CohereService.java:166
+x-pack/plugin/inference/src/main/java/org/elasticsearch/xpack/inference/services/elastic/ElasticInferenceService.java:165
+x-pack/plugin/inference/src/main/java/org/elasticsearch/xpack/inference/services/elasticsearch/ElasticsearchInternalService.java:404
+x-pack/plugin/inference/src/main/java/org/elasticsearch/xpack/inference/services/googleaistudio/GoogleAiStudioService.java:145
+x-pack/plugin/inference/src/main/java/org/elasticsearch/xpack/inference/services/googlevertexai/GoogleVertexAiService.java:104
+x-pack/plugin/inference/src/main/java/org/elasticsearch/xpack/inference/services/huggingface/HuggingFaceBaseService.java:85
+x-pack/plugin/inference/src/main/java/org/elasticsearch/xpack/inference/services/ibmwatsonx/IbmWatsonxService.java:118
+x-pack/plugin/inference/src/main/java/org/elasticsearch/xpack/inference/services/mistral/MistralService.java:150
+x-pack/plugin/inference/src/main/java/org/elasticsearch/xpack/inference/services/openai/OpenAiService.java:163
+x-pack/plugin/inference/src/test/java/org/elasticsearch/xpack/inference/services/SenderServiceTests.java:146[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': '5babddff4d06c5090fb67073aeb40b28f095baf0', 'path': 'x-pack/plugin/inference/src/main/java/org/elasticsearch/xpack/inference/services/elasticsearch/ElasticsearchInternalService.java', 'startline': 390, 'endline': 420}`
+
+
+[0m[36;1m[1;3mHere are lines 390 through 420.
+
+
+        modelListener.onResponse(
+            new ElserInternalModel(
+                inferenceEntityId,
+                taskType,
+                NAME,
+                new ElserInternalServiceSettings(esServiceSettingsBuilder.build()),
+                ElserMlNodeTaskSettings.DEFAULT,
+                chunkingSettings
+            )
+        );
+    }
+
+    @Override
+    public Model parsePersistedConfigWithSecrets(
+        String inferenceEntityId,
+        TaskType taskType,
+        Map<String, Object> config,
+        Map<String, Object> secrets
+    ) {
+        return parsePersistedConfig(inferenceEntityId, taskType, config);
+    }
+
+    @Override
+    public Model parsePersistedConfig(String inferenceEntityId, TaskType taskType, Map<String, Object> config) {
+        Map<String, Object> serviceSettingsMap = removeFromMapOrThrowIfNull(config, ModelConfigurations.SERVICE_SETTINGS);
+        Map<String, Object> taskSettingsMap = removeFromMapOrDefaultEmpty(config, ModelConfigurations.TASK_SETTINGS);
+
+        ChunkingSettings chunkingSettings = null;
+        if (TaskType.TEXT_EMBEDDING.equals(taskType) || TaskType.SPARSE_EMBEDDING.equals(taskType)) {
+            chunkingSettings = ChunkingSettingsBuilder.fromMap(removeFromMapOrDefaultEmpty(config, ModelConfigurations.CHUNKING_SETTINGS));
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': '5babddff4d06c5090fb67073aeb40b28f095baf0', 'path': 'x-pack/plugin/inference/src/main/java/org/elasticsearch/xpack/inference/services/elasticsearch/ElasticsearchInternalService.java', 'startline': 380, 'endline': 410}`
+
+
+[0m[36;1m[1;3mHere are lines 380 through 410.
+
+                "The [{}] service is deprecated and will be removed in a future release. Use the [{}] service instead, with"
+                    + " [model_id] set to [{}] in the [service_settings]",
+                OLD_ELSER_SERVICE_NAME,
+                ElasticsearchInternalService.NAME,
+                defaultModelId
+            );
+        }
+
+        throwIfNotEmptyMap(config, name());
+        throwIfNotEmptyMap(serviceSettingsMap, name());
+
+        modelListener.onResponse(
+            new ElserInternalModel(
+                inferenceEntityId,
+                taskType,
+                NAME,
+                new ElserInternalServiceSettings(esServiceSettingsBuilder.build()),
+                ElserMlNodeTaskSettings.DEFAULT,
+                chunkingSettings
+            )
+        );
+    }
+
+    @Override
+    public Model parsePersistedConfigWithSecrets(
+        String inferenceEntityId,
+        TaskType taskType,
+        Map<String, Object> config,
+        Map<String, Object> secrets
+    ) {
+        return parsePersistedConfig(inferenceEntityId, taskType, config);
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': '5babddff4d06c5090fb67073aeb40b28f095baf0', 'path': 'x-pack/plugin/inference/src/main/java/org/elasticsearch/xpack/inference/services/elasticsearch/ElasticsearchInternalService.java', 'startline': 290, 'endline': 320}`
+
+
+[0m[36;1m[1;3mHere are lines 290 through 320.
+
+        ChunkingSettings chunkingSettings,
+        ActionListener<Model> modelListener
+    ) {
+        var esServiceSettingsBuilder = ElasticsearchInternalServiceSettings.fromRequestMap(serviceSettingsMap);
+
+        if (esServiceSettingsBuilder.getModelId() == null) {
+            esServiceSettingsBuilder.setModelId(
+                selectDefaultModelVariantBasedOnClusterArchitecture(
+                    preferredModelVariant,
+                    MULTILINGUAL_E5_SMALL_MODEL_ID_LINUX_X86,
+                    MULTILINGUAL_E5_SMALL_MODEL_ID
+                )
+            );
+        } else if (modelVariantValidForArchitecture(preferredModelVariant, esServiceSettingsBuilder.getModelId()) == false) {
+            throw new IllegalArgumentException(
+                "Error parsing request config, model id does not match any models available on this platform. Was ["
+                    + esServiceSettingsBuilder.getModelId()
+                    + "]"
+            );
+        }
+
+        throwIfNotEmptyMap(config, name());
+        throwIfNotEmptyMap(serviceSettingsMap, name());
+
+        modelListener.onResponse(
+            new MultilingualE5SmallModel(
+                inferenceEntityId,
+                taskType,
+                NAME,
+                new MultilingualE5SmallInternalServiceSettings(esServiceSettingsBuilder.build()),
+                chunkingSettings
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3mThe patch in the newer version removes this block of code:
+
+```java
+if (modelVariantDoesNotMatchArchitecturesAndIsNotPlatformAgnostic(preferredModelVariant, esServiceSettingsBuilder.getModelId())) {
+    throw new IllegalArgumentException(
+        "Error parsing request config, model id does not match any models available on this platform. Was ["
+            + esServiceSettingsBuilder.getModelId()
+            + "]"
+    );
+}
+```
+
+In the older version, a similar block exists but with a slightly different condition and is located around line 299:
+
+```java
+if (esServiceSettingsBuilder.getModelId() == null) {
+    esServiceSettingsBuilder.setModelId(
+        selectDefaultModelVariantBasedOnClusterArchitecture(
+            preferredModelVariant,
+            MULTILINGUAL_E5_SMALL_MODEL_ID_LINUX_X86,
+            MULTILINGUAL_E5_SMALL_MODEL_ID
+        )
+    );
+} else if (modelVariantValidForArchitecture(preferredModelVariant, esServiceSettingsBuilder.getModelId()) == false) {
+    throw new IllegalArgumentException(
+        "Error parsing request config, model id does not match any models available on this platform. Was ["
+            + esServiceSettingsBuilder.getModelId()
+            + "]"
+    );
+}
+```
+
+The patch in the new version removes the check for model variant mismatch and platform agnostic condition, effectively removing this validation.
+
+To backport this patch to the older version, the corresponding block in the older version should be removed.
+
+I will now generate a patch that removes this block in the older version, preserving the surrounding context.
+
+The patch will remove the `else if` block that throws the IllegalArgumentException.
+
+Let's prepare the patch.[0m
+
+[1m> Finished chain.[0m
+2026-04-29 14:03:53,603 - backport - ERROR - Hunk 3: agent failed (max iterations or error)
+2026-04-29 14:03:53,606 - backport - WARNING - Row 202: PARTIAL — 0/8 hunk(s) succeeded

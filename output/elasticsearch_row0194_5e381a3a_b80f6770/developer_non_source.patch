@@ -1,0 +1,28 @@
+diff --git a/docs/changelog/115031.yaml b/docs/changelog/115031.yaml
+new file mode 100644
+index 00000000000..d8d6e1a3f81
+--- /dev/null
++++ b/docs/changelog/115031.yaml
+@@ -0,0 +1,5 @@
++pr: 115031
++summary: Bool query early termination should also consider `must_not` clauses
++area: Search
++type: enhancement
++issues: []
+diff --git a/server/src/test/java/org/elasticsearch/index/query/BoolQueryBuilderTests.java b/server/src/test/java/org/elasticsearch/index/query/BoolQueryBuilderTests.java
+index 25d4c1008ba..0fa8f70525e 100644
+--- a/server/src/test/java/org/elasticsearch/index/query/BoolQueryBuilderTests.java
++++ b/server/src/test/java/org/elasticsearch/index/query/BoolQueryBuilderTests.java
+@@ -449,6 +449,12 @@ public class BoolQueryBuilderTests extends AbstractQueryTestCase<BoolQueryBuilde
+         rewritten = Rewriteable.rewrite(boolQueryBuilder, createSearchExecutionContext());
+         assertNotEquals(new MatchNoneQueryBuilder(), rewritten);
+ 
++        boolQueryBuilder = new BoolQueryBuilder();
++        boolQueryBuilder.should(new WrapperQueryBuilder(new MatchNoneQueryBuilder().toString()));
++        boolQueryBuilder.mustNot(new TermQueryBuilder(TEXT_FIELD_NAME, "bar"));
++        rewritten = Rewriteable.rewrite(boolQueryBuilder, createSearchExecutionContext());
++        assertNotEquals(new MatchNoneQueryBuilder(), rewritten);
++
+         boolQueryBuilder = new BoolQueryBuilder();
+         boolQueryBuilder.filter(new TermQueryBuilder(TEXT_FIELD_NAME, "bar"));
+         boolQueryBuilder.mustNot(new WrapperQueryBuilder(new WrapperQueryBuilder(new MatchAllQueryBuilder().toString()).toString()));

@@ -1,0 +1,29 @@
+diff --git a/docs/changelog/112872.yaml b/docs/changelog/112872.yaml
+new file mode 100644
+index 00000000000..5a6f3af0396
+--- /dev/null
++++ b/docs/changelog/112872.yaml
+@@ -0,0 +1,6 @@
++pr: 112872
++summary: Fix parsing error in `_terms_enum` API
++area: Search
++type: bug
++issues:
++ - 94378
+diff --git a/server/src/test/java/org/elasticsearch/index/mapper/IpPrefixAutomatonUtilTests.java b/server/src/test/java/org/elasticsearch/index/mapper/IpPrefixAutomatonUtilTests.java
+index ead98975773..5c3cbd892ef 100644
+--- a/server/src/test/java/org/elasticsearch/index/mapper/IpPrefixAutomatonUtilTests.java
++++ b/server/src/test/java/org/elasticsearch/index/mapper/IpPrefixAutomatonUtilTests.java
+@@ -173,6 +173,12 @@ public class IpPrefixAutomatonUtilTests extends ESTestCase {
+             assertTrue(accepts(a, "255.27.240.24"));
+             assertTrue(accepts(a, "255:a360::25bb:828f:ffff:ffff"));
+         }
++        {
++            CompiledAutomaton a = buildIpPrefixAutomaton("23c9::");
++            assertTrue(accepts(a, "23c9::6063:7ac9:ffff:ffff"));
++            assertFalse(accepts(a, "0.0.0.0"));
++            assertFalse(accepts(a, "249.43.32.175"));
++        }
+     }
+ 
+     private static boolean accepts(CompiledAutomaton compiledAutomaton, String address) throws UnknownHostException {

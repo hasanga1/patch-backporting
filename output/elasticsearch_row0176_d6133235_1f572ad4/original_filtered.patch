@@ -1,0 +1,14 @@
+diff --git a/server/src/main/java/org/elasticsearch/cluster/metadata/MetadataCreateIndexService.java b/server/src/main/java/org/elasticsearch/cluster/metadata/MetadataCreateIndexService.java
+index 7fc8a8693dc..fb19a3f04fc 100644
+--- a/server/src/main/java/org/elasticsearch/cluster/metadata/MetadataCreateIndexService.java
++++ b/server/src/main/java/org/elasticsearch/cluster/metadata/MetadataCreateIndexService.java
+@@ -237,6 +237,9 @@ public class MetadataCreateIndexService {
+      * Validate the name for an index or alias against some static rules.
+      */
+     public static void validateIndexOrAliasName(String index, BiFunction<String, String, ? extends RuntimeException> exceptionCtor) {
++        if (index == null || index.isEmpty()) {
++            throw exceptionCtor.apply(index, "must not be empty");
++        }
+         if (Strings.validFileName(index) == false) {
+             throw exceptionCtor.apply(index, "must not contain the following characters " + Strings.INVALID_FILENAME_CHARS);
+         }

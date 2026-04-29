@@ -16,70 +16,27 @@
 
 --- a/server/src/main/java/org/elasticsearch/action/admin/cluster/allocation/TransportGetAllocationStatsAction.java
 +++ b/server/src/main/java/org/elasticsearch/action/admin/cluster/allocation/TransportGetAllocationStatsAction.java
-@@ -27,2 +27,3 @@
+@@ -33,4 +33,5 @@
 -import org.elasticsearch.features.FeatureService;
-+import org.elasticsearch.common.util.concurrent.EsExecutors;
 +import org.elasticsearch.features.FeatureService;
++import org.elasticsearch.common.util.concurrent.EsExecutors;
  import org.elasticsearch.injection.guice.Inject;
+ import org.elasticsearch.tasks.Task;
+ import org.elasticsearch.tasks.TaskId;
 
 --- a/server/src/main/java/org/elasticsearch/action/admin/cluster/allocation/TransportGetAllocationStatsAction.java
 +++ b/server/src/main/java/org/elasticsearch/action/admin/cluster/allocation/TransportGetAllocationStatsAction.java
-@@ -43,32 +43,30 @@
+@@ -45,8 +45,7 @@
  
      public static final ActionType<TransportGetAllocationStatsAction.Response> TYPE = new ActionType<>("cluster:monitor/allocation/stats");
  
 -    private final AllocationStatsService allocationStatsService;
-+    private final SingleResultDeduplicator<Map<String, NodeAllocationStats>> allocationStatsSupplier;
-     private final DiskThresholdSettings diskThresholdSettings;
+-    private final DiskThresholdSettings diskThresholdSettings;
 -    private final FeatureService featureService;
++    private final SingleResultDeduplicator<Map<String, NodeAllocationStats>> allocationStatsSupplier;
++    private final DiskThresholdSettings diskThresholdSettings;
  
      @Inject
--    public TransportGetAllocationStatsAction(
--        TransportService transportService,
--        ClusterService clusterService,
--        ThreadPool threadPool,
--        ActionFilters actionFilters,
--        IndexNameExpressionResolver indexNameExpressionResolver,
--        AllocationStatsService allocationStatsService,
--        FeatureService featureService
--    ) {
--        super(
--            TYPE.name(),
--            transportService,
--            clusterService,
--            threadPool,
--            actionFilters,
--            TransportGetAllocationStatsAction.Request::new,
--            TransportGetAllocationStatsAction.Response::new,
--            threadPool.executor(ThreadPool.Names.MANAGEMENT)
--        );
--        this.allocationStatsService = allocationStatsService;
--        this.diskThresholdSettings = new DiskThresholdSettings(clusterService.getSettings(), clusterService.getClusterSettings());
--        this.featureService = featureService;
--    }
-+    public TransportGetAllocationStatsAction(
-+        TransportService transportService,
-+        ClusterService clusterService,
-+        ThreadPool threadPool,
-+        ActionFilters actionFilters,
-+        IndexNameExpressionResolver indexNameExpressionResolver,
-+        SingleResultDeduplicator<Map<String, NodeAllocationStats>> allocationStatsSupplier,
-+        DiskThresholdSettings diskThresholdSettings
-+    ) {
-+        super(
-+            TYPE.name(),
-+            transportService,
-+            clusterService,
-+            threadPool,
-+            actionFilters,
-+            TransportGetAllocationStatsAction.Request::new,
-+            TransportGetAllocationStatsAction.Response::new,
-+            threadPool.executor(ThreadPool.Names.MANAGEMENT)
-+        );
-+        this.allocationStatsSupplier = allocationStatsSupplier;
-+        this.diskThresholdSettings = diskThresholdSettings;
-+    }
- 
 diff --git a/docs/changelog/123246.yaml b/docs/changelog/123246.yaml
 new file mode 100644
 index 00000000000..3477cf70ac8

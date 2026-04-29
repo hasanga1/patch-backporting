@@ -1,0 +1,218 @@
+diff --git a/docs/changelog/113910.yaml b/docs/changelog/113910.yaml
+new file mode 100644
+index 00000000000..aa9d3b61fe7
+--- /dev/null
++++ b/docs/changelog/113910.yaml
+@@ -0,0 +1,5 @@
++pr: 113910
++summary: Do not expand dots when storing objects in ignored source
++area: Logs
++type: bug
++issues: []
+diff --git a/rest-api-spec/src/yamlRestTest/resources/rest-api-spec/test/indices.create/20_synthetic_source.yml b/rest-api-spec/src/yamlRestTest/resources/rest-api-spec/test/indices.create/20_synthetic_source.yml
+index af12289e5de..5fa165f72d3 100644
+--- a/rest-api-spec/src/yamlRestTest/resources/rest-api-spec/test/indices.create/20_synthetic_source.yml
++++ b/rest-api-spec/src/yamlRestTest/resources/rest-api-spec/test/indices.create/20_synthetic_source.yml
+@@ -197,7 +197,7 @@ empty object with unmapped fields:
+ ---
+ disabled root object:
+   - requires:
+-      cluster_features: ["mapper.track_ignored_source"]
++      cluster_features: ["mapper.ignored_source.dont_expand_dots"]
+       reason: requires tracking ignored source
+ 
+   - do:
+@@ -222,17 +222,19 @@ disabled root object:
+         index: test
+ 
+   - match: { hits.total.value: 1 }
+-  - match: { hits.hits.0._source.name: aaaa }
+-  - match: { hits.hits.0._source.some_string: AaAa }
+-  - match: { hits.hits.0._source.some_int: 1000 }
+-  - match: { hits.hits.0._source.some_double: 123.456789 }
+-  - match: { hits.hits.0._source.a.very.deeply.nested.field: AAAA }
+-
++  - match:
++      hits.hits.0._source:
++        name: aaaa
++        some_string: AaAa
++        some_int: 1000
++        some_double: 123.456789
++        some_bool: true
++        a.very.deeply.nested.field: AAAA
+ 
+ ---
+ disabled object:
+   - requires:
+-      cluster_features: ["mapper.track_ignored_source"]
++      cluster_features: ["mapper.ignored_source.dont_expand_dots"]
+       reason: requires tracking ignored source
+ 
+   - do:
+@@ -261,14 +263,15 @@ disabled object:
+ 
+   - match: { hits.total.value: 1 }
+   - match: { hits.hits.0._source.name: aaaa }
+-  - match: { hits.hits.0._source.path.some_int: 1000 }
+-  - match: { hits.hits.0._source.path.to.a.very.deeply.nested.field: AAAA }
+-
++  - match:
++      hits.hits.0._source.path:
++        some_int: 1000
++        to.a.very.deeply.nested.field: AAAA
+ 
+ ---
+ disabled object contains array:
+   - requires:
+-      cluster_features: ["mapper.track_ignored_source"]
++      cluster_features: ["mapper.ignored_source.dont_expand_dots"]
+       reason: requires tracking ignored source
+ 
+   - do:
+@@ -297,10 +300,12 @@ disabled object contains array:
+ 
+   - match: { hits.total.value: 1 }
+   - match: { hits.hits.0._source.name: aaaa }
+-  - match: { hits.hits.0._source.path.0.some_int: 1000 }
+-  - match: { hits.hits.0._source.path.0.to.a.very.deeply.nested.field: AAAA }
+-  - match: { hits.hits.0._source.path.1.some_double: 10.0 }
+-  - match: { hits.hits.0._source.path.1.some_bool: true }
++  - match:
++      hits.hits.0._source.path:
++        - some_int: 1000
++          to.a.very.deeply.nested.field: AAAA
++        - some_double: 10.0
++          some_bool: true
+ 
+ 
+ ---
+@@ -429,7 +434,7 @@ mixed disabled and enabled objects:
+ ---
+ object with dynamic override:
+   - requires:
+-      cluster_features: ["mapper.track_ignored_source"]
++      cluster_features: ["mapper.ignored_source.dont_expand_dots"]
+       reason: requires tracking ignored source
+ 
+   - do:
+@@ -467,7 +472,7 @@ object with dynamic override:
+   - match: { hits.hits.0._source.name: a }
+   - match: { hits.hits.0._source.path_no.name: foo }
+   - match: { hits.hits.0._source.path_no.some_int: 10 }
+-  - match: { hits.hits.0._source.path_no.to.a.very.deeply.nested.field: A }
++  - match: { hits.hits.0._source.path_no.to: { a.very.deeply.nested.field: A } }
+   - match: { hits.hits.0._source.path_runtime.name: bar }
+   - match: { hits.hits.0._source.path_runtime.some_int: 20 }
+   - match: { hits.hits.0._source.path_runtime.to.a.very.deeply.nested.field: B }
+diff --git a/server/src/test/java/org/elasticsearch/index/mapper/IgnoredSourceFieldMapperTests.java b/server/src/test/java/org/elasticsearch/index/mapper/IgnoredSourceFieldMapperTests.java
+index b0c6e4a5d6c..0e65d60d05d 100644
+--- a/server/src/test/java/org/elasticsearch/index/mapper/IgnoredSourceFieldMapperTests.java
++++ b/server/src/test/java/org/elasticsearch/index/mapper/IgnoredSourceFieldMapperTests.java
+@@ -1720,6 +1720,107 @@ public class IgnoredSourceFieldMapperTests extends MapperServiceTestCase {
+         assertEquals("{\"path\":{\"at\":\"A\"}}", syntheticSource);
+     }
+ 
++    public void testDynamicIgnoredObjectWithFlatFields() throws IOException {
++        DocumentMapper documentMapper = createMapperService(topMapping(b -> {
++            b.startObject("_source").field("mode", "synthetic").endObject();
++            b.field("dynamic", false);
++        })).documentMapper();
++
++        CheckedConsumer<XContentBuilder, IOException> document = b -> {
++            b.startObject("top");
++            b.field("file.name", "A");
++            b.field("file.line", 10);
++            b.endObject();
++        };
++
++        var syntheticSource = syntheticSource(documentMapper, document);
++        assertEquals("{\"top\":{\"file.name\":\"A\",\"file.line\":10}}", syntheticSource);
++
++        CheckedConsumer<XContentBuilder, IOException> documentWithArray = b -> {
++            b.startArray("top");
++            b.startObject();
++            b.field("file.name", "A");
++            b.field("file.line", 10);
++            b.endObject();
++            b.startObject();
++            b.field("file.name", "B");
++            b.field("file.line", 20);
++            b.endObject();
++            b.endArray();
++        };
++
++        var syntheticSourceWithArray = syntheticSource(documentMapper, documentWithArray);
++        assertEquals("""
++            {"top":[{"file.name":"A","file.line":10},{"file.name":"B","file.line":20}]}""", syntheticSourceWithArray);
++    }
++
++    public void testDisabledRootObjectWithFlatFields() throws IOException {
++        DocumentMapper documentMapper = createMapperService(topMapping(b -> {
++            b.startObject("_source").field("mode", "synthetic").endObject();
++            b.field("enabled", false);
++        })).documentMapper();
++
++        CheckedConsumer<XContentBuilder, IOException> document = b -> {
++            b.startObject("top");
++            b.field("file.name", "A");
++            b.field("file.line", 10);
++            b.endObject();
++        };
++
++        var syntheticSource = syntheticSource(documentMapper, document);
++        assertEquals("{\"top\":{\"file.name\":\"A\",\"file.line\":10}}", syntheticSource);
++
++        CheckedConsumer<XContentBuilder, IOException> documentWithArray = b -> {
++            b.startArray("top");
++            b.startObject();
++            b.field("file.name", "A");
++            b.field("file.line", 10);
++            b.endObject();
++            b.startObject();
++            b.field("file.name", "B");
++            b.field("file.line", 20);
++            b.endObject();
++            b.endArray();
++        };
++
++        var syntheticSourceWithArray = syntheticSource(documentMapper, documentWithArray);
++        assertEquals("""
++            {"top":[{"file.name":"A","file.line":10},{"file.name":"B","file.line":20}]}""", syntheticSourceWithArray);
++    }
++
++    public void testDisabledObjectWithFlatFields() throws IOException {
++        DocumentMapper documentMapper = createMapperService(syntheticSourceMapping(b -> {
++            b.startObject("top").field("type", "object").field("enabled", false).endObject();
++        })).documentMapper();
++
++        CheckedConsumer<XContentBuilder, IOException> document = b -> {
++            b.startObject("top");
++            b.field("file.name", "A");
++            b.field("file.line", 10);
++            b.endObject();
++        };
++
++        var syntheticSource = syntheticSource(documentMapper, document);
++        assertEquals("{\"top\":{\"file.name\":\"A\",\"file.line\":10}}", syntheticSource);
++
++        CheckedConsumer<XContentBuilder, IOException> documentWithArray = b -> {
++            b.startArray("top");
++            b.startObject();
++            b.field("file.name", "A");
++            b.field("file.line", 10);
++            b.endObject();
++            b.startObject();
++            b.field("file.name", "B");
++            b.field("file.line", 20);
++            b.endObject();
++            b.endArray();
++        };
++
++        var syntheticSourceWithArray = syntheticSource(documentMapper, documentWithArray);
++        assertEquals("""
++            {"top":[{"file.name":"A","file.line":10},{"file.name":"B","file.line":20}]}""", syntheticSourceWithArray);
++    }
++
+     protected void validateRoundTripReader(String syntheticSource, DirectoryReader reader, DirectoryReader roundTripReader)
+         throws IOException {
+         // We exclude ignored source field since in some cases it contains an exact copy of a part of document source.

@@ -549,3 +549,788 @@ I have validated this patch on the target ref, and it applies cleanly without co
 2026-04-28 23:45:57,622 - backport - INFO -   Running build for elasticsearch (helper: elasticsearch)
 2026-04-28 23:50:03,258 - backport - WARNING -   Build failed — skipping test run
 2026-04-28 23:50:03,260 - backport - WARNING - Row 148: PARTIAL — 7/8 hunk(s) succeeded
+2026-04-29 10:45:30,401 - backport - INFO - Row 148 [elasticsearch]: extracting original.patch
+2026-04-29 10:45:30,416 - backport - INFO - Row 148: 12 total hunks, 8 after filtering (test/non-Java removed)
+2026-04-29 10:45:30,418 - backport - INFO - Row 148 [elasticsearch]: extracting developer.patch
+2026-04-29 10:45:30,478 - backport - INFO - Row 148: detected 2 test target(s) from developer.patch
+2026-04-29 10:45:30,646 - backport - INFO - Row 148: starting PortGPT backport agent
+
+
+[1m> Entering new AgentExecutor chain...[0m
+
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `git_history` with `{}`
+
+
+[0m[36;1m[1;3m8efd08b019b Upgrade to Lucene 10 (#114741)
+
+diff --git a/server/src/main/java/org/elasticsearch/search/vectors/KnnScoreDocQuery.java b/server/src/main/java/org/elasticsearch/search/vectors/KnnScoreDocQuery.java
+--- a/server/src/main/java/org/elasticsearch/search/vectors/KnnScoreDocQuery.java
++++ b/server/src/main/java/org/elasticsearch/search/vectors/KnnScoreDocQuery.java
+@@ -16,5 +16,6 @@
+ import org.apache.lucene.search.MatchNoDocsQuery;
+ import org.apache.lucene.search.Query;
+ import org.apache.lucene.search.QueryVisitor;
+ import org.apache.lucene.search.ScoreMode;
+ import org.apache.lucene.search.Scorer;
++import org.apache.lucene.search.ScorerSupplier
+You need to do the following analysis based on the information in the last commit:
+Analyze the code logic of the context of the patch to be ported in this commit step by step.
+If code logic already existed before this commit, the patch context can be assumed to remain in a similar location. Use `locate` and `viewcode` to check your results.
+If code logic were added in this commit, then you need to `git_show` for further details.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `git_show` with `{}`
+
+
+[0m[33;1m[1;3mcommit 8efd08b019b9160f5e703520c6ce3b6a9f92cfbd
+Author: Luca Cavanna <javanna@apache.org>
+Date:   Mon Oct 21 13:38:23 2024 +0200
+
+    Upgrade to Lucene 10 (#114741)
+    
+    The most relevant ES changes that upgrading to Lucene 10 requires are:
+    
+    - use the appropriate IOContext
+    - Scorer / ScorerSupplier breaking changes
+    - Regex automaton are no longer determinized by default
+    - minimize moved to test classes
+    - introduce Elasticsearch900Codec
+    - adjust slicing code according to the added support for intra-segment concurrency
+    - disable intra-segment concurrency in tests
+    - adjust accessor methods for many Lucene classes that became a record
+    - adapt to breaking changes in the analysis area
+    
+    Co-authored-by: Christoph Büscher <christophbuescher@posteo.de>
+    Co-authored-by: Mayya Sharipova <mayya.sharipova@elastic.co>
+    Co-authored-by: ChrisHegarty <chegar999@gmail.com>
+    Co-authored-by: Brian Seeders <brian.seeders@elastic.co>
+    Co-authored-by: Armin Braun <me@obrown.io>
+    Co-authored-by: Panagiotis Bailis <pmpailis@gmail.com>
+    Co-authored-by: Benjamin Trent <4357155+benwtrent@users.noreply.github.com>
+
+ .buildkite/pipelines/lucene-snapshot/run-tests.yml |    1 -
+ .../benchmark/vector/VectorScorerBenchmark.java    |   10 +-
+ .../resources/forbidden/es-server-signatures.txt   |    4 -
+ build-tools-internal/version.properties            |    2 +-
+ distribution/src/config/jvm.options                |    3 +
+ docs/Versions.asciidoc                             |    4 +-
+ docs/changelog/113482.yaml                         |   27 +
+ docs/changelog/113614.yaml                         |   18 +
+ docs/changelog/114124.yaml                         |   18 +
+ docs/changelog/114146.yaml                         |   20 +
+ docs/changelog/114741.yaml                         |    5 +
+ docs/plugins/analysis-nori.asciidoc                |   12 +-
+ .../analysis/analyzers/lang-analyzer.asciidoc      |    3 +-
+ .../tokenfilters/stemmer-tokenfilter.asciidoc      |    1 -
+ .../tokenizers/pathhierarchy-tokenizer.asciidoc    |   24 +-
+ docs/reference/search/profile.asciidoc             |    2 +-
+ gradle/verification-metadata.xml                   |  150 +-
+ .../elasticsearch/simdvec/VectorScorerFactory.java |   10 +-
+ .../simdvec/VectorScorerFactoryImpl.java           |    6 +-
+ .../simdvec/VectorScorerFactoryImpl.java           |    6 +-
+ .../simdvec/internal/Int7SQVectorScorer.java       |    8 +-
+ .../internal/Int7SQVectorScorerSupplier.java       |   24 +-
+ .../simdvec/internal/Int7SQVectorScorer.java       |   21 +-
+ .../simdvec/VectorScorerFactoryTests.java          |    7 +-
+ modules/analysis-common/build.gradle               |    4 +
+ .../analysis/common/LegacyRomanianStemmer.java     |  741 ++++++++++
+ .../analysis/common/PersianAnalyzerProvider.java   |   56 +-
+ .../analysis/common/RomanianAnalyzerProvider.java  |   46 +-
+ .../analysis/common/StemmerTokenFilterFactory.java |   68 +-
+ .../common/HighlighterWithAnal
+[IMPORTANT] The relevant code shown by `git_history` is not fully `+` lines.
+[IMPORTANT] This means that the code in question was not added or migrated in this commit.
+[IMPORTANT] Please think step by step and check the abstract below carefully. If error exists in abstract, please ignore the info below.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `locate_symbol` with `{'ref': 'e774703912739e239b7489a5131ace9584587a60', 'symbol': 'KnnScoreDocQuery'}`
+
+
+[0m[33;1m[1;3mserver/src/main/java/org/elasticsearch/search/vectors/KnnScoreDocQuery.java:37
+server/src/main/java/org/elasticsearch/search/vectors/KnnScoreDocQuery.java:56[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': 'e774703912739e239b7489a5131ace9584587a60', 'path': 'server/src/main/java/org/elasticsearch/search/vectors/KnnScoreDocQuery.java', 'startline': 10, 'endline': 30}`
+
+
+[0m[36;1m[1;3mHere are lines 10 through 30.
+
+package org.elasticsearch.search.vectors;
+
+import org.apache.lucene.index.IndexReader;
+import org.apache.lucene.index.LeafReaderContext;
+import org.apache.lucene.search.DocIdSetIterator;
+import org.apache.lucene.search.Explanation;
+import org.apache.lucene.search.IndexSearcher;
+import org.apache.lucene.search.MatchNoDocsQuery;
+import org.apache.lucene.search.Query;
+import org.apache.lucene.search.QueryVisitor;
+import org.apache.lucene.search.ScoreMode;
+import org.apache.lucene.search.Scorer;
+import org.apache.lucene.search.Weight;
+
+import java.io.IOException;
+import java.util.Arrays;
+import java.util.Objects;
+
+import static org.apache.lucene.search.DocIdSetIterator.NO_MORE_DOCS;
+
+/**
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `validate` with `{'ref': 'e774703912739e239b7489a5131ace9584587a60', 'patch': '--- a/server/src/main/java/org/elasticsearch/search/vectors/KnnScoreDocQuery.java\n+++ b/server/src/main/java/org/elasticsearch/search/vectors/KnnScoreDocQuery.java\n@@ -16,7 +16,8 @@\n import org.apache.lucene.search.MatchNoDocsQuery;\n import org.apache.lucene.search.Query;\n import org.apache.lucene.search.QueryVisitor;\n import org.apache.lucene.search.ScoreMode;\n import org.apache.lucene.search.Scorer;\n import org.apache.lucene.search.Weight;\n+import org.apache.lucene.search.ScoreDoc;\n'}`
+responded: The patch to be backported only adds one import line:
+
+```java
+import org.apache.lucene.search.ScoreDoc;
+```
+
+In the older version (ref e774703912739e239b7489a5131ace9584587a60), the import lines are:
+
+```java
+import org.apache.lucene.search.MatchNoDocsQuery;
+import org.apache.lucene.search.Query;
+import org.apache.lucene.search.QueryVisitor;
+import org.apache.lucene.search.ScoreMode;
+import org.apache.lucene.search.Scorer;
+import org.apache.lucene.search.Weight;
+```
+
+The new version adds the import of `ScoreDoc` and removes the import of `Weight`, and adds `ScorerSupplier`.
+
+From the git history and the `git_show` of the commit 8efd08b019b (the commit that upgraded Lucene 10), it appears that the import of `ScoreDoc` was introduced after the older version and the `Weight` import was removed in the newer version.
+
+Since the patch only adds an import statement for `ScoreDoc` and the older version does not have it, the backport patch should add the import line for `ScoreDoc` while keeping the existing imports intact.
+
+Thus, the backport patch for this hunk should be:
+
+```diff
+--- a/server/src/main/java/org/elasticsearch/search/vectors/KnnScoreDocQuery.java
++++ b/server/src/main/java/org/elasticsearch/search/vectors/KnnScoreDocQuery.java
+@@ -16,7 +16,8 @@
+ import org.apache.lucene.search.MatchNoDocsQuery;
+ import org.apache.lucene.search.Query;
+ import org.apache.lucene.search.QueryVisitor;
+ import org.apache.lucene.search.ScoreMode;
+ import org.apache.lucene.search.Scorer;
+ import org.apache.lucene.search.Weight;
++import org.apache.lucene.search.ScoreDoc;
+```
+
+This patch only adds the new import line for `ScoreDoc` without removing any existing imports because the older version still uses `Weight` and does not have `ScorerSupplier`.
+
+Next, I will validate this patch on the older version.
+
+[0m[38;5;200m[1;3mThis patch does not apply because of CONTEXT MISMATCH. Context are patch lines that already exist in the file, that is, lines starting with ` ` and `-`. You should modify the error patch according to the context of older version.
+Here are lines 16 through 23 of file server/src/main/java/org/elasticsearch/search/vectors/KnnScoreDocQuery.java for commit e774703912739e239b7489a5131ace9584587a60.
+```code snippet
+import org.apache.lucene.search.MatchNoDocsQuery;
+import org.apache.lucene.search.Query;
+import org.apache.lucene.search.QueryVisitor;
+import org.apache.lucene.search.ScoreMode;
+import org.apache.lucene.search.Scorer;
+import org.apache.lucene.search.Weight;
+
+```
+Besides, here is detailed info about how the context differs between the patch and the old version.
+Here it shows that there is no difference between your context and the original code, the reason for the failure is that you didn't keep at least three lines of source code at the beginning and end of the patch, please follow this to fix it.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `validate` with `{'ref': 'e774703912739e239b7489a5131ace9584587a60', 'patch': '--- a/server/src/main/java/org/elasticsearch/search/vectors/KnnScoreDocQuery.java\n+++ b/server/src/main/java/org/elasticsearch/search/vectors/KnnScoreDocQuery.java\n@@ -16,7 +16,8 @@\n import org.apache.lucene.search.MatchNoDocsQuery;\n import org.apache.lucene.search.Query;\n import org.apache.lucene.search.QueryVisitor;\n import org.apache.lucene.search.ScoreMode;\n import org.apache.lucene.search.Scorer;\n+import org.apache.lucene.search.ScoreDoc;\n import org.apache.lucene.search.Weight;\n'}`
+responded: The patch to backport is very simple: it adds one import line for `org.apache.lucene.search.ScoreDoc` in the file `server/src/main/java/org/elasticsearch/search/vectors/KnnScoreDocQuery.java`.
+
+In the older version at ref e774703912739e239b7489a5131ace9584587a60, the import section around the patch location is:
+
+```java
+import org.apache.lucene.search.MatchNoDocsQuery;
+import org.apache.lucene.search.Query;
+import org.apache.lucene.search.QueryVisitor;
+import org.apache.lucene.search.ScoreMode;
+import org.apache.lucene.search.Scorer;
+import org.apache.lucene.search.Weight;
+```
+
+The patch in the newer version adds the line:
+
+```java
+import org.apache.lucene.search.ScoreDoc;
+```
+
+The patch must keep at least 3 lines of context before and after the change. The context lines are already present in the old version, so we just need to insert the new import line in the correct place.
+
+The correct patch to apply to the old version is:
+
+```diff
+--- a/server/src/main/java/org/elasticsearch/search/vectors/KnnScoreDocQuery.java
++++ b/server/src/main/java/org/elasticsearch/search/vectors/KnnScoreDocQuery.java
+@@ -16,7 +16,8 @@
+ import org.apache.lucene.search.MatchNoDocsQuery;
+ import org.apache.lucene.search.Query;
+ import org.apache.lucene.search.QueryVisitor;
+ import org.apache.lucene.search.ScoreMode;
+ import org.apache.lucene.search.Scorer;
++import org.apache.lucene.search.ScoreDoc;
+ import org.apache.lucene.search.Weight;
+```
+
+This patch keeps the original context lines and inserts the new import line in the appropriate place.
+
+Next, I will validate this patch on the old ref to ensure it applies correctly without conflicts.
+
+[0m[38;5;200m[1;3mPatch applied successfully
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3mThe patch to backport the change to the older version e774703912739e239b7489a5131ace9584587a60 is:
+
+```diff
+--- a/server/src/main/java/org/elasticsearch/search/vectors/KnnScoreDocQuery.java
++++ b/server/src/main/java/org/elasticsearch/search/vectors/KnnScoreDocQuery.java
+@@ -16,7 +16,8 @@
+ import org.apache.lucene.search.MatchNoDocsQuery;
+ import org.apache.lucene.search.Query;
+ import org.apache.lucene.search.QueryVisitor;
+ import org.apache.lucene.search.ScoreMode;
+ import org.apache.lucene.search.Scorer;
++import org.apache.lucene.search.ScoreDoc;
+ import org.apache.lucene.search.Weight;
+```
+
+This patch adds the import of `ScoreDoc` from Lucene in the same location as the original imports, respecting the context of the older code version.
+
+I have validated this patch on the target ref and it applies cleanly without conflicts.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new AgentExecutor chain...[0m
+
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `git_history` with `{}`
+
+
+[0m[36;1m[1;3mify code for k == null (#118997)
+
+diff --git a/server/src/main/java/org/elasticsearch/search/vectors/RescoreKnnVectorQuery.java b/server/src/main/java/org/elasticsearch/search/vectors/RescoreKnnVectorQuery.java
+--- a/server/src/main/java/org/elasticsearch/search/vectors/RescoreKnnVectorQuery.java
++++ b/server/src/main/java/org/elasticsearch/search/vectors/RescoreKnnVectorQuery.java
+@@ -68,14 +59,15 @@
+         // Retrieve top k documents from the rescored query
+         TopDocs topDocs = searcher.search(query, k);
++        vectorOperations = topDocs.totalHits.value();
+         ScoreDoc[] scoreDocs = topDocs.scoreDocs;
+         int[] docIds = new int[scoreDocs.length];
+         float[] scores = new float[scoreDocs.length];
+         for (int i = 0; i < scoreDocs.length; i++) {
+             docIds[i] = scoreDocs[i].doc;
+             scores[i] = scoreDocs[i].score;
+         }
+ 
+         return new KnnScoreDocQuery(docIds, scores, searcher.getIndexReader());
+     }
+ 
+     public Query innerQuery() {
+59967727cfb kNN vector rescoring for quantized vectors (#116663)
+
+diff --git a/server/src/main/java/org/elasticsearch/search/vectors/RescoreKnnVectorQuery.java b/server/src/main/java/org/elasticsearch/search/vectors/RescoreKnnVectorQuery.java
+--- /dev/null
++++ b/server/src/main/java/org/elasticsearch/search/vectors/RescoreKnnVectorQuery.java
+@@ -0,0 +68,14 @@
++        // Retrieve top k documents from the rescored query
++        TopDocs topDocs = searcher.search(query, k);
++        ScoreDoc[] scoreDocs = topDocs.scoreDocs;
++        int[] docIds = new int[scoreDocs.length];
++        float[] scores = new float[scoreDocs.length];
++        for (int i = 0; i < scoreDocs.length; i++) {
++            docIds[i] = scoreDocs[i].doc;
++            scores[i] = scoreDocs[i].score;
++        }
++
++        return new KnnScoreDocQuery(docIds, scores, searcher.getIndexReader());
++    }
++
++    public Query innerQuery() 
+You need to do the following analysis based on the information in the last commit:
+Analyze the code logic of the context of the patch to be ported in this commit step by step.
+If code logic already existed before this commit, the patch context can be assumed to remain in a similar location. Use `locate` and `viewcode` to check your results.
+If code logic were added in this commit, then you need to `git_show` for further details.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `locate_symbol` with `{'ref': 'e774703912739e239b7489a5131ace9584587a60', 'symbol': 'RescoreKnnVectorQuery'}`
+responded: The git history shows two commits related to this code snippet:
+
+1. Commit 59967727cfb added the initial kNN vector rescoring logic, including the code that retrieves top k documents, extracts docIds and scores from ScoreDocs, and returns a new KnnScoreDocQuery with these arrays.
+
+2. Commit 4ca669ad4202 modified this code by:
+   - Adding vectorOperations = topDocs.totalHits.value();
+   - Sorting scoreDocs by doc id before extracting docIds and scores.
+   - Replacing the extraction of docIds and scores arrays with directly passing topDocs.scoreDocs to KnnScoreDocQuery constructor.
+
+Since the initial code logic already existed before the commit 4ca669ad4202, the patch context remains in a similar location in the older version.
+
+Next, I will locate the function containing this code in the older ref e774703912739e239b7489a5131ace9584587a60 to confirm the exact location and view the full function context. This will help me craft the backport patch correctly.
+
+I will use locate_symbol for this.
+
+[0m[33;1m[1;3mserver/src/main/java/org/elasticsearch/search/vectors/RescoreKnnVectorQuery.java:32
+server/src/main/java/org/elasticsearch/search/vectors/RescoreKnnVectorQuery.java:40[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `viewcode` with `{'ref': 'e774703912739e239b7489a5131ace9584587a60', 'path': 'server/src/main/java/org/elasticsearch/search/vectors/RescoreKnnVectorQuery.java', 'startline': 50, 'endline': 80}`
+
+
+[0m[36;1m[1;3mHere are lines 50 through 80.
+
+        this.k = k;
+        this.innerQuery = innerQuery;
+    }
+
+    @Override
+    public Query rewrite(IndexSearcher searcher) throws IOException {
+        DoubleValuesSource valueSource = new VectorSimilarityFloatValueSource(fieldName, floatTarget, vectorSimilarityFunction);
+        FunctionScoreQuery functionScoreQuery = new FunctionScoreQuery(innerQuery, valueSource);
+        Query query = searcher.rewrite(functionScoreQuery);
+
+        // Retrieve top k documents from the rescored query
+        TopDocs topDocs = searcher.search(query, k);
+        vectorOperations = topDocs.totalHits.value;
+        ScoreDoc[] scoreDocs = topDocs.scoreDocs;
+        Arrays.sort(scoreDocs, Comparator.comparingInt(scoreDoc -> scoreDoc.doc));
+        int[] docIds = new int[scoreDocs.length];
+        float[] scores = new float[scoreDocs.length];
+        for (int i = 0; i < scoreDocs.length; i++) {
+            docIds[i] = scoreDocs[i].doc;
+            scores[i] = scoreDocs[i].score;
+        }
+
+        return new KnnScoreDocQuery(docIds, scores, searcher.getIndexReader());
+    }
+
+    public Query innerQuery() {
+        return innerQuery;
+    }
+
+    public int k() {
+        return k;
+Based on the previous information, think carefully do you see the target code? You may want to keep checking if you don't.
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3m
+Invoking: `validate` with `{'ref': 'e774703912739e239b7489a5131ace9584587a60', 'patch': '--- a/server/src/main/java/org/elasticsearch/search/vectors/RescoreKnnVectorQuery.java\n+++ b/server/src/main/java/org/elasticsearch/search/vectors/RescoreKnnVectorQuery.java\n@@ -59,18 +59,10 @@\n-        // Retrieve top k documents from the rescored query\n-        TopDocs topDocs = searcher.search(query, k);\n-        vectorOperations = topDocs.totalHits.value;\n-        ScoreDoc[] scoreDocs = topDocs.scoreDocs;\n-        Arrays.sort(scoreDocs, Comparator.comparingInt(scoreDoc -> scoreDoc.doc));\n-        int[] docIds = new int[scoreDocs.length];\n-        float[] scores = new float[scoreDocs.length];\n-        for (int i = 0; i < scoreDocs.length; i++) {\n-            docIds[i] = scoreDocs[i].doc;\n-            scores[i] = scoreDocs[i].score;\n-        }\n-\n-        return new KnnScoreDocQuery(docIds, scores, searcher.getIndexReader());\n+        // Retrieve top k documents from the rescored query\n+        TopDocs topDocs = searcher.search(query, k);\n+        vectorOperations = topDocs.totalHits.value;\n+        return new KnnScoreDocQuery(topDocs.scoreDocs, searcher.getIndexReader());\n     }\n\n     public Query innerQuery() {\n'}`
+responded: The target code snippet to patch is indeed present in the older version at ref e774703912739e239b7489a5131ace9584587a60. The code block:
+
+```java
+// Retrieve top k documents from the rescored query
+TopDocs topDocs = searcher.search(query, k);
+vectorOperations = topDocs.totalHits.value;
+ScoreDoc[] scoreDocs = topDocs.scoreDocs;
+Arrays.sort(scoreDocs, Comparator.comparingInt(scoreDoc -> scoreDoc.doc));
+int[] docIds = new int[scoreDocs.length];
+float[] scores = new float[scoreDocs.length];
+for (int i = 0; i < scoreDocs.length; i++) {
+    docIds[i] = scoreDocs[i].doc;
+    scores[i] = scoreDocs[i].score;
+}
+
+return new KnnScoreDocQuery(docIds, scores, searcher.getIndexReader());
+```
+
+matches the snippet provided in the code snippet from the older version, except for the line `Arrays.sort(scoreDocs, Comparator.comparingInt(scoreDoc -> scoreDoc.doc));` which is present in the older version but not in the newer patch.
+
+In the newer patch, this sorting line is removed, and the return statement is simplified to:
+
+```java
+return new KnnScoreDocQuery(topDocs.scoreDocs, searcher.getIndexReader());
+```
+
+So, the primary change is removing the sorting and the manual extraction of docIds and scores arrays, instead passing the ScoreDoc[] directly to KnnScoreDocQuery.
+
+Given this, the patch for the older version should remove the sorting and the manual array creation and use the simpler return statement.
+
+Before generating the patch, I will validate if the method `totalHits.value` is a method or a field in the older version. In the older version, it's accessed as `totalHits.value` (field), but in the newer patch, it's `totalHits.value()` (method call). This is a minor difference, and I must keep the older version's usage as is.
+
+I will now generate the patch accordingly.
+
+[0m[38;5;200m[1;3mPatch applied successfully
+[0m
+
+[1m> Entering new RunnableSequence chain...[0m
+
+
+[1m> Entering new RunnableAssign<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableParallel<agent_scratchpad> chain...[0m
+
+
+[1m> Entering new RunnableLambda chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ChatPromptTemplate chain...[0m
+
+[1m> Finished chain.[0m
+
+
+[1m> Entering new ToolsAgentOutputParser chain...[0m
+
+[1m> Finished chain.[0m
+
+[1m> Finished chain.[0m
+[32;1m[1;3mThe patch for backporting the fix to ref e774703912739e239b7489a5131ace9584587a60 is as follows:
+
+```diff
+--- a/server/src/main/java/org/elasticsearch/search/vectors/RescoreKnnVectorQuery.java
++++ b/server/src/main/java/org/elasticsearch/search/vectors/RescoreKnnVectorQuery.java
+@@ -59,18 +59,10 @@
+-        // Retrieve top k documents from the rescored query
+-        TopDocs topDocs = searcher.search(query, k);
+-        vectorOperations = topDocs.totalHits.value;
+-        ScoreDoc[] scoreDocs = topDocs.scoreDocs;
+-        Arrays.sort(scoreDocs, Comparator.comparingInt(scoreDoc -> scoreDoc.doc));
+-        int[] docIds = new int[scoreDocs.length];
+-        float[] scores = new float[scoreDocs.length];
+-        for (int i = 0; i < scoreDocs.length; i++) {
+-            docIds[i] = scoreDocs[i].doc;
+-            scores[i] = scoreDocs[i].score;
+-        }
+-
+-        return new KnnScoreDocQuery(docIds, scores, searcher.getIndexReader());
++        // Retrieve top k documents from the rescored query
++        TopDocs topDocs = searcher.search(query, k);
++        vectorOperations = topDocs.totalHits.value;
++        return new KnnScoreDocQuery(topDocs.scoreDocs, searcher.getIndexReader());
+     }
+ 
+     public Query innerQuery() {
+```
+
+This patch successfully applies to the older version without conflicts and matches the logic of the newer patch while adapting to the older code context.[0m
+
+[1m> Finished chain.[0m
+2026-04-29 10:46:57,562 - backport - INFO - Row 148: merged 4 non-source hunk(s) from developer.patch into working tree
+2026-04-29 10:46:57,564 - backport - INFO - Row 148: running build/test validation via helpers/
+2026-04-29 10:46:57,565 - backport - INFO -   Running build for elasticsearch (helper: elasticsearch)
+2026-04-29 10:53:49,532 - backport - INFO -   Running 2 test target(s) for elasticsearch
+2026-04-29 10:59:56,461 - backport - INFO - Row 148: SUCCESS (llm_generated)

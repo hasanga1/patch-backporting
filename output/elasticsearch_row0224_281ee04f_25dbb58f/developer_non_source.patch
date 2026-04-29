@@ -1,0 +1,37 @@
+diff --git a/docs/changelog/112703.yaml b/docs/changelog/112703.yaml
+new file mode 100644
+index 00000000000..a428e8c4e23
+--- /dev/null
++++ b/docs/changelog/112703.yaml
+@@ -0,0 +1,5 @@
++pr: 112703
++summary: JSON parse failures should be 4xx codes
++area: Infra/Core
++type: bug
++issues: []
+diff --git a/server/src/test/java/org/elasticsearch/common/ReferenceDocsTests.java b/server/src/test/java/org/elasticsearch/common/ReferenceDocsTests.java
+index 0fabf780173..49208f23417 100644
+--- a/server/src/test/java/org/elasticsearch/common/ReferenceDocsTests.java
++++ b/server/src/test/java/org/elasticsearch/common/ReferenceDocsTests.java
+@@ -66,7 +66,7 @@ public class ReferenceDocsTests extends ESTestCase {
+             builder.startObject("UNEXPECTED").endObject().endObject();
+ 
+             try (var stream = BytesReference.bytes(builder).streamInput()) {
+-                expectThrows(IllegalStateException.class, () -> ReferenceDocs.readLinksBySymbol(stream));
++                expectThrows(IllegalArgumentException.class, () -> ReferenceDocs.readLinksBySymbol(stream));
+             }
+         }
+ 
+diff --git a/server/src/test/java/org/elasticsearch/index/query/MatchQueryBuilderTests.java b/server/src/test/java/org/elasticsearch/index/query/MatchQueryBuilderTests.java
+index 278d4ae505b..48e8f0ef116 100644
+--- a/server/src/test/java/org/elasticsearch/index/query/MatchQueryBuilderTests.java
++++ b/server/src/test/java/org/elasticsearch/index/query/MatchQueryBuilderTests.java
+@@ -373,7 +373,7 @@ public class MatchQueryBuilderTests extends AbstractQueryTestCase<MatchQueryBuil
+                 "message1" : ["term1", "term2"]
+               }
+             }""";
+-        expectThrows(IllegalStateException.class, () -> parseQuery(json2));
++        expectThrows(IllegalArgumentException.class, () -> parseQuery(json2));
+     }
+ 
+     public void testExceptionUsingAnalyzerOnNumericField() {

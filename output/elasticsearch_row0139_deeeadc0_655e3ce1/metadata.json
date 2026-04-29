@@ -8,19 +8,25 @@
   "backport_date": "2025-05-01 21:33:21+00:00",
   "type": "TYPE-V",
   "success": false,
-  "patch_type": "failed",
+  "patch_type": "partial",
   "llm_invoked": true,
   "num_hunks_original": 5,
   "num_hunks_filtered": 2,
-  "num_hunks_succeeded": 0,
+  "num_hunks_succeeded": 2,
   "num_non_source_hunks_developer": 4,
-  "dev_non_source_applied": false,
+  "dev_non_source_applied": true,
   "hunk_details": [
     {
       "index": 0,
       "file": "x-pack/plugin/esql/src/main/java/org/elasticsearch/xpack/esql/analysis/Verifier.java",
-      "outcome": "failed",
-      "llm_iterations": -1
+      "outcome": "llm_generated",
+      "llm_iterations": 0
+    },
+    {
+      "index": 1,
+      "file": "x-pack/plugin/esql/src/main/java/org/elasticsearch/xpack/esql/analysis/Verifier.java",
+      "outcome": "llm_generated",
+      "llm_iterations": 3
     }
   ],
   "test_targets": {
@@ -36,13 +42,57 @@
       "x-pack/plugin/esql/qa/testFixtures"
     ]
   },
-  "portgpt_validation": {},
-  "build_validation": {},
-  "test_validation": {},
-  "patch_similarity": {},
+  "portgpt_validation": {
+    "apply_check": {
+      "result": "passed",
+      "meaning": "git apply succeeded for all source hunks on the target branch. Patch context lines match the target codebase exactly."
+    },
+    "compile_check": {
+      "result": "passed",
+      "has_build_sh": false,
+      "meaning": "No build.sh in repo \u2014 auto-passed. Real compile runs via helpers Docker."
+    },
+    "test_check": {
+      "result": "passed",
+      "has_test_sh": false
+    },
+    "poc_check": {
+      "result": "passed",
+      "has_poc_sh": false
+    }
+  },
+  "build_validation": {
+    "success": false,
+    "mode": "elasticsearch-helper",
+    "output_tail": " Task :x-pack:plugin:sql:qa:server:security:testClasses\n\n> Task :x-pack:plugin:security:cli:compileTestJava\nNote: /repo/x-pack/plugin/security/cli/src/test/java/org/elasticsearch/xpack/security/cli/CertificateGenerateToolTests.java uses or overrides a deprecated API.\nNote: Recompile with -Xlint:deprecation for details.\n\n> Task :x-pack:plugin:spatial:testClasses\n> Task :x-pack:plugin:security:cli:testClasses\n\n> Task :x-pack:plugin:sql:compileTestJava\nNote: /repo/x-pack/plugin/sql/src/test/java/org/elasticsearch/xpack/sql/parser/EscapedFunctionsTests.java uses or overrides a deprecated API.\nNote: Recompile with -Xlint:deprecation for details.\n\n> Task :x-pack:plugin:sql:testClasses\n\n> Task :x-pack:plugin:transform:compileTestJava\nNote: /repo/x-pack/plugin/transform/src/test/java/org/elasticsearch/xpack/transform/action/TransportSetTransformUpgradeModeActionTests.java uses or overrides a deprecated API.\nNote: Recompile with -Xlint:deprecation for details.\n\n> Task :x-pack:plugin:transform:testClasses\n\n> Task :x-pack:plugin:esql:compileJava\nNote: Some input files use or override a deprecated API.\nNote: Recompile with -Xlint:deprecation for details.\nNote: Some input files use or override a deprecated API that is marked for removal.\nNote: Recompile with -Xlint:removal for details.\n5 errors\n\n> Task :x-pack:plugin:esql:compileJava FAILED\n\n> Task :x-pack:plugin:watcher:compileTestJava\nNote: Some input files use or override a deprecated API.\nNote: Recompile with -Xlint:deprecation for details.\nNote: /repo/x-pack/plugin/watcher/src/test/java/org/elasticsearch/xpack/watcher/notification/email/support/EmailServer.java uses or overrides a deprecated API that is marked for removal.\nNote: Recompile with -Xlint:removal for details.\n\n> Task :x-pack:plugin:security:compileTestJava\nNote: Some input files use or override a deprecated API.\nNote: Recompile with -Xlint:deprecation for details.\nNote: Some input files use or override a deprecated API that is marked for removal.\nNote: Recompile with -Xlint:removal for details.\n\n> Task :server:compileTestJava\nNote: Some input files use or override a deprecated API.\nNote: Recompile with -Xlint:deprecation for details.\nNote: Some input files use or override a deprecated API that is marked for removal.\nNote: Recompile with -Xlint:removal for details.\n\n[Incubating] Problems report is available at: file:///repo/build/reports/problems/problems-report.html\n\nFAILURE: Build failed with an exception.\n\n* What went wrong:\nExecution failed for task ':x-pack:plugin:esql:compileJava'.\n> Compilation failed; see the compiler output below.\n  /repo/x-pack/plugin/esql/src/main/java/org/elasticsearch/xpack/esql/analysis/Verifier.java:157: error: cannot find symbol\n              Expression f = fe.filter();\n                             ^\n    symbol:   variable fe\n    location: class Verifier\n  5 errors\n\n* Try:\n> Check your code and dependencies to fix the compilation error(s)\n\nBUILD FAILED in 6m 28s\n858 actionable tasks: 858 executed\n\u274c Build Failed"
+  },
+  "test_validation": {
+    "success": false,
+    "mode": "skipped_build_failed",
+    "compile_error": true,
+    "test_state": {},
+    "output_tail": ""
+  },
+  "patch_similarity": {
+    "exact_match": false,
+    "changed_lines_precision": 0.0345,
+    "changed_lines_recall": 0.125,
+    "changed_lines_f1": 0.0541,
+    "generated_changed_lines": 31,
+    "developer_changed_lines": 8,
+    "generated_files_modified": [
+      "x-pack/plugin/esql/src/main/java/org/elasticsearch/xpack/esql/analysis/Verifier.java",
+      "x-pack/plugin/ql/src/main/java/org/elasticsearch/xpack/ql/analyzer/VerifierChecks.java"
+    ],
+    "developer_files_modified": [
+      "x-pack/plugin/esql/src/main/java/org/elasticsearch/xpack/esql/action/EsqlCapabilities.java",
+      "x-pack/plugin/esql/src/main/java/org/elasticsearch/xpack/esql/expression/predicate/operator/comparison/In.java"
+    ],
+    "files_match": false
+  },
   "model": "openai/gpt-4.1-mini",
-  "timestamp": "2026-04-28T23:37:07.788954",
-  "duration_seconds": 86,
+  "timestamp": "2026-04-29T10:20:13.852412",
+  "duration_seconds": 651,
   "sample_dir": "output/elasticsearch_row0139_deeeadc0_655e3ce1",
-  "notes": "No hunks could be backported"
+  "notes": "2/2 hunk(s) succeeded"
 }

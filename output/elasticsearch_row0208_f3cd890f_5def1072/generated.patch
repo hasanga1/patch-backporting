@@ -1,0 +1,21 @@
+--- a/server/src/main/java/org/elasticsearch/index/mapper/DocumentParser.java
++++ b/server/src/main/java/org/elasticsearch/index/mapper/DocumentParser.java
+@@ -208,6 +208,7 @@ public final class DocumentParser {
+         XContentParser parser = context.parser();
+         XContentParser.Token currentToken = parser.nextToken();
+         List<String> path = new ArrayList<>();
++        List<Boolean> isObjectInPath = new ArrayList<>();  // Tracks if path components correspond to an object or an array.
+         String fieldName = null;
+         while (currentToken != null) {
+             while (currentToken != XContentParser.Token.FIELD_NAME) {
+
+--- a/server/src/main/java/org/elasticsearch/index/mapper/DocumentParser.java
++++ b/server/src/main/java/org/elasticsearch/index/mapper/DocumentParser.java
+@@ -237,7 +243,6 @@ public final class DocumentParser {
+             if (leaf != null) {
+                 parser.nextToken();  // Advance the parser to the value to be read.
+                 result.add(leaf.cloneWithValue(context.encodeFlattenedToken()));
+-                parser.nextToken();  // Skip the token ending the value.
+                 fieldName = null;
+             }
+             currentToken = parser.nextToken();

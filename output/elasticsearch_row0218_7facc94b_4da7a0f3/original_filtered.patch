@@ -1,0 +1,158 @@
+diff --git a/server/src/main/java/org/elasticsearch/index/mapper/DocumentParser.java b/server/src/main/java/org/elasticsearch/index/mapper/DocumentParser.java
+index 91477590b6c..19bd4f9980b 100644
+--- a/server/src/main/java/org/elasticsearch/index/mapper/DocumentParser.java
++++ b/server/src/main/java/org/elasticsearch/index/mapper/DocumentParser.java
+@@ -135,7 +135,7 @@ public final class DocumentParser {
+                         new IgnoredSourceFieldMapper.NameValue(
+                             MapperService.SINGLE_MAPPING_NAME,
+                             0,
+-                            XContentDataHelper.encodeToken(context.parser()),
++                            context.encodeFlattenedToken(),
+                             context.doc()
+                         )
+                     );
+@@ -236,7 +236,7 @@ public final class DocumentParser {
+             var leaf = fields.get(fullName);  // There may be multiple matches for array elements, don't use #remove.
+             if (leaf != null) {
+                 parser.nextToken();  // Advance the parser to the value to be read.
+-                result.add(leaf.cloneWithValue(XContentDataHelper.encodeToken(parser)));
++                result.add(leaf.cloneWithValue(context.encodeFlattenedToken()));
+                 parser.nextToken();  // Skip the token ending the value.
+                 fieldName = null;
+             }
+@@ -402,7 +402,7 @@ public final class DocumentParser {
+                     new IgnoredSourceFieldMapper.NameValue(
+                         context.parent().fullPath(),
+                         context.parent().fullPath().lastIndexOf(context.parent().leafName()),
+-                        XContentDataHelper.encodeToken(parser),
++                        context.encodeFlattenedToken(),
+                         context.doc()
+                     )
+                 );
+@@ -652,12 +652,11 @@ public final class DocumentParser {
+         if (context.dynamic() == ObjectMapper.Dynamic.FALSE) {
+             failIfMatchesRoutingPath(context, currentFieldName);
+             if (context.canAddIgnoredField()) {
+-                // read everything up to end object and store it
+                 context.addIgnoredField(
+                     IgnoredSourceFieldMapper.NameValue.fromContext(
+                         context,
+                         context.path().pathAsText(currentFieldName),
+-                        XContentDataHelper.encodeToken(context.parser())
++                        context.encodeFlattenedToken()
+                     )
+                 );
+             } else {
+@@ -743,7 +742,7 @@ public final class DocumentParser {
+                     IgnoredSourceFieldMapper.NameValue.fromContext(
+                         context,
+                         context.path().pathAsText(currentFieldName),
+-                        XContentDataHelper.encodeToken(context.parser())
++                        context.encodeFlattenedToken()
+                     )
+                 );
+             } else {
+@@ -761,7 +760,7 @@ public final class DocumentParser {
+                             IgnoredSourceFieldMapper.NameValue.fromContext(
+                                 context,
+                                 context.path().pathAsText(currentFieldName),
+-                                XContentDataHelper.encodeToken(context.parser())
++                                context.encodeFlattenedToken()
+                             )
+                         );
+                     } catch (IOException e) {
+@@ -818,9 +817,7 @@ public final class DocumentParser {
+             } else if (mapper instanceof ObjectMapper objectMapper && (objectMapper.isEnabled() == false)) {
+                 // No need to call #addIgnoredFieldFromContext as both singleton and array instances of this object
+                 // get tracked through ignored source.
+-                context.addIgnoredField(
+-                    IgnoredSourceFieldMapper.NameValue.fromContext(context, fullPath, XContentDataHelper.encodeToken(context.parser()))
+-                );
++                context.addIgnoredField(IgnoredSourceFieldMapper.NameValue.fromContext(context, fullPath, context.encodeFlattenedToken()));
+                 return;
+             }
+         }
+@@ -934,7 +931,7 @@ public final class DocumentParser {
+                     IgnoredSourceFieldMapper.NameValue.fromContext(
+                         context,
+                         context.path().pathAsText(currentFieldName),
+-                        XContentDataHelper.encodeToken(context.parser())
++                        context.encodeFlattenedToken()
+                     )
+                 );
+             }
+@@ -945,7 +942,7 @@ public final class DocumentParser {
+                 IgnoredSourceFieldMapper.NameValue.fromContext(
+                     context,
+                     context.path().pathAsText(currentFieldName),
+-                    XContentDataHelper.encodeToken(context.parser())
++                    context.encodeFlattenedToken()
+                 )
+             );
+         }
+@@ -1044,7 +1041,7 @@ public final class DocumentParser {
+                 if (context.dynamic() == ObjectMapper.Dynamic.RUNTIME && context.canAddIgnoredField()) {
+                     try {
+                         context.addIgnoredField(
+-                            IgnoredSourceFieldMapper.NameValue.fromContext(context, path, XContentDataHelper.encodeToken(context.parser()))
++                            IgnoredSourceFieldMapper.NameValue.fromContext(context, path, context.encodeFlattenedToken())
+                         );
+                     } catch (IOException e) {
+                         throw new IllegalArgumentException(
+diff --git a/server/src/main/java/org/elasticsearch/index/mapper/DocumentParserContext.java b/server/src/main/java/org/elasticsearch/index/mapper/DocumentParserContext.java
+index 000c4118e9b..eebe95e260d 100644
+--- a/server/src/main/java/org/elasticsearch/index/mapper/DocumentParserContext.java
++++ b/server/src/main/java/org/elasticsearch/index/mapper/DocumentParserContext.java
+@@ -12,6 +12,7 @@ package org.elasticsearch.index.mapper;
+ import org.apache.lucene.document.Field;
+ import org.apache.lucene.document.StringField;
+ import org.apache.lucene.index.IndexableField;
++import org.apache.lucene.util.BytesRef;
+ import org.elasticsearch.common.time.DateFormatter;
+ import org.elasticsearch.core.Tuple;
+ import org.elasticsearch.index.IndexMode;
+@@ -338,6 +339,20 @@ public abstract class DocumentParserContext {
+         return this;
+     }
+ 
++    /**
++     * Wraps {@link XContentDataHelper#encodeToken}, disabling dot expansion from {@link DotExpandingXContentParser}.
++     * This helps avoid producing duplicate names in the same scope, due to expanding dots to objects.
++     * For instance: { "a.b": "b", "a.c": "c" } => { "a": { "b": "b" }, "a": { "c": "c" } }
++     * This can happen when storing parts of document source that are not indexed (e.g. disabled objects).
++     */
++    BytesRef encodeFlattenedToken() throws IOException {
++        boolean old = path().isWithinLeafObject();
++        path().setWithinLeafObject(true);
++        BytesRef encoded = XContentDataHelper.encodeToken(parser());
++        path().setWithinLeafObject(old);
++        return encoded;
++    }
++
+     /**
+      * Return the collection of fields that are missing their source values.
+      */
+diff --git a/server/src/main/java/org/elasticsearch/index/mapper/IgnoredSourceFieldMapper.java b/server/src/main/java/org/elasticsearch/index/mapper/IgnoredSourceFieldMapper.java
+index d57edb757ba..296c2c5311d 100644
+--- a/server/src/main/java/org/elasticsearch/index/mapper/IgnoredSourceFieldMapper.java
++++ b/server/src/main/java/org/elasticsearch/index/mapper/IgnoredSourceFieldMapper.java
+@@ -57,6 +57,7 @@ public class IgnoredSourceFieldMapper extends MetadataFieldMapper {
+     public static final TypeParser PARSER = new FixedTypeParser(context -> new IgnoredSourceFieldMapper(context.getIndexSettings()));
+ 
+     static final NodeFeature TRACK_IGNORED_SOURCE = new NodeFeature("mapper.track_ignored_source");
++    static final NodeFeature DONT_EXPAND_DOTS_IN_IGNORED_SOURCE = new NodeFeature("mapper.ignored_source.dont_expand_dots");
+ 
+     /*
+         Setting to disable encoding and writing values for this field.
+diff --git a/server/src/main/java/org/elasticsearch/index/mapper/MapperFeatures.java b/server/src/main/java/org/elasticsearch/index/mapper/MapperFeatures.java
+index a8fbb0e0ae9..4f90bd6e6f2 100644
+--- a/server/src/main/java/org/elasticsearch/index/mapper/MapperFeatures.java
++++ b/server/src/main/java/org/elasticsearch/index/mapper/MapperFeatures.java
+@@ -58,6 +58,6 @@ public class MapperFeatures implements FeatureSpecification {
+ 
+     @Override
+     public Set<NodeFeature> getTestFeatures() {
+-        return Set.of(RangeFieldMapper.DATE_RANGE_INDEXING_FIX);
++        return Set.of(RangeFieldMapper.DATE_RANGE_INDEXING_FIX, IgnoredSourceFieldMapper.DONT_EXPAND_DOTS_IN_IGNORED_SOURCE);
+     }
+ }

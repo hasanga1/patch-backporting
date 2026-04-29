@@ -1,0 +1,55 @@
+--- a/server/src/main/java/org/elasticsearch/index/mapper/NestedObjectMapper.java
++++ b/server/src/main/java/org/elasticsearch/index/mapper/NestedObjectMapper.java
+@@ -463,17 +463,14 @@ public class NestedObjectMapper extends ObjectMapper {
+         public void write(XContentBuilder b) throws IOException {
+             assert (children != null && children.size() > 0);
+             if (children.size() == 1) {
+-                b.startObject(leafName());
++                b.field(leafName());
+                 leafStoredFieldLoader.advanceTo(children.get(0));
+                 leafSourceLoader.write(leafStoredFieldLoader, children.get(0), b);
+-                b.endObject();
+             } else {
+                 b.startArray(leafName());
+                 for (int childId : children) {
+-                    b.startObject();
+                     leafStoredFieldLoader.advanceTo(childId);
+                     leafSourceLoader.write(leafStoredFieldLoader, childId, b);
+-                    b.endObject();
+                 }
+                 b.endArray();
+             }
+
+--- a/server/src/main/java/org/elasticsearch/index/mapper/ObjectMapper.java
++++ b/server/src/main/java/org/elasticsearch/index/mapper/ObjectMapper.java
+@@ -843,12 +843,10 @@ public class ObjectMapper extends Mapper {
+                 return;
+             }
+ 
+-            if (isFragment == false) {
+-                if (isRoot()) {
+-                    b.startObject();
+-                } else {
+-                    b.startObject(leafName());
+-                }
++            if (isRoot() || isFragment) {
++                b.startObject();
++            } else {
++                b.startObject(leafName());
+             }
+ 
+             if (ignoredValues != null && ignoredValues.isEmpty() == false) {
+
+--- a/server/src/main/java/org/elasticsearch/index/mapper/ObjectMapper.java
++++ b/server/src/main/java/org/elasticsearch/index/mapper/ObjectMapper.java
+@@ -875,9 +873,7 @@ public class ObjectMapper extends Mapper {
+                 }
+             }
+             hasValue = false;
+-            if (isFragment == false) {
+-                b.endObject();
+-            }
++            b.endObject();
+         }
+ 
+         @Override

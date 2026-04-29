@@ -1,0 +1,58 @@
+--- a/x-pack/plugin/ql/src/main/java/org/elasticsearch/xpack/ql/analyzer/VerifierChecks.java
++++ b/x-pack/plugin/ql/src/main/java/org/elasticsearch/xpack/ql/analyzer/VerifierChecks.java
+@@ -19,9 +19,13 @@
+-    public static void checkFilterConditionType(LogicalPlan p, Set<Failure> localFailures) {
+-        if (p instanceof Filter) {
+-            Expression condition = ((Filter) p).condition();
+-            if (condition.dataType() != BOOLEAN) {
+-                localFailures.add(fail(condition, "Condition expression needs to be boolean, found [{}]", condition.dataType()));
+-            }
+-        }
+-    }
++    public static void checkFilterConditionType(LogicalPlan p, Set<Failure> localFailures) {
++        if (p instanceof Filter f) {
++            Expression condition = f.condition();
++            checkConditionExpressionDataType(condition, localFailures);
++        }
++    }
++
++    private static void checkConditionExpressionDataType(Expression expression, Set<Failure> localFailures) {
++        if (expression.dataType() != null && expression.dataType() != BOOLEAN) {
++            localFailures.add(fail(expression, "Condition expression needs to be boolean, found [{}]", expression.dataType()));
++        }
++    }
+ 
+
+--- a/x-pack/plugin/esql/src/main/java/org/elasticsearch/xpack/esql/analysis/Verifier.java
++++ b/x-pack/plugin/esql/src/main/java/org/elasticsearch/xpack/esql/analysis/Verifier.java
+@@ -130,19 +130,30 @@
+                         if (ae instanceof UnsupportedAttribute) {
+                             return;
+                         }
+                     }
+ 
+                     // Do not fail multiple times in case the children are already unresolved.
+                     if (ae.childrenResolved() == false) {
+                         return;
+                     }
+ 
+                     if (ae instanceof Unresolvable u) {
+                         failures.add(fail(ae, u.unresolvedMessage()));
+                     }
+                     if (ae.typeResolved().unresolved()) {
+                         failures.add(fail(ae, ae.typeResolved().message()));
+                     }
+                 });
+             };
++            Expression f = fe.filter();
++            // check the filter has to be a boolean term, similar as checkFilterConditionType
++            if (f.dataType() != NULL && f.dataType() != BOOLEAN) {
++                failures.add(fail(f, "Condition expression needs to be boolean, found [{}]", f.dataType()));
++            }
++            // but that the filter doesn't use grouping or aggregate functions
++            fe.filter().forEachDown(c -> {
++                if (c instanceof AggregateFunction af) {
++                    failures.add(fail(c, "Filter cannot use grouping or aggregate functions"));
++                }
++            });
+ 

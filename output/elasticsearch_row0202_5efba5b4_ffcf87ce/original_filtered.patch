@@ -1,0 +1,131 @@
+diff --git a/x-pack/plugin/inference/src/main/java/org/elasticsearch/xpack/inference/services/elasticsearch/BaseElasticsearchInternalService.java b/x-pack/plugin/inference/src/main/java/org/elasticsearch/xpack/inference/services/elasticsearch/BaseElasticsearchInternalService.java
+index 43d3dff8756..98777e97222 100644
+--- a/x-pack/plugin/inference/src/main/java/org/elasticsearch/xpack/inference/services/elasticsearch/BaseElasticsearchInternalService.java
++++ b/x-pack/plugin/inference/src/main/java/org/elasticsearch/xpack/inference/services/elasticsearch/BaseElasticsearchInternalService.java
+@@ -239,7 +239,12 @@ public abstract class BaseElasticsearchInternalService implements InferenceServi
+                     // However, in Elastic cloud ml nodes run on Linux x86
+                     delegate.onResponse(PreferredModelVariant.LINUX_X86_OPTIMIZED);
+                 } else {
+-                    delegate.onResponse(PreferredModelVariant.PLATFORM_AGNOSTIC);
++                    boolean homogenous = architectures.size() == 1;
++                    if (homogenous && architectures.iterator().next().equals("linux-x86_64")) {
++                        delegate.onResponse(PreferredModelVariant.LINUX_X86_OPTIMIZED);
++                    } else {
++                        delegate.onResponse(PreferredModelVariant.PLATFORM_AGNOSTIC);
++                    }
+                 }
+             }),
+             client,
+@@ -270,7 +275,7 @@ public abstract class BaseElasticsearchInternalService implements InferenceServi
+         return request;
+     }
+ 
+-    protected abstract boolean isDefaultId(String inferenceId);
++    abstract boolean isDefaultId(String inferenceId);
+ 
+     protected void maybeStartDeployment(
+         ElasticsearchInternalModel model,
+diff --git a/x-pack/plugin/inference/src/main/java/org/elasticsearch/xpack/inference/services/elasticsearch/ElasticsearchInternalService.java b/x-pack/plugin/inference/src/main/java/org/elasticsearch/xpack/inference/services/elasticsearch/ElasticsearchInternalService.java
+index fa04a9c20c3..396c679bf32 100644
+--- a/x-pack/plugin/inference/src/main/java/org/elasticsearch/xpack/inference/services/elasticsearch/ElasticsearchInternalService.java
++++ b/x-pack/plugin/inference/src/main/java/org/elasticsearch/xpack/inference/services/elasticsearch/ElasticsearchInternalService.java
+@@ -79,6 +79,7 @@ public class ElasticsearchInternalService extends BaseElasticsearchInternalServi
+ 
+     public static final int EMBEDDING_MAX_BATCH_SIZE = 10;
+     public static final String DEFAULT_ELSER_ID = ".elser-2";
++    public static final String DEFAULT_E5_ID = ".multi-e5-small";
+ 
+     private static final Logger logger = LogManager.getLogger(ElasticsearchInternalService.class);
+     private static final DeprecationLogger DEPRECATION_LOGGER = DeprecationLogger.getLogger(ElasticsearchInternalService.class);
+@@ -389,14 +390,6 @@ public class ElasticsearchInternalService extends BaseElasticsearchInternalServi
+             );
+         }
+ 
+-        if (modelVariantDoesNotMatchArchitecturesAndIsNotPlatformAgnostic(preferredModelVariant, esServiceSettingsBuilder.getModelId())) {
+-            throw new IllegalArgumentException(
+-                "Error parsing request config, model id does not match any models available on this platform. Was ["
+-                    + esServiceSettingsBuilder.getModelId()
+-                    + "]"
+-            );
+-        }
+-
+         throwIfNotEmptyMap(config, name());
+         throwIfNotEmptyMap(serviceSettingsMap, name());
+ 
+@@ -412,19 +405,6 @@ public class ElasticsearchInternalService extends BaseElasticsearchInternalServi
+         );
+     }
+ 
+-    private static boolean modelVariantDoesNotMatchArchitecturesAndIsNotPlatformAgnostic(
+-        PreferredModelVariant preferredModelVariant,
+-        String modelId
+-    ) {
+-        return modelId.equals(
+-            selectDefaultModelVariantBasedOnClusterArchitecture(
+-                preferredModelVariant,
+-                MULTILINGUAL_E5_SMALL_MODEL_ID_LINUX_X86,
+-                MULTILINGUAL_E5_SMALL_MODEL_ID
+-            )
+-        );
+-    }
+-
+     @Override
+     public Model parsePersistedConfigWithSecrets(
+         String inferenceEntityId,
+@@ -800,7 +780,10 @@ public class ElasticsearchInternalService extends BaseElasticsearchInternalServi
+     }
+ 
+     public List<DefaultConfigId> defaultConfigIds() {
+-        return List.of(new DefaultConfigId(DEFAULT_ELSER_ID, TaskType.SPARSE_EMBEDDING, this));
++        return List.of(
++            new DefaultConfigId(DEFAULT_ELSER_ID, TaskType.SPARSE_EMBEDDING, this),
++            new DefaultConfigId(DEFAULT_E5_ID, TaskType.TEXT_EMBEDDING, this)
++        );
+     }
+ 
+     @Override
+@@ -876,13 +859,24 @@ public class ElasticsearchInternalService extends BaseElasticsearchInternalServi
+             ElserMlNodeTaskSettings.DEFAULT,
+             null // default chunking settings
+         );
+-
+-        return List.of(defaultElser);
++        var defaultE5 = new MultilingualE5SmallModel(
++            DEFAULT_E5_ID,
++            TaskType.TEXT_EMBEDDING,
++            NAME,
++            new MultilingualE5SmallInternalServiceSettings(
++                null,
++                1,
++                useLinuxOptimizedModel ? MULTILINGUAL_E5_SMALL_MODEL_ID_LINUX_X86 : MULTILINGUAL_E5_SMALL_MODEL_ID,
++                new AdaptiveAllocationsSettings(Boolean.TRUE, 1, 8)
++            ),
++            null // default chunking settings
++        );
++        return List.of(defaultElser, defaultE5);
+     }
+ 
+     @Override
+-    protected boolean isDefaultId(String inferenceId) {
+-        return DEFAULT_ELSER_ID.equals(inferenceId);
++    boolean isDefaultId(String inferenceId) {
++        return DEFAULT_ELSER_ID.equals(inferenceId) || DEFAULT_E5_ID.equals(inferenceId);
+     }
+ 
+     static EmbeddingRequestChunker.EmbeddingType embeddingTypeFromTaskTypeAndSettings(
+diff --git a/x-pack/plugin/ml/src/main/java/org/elasticsearch/xpack/ml/action/TransportStartTrainedModelDeploymentAction.java b/x-pack/plugin/ml/src/main/java/org/elasticsearch/xpack/ml/action/TransportStartTrainedModelDeploymentAction.java
+index e130b13f4ec..0bda2de2ce9 100644
+--- a/x-pack/plugin/ml/src/main/java/org/elasticsearch/xpack/ml/action/TransportStartTrainedModelDeploymentAction.java
++++ b/x-pack/plugin/ml/src/main/java/org/elasticsearch/xpack/ml/action/TransportStartTrainedModelDeploymentAction.java
+@@ -234,9 +234,9 @@ public class TransportStartTrainedModelDeploymentAction extends TransportMasterN
+             if (getModelResponse.getResources().results().size() > 1) {
+                 listener.onFailure(
+                     ExceptionsHelper.badRequestException(
+-                        "cannot deploy more than one models at the same time; [{}] matches [{}] models]",
++                        "cannot deploy more than one model at the same time; [{}] matches models [{}]",
+                         request.getModelId(),
+-                        getModelResponse.getResources().results().size()
++                        getModelResponse.getResources().results().stream().map(TrainedModelConfig::getModelId).toList()
+                     )
+                 );
+                 return;
