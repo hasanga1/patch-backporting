@@ -1,0 +1,25 @@
+--- a/rls/src/main/java/io/grpc/rls/LbPolicyConfiguration.java
++++ b/rls/src/main/java/io/grpc/rls/LbPolicyConfiguration.java
+@@ -245,18 +245,18 @@
+     ChildPolicyWrapper createOrGet(String target) {
+       // TODO(creamsoup) check if the target is valid or not
+       RefCountedChildPolicyWrapper pooledChildPolicyWrapper = childPolicyMap.get(target);
+       if (pooledChildPolicyWrapper == null) {
+-        ChildPolicyWrapper childPolicyWrapper = new ChildPolicyWrapper(
+-            target, childPolicy, childLbResolvedAddressFactory, childLbHelperProvider,
+-            childLbStatusListener);
++        ChildPolicyWrapper childPolicyWrapper = new ChildPolicyWrapper(
++            target, childPolicy, childLbResolvedAddressFactory, childLbHelperProvider);
+         pooledChildPolicyWrapper = RefCountedChildPolicyWrapper.of(childPolicyWrapper);
+         childPolicyMap.put(target, pooledChildPolicyWrapper);
+-        return pooledChildPolicyWrapper.getObject();
++        // In the older version, initialization is done in constructor, no explicit start call needed
++        return pooledChildPolicyWrapper.getObject();
+       } else {
+         ChildPolicyWrapper childPolicyWrapper = pooledChildPolicyWrapper.getObject();
+         if (childPolicyWrapper.getPicker() != null) {
+           childPolicyWrapper.refreshState();
+         }
+         return childPolicyWrapper;
+       }
+     }

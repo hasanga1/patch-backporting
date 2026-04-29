@@ -1,0 +1,77 @@
+--- a/api/src/main/java/io/grpc/LoadBalancer.java
++++ b/api/src/main/java/io/grpc/LoadBalancer.java
+@@ -1189,6 +1189,10 @@ public abstract class LoadBalancer {
+      * Returns a {@link SynchronizationContext} that runs tasks in the same Synchronization Context
+      * as that the callback methods on the {@link LoadBalancer} interface are run in.
+      *
++     * <p>Work added to the synchronization context might not run immediately, so LB implementations
++     * must be careful to ensure that any assumptions still hold when it is executed. In particular,
++     * the LB might have been shut down or subchannels might have changed state.
++     *
+      * <p>Pro-tip: in order to call {@link SynchronizationContext#schedule}, you need to provide a
+      * {@link ScheduledExecutorService}.  {@link #getScheduledExecutorService} is provided for your
+      * convenience.
+
+--- a/core/src/main/java/io/grpc/internal/ManagedChannelImpl.java
++++ b/core/src/main/java/io/grpc/internal/ManagedChannelImpl.java
+@@ -1967,6 +1967,9 @@ final class ManagedChannelImpl extends ManagedChannel implements
+     public void requestConnection() {
+       syncContext.throwIfNotInThisSynchronizationContext();
+       checkState(started, "not started");
++      if (shutdown) {
++        return;
++      }
+       subchannel.obtainActiveTransport();
+     }
+ 
+
+--- a/core/src/main/java/io/grpc/internal/PickFirstLoadBalancer.java
++++ b/core/src/main/java/io/grpc/internal/PickFirstLoadBalancer.java
+@@ -134,7 +134,7 @@ final class PickFirstLoadBalancer extends LoadBalancer {
+     SubchannelPicker picker;
+     switch (newState) {
+       case IDLE:
+-        picker = new RequestConnectionPicker(subchannel);
++        picker = new RequestConnectionPicker();
+         break;
+       case CONNECTING:
+         // It's safe to use RequestConnectionPicker here, so when coming from IDLE we could leave
+
+--- a/core/src/main/java/io/grpc/internal/PickFirstLoadBalancer.java
++++ b/core/src/main/java/io/grpc/internal/PickFirstLoadBalancer.java
+@@ -197,22 +197,12 @@ final class PickFirstLoadBalancer extends LoadBalancer {
+ 
+   /** Picker that requests connection during the first pick, and returns noResult. */
+   private final class RequestConnectionPicker extends SubchannelPicker {
+-    private final Subchannel subchannel;
+     private final AtomicBoolean connectionRequested = new AtomicBoolean(false);
+ 
+-    RequestConnectionPicker(Subchannel subchannel) {
+-      this.subchannel = checkNotNull(subchannel, "subchannel");
+-    }
+-
+     @Override
+     public PickResult pickSubchannel(PickSubchannelArgs args) {
+       if (connectionRequested.compareAndSet(false, true)) {
+-        helper.getSynchronizationContext().execute(new Runnable() {
+-            @Override
+-            public void run() {
+-              subchannel.requestConnection();
+-            }
+-          });
++        helper.getSynchronizationContext().execute(PickFirstLoadBalancer.this::requestConnection);
+       }
+       return PickResult.withNoResult();
+     }
+
+--- a/examples/src/main/java/io/grpc/examples/customloadbalance/ShufflingPickFirstLoadBalancer.java
++++ b/examples/src/main/java/io/grpc/examples/customloadbalance/ShufflingPickFirstLoadBalancer.java
+@@ -122,7 +122,7 @@ class ShufflingPickFirstLoadBalancer extends LoadBalancer {
+     SubchannelPicker picker;
+     switch (currentState) {
+       case IDLE:
+-        picker = new RequestConnectionPicker(subchannel);
++        picker = new RequestConnectionPicker();
+         break;
+       case CONNECTING:
+         picker = new Picker(PickResult.withNoResult());
