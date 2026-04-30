@@ -1,0 +1,224 @@
+diff --git a/test/jdk/sun/security/x509/DNSName/certs/generate-certs.sh b/test/jdk/sun/security/x509/DNSName/certs/generate-certs.sh
+new file mode 100644
+index 00000000000..f000bfc9cda
+--- /dev/null
++++ b/test/jdk/sun/security/x509/DNSName/certs/generate-certs.sh
+@@ -0,0 +1,91 @@
++#!/usr/bin/env bash
++
++set -e
++
++###############################################################
++# CA with a leading period in the name constraint #
++###############################################################
++mkdir -p withLeadingPeriod
++
++openssl req \
++  -newkey rsa:1024 \
++  -keyout withLeadingPeriod/ca.key \
++  -out withLeadingPeriod/ca.csr \
++  -subj "/C=US/O=Example/CN=Example CA with period" \
++  -nodes
++
++openssl x509 \
++  -req \
++  -in withLeadingPeriod/ca.csr \
++  -extfile openssl.cnf \
++  -extensions withLeadingPeriod \
++  -signkey withLeadingPeriod/ca.key \
++  -out withLeadingPeriod/ca.pem
++
++# leaf certificate
++openssl req \
++  -newkey rsa:1024 \
++  -keyout withLeadingPeriod/leaf.key \
++  -out withLeadingPeriod/leaf.csr \
++  -subj '/CN=demo.example.com' \
++  -addext 'subjectAltName = DNS:demo.example.com' \
++  -nodes
++
++openssl x509 \
++  -req \
++  -in withLeadingPeriod/leaf.csr \
++  -CAcreateserial \
++  -CA withLeadingPeriod/ca.pem \
++  -CAkey withLeadingPeriod/ca.key \
++  -out withLeadingPeriod/leaf.pem
++
++
++# ##################################################################
++# # CA without a leading period in the name contraint #
++# ##################################################################
++mkdir -p withoutLeadingPeriod
++
++openssl req \
++  -newkey rsa:1024 \
++  -keyout withoutLeadingPeriod/ca.key \
++  -out withoutLeadingPeriod/ca.csr \
++  -subj "/C=US/O=Example/CN=Example CA without period" \
++  -nodes
++
++openssl x509 \
++  -req \
++  -in withoutLeadingPeriod/ca.csr \
++  -extfile openssl.cnf \
++  -extensions withoutLeadingPeriod \
++  -signkey withoutLeadingPeriod/ca.key \
++  -out withoutLeadingPeriod/ca.pem
++
++# leaf certificate
++openssl req \
++  -newkey rsa:1024 \
++  -keyout withoutLeadingPeriod/leaf.key \
++  -out withoutLeadingPeriod/leaf.csr \
++  -subj '/CN=demo.example.com' \
++  -addext 'subjectAltName = DNS:demo.example.com' \
++  -nodes
++
++openssl x509 \
++  -req \
++  -in withoutLeadingPeriod/leaf.csr \
++  -CAcreateserial \
++  -CA withoutLeadingPeriod/ca.pem \
++  -CAkey withoutLeadingPeriod/ca.key \
++  -out withoutLeadingPeriod/leaf.pem
++
++
++# # Verify both leaf certificates
++
++set +e
++openssl verify \
++  -CAfile withLeadingPeriod/ca.pem \
++  withLeadingPeriod/leaf.pem
++
++openssl verify \
++  -CAfile withoutLeadingPeriod/ca.pem \
++  withoutLeadingPeriod/leaf.pem
++  
+\ No newline at end of file
+diff --git a/test/jdk/sun/security/x509/DNSName/certs/openssl.cnf b/test/jdk/sun/security/x509/DNSName/certs/openssl.cnf
+new file mode 100644
+index 00000000000..a69d206a5fc
+--- /dev/null
++++ b/test/jdk/sun/security/x509/DNSName/certs/openssl.cnf
+@@ -0,0 +1,40 @@
++#
++# OpenSSL configuration file.
++#
++
++[ withLeadingPeriod ]
++subjectKeyIdentifier    = hash
++authorityKeyIdentifier  = keyid:always,issuer
++basicConstraints        = critical,CA:true
++keyUsage                = critical,keyCertSign
++nameConstraints         = critical,permitted;DNS:.example.com
++
++[ withoutLeadingPeriod ]
++subjectKeyIdentifier    = hash
++authorityKeyIdentifier  = keyid:always,issuer
++basicConstraints        = critical,CA:true
++keyUsage                = critical,keyCertSign
++nameConstraints         = critical,permitted;DNS:example.com
++
++[ v3_ca ]
++subjectKeyIdentifier    = hash
++authorityKeyIdentifier  = keyid:always,issuer
++basicConstraints        = critical,CA:true
++keyUsage                = critical,keyCertSign
++
++
++[req]
++distinguished_name = req_distinguished_name
++x509_extensions		 = v3_ca  # The extentions to add to self signed certs
++req_extensions		 = v3_req # The extensions to add to req's
++
++prompt = no
++
++[req_distinguished_name]
++C = US
++O = Example
++CN = example.com
++
++[v3_req]
++keyUsage = keyEncipherment, dataEncipherment
++extendedKeyUsage = serverAuth
+diff --git a/test/jdk/sun/security/x509/DNSName/certs/withLeadingPeriod/ca.pem b/test/jdk/sun/security/x509/DNSName/certs/withLeadingPeriod/ca.pem
+new file mode 100644
+index 00000000000..535a8d9fc7e
+--- /dev/null
++++ b/test/jdk/sun/security/x509/DNSName/certs/withLeadingPeriod/ca.pem
+@@ -0,0 +1,16 @@
++-----BEGIN CERTIFICATE-----
++MIICgzCCAeygAwIBAgIJANBGv+BGZZHtMA0GCSqGSIb3DQEBCwUAMEAxCzAJBgNV
++BAYTAlVTMRAwDgYDVQQKDAdFeGFtcGxlMR8wHQYDVQQDDBZFeGFtcGxlIENBIHdp
++dGggcGVyaW9kMB4XDTIzMTAxOTIwNTE0NVoXDTIzMTExODIwNTE0NVowQDELMAkG
++A1UEBhMCVVMxEDAOBgNVBAoMB0V4YW1wbGUxHzAdBgNVBAMMFkV4YW1wbGUgQ0Eg
++d2l0aCBwZXJpb2QwgZ8wDQYJKoZIhvcNAQEBBQADgY0AMIGJAoGBAPfaISk+Dvzk
++m3AY7IDZYrGWpwxHciacalrsrOFl3mj3FQ/kVhofDri3mE7bxNKWyHNcbt+Cteck
++TsGKBH85QsIifju7hqlrR+UbYtQF9/REkxX72gzim4xGk9KmKkuGpT5aZgvTE5eg
++ZumJ9XxCjGn5nbsdJoqAE/9B96GqXJvlAgMBAAGjgYQwgYEwHQYDVR0OBBYEFG8h
++vtka47iFUsc+3wmQ3LQRXUv3MB8GA1UdIwQYMBaAFG8hvtka47iFUsc+3wmQ3LQR
++XUv3MA8GA1UdEwEB/wQFMAMBAf8wDgYDVR0PAQH/BAQDAgIEMB4GA1UdHgEB/wQU
++MBKgEDAOggwuZXhhbXBsZS5jb20wDQYJKoZIhvcNAQELBQADgYEAkPeCbKokI067
++Dt2bommouO7LhTXivjMsByfZs8i9LZUVJz5Is+mDC36nLy4U3+QhofRLlEkWyOlE
++033xBtm4YPsazpur79PJtvZemV0KwwMtKCoJYNlcy2llmdKjUwe4PsPnJPqH2KL5
++Cxios1gil8XL5OCmEUSCT9uBblh+9gk=
++-----END CERTIFICATE-----
+diff --git a/test/jdk/sun/security/x509/DNSName/certs/withLeadingPeriod/leaf.pem b/test/jdk/sun/security/x509/DNSName/certs/withLeadingPeriod/leaf.pem
+new file mode 100644
+index 00000000000..c587ca20c9a
+--- /dev/null
++++ b/test/jdk/sun/security/x509/DNSName/certs/withLeadingPeriod/leaf.pem
+@@ -0,0 +1,12 @@
++-----BEGIN CERTIFICATE-----
++MIIB0jCCATsCCQCgOCS7vOUOXTANBgkqhkiG9w0BAQsFADBAMQswCQYDVQQGEwJV
++UzEQMA4GA1UECgwHRXhhbXBsZTEfMB0GA1UEAwwWRXhhbXBsZSBDQSB3aXRoIHBl
++cmlvZDAeFw0yMzEwMTkyMDUxNDVaFw0yMzExMTgyMDUxNDVaMBsxGTAXBgNVBAMM
++EGRlbW8uZXhhbXBsZS5jb20wgZ8wDQYJKoZIhvcNAQEBBQADgY0AMIGJAoGBALxi
++O4r50rNBbHu/blOSRfo9Vqei+QFS7fPwme68FOcvG+uYXf7zluO59V+8O4RPO+ZJ
++W6meZvtpOCWFvlSMhBLTRz350LuSPWF+/tnbiyEv487Vi6Tp7kxJytIcMtH/sWkw
++hF0Og8YYt3Xm2aLYPxZHGkvOccjau5X1xG1YiULzAgMBAAEwDQYJKoZIhvcNAQEL
++BQADgYEA8OXnFO3yZSVmQfYvC2o9amYa7tNUPHgvEjp7xDlPkvL5zF+n8k0hT0kt
++pv4BXzRqVIWsZcNi3H1wk6LMeUXi8EWCOR6gclWI0wZkWBhtoh8SCd2VJRmcv+zG
++EnInCapszNKN05KEzaFOQv0QayILBUGgHTTXOgbEmryLHXg6zik=
++-----END CERTIFICATE-----
+diff --git a/test/jdk/sun/security/x509/DNSName/certs/withoutLeadingPeriod/ca.pem b/test/jdk/sun/security/x509/DNSName/certs/withoutLeadingPeriod/ca.pem
+new file mode 100644
+index 00000000000..cb886c34a1d
+--- /dev/null
++++ b/test/jdk/sun/security/x509/DNSName/certs/withoutLeadingPeriod/ca.pem
+@@ -0,0 +1,16 @@
++-----BEGIN CERTIFICATE-----
++MIICiDCCAfGgAwIBAgIJALUX88nU2b75MA0GCSqGSIb3DQEBCwUAMEMxCzAJBgNV
++BAYTAlVTMRAwDgYDVQQKDAdFeGFtcGxlMSIwIAYDVQQDDBlFeGFtcGxlIENBIHdp
++dGhvdXQgcGVyaW9kMB4XDTIzMTAxOTIwNTE0NVoXDTIzMTExODIwNTE0NVowQzEL
++MAkGA1UEBhMCVVMxEDAOBgNVBAoMB0V4YW1wbGUxIjAgBgNVBAMMGUV4YW1wbGUg
++Q0Egd2l0aG91dCBwZXJpb2QwgZ8wDQYJKoZIhvcNAQEBBQADgY0AMIGJAoGBANmH
++HqVoDjgoS60aPhQisqEL3as81tPXxXgnp5M0TE+Lb0z/kXS2mkqYYhzcZneBhVyI
++oGTnSnTSh6S1r/gE80x+hH4ZrLZR7jJMRDA9Q7RTOZBNgozS4XnE3AV/EjrIzHJ1
++IEt1ezoj2QNdVOv7UHprHGoARl9tdxre4MVUv4S3AgMBAAGjgYMwgYAwHQYDVR0O
++BBYEFFG0Mvse4c5C01o8kvKiM4MKMJTCMB8GA1UdIwQYMBaAFFG0Mvse4c5C01o8
++kvKiM4MKMJTCMA8GA1UdEwEB/wQFMAMBAf8wDgYDVR0PAQH/BAQDAgIEMB0GA1Ud
++HgEB/wQTMBGgDzANggtleGFtcGxlLmNvbTANBgkqhkiG9w0BAQsFAAOBgQC0CKS0
++JOR8hfUkZHBo52PrF3IKs33wczH5mfV+HLTdSeKtBD0Vj/7DoT0Yx2k5n6vpwA/x
++LTSMC4wUo4hb5164ks45iloU0FrA+n9fWbeqwhQb+DW5MSOgoVLkW+rcdKbDatTO
++ENcKZsqiG3aKM7pS7mQa+kUUpXWBUgVnhcsYtQ==
++-----END CERTIFICATE-----
+diff --git a/test/jdk/sun/security/x509/DNSName/certs/withoutLeadingPeriod/leaf.pem b/test/jdk/sun/security/x509/DNSName/certs/withoutLeadingPeriod/leaf.pem
+new file mode 100644
+index 00000000000..449176ff8a8
+--- /dev/null
++++ b/test/jdk/sun/security/x509/DNSName/certs/withoutLeadingPeriod/leaf.pem
+@@ -0,0 +1,12 @@
++-----BEGIN CERTIFICATE-----
++MIIB1TCCAT4CCQDLscehyPPGXjANBgkqhkiG9w0BAQsFADBDMQswCQYDVQQGEwJV
++UzEQMA4GA1UECgwHRXhhbXBsZTEiMCAGA1UEAwwZRXhhbXBsZSBDQSB3aXRob3V0
++IHBlcmlvZDAeFw0yMzEwMTkyMDUxNDVaFw0yMzExMTgyMDUxNDVaMBsxGTAXBgNV
++BAMMEGRlbW8uZXhhbXBsZS5jb20wgZ8wDQYJKoZIhvcNAQEBBQADgY0AMIGJAoGB
++AMZM9Prp5DkAe4pkLqn4v8DFamMtWVqPlYacJacGzBkuzBn8VNQQw4qnf6wiVHBj
++uXLHrUCbldtKFK4XdVukmVyYSLR5BBPxA20fjZcsrBZW7u/14qWmIZW7G0xphezg
++6g33qNPq9CPqVHR+IrfEmjWnLjc2KrZ3OQElpJOGp48hAgMBAAEwDQYJKoZIhvcN
++AQELBQADgYEAYbIuAQKTXsgaBP3pyMqxPHvklDI7wJjEapbKDsOXYmKMb33pmFSD
++ntQFZuOKYNV2rAqQaV/3kiWKyR4vO/gsCfuFeW8kxkhZEXX9CNU0Z6mKcvy274A4
++K0gqYGki8hyCc5IMWTUAX2TLdq8W1hwfbjeiNqTY21e+6lIa3kcuLC0=
++-----END CERTIFICATE-----

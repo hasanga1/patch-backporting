@@ -1,0 +1,564 @@
+commit a5ffa079a0d6107be652bc026f5c91b7dcd791f8
+Author: Daniel Jeliński <djelinski@openjdk.org>
+Date:   Mon Mar 27 05:22:45 2023 +0000
+
+    7026262: HttpServer: improve handling of finished HTTP exchanges
+    
+    Reviewed-by: dfuchs, michaelm
+
+diff --git a/src/jdk.httpserver/share/classes/sun/net/httpserver/ChunkedOutputStream.java b/src/jdk.httpserver/share/classes/sun/net/httpserver/ChunkedOutputStream.java
+index 4deb7aa6c34..11ad6c3eaaa 100644
+--- a/src/jdk.httpserver/share/classes/sun/net/httpserver/ChunkedOutputStream.java
++++ b/src/jdk.httpserver/share/classes/sun/net/httpserver/ChunkedOutputStream.java
+@@ -1,5 +1,5 @@
+ /*
+- * Copyright (c) 2005, 2008, Oracle and/or its affiliates. All rights reserved.
++ * Copyright (c) 2005, 2023, Oracle and/or its affiliates. All rights reserved.
+  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+  *
+  * This code is free software; you can redistribute it and/or modify it
+@@ -27,6 +27,8 @@
+ 
+ import java.io.*;
+ import java.net.*;
++import java.util.Objects;
++
+ import com.sun.net.httpserver.*;
+ import com.sun.net.httpserver.spi.*;
+ 
+@@ -77,6 +79,10 @@ public void write (int b) throws IOException {
+     }
+ 
+     public void write (byte[]b, int off, int len) throws IOException {
++        Objects.checkFromIndexSize(off, len, b.length);
++        if (len == 0) {
++            return;
++        }
+         if (closed) {
+             throw new StreamClosedException ();
+         }
+diff --git a/src/jdk.httpserver/share/classes/sun/net/httpserver/ExchangeImpl.java b/src/jdk.httpserver/share/classes/sun/net/httpserver/ExchangeImpl.java
+index 6a7398611ac..4f57d77004f 100644
+--- a/src/jdk.httpserver/share/classes/sun/net/httpserver/ExchangeImpl.java
++++ b/src/jdk.httpserver/share/classes/sun/net/httpserver/ExchangeImpl.java
+@@ -1,5 +1,5 @@
+ /*
+- * Copyright (c) 2005, 2021, Oracle and/or its affiliates. All rights reserved.
++ * Copyright (c) 2005, 2023, Oracle and/or its affiliates. All rights reserved.
+  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+  *
+  * This code is free software; you can redistribute it and/or modify it
+@@ -282,9 +282,7 @@ public void sendResponseHeaders (int rCode, long contentLen)
+         sentHeaders = true;
+         logger.log(Level.TRACE, "Sent headers: noContentToSend=" + noContentToSend);
+         if (noContentToSend) {
+-            WriteFinishedEvent e = new WriteFinishedEvent (this);
+-            server.addEvent (e);
+-            closed = true;
++            close();
+         }
+         server.logReply (rCode, req.requestLine(), null);
+     }
+diff --git a/src/jdk.httpserver/share/classes/sun/net/httpserver/FixedLengthOutputStream.java b/src/jdk.httpserver/share/classes/sun/net/httpserver/FixedLengthOutputStream.java
+index 4935214c2e1..277e6bb4228 100644
+--- a/src/jdk.httpserver/share/classes/sun/net/httpserver/FixedLengthOutputStream.java
++++ b/src/jdk.httpserver/share/classes/sun/net/httpserver/FixedLengthOutputStream.java
+@@ -1,5 +1,5 @@
+ /*
+- * Copyright (c) 2005, 2006, Oracle and/or its affiliates. All rights reserved.
++ * Copyright (c) 2005, 2023, Oracle and/or its affiliates. All rights reserved.
+  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+  *
+  * This code is free software; you can redistribute it and/or modify it
+@@ -27,6 +27,8 @@
+ 
+ import java.io.*;
+ import java.net.*;
++import java.util.Objects;
++
+ import com.sun.net.httpserver.*;
+ import com.sun.net.httpserver.spi.*;
+ 
+@@ -41,7 +43,6 @@
+ class FixedLengthOutputStream extends FilterOutputStream
+ {
+     private long remaining;
+-    private boolean eof = false;
+     private boolean closed = false;
+     ExchangeImpl t;
+ 
+@@ -58,8 +59,7 @@ public void write (int b) throws IOException {
+         if (closed) {
+             throw new IOException ("stream closed");
+         }
+-        eof = (remaining == 0);
+-        if (eof) {
++        if (remaining == 0) {
+             throw new StreamClosedException();
+         }
+         out.write(b);
+@@ -67,13 +67,13 @@ public void write (int b) throws IOException {
+     }
+ 
+     public void write (byte[]b, int off, int len) throws IOException {
++        Objects.checkFromIndexSize(off, len, b.length);
++        if (len == 0) {
++            return;
++        }
+         if (closed) {
+             throw new IOException ("stream closed");
+         }
+-        eof = (remaining == 0);
+-        if (eof) {
+-            throw new StreamClosedException();
+-        }
+         if (len > remaining) {
+             // stream is still open, caller can retry
+             throw new IOException ("too many bytes to write to stream");
+@@ -92,7 +92,6 @@ public void close () throws IOException {
+             throw new IOException ("insufficient bytes written to stream");
+         }
+         flush();
+-        eof = true;
+         LeftOverInputStream is = t.getOriginalInputStream();
+         if (!is.isClosed()) {
+             try {
+diff --git a/src/jdk.httpserver/share/classes/sun/net/httpserver/ServerImpl.java b/src/jdk.httpserver/share/classes/sun/net/httpserver/ServerImpl.java
+index 81442542666..ee0439f7542 100644
+--- a/src/jdk.httpserver/share/classes/sun/net/httpserver/ServerImpl.java
++++ b/src/jdk.httpserver/share/classes/sun/net/httpserver/ServerImpl.java
+@@ -713,7 +713,14 @@ public void run () {
+                     return;
+                 }
+                 String uriStr = requestLine.substring (start, space);
+-                URI uri = new URI (uriStr);
++                URI uri;
++                try {
++                    uri = new URI (uriStr);
++                } catch (URISyntaxException e3) {
++                    reject(Code.HTTP_BAD_REQUEST,
++                            requestLine, "URISyntaxException thrown");
++                    return;
++                }
+                 start = space+1;
+                 String version = requestLine.substring (start);
+                 Headers headers = req.headers();
+@@ -749,7 +756,13 @@ public void run () {
+                 } else {
+                     headerValue = headers.getFirst("Content-Length");
+                     if (headerValue != null) {
+-                        clen = Long.parseLong(headerValue);
++                        try {
++                            clen = Long.parseLong(headerValue);
++                        } catch (NumberFormatException e2) {
++                            reject(Code.HTTP_BAD_REQUEST,
++                                    requestLine, "NumberFormatException thrown");
++                            return;
++                        }
+                         if (clen < 0) {
+                             reject(Code.HTTP_BAD_REQUEST, requestLine,
+                                     "Illegal Content-Length value");
+@@ -834,20 +847,11 @@ public void run () {
+                     uc.doFilter (new HttpExchangeImpl (tx));
+                 }
+ 
+-            } catch (IOException e1) {
+-                logger.log (Level.TRACE, "ServerImpl.Exchange (1)", e1);
+-                closeConnection(connection);
+-            } catch (NumberFormatException e2) {
+-                logger.log (Level.TRACE, "ServerImpl.Exchange (2)", e2);
+-                reject (Code.HTTP_BAD_REQUEST,
+-                        requestLine, "NumberFormatException thrown");
+-            } catch (URISyntaxException e3) {
+-                logger.log (Level.TRACE, "ServerImpl.Exchange (3)", e3);
+-                reject (Code.HTTP_BAD_REQUEST,
+-                        requestLine, "URISyntaxException thrown");
+-            } catch (Exception e4) {
+-                logger.log (Level.TRACE, "ServerImpl.Exchange (4)", e4);
+-                closeConnection(connection);
++            } catch (Exception e) {
++                logger.log (Level.TRACE, "ServerImpl.Exchange", e);
++                if (tx == null || !tx.writefinished) {
++                    closeConnection(connection);
++                }
+             } catch (Throwable t) {
+                 logger.log(Level.TRACE, "ServerImpl.Exchange (5)", t);
+                 throw t;
+@@ -872,9 +876,8 @@ void reject (int code, String requestStr, String message) {
+             rejected = true;
+             logReply (code, requestStr, message);
+             sendReply (
+-                code, false, "<h1>"+code+Code.msg(code)+"</h1>"+message
++                code, true, "<h1>"+code+Code.msg(code)+"</h1>"+message
+             );
+-            closeConnection(connection);
+         }
+ 
+         void sendReply (
+diff --git a/src/jdk.httpserver/share/classes/sun/net/httpserver/UndefLengthOutputStream.java b/src/jdk.httpserver/share/classes/sun/net/httpserver/UndefLengthOutputStream.java
+index 2918e42a05f..76a1be6ec5f 100644
+--- a/src/jdk.httpserver/share/classes/sun/net/httpserver/UndefLengthOutputStream.java
++++ b/src/jdk.httpserver/share/classes/sun/net/httpserver/UndefLengthOutputStream.java
+@@ -1,5 +1,5 @@
+ /*
+- * Copyright (c) 2007, Oracle and/or its affiliates. All rights reserved.
++ * Copyright (c) 2007, 2023, Oracle and/or its affiliates. All rights reserved.
+  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+  *
+  * This code is free software; you can redistribute it and/or modify it
+@@ -27,6 +27,8 @@
+ 
+ import java.io.*;
+ import java.net.*;
++import java.util.Objects;
++
+ import com.sun.net.httpserver.*;
+ import com.sun.net.httpserver.spi.*;
+ 
+@@ -55,6 +57,10 @@ public void write (int b) throws IOException {
+     }
+ 
+     public void write (byte[]b, int off, int len) throws IOException {
++        Objects.checkFromIndexSize(off, len, b.length);
++        if (len == 0) {
++            return;
++        }
+         if (closed) {
+             throw new IOException ("stream closed");
+         }
+diff --git a/test/jdk/com/sun/net/httpserver/bugs/ExceptionKeepAlive.java b/test/jdk/com/sun/net/httpserver/bugs/ExceptionKeepAlive.java
+new file mode 100644
+index 00000000000..ea3ec9cea28
+--- /dev/null
++++ b/test/jdk/com/sun/net/httpserver/bugs/ExceptionKeepAlive.java
+@@ -0,0 +1,131 @@
++/*
++ * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
++ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
++ *
++ * This code is free software; you can redistribute it and/or modify it
++ * under the terms of the GNU General Public License version 2 only, as
++ * published by the Free Software Foundation.
++ *
++ * This code is distributed in the hope that it will be useful, but WITHOUT
++ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
++ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
++ * version 2 for more details (a copy is included in the LICENSE file that
++ * accompanied this code).
++ *
++ * You should have received a copy of the GNU General Public License version
++ * 2 along with this work; if not, write to the Free Software Foundation,
++ * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
++ *
++ * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
++ * or visit www.oracle.com if you need additional information or have any
++ * questions.
++ */
++
++/**
++ * @test
++ * @bug 8219083
++ * @summary Exceptions thrown from HttpHandler.handle should not close connection
++ *          if response is completed
++ * @library /test/lib
++ * @run junit ExceptionKeepAlive
++ */
++
++import com.sun.net.httpserver.HttpExchange;
++import com.sun.net.httpserver.HttpHandler;
++import com.sun.net.httpserver.HttpServer;
++import jdk.test.lib.net.URIBuilder;
++import org.junit.jupiter.api.Test;
++
++import java.io.IOException;
++import java.net.HttpURLConnection;
++import java.net.InetAddress;
++import java.net.InetSocketAddress;
++import java.net.Proxy;
++import java.net.URL;
++import java.util.logging.Handler;
++import java.util.logging.Level;
++import java.util.logging.Logger;
++import java.util.logging.SimpleFormatter;
++import java.util.logging.StreamHandler;
++
++import static org.junit.jupiter.api.Assertions.*;
++
++public class ExceptionKeepAlive
++{
++
++    public static final Logger LOGGER = Logger.getLogger("com.sun.net.httpserver");
++
++    @Test
++    void test() throws IOException, InterruptedException {
++        HttpServer httpServer = startHttpServer();
++        int port = httpServer.getAddress().getPort();
++        try {
++            URL url = URIBuilder.newBuilder()
++                .scheme("http")
++                .loopback()
++                .port(port)
++                .path("/firstCall")
++                .toURLUnchecked();
++            HttpURLConnection uc = (HttpURLConnection)url.openConnection(Proxy.NO_PROXY);
++            int responseCode = uc.getResponseCode();
++            assertEquals(200, responseCode, "First request should succeed");
++
++            URL url2 = URIBuilder.newBuilder()
++                    .scheme("http")
++                    .loopback()
++                    .port(port)
++                    .path("/secondCall")
++                    .toURLUnchecked();
++            HttpURLConnection uc2 = (HttpURLConnection)url2.openConnection(Proxy.NO_PROXY);
++            responseCode = uc2.getResponseCode();
++            assertEquals(200, responseCode, "Second request should reuse connection");
++        } finally {
++            httpServer.stop(0);
++        }
++    }
++
++    /**
++     * Http Server
++     */
++    HttpServer startHttpServer() throws IOException {
++        Handler outHandler = new StreamHandler(System.out,
++                                 new SimpleFormatter());
++        outHandler.setLevel(Level.FINEST);
++        LOGGER.setLevel(Level.FINEST);
++        LOGGER.addHandler(outHandler);
++        InetAddress loopback = InetAddress.getLoopbackAddress();
++        HttpServer httpServer = HttpServer.create(new InetSocketAddress(loopback, 0), 0);
++        httpServer.createContext("/", new MyHandler());
++        httpServer.start();
++        return httpServer;
++    }
++
++    class MyHandler implements HttpHandler {
++
++        volatile int port1;
++        @Override
++        public void handle(HttpExchange t) throws IOException {
++            String path = t.getRequestURI().getPath();
++            if (path.equals("/firstCall")) {
++                port1 = t.getRemoteAddress().getPort();
++                System.out.println("First connection on client port = " + port1);
++
++                // send response
++                t.sendResponseHeaders(200, -1);
++                // response is completed now; throw exception
++                throw new NumberFormatException();
++                // the connection should still be reusable
++            } else if (path.equals("/secondCall")) {
++                int port2 = t.getRemoteAddress().getPort();
++                System.out.println("Second connection on client port = " + port2);
++
++                if (port1 == port2) {
++                    t.sendResponseHeaders(200, -1);
++                } else {
++                    t.sendResponseHeaders(500, -1);
++                }
++            }
++            t.close();
++        }
++    }
++}
+diff --git a/test/jdk/com/sun/net/httpserver/bugs/ZeroLengthOutputStream.java b/test/jdk/com/sun/net/httpserver/bugs/ZeroLengthOutputStream.java
+new file mode 100644
+index 00000000000..ff446104e3d
+--- /dev/null
++++ b/test/jdk/com/sun/net/httpserver/bugs/ZeroLengthOutputStream.java
+@@ -0,0 +1,114 @@
++/*
++ * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
++ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
++ *
++ * This code is free software; you can redistribute it and/or modify it
++ * under the terms of the GNU General Public License version 2 only, as
++ * published by the Free Software Foundation.
++ *
++ * This code is distributed in the hope that it will be useful, but WITHOUT
++ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
++ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
++ * version 2 for more details (a copy is included in the LICENSE file that
++ * accompanied this code).
++ *
++ * You should have received a copy of the GNU General Public License version
++ * 2 along with this work; if not, write to the Free Software Foundation,
++ * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
++ *
++ * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
++ * or visit www.oracle.com if you need additional information or have any
++ * questions.
++ */
++
++/**
++ * @test
++ * @bug 8219083
++ * @summary HttpExchange.getResponseBody write and close should not throw
++ *          even when response length is zero
++ * @library /test/lib
++ * @run junit ZeroLengthOutputStream
++ */
++
++import com.sun.net.httpserver.HttpExchange;
++import com.sun.net.httpserver.HttpHandler;
++import com.sun.net.httpserver.HttpServer;
++import jdk.test.lib.net.URIBuilder;
++import org.junit.jupiter.api.Test;
++
++import java.io.IOException;
++import java.io.OutputStream;
++import java.net.HttpURLConnection;
++import java.net.InetAddress;
++import java.net.InetSocketAddress;
++import java.net.Proxy;
++import java.net.URL;
++import java.util.concurrent.CountDownLatch;
++import java.util.logging.Handler;
++import java.util.logging.Level;
++import java.util.logging.Logger;
++import java.util.logging.SimpleFormatter;
++import java.util.logging.StreamHandler;
++
++import static org.junit.jupiter.api.Assertions.*;
++
++public class ZeroLengthOutputStream
++{
++
++    public static final Logger LOGGER = Logger.getLogger("com.sun.net.httpserver");
++    public volatile boolean closed;
++    public CountDownLatch cdl = new CountDownLatch(1);
++
++    @Test
++    void test() throws IOException, InterruptedException {
++        HttpServer httpServer = startHttpServer();
++        int port = httpServer.getAddress().getPort();
++        try {
++            URL url = URIBuilder.newBuilder()
++                .scheme("http")
++                .loopback()
++                .port(port)
++                .path("/flis/")
++                .toURLUnchecked();
++            HttpURLConnection uc = (HttpURLConnection)url.openConnection(Proxy.NO_PROXY);
++            uc.getResponseCode();
++            cdl.await();
++            assertTrue(closed, "OutputStream close did not complete");
++        } finally {
++            httpServer.stop(0);
++        }
++    }
++
++    /**
++     * Http Server
++     */
++    HttpServer startHttpServer() throws IOException {
++        Handler outHandler = new StreamHandler(System.out,
++                                 new SimpleFormatter());
++        outHandler.setLevel(Level.FINEST);
++        LOGGER.setLevel(Level.FINEST);
++        LOGGER.addHandler(outHandler);
++        InetAddress loopback = InetAddress.getLoopbackAddress();
++        HttpServer httpServer = HttpServer.create(new InetSocketAddress(loopback, 0), 0);
++        httpServer.createContext("/flis/", new MyHandler());
++        httpServer.start();
++        return httpServer;
++    }
++
++    class MyHandler implements HttpHandler {
++
++        @Override
++        public void handle(HttpExchange t) throws IOException {
++            try {
++                OutputStream os = t.getResponseBody();
++                t.sendResponseHeaders(200, -1);
++                os.write(new byte[0]);
++                os.close();
++                System.out.println("Output stream closed");
++                closed = true;
++            } finally {
++                cdl.countDown();
++            }
++        }
++    }
++}
+diff --git a/test/jdk/sun/net/www/http/KeepAliveCache/B5045306.java b/test/jdk/sun/net/www/http/KeepAliveCache/B5045306.java
+index ebfb550b826..e6ffc1d4e0b 100644
+--- a/test/jdk/sun/net/www/http/KeepAliveCache/B5045306.java
++++ b/test/jdk/sun/net/www/http/KeepAliveCache/B5045306.java
+@@ -1,5 +1,5 @@
+ /*
+- * Copyright (c) 2005, 2022, Oracle and/or its affiliates. All rights reserved.
++ * Copyright (c) 2005, 2023, Oracle and/or its affiliates. All rights reserved.
+  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+  *
+  * This code is free software; you can redistribute it and/or modify it
+@@ -169,7 +169,7 @@ public void handle(HttpExchange trans) {
+         try {
+             String path = trans.getRequestURI().getPath();
+             if (path.equals("/firstCall")) {
+-                port1 = trans.getLocalAddress().getPort();
++                port1 = trans.getRemoteAddress().getPort();
+                 System.out.println("First connection on client port = " + port1);
+ 
+                 byte[] responseBody = new byte[RESPONSE_DATA_LENGTH];
+@@ -180,7 +180,7 @@ public void handle(HttpExchange trans) {
+                     pw.print(responseBody);
+                 }
+             } else if (path.equals("/secondCall")) {
+-                int port2 = trans.getLocalAddress().getPort();
++                int port2 = trans.getRemoteAddress().getPort();
+                 System.out.println("Second connection on client port = " + port2);
+ 
+                 if (port1 != port2)
+diff --git a/test/jdk/sun/net/www/http/KeepAliveCache/B8293562.java b/test/jdk/sun/net/www/http/KeepAliveCache/B8293562.java
+index 4e0cff8bab4..2e6dbb84e2d 100644
+--- a/test/jdk/sun/net/www/http/KeepAliveCache/B8293562.java
++++ b/test/jdk/sun/net/www/http/KeepAliveCache/B8293562.java
+@@ -1,5 +1,5 @@
+ /*
+- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
++ * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
+  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+  *
+  * This code is free software; you can redistribute it and/or modify it
+@@ -29,6 +29,8 @@
+  * @summary Http keep-alive thread should close sockets without holding a lock
+  */
+ 
++import com.sun.net.httpserver.HttpExchange;
++import com.sun.net.httpserver.HttpHandler;
+ import com.sun.net.httpserver.HttpServer;
+ 
+ import javax.net.ssl.HandshakeCompletedListener;
+@@ -45,6 +47,7 @@
+ import java.net.Socket;
+ import java.net.URL;
+ import java.net.UnknownHostException;
++import java.nio.charset.StandardCharsets;
+ import java.util.concurrent.CompletableFuture;
+ import java.util.concurrent.CountDownLatch;
+ import java.util.concurrent.Executors;
+@@ -64,6 +67,7 @@ public static void main(String[] args) throws Exception {
+     public static void startHttpServer() throws Exception {
+         server = HttpServer.create(new InetSocketAddress(InetAddress.getLoopbackAddress(), 0), 10);
+         server.setExecutor(Executors.newCachedThreadPool());
++        server.createContext("/", new NotFoundHandler());
+         server.start();
+     }
+ 
+@@ -234,5 +238,13 @@ public Socket createSocket(Socket s, String host, int port, boolean autoClose) t
+             throw new UnsupportedOperationException();
+         }
+     }
++
++    static class NotFoundHandler implements HttpHandler {
++        @Override
++        public void handle(HttpExchange t) throws IOException {
++            t.sendResponseHeaders(404, 3);
++            t.getResponseBody().write("abc".getBytes(StandardCharsets.UTF_8));
++        }
++    }
+ }
+ 

@@ -1,0 +1,514 @@
+commit 3b582dff849f1c25336e2efc415eb121f8b12189
+Author: Sean Coffey <coffeys@openjdk.org>
+Date:   Tue Apr 2 08:51:13 2024 +0000
+
+    8051959: Add thread and timestamp options to java.security.debug system property
+    
+    Reviewed-by: mullan, weijun
+
+diff --git a/src/java.base/share/classes/sun/security/util/Debug.java b/src/java.base/share/classes/sun/security/util/Debug.java
+index f0b45eb4ce5..f1484145f5c 100644
+--- a/src/java.base/share/classes/sun/security/util/Debug.java
++++ b/src/java.base/share/classes/sun/security/util/Debug.java
+@@ -27,6 +27,9 @@
+ 
+ import java.io.PrintStream;
+ import java.math.BigInteger;
++import java.time.Instant;
++import java.time.ZoneId;
++import java.time.format.DateTimeFormatter;
+ import java.util.HexFormat;
+ import java.util.regex.Pattern;
+ import java.util.regex.Matcher;
+@@ -41,8 +44,14 @@
+ public class Debug {
+ 
+     private String prefix;
++    private boolean printDateTime;
++    private boolean printThreadDetails;
+ 
+     private static String args;
++    private static boolean threadInfoAll;
++    private static boolean timeStampInfoAll;
++    private static final String TIMESTAMP_OPTION = "+timestamp";
++    private static final String THREAD_OPTION = "+thread";
+ 
+     static {
+         args = GetPropertyAction.privilegedGetProperty("java.security.debug");
+@@ -61,12 +70,21 @@ public class Debug {
+             args = marshal(args);
+             if (args.equals("help")) {
+                 Help();
++            } else if (args.contains("all")) {
++                // "all" option has special handling for decorator options
++                // If the thread or timestamp decorator option is detected
++                // with the "all" option, then it impacts decorator options
++                // for other categories
++                int beginIndex = args.lastIndexOf("all") + "all".length();
++                int commaIndex = args.indexOf(',', beginIndex);
++                if (commaIndex == -1) commaIndex = args.length();
++                threadInfoAll = args.substring(beginIndex, commaIndex).contains(THREAD_OPTION);
++                timeStampInfoAll = args.substring(beginIndex, commaIndex).contains(TIMESTAMP_OPTION);
+             }
+         }
+     }
+ 
+-    public static void Help()
+-    {
++    public static void Help() {
+         System.err.println();
+         System.err.println("all           turn on all debugging");
+         System.err.println("access        print all checkPermission results");
+@@ -95,6 +113,11 @@ public static void Help()
+         System.err.println("ts            timestamping");
+         System.err.println("x509          X.509 certificate debugging");
+         System.err.println();
++        System.err.println("+timestamp can be appended to any of above options to print");
++        System.err.println("              a timestamp for that debug option");
++        System.err.println("+thread can be appended to any of above options to print");
++        System.err.println("              thread and caller information for that debug option");
++        System.err.println();
+         System.err.println("The following can be used with access:");
+         System.err.println();
+         System.err.println("stack         include stack trace");
+@@ -139,8 +162,7 @@ public static void Help()
+      * option is set. Set the prefix to be the same as option.
+      */
+ 
+-    public static Debug getInstance(String option)
+-    {
++    public static Debug getInstance(String option) {
+         return getInstance(option, option);
+     }
+ 
+@@ -148,17 +170,52 @@ public static Debug getInstance(String option)
+      * Get a Debug object corresponding to whether or not the given
+      * option is set. Set the prefix to prefix.
+      */
+-    public static Debug getInstance(String option, String prefix)
+-    {
++    public static Debug getInstance(String option, String prefix) {
+         if (isOn(option)) {
+             Debug d = new Debug();
+             d.prefix = prefix;
++            d.configureExtras(option);
+             return d;
+         } else {
+             return null;
+         }
+     }
+ 
++    private static String formatCaller() {
++        return StackWalker.getInstance().walk(s ->
++                s.dropWhile(f ->
++                    f.getClassName().startsWith("sun.security.util.Debug"))
++                        .map(f -> f.getFileName() + ":" + f.getLineNumber())
++                        .findFirst().orElse("unknown caller"));
++    }
++
++    // parse an option string to determine if extra details,
++    // like thread and timestamp, should be printed
++    private void configureExtras(String option) {
++        // treat "all" as special case, only used for java.security.debug property
++        this.printDateTime = timeStampInfoAll;
++        this.printThreadDetails = threadInfoAll;
++
++        if (printDateTime && printThreadDetails) {
++            // nothing left to configure
++            return;
++        }
++
++        // args is converted to lower case for the most part via marshal method
++        int optionIndex = args.lastIndexOf(option);
++        if (optionIndex == -1) {
++            // option not in args list. Only here since "all" was present
++            // in debug property argument. "all" option already parsed
++            return;
++        }
++        int beginIndex = optionIndex + option.length();
++        int commaIndex = args.indexOf(',', beginIndex);
++        if (commaIndex == -1) commaIndex = args.length();
++        String subOpt = args.substring(beginIndex, commaIndex);
++        printDateTime = printDateTime || subOpt.contains(TIMESTAMP_OPTION);
++        printThreadDetails = printThreadDetails || subOpt.contains(THREAD_OPTION);
++    }
++
+     /**
+      * Get a Debug object corresponding to the given option on the given
+      * property value.
+@@ -173,14 +230,22 @@ public static Debug getInstance(String option, String prefix)
+      * String property = settings.get("login");
+      * Debug debug = Debug.of("login", property);
+      * }
+-     * @param option the debug option name
++     *
++     * +timestamp string can be appended to property value
++     * to print timestamp information. (e.g. true+timestamp)
++     * +thread string can be appended to property value
++     * to print thread and caller information. (e.g. true+thread)
++     *
++     * @param prefix the debug option name
+      * @param property debug setting for this option
+      * @return a new Debug object if the property is true
+      */
+-    public static Debug of(String option, String property) {
+-        if ("true".equalsIgnoreCase(property)) {
++    public static Debug of(String prefix, String property) {
++        if (property != null && property.toLowerCase(Locale.ROOT).startsWith("true")) {
+             Debug d = new Debug();
+-            d.prefix = option;
++            d.prefix = prefix;
++            d.printThreadDetails = property.contains(THREAD_OPTION);
++            d.printDateTime = property.contains(TIMESTAMP_OPTION);
+             return d;
+         }
+         return null;
+@@ -190,8 +255,7 @@ public static Debug of(String option, String property) {
+      * True if the system property "security.debug" contains the
+      * string "option".
+      */
+-    public static boolean isOn(String option)
+-    {
++    public static boolean isOn(String option) {
+         if (args == null)
+             return false;
+         else {
+@@ -214,18 +278,16 @@ public static boolean isVerbose() {
+      * created from the call to getInstance.
+      */
+ 
+-    public void println(String message)
+-    {
+-        System.err.println(prefix + ": "+message);
++    public void println(String message) {
++        System.err.println(prefix + extraInfo() + ": " + message);
+     }
+ 
+     /**
+      * print a message to stderr that is prefixed with the prefix
+      * created from the call to getInstance and obj.
+      */
+-    public void println(Object obj, String message)
+-    {
+-        System.err.println(prefix + " [" + obj.getClass().getSimpleName() +
++    public void println(Object obj, String message) {
++        System.err.println(prefix + extraInfo() + " [" + obj.getClass().getSimpleName() +
+                 "@" + System.identityHashCode(obj) + "]: "+message);
+     }
+ 
+@@ -233,18 +295,36 @@ public void println(Object obj, String message)
+      * print a blank line to stderr that is prefixed with the prefix.
+      */
+ 
+-    public void println()
+-    {
+-        System.err.println(prefix + ":");
++    public void println() {
++        System.err.println(prefix + extraInfo() + ":");
+     }
+ 
+     /**
+      * print a message to stderr that is prefixed with the prefix.
+      */
+ 
+-    public static void println(String prefix, String message)
+-    {
+-        System.err.println(prefix + ": "+message);
++    public void println(String prefix, String message) {
++        System.err.println(prefix + extraInfo() + ": " + message);
++    }
++
++    /**
++     * If thread debug option enabled, include information containing
++     * hex value of threadId and the current thread name
++     * If timestamp debug option enabled, include timestamp string
++     * @return extra info if debug option enabled.
++     */
++    private String extraInfo() {
++        String retString = "";
++        if (printThreadDetails) {
++            retString = "0x" + Long.toHexString(
++                    Thread.currentThread().threadId()).toUpperCase(Locale.ROOT) +
++                    "|" + Thread.currentThread().getName() + "|" + formatCaller();
++        }
++        if (printDateTime) {
++            retString += (retString.isEmpty() ? "" : "|")
++                    + FormatHolder.DATE_TIME_FORMATTER.format(Instant.now());
++        }
++        return retString.isEmpty() ? "" : "[" + retString + "]";
+     }
+ 
+     /**
+@@ -364,4 +444,11 @@ public static String toString(BigInteger b) {
+         return toString(b.toByteArray());
+     }
+ 
++    // Holder class to break cyclic dependency seen during build
++    private static class FormatHolder {
++        private static final String PATTERN = "yyyy-MM-dd kk:mm:ss.SSS";
++        private static final DateTimeFormatter DATE_TIME_FORMATTER = DateTimeFormatter
++                .ofPattern(PATTERN, Locale.ENGLISH)
++                .withZone(ZoneId.systemDefault());
++    }
+ }
+diff --git a/test/jdk/sun/security/krb5/auto/LoginModuleDebug.java b/test/jdk/sun/security/krb5/auto/LoginModuleDebug.java
+index 6348eb4b0af..42ddf72ec50 100644
+--- a/test/jdk/sun/security/krb5/auto/LoginModuleDebug.java
++++ b/test/jdk/sun/security/krb5/auto/LoginModuleDebug.java
+@@ -23,42 +23,85 @@
+ 
+ /*
+  * @test
+- * @bug 8327818
++ * @bug 8327818 8051959
+  * @summary reimplement debug option in Krb5LoginModule
+  * @library /test/lib
++ * @run junit LoginModuleDebug
+  */
+ import com.sun.security.auth.module.Krb5LoginModule;
++import jdk.test.lib.process.OutputAnalyzer;
+ import jdk.test.lib.process.ProcessTools;
++import org.junit.jupiter.params.ParameterizedTest;
++import org.junit.jupiter.params.provider.Arguments;
++import org.junit.jupiter.params.provider.MethodSource;
+ 
+ import java.util.Map;
++import java.util.stream.Stream;
+ import javax.security.auth.Subject;
+ 
+ public class LoginModuleDebug {
+-    public static void main(String[] args) throws Exception {
+-        if (args.length == 0) {
+-            // debug option set to true
+-            ProcessTools.executeTestJava("LoginModuleDebug",
+-                            "debug", "true")
+-                    .stdoutShouldBeEmpty()
+-                    .stderrShouldContain("krb5loginmodule:");
+-            // debug option set to false
+-            ProcessTools.executeTestJava("LoginModuleDebug",
+-                            "debug", "false")
+-                    .stdoutShouldBeEmpty()
+-                    .stderrShouldNotContain("krb5loginmodule:");
+-            // no debug option
+-            ProcessTools.executeTestJava("LoginModuleDebug",
+-                            "foo", "bar")
+-                    .stdoutShouldBeEmpty()
+-                    .stderrShouldNotContain("krb5loginmodule:");
+-        } else {
+-            test(args[0], args[1]);
+-        }
++    static final String DATE_REGEX = "\\d{4}-\\d{2}-\\d{2}";
++
++    private static Stream<Arguments> patternMatches() {
++        return Stream.of(
++                // debug option set to true - no extra info
++                Arguments.of("debug",
++                        "true",
++                        "krb5loginmodule:",
++                        "krb5loginmodule\\["),
++                // debug option set to false
++                Arguments.of("debug",
++                        "false",
++                        "",
++                        "krb5loginmodule"),
++                // no debug option
++                Arguments.of("foo",
++                        "bar",
++                        "",
++                        "krb5loginmodule"),
++                // thread info only
++                Arguments.of("debug",
++                        "true+thread",
++                        "krb5loginmodule\\[.*\\|main|\\.*java.*]:",
++                        "\\|" + DATE_REGEX + ".*\\]:"),
++                // timestamp info only
++                Arguments.of("debug",
++                        "true+timestamp",
++                        "krb5loginmodule\\[" + DATE_REGEX + ".*\\]",
++                        "\\|main\\]:"),
++                // both thread and timestamp
++                Arguments.of("debug",
++                        "true+timestamp+thread",
++                        "krb5loginmodule\\[.*\\|main|" + DATE_REGEX + ".*\\]:",
++                        "krb5loginmodule:")
++        );
+     }
+ 
+-    static void test(String key, String prop)
+-            throws Exception {
+-        new Krb5LoginModule().initialize(
+-                new Subject(), null, Map.of(), Map.of(key, prop));
++    @ParameterizedTest
++    @MethodSource("patternMatches")
++    public void shouldContain(String value, String key, String expected, String notExpected) throws Exception {
++        OutputAnalyzer outputAnalyzer = ProcessTools.executeTestJava(
++                "LoginModuleDebug",
++                value, key);
++        outputAnalyzer.shouldHaveExitValue(0)
++                .shouldMatch(expected)
++                .shouldNotMatch(notExpected);
++        // let's also run with java debug property enabled
++        outputAnalyzer = ProcessTools.executeTestJava(
++                "-Djava.security.debug=all",
++                "LoginModuleDebug",
++                value, key);
++        outputAnalyzer.shouldHaveExitValue(0)
++                .shouldMatch(expected)
++                .shouldNotMatch(notExpected);
++    }
++
++    public static void main(String[] args) throws Exception {
++        System.err.println(args.length);
++        if (args.length == 2) {
++            // something to trigger "krb5" debug output
++            new Krb5LoginModule().initialize(
++                    new Subject(), null, Map.of(), Map.of(args[0], args[1]));
++        }
+     }
+-}
++}
+\ No newline at end of file
+diff --git a/test/jdk/sun/security/util/Debug/DebugOptions.java b/test/jdk/sun/security/util/Debug/DebugOptions.java
+new file mode 100644
+index 00000000000..a52566e7aeb
+--- /dev/null
++++ b/test/jdk/sun/security/util/Debug/DebugOptions.java
+@@ -0,0 +1,138 @@
++/*
++ * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
++ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
++ *
++ * This code is free software; you can redistribute it and/or modify it
++ * under the terms of the GNU General Public License version 2 only, as
++ * published by the Free Software Foundation.
++ *
++ * This code is distributed in the hope that it will be useful, but WITHOUT
++ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
++ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
++ * version 2 for more details (a copy is included in the LICENSE file that
++ * accompanied this code).
++ *
++ * You should have received a copy of the GNU General Public License version
++ * 2 along with this work; if not, write to the Free Software Foundation,
++ * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
++ *
++ * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
++ * or visit www.oracle.com if you need additional information or have any
++ * questions.
++ */
++
++/*
++ * @test
++ * @bug 8051959
++ * @summary Option to print extra information in java.security.debug output
++ * @library /test/lib
++ * @run junit DebugOptions
++ */
++
++import org.junit.jupiter.params.ParameterizedTest;
++import org.junit.jupiter.params.provider.Arguments;
++import org.junit.jupiter.params.provider.MethodSource;
++
++import java.security.KeyStore;
++import java.security.Security;
++import java.util.stream.Stream;
++
++import jdk.test.lib.process.OutputAnalyzer;
++import jdk.test.lib.process.ProcessTools;
++
++public class DebugOptions {
++
++    static final String DATE_REGEX = "\\d{4}-\\d{2}-\\d{2}";
++
++    private static Stream<Arguments> patternMatches() {
++        return Stream.of(
++                // no extra info present
++                Arguments.of("properties",
++                        "properties: Initial",
++                        "properties\\["),
++                // thread info only
++                Arguments.of("properties+thread",
++                        "properties\\[.*\\|main\\|.*java.*]:",
++                        "properties\\[" + DATE_REGEX),
++                // timestamp info only
++                Arguments.of("properties+timestamp",
++                        "properties\\[" + DATE_REGEX + ".*\\]",
++                        "\\|main\\]:"),
++                // both thread and timestamp
++                Arguments.of("properties+timestamp+thread",
++                        "properties\\[.*\\|main|" + DATE_REGEX + ".*\\]:",
++                        "properties:"),
++                // flip the arguments of previous test
++                Arguments.of("properties+thread+timestamp",
++                        "properties\\[.*\\|main|" + DATE_REGEX + ".*\\]:",
++                        "properties:"),
++                // comma not valid separator, ignore extra info printing request
++                Arguments.of("properties,thread,timestamp",
++                        "properties:",
++                        "properties\\[.*\\|main|" + DATE_REGEX + ".*\\]:"),
++                // no extra info for keystore debug prints
++                Arguments.of("properties+thread+timestamp,keystore",
++                        "properties\\[.*\\|main|" + DATE_REGEX + ".*\\]:",
++                        "keystore\\["),
++                // flip arguments around in last test - same outcome expected
++                Arguments.of("keystore,properties+thread+timestamp",
++                        "properties\\[.*\\|main|" + DATE_REGEX + ".*\\]:",
++                        "keystore\\["),
++                // turn on thread info for both keystore and properties components
++                Arguments.of("keystore+thread,properties+thread",
++                        "properties\\[.*\\|main|.*\\Rkeystore\\[.*\\|main|.*\\]:",
++                        "\\|" + DATE_REGEX + ".*\\]:"),
++                // same as above with erroneous comma at end of string. same output expected
++                Arguments.of("keystore+thread,properties+thread,",
++                        "properties\\[.*\\|main|.*\\Rkeystore\\[.*\\|main|.*\\]:",
++                        "\\|" + DATE_REGEX + ".*\\]:"),
++                // turn on thread info for properties and timestamp for keystore
++                Arguments.of("keystore+timestamp,properties+thread",
++                        "properties\\[.*\\|main|.*\\Rkeystore\\[" + DATE_REGEX + ".*\\]:",
++                        "properties\\[.*\\|" + DATE_REGEX + ".*\\]:"),
++                // turn on thread info for all components
++                Arguments.of("all+thread",
++                        "properties\\[.*\\|main.*((.*\\R)*)keystore\\[.*\\|main.*java.*\\]:",
++                        "properties\\[" + DATE_REGEX + ".*\\]:"),
++                // turn on thread info and timestamp for all components
++                Arguments.of("all+thread+timestamp",
++                        "properties\\[.*\\|main.*\\|" + DATE_REGEX +
++                                ".*\\]((.*\\R)*)keystore\\[.*\\|main.*\\|" + DATE_REGEX + ".*\\]:",
++                        "properties:"),
++                // all decorator option should override other component options
++                Arguments.of("all+thread+timestamp,properties",
++                        "properties\\[.*\\|main.*\\|" + DATE_REGEX +
++                                ".*\\]((.*\\R)*)keystore\\[.*\\|main.*\\|" + DATE_REGEX + ".*\\]:",
++                        "properties:"),
++                // thread details should only be printed for properties option
++                Arguments.of("properties+thread,all",
++                        "properties\\[.*\\|main\\|.*\\]:",
++                        "keystore\\[.*\\|main\\|.*\\]:"),
++                // thread details should be printed for all statements
++                Arguments.of("properties,all+thread",
++                        "properties\\[.*\\|main.*java" +
++                                ".*\\]((.*\\R)*)keystore\\[.*\\|main.*java.*\\]:",
++                        "properties:")
++        );
++    }
++
++    @ParameterizedTest
++    @MethodSource("patternMatches")
++    public void shouldContain(String params, String expected, String notExpected) throws Exception {
++        OutputAnalyzer outputAnalyzer = ProcessTools.executeTestJava(
++                "-Djava.security.debug=" + params,
++                "DebugOptions"
++        );
++        outputAnalyzer.shouldHaveExitValue(0)
++                .shouldMatch(expected)
++                .shouldNotMatch(notExpected);
++    }
++
++    public static void main(String[] args) throws Exception {
++        // something to trigger "properties" debug output
++        Security.getProperty("test");
++        // trigger "keystore" debug output
++        KeyStore ks = KeyStore.getInstance("PKCS12");
++        ks.load(null, null);
++    }
++}

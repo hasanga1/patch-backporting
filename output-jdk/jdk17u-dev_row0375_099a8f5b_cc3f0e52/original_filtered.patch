@@ -1,0 +1,121 @@
+diff --git a/src/java.net.http/share/classes/jdk/internal/net/http/common/SSLFlowDelegate.java b/src/java.net.http/share/classes/jdk/internal/net/http/common/SSLFlowDelegate.java
+index 09845636b89..c662983d0af 100644
+--- a/src/java.net.http/share/classes/jdk/internal/net/http/common/SSLFlowDelegate.java
++++ b/src/java.net.http/share/classes/jdk/internal/net/http/common/SSLFlowDelegate.java
+@@ -54,17 +54,27 @@
+ import java.util.function.IntBinaryOperator;
+ 
+ /**
+- * Implements SSL using two SubscriberWrappers.
++ * Implements SSL using two {@link SubscriberWrapper}s.
+  *
+- * <p> Constructor takes two Flow.Subscribers: one that receives the network
+- * data (after it has been encrypted by SSLFlowDelegate) data, and one that
+- * receives the application data (before it has been encrypted by SSLFlowDelegate).
++ * <p> Constructor takes two {@linkplain Flow.Subscriber subscribers} - {@code downReader}
++ * and {@code downWriter}. {@code downReader} receives the application data (after it has
++ * been decrypted by SSLFlowDelegate). {@code downWriter} receives the network data (after it has
++ * been encrypted by SSLFlowDelegate).
+  *
+- * <p> Methods upstreamReader() and upstreamWriter() return the corresponding
+- * Flow.Subscribers containing Flows for the encrypted/decrypted upstream data.
+- * See diagram below.
++ * <p> Method {@link #upstreamWriter()} returns a {@linkplain Subscriber subscriber} which should
++ * be subscribed with a {@linkplain Flow.Publisher publisher} which publishes application data
++ * that can then be encrypted into network data by this SSLFlowDelegate and handed off to the
++ * {@code downWriter}.
+  *
+- * <p> How Flow.Subscribers are used in this class, and where they come from:
++ * <p> Method {@link #upstreamReader()} returns a {@link Subscriber subscriber} which should be
++ * subscribed with a {@linkplain Flow.Publisher publisher} which publishes encrypted network data
++ * that can then be decrypted into application data by this SSLFlowDelegate and handed off to the
++ * {@code downReader}.
++ *
++ * <p> Errors are reported to the {@code downReader} subscriber.
++ *
++ * <p> The diagram below illustrates how the Flow.Subscribers are used in this class, and where
++ * they come from:
+  * <pre>
+  * {@code
+  *
+@@ -73,17 +83,21 @@
+  * --------->  data flow direction
+  *
+  *
+- *                         +------------------+
+- *        upstreamWriter   |                  | downWriter
+- *        ---------------> |                  | ------------>
+- *  obtained from this     |                  | supplied to constructor
+- *                         | SSLFlowDelegate  |
+- *        downReader       |                  | upstreamReader
+- *        <--------------- |                  | <--------------
+- * supplied to constructor |                  | obtained from this
+- *                         +------------------+
+- *
+- * Errors are reported to the downReader Flow.Subscriber
++ *                  |                                   ^
++ *  upstreamWriter  |                                   | downReader
++ *  obtained from   |                                   | supplied to
++ * upstreamWriter() |                                   | constructor
++ *                  v                                   |
++ *      +-----------------------------------------------------------+
++ *      *                                            decrypts       *
++ *      *                       SSLFlowDelegate                     *
++ *      *        encrypts                                           *
++ *      +-----------------------------------------------------------+
++ *                  |                                   ^
++ *    downWriter    |                                   | upstreamReader
++ *    supplied to   |                                   | obtained from
++ *    constructor   |                                   | upstreamReader()
++ *                  v                                   |
+  *
+  * }
+  * </pre>
+@@ -477,7 +491,7 @@ else if (this.completing) {
+                                 readBufferLock.unlock();
+                             }
+                             // request more data and return.
+-                            requestMore();
++                            requestMoreDataIfNeeded();
+                             return;
+                         }
+                         if (complete && result.status() == Status.CLOSED) {
+diff --git a/test/jdk/java/net/httpclient/whitebox/SSLFlowDelegateTestDriver.java b/test/jdk/java/net/httpclient/whitebox/SSLFlowDelegateTestDriver.java
+new file mode 100644
+index 00000000000..083a291751f
+--- /dev/null
++++ b/test/jdk/java/net/httpclient/whitebox/SSLFlowDelegateTestDriver.java
+@@ -0,0 +1,33 @@
++/*
++ * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
++ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
++ *
++ * This code is free software; you can redistribute it and/or modify it
++ * under the terms of the GNU General Public License version 2 only, as
++ * published by the Free Software Foundation.
++ *
++ * This code is distributed in the hope that it will be useful, but WITHOUT
++ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
++ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
++ * version 2 for more details (a copy is included in the LICENSE file that
++ * accompanied this code).
++ *
++ * You should have received a copy of the GNU General Public License version
++ * 2 along with this work; if not, write to the Free Software Foundation,
++ * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
++ *
++ * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
++ * or visit www.oracle.com if you need additional information or have any
++ * questions.
++ */
++
++/*
++ * @test
++ * @bug 8308144
++ * @summary tests that the SSLFlowDelegate doesn't accumulate application data when the
++ *          downReader doesn't request any
++ * @modules java.net.http/jdk.internal.net.http
++ * @run testng/othervm  -Djdk.internal.httpclient.debug=true
++ *                      -Djavax.net.debug=ssl:handshake
++ *                      java.net.http/jdk.internal.net.http.SSLFlowDelegateTest
++ */

@@ -1,0 +1,21 @@
+diff --git a/src/java.base/share/classes/java/lang/invoke/MethodHandle.java b/src/java.base/share/classes/java/lang/invoke/MethodHandle.java
+index edcecce37e0..104248c27e6 100644
+--- a/src/java.base/share/classes/java/lang/invoke/MethodHandle.java
++++ b/src/java.base/share/classes/java/lang/invoke/MethodHandle.java
+@@ -1,5 +1,5 @@
+ /*
+- * Copyright (c) 2008, 2022, Oracle and/or its affiliates. All rights reserved.
++ * Copyright (c) 2008, 2024, Oracle and/or its affiliates. All rights reserved.
+  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+  *
+  * This code is free software; you can redistribute it and/or modify it
+@@ -1879,8 +1879,7 @@ void updateForm(Function<LambdaForm, LambdaForm> updater) {
+                 if (oldForm != newForm) {
+                     assert (newForm.customized == null || newForm.customized == this);
+                     newForm.prepare(); // as in MethodHandle.<init>
+-                    UNSAFE.putReference(this, FORM_OFFSET, newForm);
+-                    UNSAFE.fullFence();
++                    UNSAFE.putReferenceRelease(this, FORM_OFFSET, newForm); // properly publish newForm
+                 }
+             } finally {
+                 updateInProgress = false;

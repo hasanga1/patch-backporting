@@ -1,0 +1,43 @@
+2026-04-30 09:25:50,578 - backport - INFO - Row 354: two-repo layout — original_commit from 'jdk', backport_commit from 'jdk17u-dev'
+2026-04-30 09:25:50,580 - backport - INFO - Row 354 [jdk17u-dev]: extracting original.patch
+2026-04-30 09:25:50,600 - backport - INFO - Row 354: 12 total hunks, 12 after filtering (test/non-Java removed)
+2026-04-30 09:25:50,602 - backport - INFO - Row 354 [jdk17u-dev]: extracting developer.patch
+2026-04-30 09:25:50,666 - backport - INFO - Row 354: detected 3 test target(s) from developer.patch
+2026-04-30 09:25:51,499 - backport - INFO - Row 354: starting PortGPT backport agent
+2026-04-30 09:26:01,230 - backport - ERROR - Row 354: unhandled exception — Cmd('git') failed due to: exit code(128)
+  cmdline: git diff --diff-filter=R --name-status --follow e59e2e2591a9e7517dc52e56abc2a5072e039732 61fcf2f67ff16bee92a5279e7bcacc79fc8f37ad -- test/jdk/java/net/httpclient/http2/server/Http2TestExchangeImpl.java
+  stderr: 'fatal: bad object 61fcf2f67ff16bee92a5279e7bcacc79fc8f37ad'
+Traceback (most recent call last):
+  File "/home/hasangaranasinghe/patch-backporting/src/tools/project.py", line 465, in _apply_hunk
+    self.repo.git.apply([f.name], v=True)
+  File "/home/hasangaranasinghe/patch-backporting/venv/lib/python3.10/site-packages/git/cmd.py", line 986, in <lambda>
+    return lambda *args, **kwargs: self._call_process(name, *args, **kwargs)
+  File "/home/hasangaranasinghe/patch-backporting/venv/lib/python3.10/site-packages/git/cmd.py", line 1598, in _call_process
+    return self.execute(call, **exec_kwargs)
+  File "/home/hasangaranasinghe/patch-backporting/venv/lib/python3.10/site-packages/git/cmd.py", line 1388, in execute
+    raise GitCommandError(redacted_command, status, stderr_value, stdout_value)
+git.exc.GitCommandError: Cmd('git') failed due to: exit code(1)
+  cmdline: git apply -v /tmp/tmp4ei_71d0
+  stderr: 'Checking patch test/jdk/java/net/httpclient/http2/server/Http2TestExchangeImpl.java...
+error: test/jdk/java/net/httpclient/http2/server/Http2TestExchangeImpl.java: No such file or directory'
+
+During handling of the above exception, another exception occurred:
+
+Traceback (most recent call last):
+  File "/home/hasangaranasinghe/patch-backporting/java_backport.py", line 849, in process_row
+    _do_backport_java(
+  File "/home/hasangaranasinghe/patch-backporting/java_backport.py", line 427, in _do_backport_java
+    portgpt_project._apply_hunk(data.target_release, hunk, False)
+  File "/home/hasangaranasinghe/patch-backporting/src/tools/project.py", line 472, in _apply_hunk
+    find_ret = self._apply_file_move_handling(ref, revised_patch)
+  File "/home/hasangaranasinghe/patch-backporting/src/tools/project.py", line 391, in _apply_file_move_handling
+    file_diff = self.repo.git.diff(diff_args)
+  File "/home/hasangaranasinghe/patch-backporting/venv/lib/python3.10/site-packages/git/cmd.py", line 986, in <lambda>
+    return lambda *args, **kwargs: self._call_process(name, *args, **kwargs)
+  File "/home/hasangaranasinghe/patch-backporting/venv/lib/python3.10/site-packages/git/cmd.py", line 1598, in _call_process
+    return self.execute(call, **exec_kwargs)
+  File "/home/hasangaranasinghe/patch-backporting/venv/lib/python3.10/site-packages/git/cmd.py", line 1388, in execute
+    raise GitCommandError(redacted_command, status, stderr_value, stdout_value)
+git.exc.GitCommandError: Cmd('git') failed due to: exit code(128)
+  cmdline: git diff --diff-filter=R --name-status --follow e59e2e2591a9e7517dc52e56abc2a5072e039732 61fcf2f67ff16bee92a5279e7bcacc79fc8f37ad -- test/jdk/java/net/httpclient/http2/server/Http2TestExchangeImpl.java
+  stderr: 'fatal: bad object 61fcf2f67ff16bee92a5279e7bcacc79fc8f37ad'

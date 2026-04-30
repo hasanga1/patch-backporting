@@ -1,0 +1,140 @@
+diff --git a/src/java.base/share/classes/java/lang/String.java b/src/java.base/share/classes/java/lang/String.java
+index 5869e086191..2245792999a 100644
+--- a/src/java.base/share/classes/java/lang/String.java
++++ b/src/java.base/share/classes/java/lang/String.java
+@@ -592,7 +592,7 @@ private String(Charset charset, byte[] bytes, int offset, int length) {
+                     this.coder = LATIN1;
+                     return;
+                 }
+-                byte[] utf16 = new byte[length << 1];
++                byte[] utf16 = StringUTF16.newBytesFor(length);
+                 StringLatin1.inflate(latin1, 0, utf16, 0, dp);
+                 dp = decodeUTF8_UTF16(latin1, sp, length, utf16, dp, true);
+                 if (dp != length) {
+@@ -601,7 +601,7 @@ private String(Charset charset, byte[] bytes, int offset, int length) {
+                 this.value = utf16;
+                 this.coder = UTF16;
+             } else { // !COMPACT_STRINGS
+-                byte[] dst = new byte[length << 1];
++                byte[] dst = StringUTF16.newBytesFor(length);
+                 int dp = decodeUTF8_UTF16(bytes, offset, offset + length, dst, 0, true);
+                 if (dp != length) {
+                     dst = Arrays.copyOf(dst, dp << 1);
+@@ -622,7 +622,7 @@ private String(Charset charset, byte[] bytes, int offset, int length) {
+                 this.value = Arrays.copyOfRange(bytes, offset, offset + length);
+                 this.coder = LATIN1;
+             } else {
+-                byte[] dst = new byte[length << 1];
++                byte[] dst = StringUTF16.newBytesFor(length);
+                 int dp = 0;
+                 while (dp < length) {
+                     int b = bytes[offset++];
+@@ -763,15 +763,15 @@ static String newStringUTF8NoRepl(byte[] bytes, int offset, int length, boolean
+                 return new String(dst, LATIN1);
+             }
+             if (dp == 0) {
+-                dst = new byte[length << 1];
++                dst = StringUTF16.newBytesFor(length);
+             } else {
+-                byte[] buf = new byte[length << 1];
++                byte[] buf = StringUTF16.newBytesFor(length);
+                 StringLatin1.inflate(dst, 0, buf, 0, dp);
+                 dst = buf;
+             }
+             dp = decodeUTF8_UTF16(bytes, offset, sl, dst, dp, false);
+         } else { // !COMPACT_STRINGS
+-            dst = new byte[length << 1];
++            dst = StringUTF16.newBytesFor(length);
+             dp = decodeUTF8_UTF16(bytes, offset, offset + length, dst, 0, false);
+         }
+         if (dp != length) {
+@@ -1316,7 +1316,7 @@ private static byte[] encodeUTF8(byte coder, byte[] val, boolean doReplace) {
+         }
+ 
+         int dp = 0;
+-        byte[] dst = new byte[val.length << 1];
++        byte[] dst = StringUTF16.newBytesFor(val.length);
+         for (byte c : val) {
+             if (c < 0) {
+                 dst[dp++] = (byte) (0xc0 | ((c & 0xff) >> 6));
+diff --git a/test/jdk/java/lang/String/CompactString/NegativeSize.java b/test/jdk/java/lang/String/CompactString/NegativeSize.java
+new file mode 100644
+index 00000000000..a218c5f18f8
+--- /dev/null
++++ b/test/jdk/java/lang/String/CompactString/NegativeSize.java
+@@ -0,0 +1,75 @@
++/*
++ * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
++ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
++ *
++ * This code is free software; you can redistribute it and/or modify it
++ * under the terms of the GNU General Public License version 2 only, as
++ * published by the Free Software Foundation.
++ *
++ * This code is distributed in the hope that it will be useful, but WITHOUT
++ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
++ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
++ * version 2 for more details (a copy is included in the LICENSE file that
++ * accompanied this code).
++ *
++ * You should have received a copy of the GNU General Public License version
++ * 2 along with this work; if not, write to the Free Software Foundation,
++ * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
++ *
++ * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
++ * or visit www.oracle.com if you need additional information or have any
++ * questions.
++ */
++
++import java.io.IOException;
++import java.nio.charset.StandardCharsets;
++
++/*
++ * @test
++ * @bug 8077559
++ * @summary Tests Compact String for negative size.
++ * @requires vm.bits == 64 & os.maxMemory >= 4G
++ * @run main/othervm -XX:+CompactStrings -Xmx4g NegativeSize
++ * @run main/othervm -XX:-CompactStrings -Xmx4g NegativeSize
++ */
++
++// In Java8: java.lang.OutOfMemoryError: Java heap space
++// In Java9+: was java.lang.NegativeArraySizeException: -1894967266
++public class NegativeSize {
++
++    static byte[] generateData() {
++        int asciisize = 1_200_000_000;
++        byte[] nonAscii = "非アスキー".getBytes();
++        int nonAsciiSize = nonAscii.length;
++        // 1 GB
++        byte[] arr = new byte[asciisize + nonAsciiSize];
++        for (int i=0; i<asciisize; ++i) {
++            arr[i] = (byte)('0' + (i % 40));
++        }
++        for(int i=0; i<nonAsciiSize; ++i) {
++            arr[i + asciisize] = nonAscii[i];
++        }
++        return arr;
++    }
++
++
++    public static void main(String[] args) throws IOException {
++
++        try {
++            byte[] largeBytes = generateData();
++            String inStr = new String(largeBytes, StandardCharsets.UTF_8);
++            System.out.println(inStr.length());
++            System.out.println(inStr.substring(1_200_000_000));
++        } catch (OutOfMemoryError ex) {
++            if (ex.getMessage().startsWith("UTF16 String size is")) {
++                System.out.println("Succeeded with OutOfMemoryError");
++            } else {
++                throw new RuntimeException("Failed: Not the OutOfMemoryError expected", ex);
++            }
++        } catch (NegativeArraySizeException ex) {
++            throw new RuntimeException("Failed: Expected OutOfMemoryError", ex);
++        }
++    }
++}
++
++

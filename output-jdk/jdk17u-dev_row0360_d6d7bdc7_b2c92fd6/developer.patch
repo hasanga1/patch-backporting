@@ -1,0 +1,109 @@
+commit b2c92fd6d16caedba818aa5d4f94bba2f1b9efaf
+Author: Todd V. Jonker <jonker@amazon.com>
+Date:   Fri Aug 30 15:35:53 2024 +0000
+
+    8319817: Charset constructor should make defensive copy of aliases
+    
+    Backport-of: d6d7bdc7748c10963c3e58c0287b2472646bf36f
+
+diff --git a/src/java.base/share/classes/java/nio/charset/Charset.java b/src/java.base/share/classes/java/nio/charset/Charset.java
+index 0ac18a23ba8..2b194212209 100644
+--- a/src/java.base/share/classes/java/nio/charset/Charset.java
++++ b/src/java.base/share/classes/java/nio/charset/Charset.java
+@@ -41,7 +41,6 @@ import java.util.Iterator;
+ import java.util.Locale;
+ import java.util.Map;
+ import java.util.NoSuchElementException;
+-import java.util.Objects;
+ import java.util.ServiceConfigurationError;
+ import java.util.ServiceLoader;
+ import java.util.Set;
+@@ -636,7 +635,12 @@ public abstract class Charset
+      *         If the canonical name or any of the aliases are illegal
+      */
+     protected Charset(String canonicalName, String[] aliases) {
+-        String[] as = Objects.requireNonNullElse(aliases, zeroAliases);
++        String[] as =
++            aliases == null ?
++                zeroAliases :
++                VM.isSystemDomainLoader(getClass().getClassLoader()) ?
++                    aliases :
++                    Arrays.copyOf(aliases, aliases.length);
+ 
+         // Skip checks for the standard, built-in Charsets we always load
+         // during initialization.
+diff --git a/test/jdk/java/nio/charset/Charset/AliasesCopy.java b/test/jdk/java/nio/charset/Charset/AliasesCopy.java
+new file mode 100644
+index 00000000000..66ee830c5f6
+--- /dev/null
++++ b/test/jdk/java/nio/charset/Charset/AliasesCopy.java
+@@ -0,0 +1,69 @@
++/*
++ * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
++ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
++ *
++ * This code is free software; you can redistribute it and/or modify it
++ * under the terms of the GNU General Public License version 2 only, as
++ * published by the Free Software Foundation.
++ *
++ * This code is distributed in the hope that it will be useful, but WITHOUT
++ * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
++ * FITNESS FOR A PARTICULAR PURPOSE.  See the GNU General Public License
++ * version 2 for more details (a copy is included in the LICENSE file that
++ * accompanied this code).
++ *
++ * You should have received a copy of the GNU General Public License version
++ * 2 along with this work; if not, write to the Free Software Foundation,
++ * Inc., 51 Franklin St, Fifth Floor, Boston, MA 02110-1301 USA.
++ *
++ * Please contact Oracle, 500 Oracle Parkway, Redwood Shores, CA 94065 USA
++ * or visit www.oracle.com if you need additional information or have any
++ * questions.
++ */
++
++/* @test
++ * @bug 8319817
++ * @summary Check that aliases cannot be mutated
++ * @run junit AliasesCopy
++ */
++
++import java.nio.charset.Charset;
++import java.nio.charset.CharsetDecoder;
++import java.nio.charset.CharsetEncoder;
++import java.util.Set;
++
++import org.junit.jupiter.api.Test;
++import static org.junit.jupiter.api.Assertions.assertIterableEquals;
++
++public class AliasesCopy {
++    private static final Set<String> ALIASES_SET = Set.of("foo-alias");
++    private static final String[] ALIASES_ARRAY = ALIASES_SET.toArray(String[]::new);
++
++    @Test
++    public void aliasesCopy() {
++        final FooCharset cs = new FooCharset(ALIASES_ARRAY);
++        ALIASES_ARRAY[0] = "bar-alias";
++        assertIterableEquals(ALIASES_SET, cs.aliases());
++    }
++
++    private static final class FooCharset extends Charset {
++        private FooCharset(String[] aliases) {
++            super("foo", aliases);
++        }
++
++        @Override
++        public CharsetEncoder newEncoder() {
++            throw new RuntimeException("not implemented");
++        }
++
++        @Override
++        public CharsetDecoder newDecoder() {
++            throw new RuntimeException("not implemented");
++        }
++
++        @Override
++        public boolean contains(Charset cs) {
++            throw new RuntimeException("not implemented");
++        }
++    }
++}

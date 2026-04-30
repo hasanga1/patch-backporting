@@ -1,0 +1,235 @@
+diff --git a/src/java.net.http/share/classes/jdk/internal/net/http/Stream.java b/src/java.net.http/share/classes/jdk/internal/net/http/Stream.java
+index c787959b069..dc659d5f971 100644
+--- a/src/java.net.http/share/classes/jdk/internal/net/http/Stream.java
++++ b/src/java.net.http/share/classes/jdk/internal/net/http/Stream.java
+@@ -1,5 +1,5 @@
+ /*
+- * Copyright (c) 2015, 2022, Oracle and/or its affiliates. All rights reserved.
++ * Copyright (c) 2015, 2023, Oracle and/or its affiliates. All rights reserved.
+  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+  *
+  * This code is free software; you can redistribute it and/or modify it
+@@ -137,6 +137,7 @@ class Stream<T> extends ExchangeImpl<T> {
+     private volatile boolean remotelyClosed;
+     private volatile boolean closed;
+     private volatile boolean endStreamSent;
++    private volatile boolean finalResponseCodeReceived;
+     // Indicates the first reason that was invoked when sending a ResetFrame
+     // to the server. A streamState of 0 indicates that no reset was sent.
+     // (see markStream(int code)
+@@ -504,30 +505,44 @@ DecodingCallback rspHeadersConsumer() {
+ 
+     protected void handleResponse() throws IOException {
+         HttpHeaders responseHeaders = responseHeadersBuilder.build();
+-        responseCode = (int)responseHeaders
+-                .firstValueAsLong(":status")
+-                .orElseThrow(() -> new IOException("no statuscode in response"));
+ 
+-        response = new Response(
+-                request, exchange, responseHeaders, connection(),
+-                responseCode, HttpClient.Version.HTTP_2);
++        if (!finalResponseCodeReceived) {
++            responseCode = (int) responseHeaders
++                    .firstValueAsLong(":status")
++                    .orElseThrow(() -> new IOException("no statuscode in response"));
++            // If informational code, response is partially complete
++            if (responseCode < 100 || responseCode > 199)
++                this.finalResponseCodeReceived = true;
++
++            response = new Response(
++                    request, exchange, responseHeaders, connection(),
++                    responseCode, HttpClient.Version.HTTP_2);
+ 
+         /* TODO: review if needs to be removed
+            the value is not used, but in case `content-length` doesn't parse as
+            long, there will be NumberFormatException. If left as is, make sure
+            code up the stack handles NFE correctly. */
+-        responseHeaders.firstValueAsLong("content-length");
++            responseHeaders.firstValueAsLong("content-length");
+ 
+-        if (Log.headers()) {
+-            StringBuilder sb = new StringBuilder("RESPONSE HEADERS:\n");
+-            Log.dumpHeaders(sb, "    ", responseHeaders);
+-            Log.logHeaders(sb.toString());
+-        }
++            if (Log.headers()) {
++                StringBuilder sb = new StringBuilder("RESPONSE HEADERS:\n");
++                Log.dumpHeaders(sb, "    ", responseHeaders);
++                Log.logHeaders(sb.toString());
++            }
++
++            // this will clear the response headers
++            rspHeadersConsumer.reset();
+ 
+-        // this will clear the response headers
+-        rspHeadersConsumer.reset();
++            completeResponse(response);
++        } else {
++            if (Log.headers()) {
++                StringBuilder sb = new StringBuilder("TRAILING HEADERS:\n");
++                Log.dumpHeaders(sb, "    ", responseHeaders);
++                Log.logHeaders(sb.toString());
++            }
++            rspHeadersConsumer.reset();
++        }
+ 
+-        completeResponse(response);
+     }
+ 
+     void incoming_reset(ResetFrame frame) {
+@@ -1376,6 +1391,7 @@ static class PushedStream<T> extends Stream<T> {
+         CompletableFuture<HttpResponse<T>> responseCF;
+         final HttpRequestImpl pushReq;
+         HttpResponse.BodyHandler<T> pushHandler;
++        private volatile boolean finalPushResponseCodeReceived;
+ 
+         PushedStream(PushGroup<T> pushGroup,
+                      Http2Connection connection,
+@@ -1472,35 +1488,48 @@ void completeResponseExceptionally(Throwable t) {
+         @Override
+         protected void handleResponse() {
+             HttpHeaders responseHeaders = responseHeadersBuilder.build();
+-            responseCode = (int)responseHeaders
+-                .firstValueAsLong(":status")
+-                .orElse(-1);
+ 
+-            if (responseCode == -1) {
+-                completeResponseExceptionally(new IOException("No status code"));
+-            }
++            if (!finalPushResponseCodeReceived) {
++                responseCode = (int)responseHeaders
++                    .firstValueAsLong(":status")
++                    .orElse(-1);
+ 
+-            this.response = new Response(
+-                pushReq, exchange, responseHeaders, connection(),
+-                responseCode, HttpClient.Version.HTTP_2);
++                if (responseCode == -1) {
++                    completeResponseExceptionally(new IOException("No status code"));
++                }
+ 
+-            /* TODO: review if needs to be removed
+-               the value is not used, but in case `content-length` doesn't parse
+-               as long, there will be NumberFormatException. If left as is, make
+-               sure code up the stack handles NFE correctly. */
+-            responseHeaders.firstValueAsLong("content-length");
++                this.finalPushResponseCodeReceived = true;
+ 
+-            if (Log.headers()) {
+-                StringBuilder sb = new StringBuilder("RESPONSE HEADERS");
+-                sb.append(" (streamid=").append(streamid).append("):\n");
+-                Log.dumpHeaders(sb, "    ", responseHeaders);
+-                Log.logHeaders(sb.toString());
+-            }
++                this.response = new Response(
++                        pushReq, exchange, responseHeaders, connection(),
++                        responseCode, HttpClient.Version.HTTP_2);
+ 
+-            rspHeadersConsumer.reset();
++                /* TODO: review if needs to be removed
++                   the value is not used, but in case `content-length` doesn't parse
++                   as long, there will be NumberFormatException. If left as is, make
++                   sure code up the stack handles NFE correctly. */
++                responseHeaders.firstValueAsLong("content-length");
+ 
+-            // different implementations for normal streams and pushed streams
+-            completeResponse(response);
++                if (Log.headers()) {
++                    StringBuilder sb = new StringBuilder("RESPONSE HEADERS");
++                    sb.append(" (streamid=").append(streamid).append("):\n");
++                    Log.dumpHeaders(sb, "    ", responseHeaders);
++                    Log.logHeaders(sb.toString());
++                }
++
++                rspHeadersConsumer.reset();
++
++                // different implementations for normal streams and pushed streams
++                completeResponse(response);
++            } else {
++                if (Log.headers()) {
++                    StringBuilder sb = new StringBuilder("TRAILING HEADERS");
++                    sb.append(" (streamid=").append(streamid).append("):\n");
++                    Log.dumpHeaders(sb, "    ", responseHeaders);
++                    Log.logHeaders(sb.toString());
++                }
++                rspHeadersConsumer.reset();
++            }
+         }
+     }
+ 
+diff --git a/test/jdk/java/net/httpclient/lib/jdk/httpclient/test/lib/http2/BodyOutputStream.java b/test/jdk/java/net/httpclient/lib/jdk/httpclient/test/lib/http2/BodyOutputStream.java
+index d043f81390e..81b1d973239 100644
+--- a/test/jdk/java/net/httpclient/lib/jdk/httpclient/test/lib/http2/BodyOutputStream.java
++++ b/test/jdk/java/net/httpclient/lib/jdk/httpclient/test/lib/http2/BodyOutputStream.java
+@@ -130,10 +130,14 @@ public void close() {
+             closed = true;
+         }
+         try {
+-            send(EMPTY_BARRAY, 0, 0, DataFrame.END_STREAM);
++            sendEndStream();
+         } catch (IOException ex) {
+             System.err.println("TestServer: OutputStream.close exception: " + ex);
+             ex.printStackTrace();
+         }
+     }
++
++    protected void sendEndStream() throws IOException {
++        send(EMPTY_BARRAY, 0, 0, DataFrame.END_STREAM);
++    }
+ }
+diff --git a/test/jdk/java/net/httpclient/lib/jdk/httpclient/test/lib/http2/Http2TestServer.java b/test/jdk/java/net/httpclient/lib/jdk/httpclient/test/lib/http2/Http2TestServer.java
+index e13ceaef875..46c20a8eee1 100644
+--- a/test/jdk/java/net/httpclient/lib/jdk/httpclient/test/lib/http2/Http2TestServer.java
++++ b/test/jdk/java/net/httpclient/lib/jdk/httpclient/test/lib/http2/Http2TestServer.java
+@@ -192,7 +192,7 @@ public Http2TestServer(InetAddress localAddr,
+         this.secure = secure;
+         this.exec = exec == null ? getDefaultExecutor() : exec;
+         this.handlers = Collections.synchronizedMap(new HashMap<>());
+-        this.properties = properties;
++        this.properties = properties == null ? new Properties() : properties;
+         this.connections = ConcurrentHashMap.newKeySet();
+     }
+ 
+diff --git a/test/jdk/java/net/httpclient/lib/jdk/httpclient/test/lib/http2/Http2TestServerConnection.java b/test/jdk/java/net/httpclient/lib/jdk/httpclient/test/lib/http2/Http2TestServerConnection.java
+index 62059baa632..94f11e843ce 100644
+--- a/test/jdk/java/net/httpclient/lib/jdk/httpclient/test/lib/http2/Http2TestServerConnection.java
++++ b/test/jdk/java/net/httpclient/lib/jdk/httpclient/test/lib/http2/Http2TestServerConnection.java
+@@ -960,13 +960,25 @@ private void handlePush(OutgoingPushPromise op) throws IOException {
+         final BodyOutputStream oo = new BodyOutputStream(
+                 promisedStreamid,
+                 clientSettings.getParameter(
+-                        SettingsFrame.INITIAL_WINDOW_SIZE), this);
++                        SettingsFrame.INITIAL_WINDOW_SIZE), this) {
++
++            @Override
++            protected void sendEndStream() throws IOException {
++                if (properties.getProperty("sendTrailingHeadersAfterPushPromise", "0").equals("1")) {
++                    conn.outputQ.put(getTrailingHeadersFrame(promisedStreamid, List.of()));
++                } else {
++                    super.sendEndStream();
++                }
++            }
++        };
++
+         outStreams.put(promisedStreamid, oo);
+         oo.goodToGo();
+         exec.submit(() -> {
+             try {
+                 ResponseHeaders oh = getPushResponse(promisedStreamid);
+                 outputQ.put(oh);
++
+                 ii.transferTo(oo);
+             } catch (Throwable ex) {
+                 System.err.printf("TestServer: pushing response error: %s\n",
+@@ -979,6 +991,11 @@ private void handlePush(OutgoingPushPromise op) throws IOException {
+ 
+     }
+ 
++    private HeadersFrame getTrailingHeadersFrame(int promisedStreamid, List<ByteBuffer> headerBlocks) {
++        // TODO: see if there is a safe way to encode headers without interrupting connection thread
++        return new HeadersFrame(promisedStreamid, (HeaderFrame.END_HEADERS | HeaderFrame.END_STREAM), headerBlocks);
++    }
++
+     // returns a minimal response with status 200
+     // that is the response to the push promise just sent
+     private ResponseHeaders getPushResponse(int streamid) {

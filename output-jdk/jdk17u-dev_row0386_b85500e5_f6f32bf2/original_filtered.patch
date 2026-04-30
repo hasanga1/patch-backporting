@@ -1,0 +1,28 @@
+diff --git a/src/java.base/share/classes/java/util/zip/ZipFile.java b/src/java.base/share/classes/java/util/zip/ZipFile.java
+index 8fc200ed1ae..47edf1ffae1 100644
+--- a/src/java.base/share/classes/java/util/zip/ZipFile.java
++++ b/src/java.base/share/classes/java/util/zip/ZipFile.java
+@@ -1631,13 +1631,18 @@ private int getEntryPos(String name, boolean addSlash) {
+                         // slash
+                         int entryLen = entry.length();
+                         int nameLen = name.length();
+-                        if ((entryLen == nameLen && entry.equals(name)) ||
+-                                (addSlash &&
+-                                nameLen + 1 == entryLen &&
+-                                entry.startsWith(name) &&
+-                                entry.charAt(entryLen - 1) == '/')) {
++                        if (entryLen == nameLen && entry.equals(name)) {
++                            // Found our match
+                             return pos;
+                         }
++                        // If addSlash is true we'll now test for name+/ providing
++                        if (addSlash && nameLen + 1 == entryLen
++                                && entry.startsWith(name) &&
++                                entry.charAt(entryLen - 1) == '/') {
++                            // Found the entry "name+/", now find the CEN entry pos
++                            int exactPos = getEntryPos(name, false);
++                            return exactPos == -1 ? pos : exactPos;
++                        }
+                     } catch (IllegalArgumentException iae) {
+                         // Ignore
+                     }

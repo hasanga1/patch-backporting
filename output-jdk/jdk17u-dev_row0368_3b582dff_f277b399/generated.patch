@@ -1,0 +1,57 @@
+--- a/src/java.base/share/classes/sun/security/util/Debug.java
++++ b/src/java.base/share/classes/sun/security/util/Debug.java
+@@ -27,6 +27,9 @@
+ 
+ import java.io.PrintStream;
+ import java.math.BigInteger;
++import java.time.Instant;
++import java.time.ZoneId;
++import java.time.format.DateTimeFormatter;
+ import java.util.HexFormat;
+ import java.util.regex.Pattern;
+ import java.util.regex.Matcher;
+
+--- a/src/java.base/share/classes/sun/security/util/Debug.java
++++ b/src/java.base/share/classes/sun/security/util/Debug.java
+@@ -41,8 +44,14 @@
+ public class Debug {
+ 
+     private String prefix;
++    private boolean printDateTime;
++    private boolean printThreadDetails;
+ 
+     private static String args;
++    private static boolean threadInfoAll;
++    private static boolean timeStampInfoAll;
++    private static final String TIMESTAMP_OPTION = "+timestamp";
++    private static final String THREAD_OPTION = "+thread";
+ 
+     static {
+         args = GetPropertyAction.privilegedGetProperty("java.security.debug");
+
+--- a/src/java.base/share/classes/sun/security/util/Debug.java
++++ b/src/java.base/share/classes/sun/security/util/Debug.java
+@@ -61,12 +70,21 @@ public class Debug {
+             args = marshal(args);
+             if (args.equals("help")) {
+                 Help();
++            } else if (args.contains("all")) {
++                // "all" option has special handling for decorator options
++                // If the thread or timestamp decorator option is detected
++                // with the "all" option, then it impacts decorator options
++                // for other categories
++                int beginIndex = args.lastIndexOf("all") + "all".length();
++                int commaIndex = args.indexOf(',', beginIndex);
++                if (commaIndex == -1) commaIndex = args.length();
++                threadInfoAll = args.substring(beginIndex, commaIndex).contains(THREAD_OPTION);
++                timeStampInfoAll = args.substring(beginIndex, commaIndex).contains(TIMESTAMP_OPTION);
+             }
+         }
+     }
+ 
+-    public static void Help()
+-    {
++    public static void Help() {
+         System.err.println();
+         System.err.println("all           turn on all debugging");
+         System.err.println("access        print all checkPermission results");

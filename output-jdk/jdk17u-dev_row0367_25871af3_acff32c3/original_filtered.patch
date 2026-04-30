@@ -1,0 +1,54 @@
+diff --git a/src/java.desktop/macosx/classes/sun/font/CStrike.java b/src/java.desktop/macosx/classes/sun/font/CStrike.java
+index eb049c3d449..b0131711ca5 100644
+--- a/src/java.desktop/macosx/classes/sun/font/CStrike.java
++++ b/src/java.desktop/macosx/classes/sun/font/CStrike.java
+@@ -199,7 +199,7 @@ void getGlyphImageBounds(int glyphCode, Point2D.Float pt, Rectangle result) {
+         getGlyphImageBounds(glyphCode, pt.x, pt.y, floatRect);
+ 
+         if (floatRect.width == 0 && floatRect.height == 0) {
+-            result.setRect(0, 0, -1, -1);
++            result.setRect(0, 0, 0, 0);
+             return;
+         }
+ 
+diff --git a/src/java.desktop/share/classes/sun/font/FileFontStrike.java b/src/java.desktop/share/classes/sun/font/FileFontStrike.java
+index ea2a1608f2d..bf98b8ca578 100644
+--- a/src/java.desktop/share/classes/sun/font/FileFontStrike.java
++++ b/src/java.desktop/share/classes/sun/font/FileFontStrike.java
+@@ -37,6 +37,7 @@
+ import java.awt.geom.Rectangle2D;
+ import java.util.concurrent.ConcurrentHashMap;
+ import static sun.awt.SunHints.*;
++import sun.java2d.pipe.OutlineTextRenderer;
+ 
+ 
+ public class FileFontStrike extends PhysicalStrike {
+@@ -107,6 +108,7 @@ public class FileFontStrike extends PhysicalStrike {
+     boolean useNatives;
+     NativeStrike[] nativeStrikes;
+ 
++    static final int MAX_IMAGE_SIZE = OutlineTextRenderer.THRESHHOLD;
+     /* Used only for communication to native layer */
+     private int intPtSize;
+ 
+@@ -697,6 +699,20 @@ float getCodePointAdvance(int cp) {
+     void getGlyphImageBounds(int glyphCode, Point2D.Float pt,
+                              Rectangle result) {
+ 
++        if (intPtSize > MAX_IMAGE_SIZE) {
++            Rectangle.Float obds = getGlyphOutlineBounds(glyphCode);
++            if (obds.isEmpty()) {
++                Rectangle bds = getGlyphOutline(glyphCode, pt.x, pt.y).getBounds();
++                result.setBounds(bds);
++            } else {
++                result.x = (int)Math.floor(pt.x + obds.getX() + 0.5f);
++                result.y = (int)Math.floor(pt.y + obds.getY() + 0.5f);
++                result.width = (int)Math.floor(obds.getWidth() + 0.5f);
++                result.height = (int)Math.floor(obds.getHeight() + 0.5f);
++            }
++            return;
++        }
++
+         long ptr = getGlyphImagePtr(glyphCode);
+         float topLeftX, topLeftY;
+ 

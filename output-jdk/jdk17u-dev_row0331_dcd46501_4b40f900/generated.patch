@@ -1,0 +1,586 @@
+--- a/src/java.net.http/share/classes/jdk/internal/net/http/Http1Exchange.java
++++ b/src/java.net.http/share/classes/jdk/internal/net/http/Http1Exchange.java
+@@ -39,6 +39,7 @@
+ import java.util.concurrent.ConcurrentLinkedDeque;
+ import java.util.concurrent.Executor;
+ import java.util.concurrent.Flow;
++import java.util.concurrent.Flow.Subscription;
+ 
+ import jdk.internal.net.http.common.Demand;
+ import jdk.internal.net.http.common.HttpBodySubscriberWrapper;
+
+--- a/src/java.net.http/share/classes/jdk/internal/net/http/Http1Exchange.java
++++ b/src/java.net.http/share/classes/jdk/internal/net/http/Http1Exchange.java
+@@ -210,11 +211,19 @@ static final class Http1ResponseBodySubscriber<U> extends HttpBodySubscriberWrap
+         @Override
+         protected void complete(Throwable t) {
+             try {
+-                exchange.responseSubscriberCompleted(this);
++                exchange.unregisterResponseSubscriber(this);
+             } finally {
+                 super.complete(t);
+             }
+         }
++
++        @Override
++        protected void onCancel() {
++            // If the subscription is cancelled the
++            // subscriber may or may not get completed.
++            // Therefore we need to unregister it
++            exchange.unregisterResponseSubscriber(this);
++        }
+     }
+ 
+     @Override
+
+--- a/src/java.net.http/share/classes/jdk/internal/net/http/Http1Exchange.java
++++ b/src/java.net.http/share/classes/jdk/internal/net/http/Http1Exchange.java
+@@ -264,7 +273,7 @@ private void connectFlows(HttpConnection connection) {
+     // The Http1ResponseBodySubscriber is registered with the HttpClient
+     // to ensure that it gets completed if the SelectorManager aborts due
+     // to unexpected exceptions.
+-    void registerResponseSubscriber(Http1ResponseBodySubscriber<T> subscriber) {
++    private void registerResponseSubscriber(Http1ResponseBodySubscriber<T> subscriber) {
+         Throwable failed = null;
+         synchronized (lock) {
+             failed = this.failed;
+
+--- a/src/java.net.http/share/classes/jdk/internal/net/http/Http1Exchange.java
++++ b/src/java.net.http/share/classes/jdk/internal/net/http/Http1Exchange.java
+@@ -279,8 +288,8 @@ void registerResponseSubscriber(Http1ResponseBodySubscriber<T> subscriber) {
+         }
+     }
+ 
+-    void responseSubscriberCompleted(HttpBodySubscriberWrapper<T> subscriber) {
+-        client.subscriberCompleted(subscriber);
++    private void unregisterResponseSubscriber(Http1ResponseBodySubscriber<T> subscriber) {
++        client.unregisterSubscriber(subscriber);
+     }
+ 
+     @Override
+
+--- a/src/java.net.http/share/classes/jdk/internal/net/http/HttpClientImpl.java
++++ b/src/java.net.http/share/classes/jdk/internal/net/http/HttpClientImpl.java
+@@ -396,6 +396,7 @@ static void abortPendingRequests(HttpClientImpl client, Throwable reason) {
+     private final AtomicLong pendingHttpRequestCount = new AtomicLong();
+     private final AtomicLong pendingHttp2StreamCount = new AtomicLong();
+     private final AtomicLong pendingTCPConnectionCount = new AtomicLong();
++    private final AtomicLong pendingSubscribersCount = new AtomicLong();
+     private final AtomicBoolean isAlive = new AtomicBoolean();
+ 
+     /** A Set of, deadline first, ordered timeout events. */
+
+--- a/src/java.net.http/share/classes/jdk/internal/net/http/HttpClientImpl.java
++++ b/src/java.net.http/share/classes/jdk/internal/net/http/HttpClientImpl.java
+@@ -548,7 +549,12 @@ public void registerSubscriber(HttpBodySubscriberWrapper<?> subscriber) {
+         if (!selmgr.isClosed()) {
+             synchronized (selmgr) {
+                 if (!selmgr.isClosed()) {
+-                    subscribers.add(subscriber);
++                    if (subscribers.add(subscriber)) {
++                        long count = pendingSubscribersCount.incrementAndGet();
++                        if (debug.on()) {
++                            debug.log("body subscriber registered: " + count);
++                        }
++                    }
+                     return;
+                 }
+             }
+
+--- a/src/java.net.http/share/classes/jdk/internal/net/http/HttpClientImpl.java
++++ b/src/java.net.http/share/classes/jdk/internal/net/http/HttpClientImpl.java
+@@ -556,8 +562,13 @@ public void registerSubscriber(HttpBodySubscriberWrapper<?> subscriber) {
+         subscriber.onError(selmgr.selectorClosedException());
+     }
+ 
+-    public void subscriberCompleted(HttpBodySubscriberWrapper<?> subscriber) {
+-        subscribers.remove(subscriber);
++    public void unregisterSubscriber(HttpBodySubscriberWrapper<?> subscriber) {
++        if (subscribers.remove(subscriber)) {
++            long count = pendingSubscribersCount.decrementAndGet();
++            if (debug.on()) {
++                debug.log("body subscriber unregistered: " + count);
++            }
++        }
+     }
+ 
+     private void closeConnection(HttpConnection conn) {
+
+--- a/src/java.net.http/share/classes/jdk/internal/net/http/HttpClientImpl.java
++++ b/src/java.net.http/share/classes/jdk/internal/net/http/HttpClientImpl.java
+@@ -627,7 +638,7 @@ final long unreference() {
+         final long httpCount = pendingHttpOperationsCount.decrementAndGet();
+         final long http2Count = pendingHttp2StreamCount.get();
+         final long webSocketCount = pendingWebSocketCount.get();
+-        if (count == 0 && facade() == null) {
++        if (count == 0 && facadeRef.refersTo(null)) {
+             selmgr.wakeupSelector();
+         }
+         assert httpCount >= 0 : "count of HTTP/1.1 operations < 0";
+
+--- a/src/java.net.http/share/classes/jdk/internal/net/http/HttpClientImpl.java
++++ b/src/java.net.http/share/classes/jdk/internal/net/http/HttpClientImpl.java
+@@ -649,7 +660,7 @@ final long streamUnreference() {
+         final long http2Count = pendingHttp2StreamCount.decrementAndGet();
+         final long httpCount = pendingHttpOperationsCount.get();
+         final long webSocketCount = pendingWebSocketCount.get();
+-        if (count == 0 && facade() == null) {
++        if (count == 0 && facadeRef.refersTo(null)) {
+             selmgr.wakeupSelector();
+         }
+         assert httpCount >= 0 : "count of HTTP/1.1 operations < 0";
+
+--- a/src/java.net.http/share/classes/jdk/internal/net/http/HttpClientImpl.java
++++ b/src/java.net.http/share/classes/jdk/internal/net/http/HttpClientImpl.java
+@@ -671,7 +682,7 @@ final long webSocketClose() {
+         final long webSocketCount = pendingWebSocketCount.decrementAndGet();
+         final long httpCount = pendingHttpOperationsCount.get();
+         final long http2Count = pendingHttp2StreamCount.get();
+-        if (count == 0 && facade() == null) {
++        if (count == 0 && facadeRef.refersTo(null)) {
+             selmgr.wakeupSelector();
+         }
+         assert httpCount >= 0 : "count of HTTP/1.1 operations < 0";
+
+--- a/src/java.net.http/share/classes/jdk/internal/net/http/HttpClientImpl.java
++++ b/src/java.net.http/share/classes/jdk/internal/net/http/HttpClientImpl.java
+@@ -697,6 +708,7 @@ static final class HttpClientTracker implements Tracker {
+         final AtomicLong websocketCount;
+         final AtomicLong operationsCount;
+         final AtomicLong connnectionsCount;
++        final AtomicLong subscribersCount;
+         final Reference<?> reference;
+         final AtomicBoolean isAlive;
+         final String name;
+
+--- a/src/java.net.http/share/classes/jdk/internal/net/http/HttpClientImpl.java
++++ b/src/java.net.http/share/classes/jdk/internal/net/http/HttpClientImpl.java
+@@ -706,6 +718,7 @@ static final class HttpClientTracker implements Tracker {
+                           AtomicLong ws,
+                           AtomicLong ops,
+                           AtomicLong conns,
++                          AtomicLong subscribers,
+                           Reference<?> ref,
+                           AtomicBoolean isAlive,
+                           String name) {
+
+--- a/src/java.net.http/share/classes/jdk/internal/net/http/HttpClientImpl.java
++++ b/src/java.net.http/share/classes/jdk/internal/net/http/HttpClientImpl.java
+@@ -715,11 +728,16 @@ static final class HttpClientTracker implements Tracker {
+             this.websocketCount = ws;
+             this.operationsCount = ops;
+             this.connnectionsCount = conns;
++            this.subscribersCount = subscribers;
+             this.reference = ref;
+             this.isAlive = isAlive;
+             this.name = name;
+         }
+         @Override
++        public long getOutstandingSubscribers() {
++            return subscribersCount.get();
++        }
++        @Override
+         public long getOutstandingOperations() {
+             return operationsCount.get();
+         }
+
+--- a/src/java.net.http/share/classes/jdk/internal/net/http/HttpClientImpl.java
++++ b/src/java.net.http/share/classes/jdk/internal/net/http/HttpClientImpl.java
+@@ -759,6 +777,7 @@ public Tracker getOperationsTracker() {
+                 pendingWebSocketCount,
+                 pendingOperationCount,
+                 pendingTCPConnectionCount,
++                pendingSubscribersCount,
+                 facadeRef,
+                 isAlive,
+                 dbgTag);
+
+--- a/src/java.net.http/share/classes/jdk/internal/net/http/Stream.java
++++ b/src/java.net.http/share/classes/jdk/internal/net/http/Stream.java
+@@ -355,8 +355,8 @@ private void registerResponseSubscriber(Http2StreamResponseSubscriber<?> subscri
+         client().registerSubscriber(subscriber);
+     }
+ 
+-    private void subscriberCompleted(Http2StreamResponseSubscriber<?> subscriber) {
+-        client().subscriberCompleted(subscriber);
++    private void unregisterResponseSubscriber(Http2StreamResponseSubscriber<?> subscriber) {
++        client().unregisterSubscriber(subscriber);
+     }
+ 
+     @Override
+
+--- a/src/java.net.http/share/classes/jdk/internal/net/http/Stream.java
++++ b/src/java.net.http/share/classes/jdk/internal/net/http/Stream.java
+@@ -1546,11 +1546,15 @@ final class Http2StreamResponseSubscriber<U> extends HttpBodySubscriberWrapper<U
+         @Override
+         protected void complete(Throwable t) {
+             try {
+-                Stream.this.subscriberCompleted(this);
++                Stream.this.unregisterResponseSubscriber(this);
+             } finally {
+                 super.complete(t);
+             }
+         }
++        @Override
++        protected void onCancel() {
++            Stream.this.unregisterResponseSubscriber(this);
++        }
+     }
+ 
+     private static final VarHandle STREAM_STATE;
+
+--- a/src/java.net.http/share/classes/jdk/internal/net/http/common/HttpBodySubscriberWrapper.java
++++ b/src/java.net.http/share/classes/jdk/internal/net/http/common/HttpBodySubscriberWrapper.java
+@@ -29,6 +29,7 @@
+ import java.nio.ByteBuffer;
+ import java.util.Comparator;
+ import java.util.List;
++import java.util.Objects;
+ import java.util.concurrent.CompletionStage;
+ import java.util.concurrent.Flow;
+ import java.util.concurrent.Flow.Subscription;
+
+--- a/src/java.net.http/share/classes/jdk/internal/net/http/common/HttpBodySubscriberWrapper.java
++++ b/src/java.net.http/share/classes/jdk/internal/net/http/common/HttpBodySubscriberWrapper.java
+@@ -61,12 +62,33 @@ public void cancel() { }
+     final BodySubscriber<T> userSubscriber;
+     final AtomicBoolean completed = new AtomicBoolean();
+     final AtomicBoolean subscribed = new AtomicBoolean();
+-    volatile Subscription subscription;
++    volatile SubscriptionWrapper subscription;
+     volatile Throwable withError;
+     public HttpBodySubscriberWrapper(BodySubscriber<T> userSubscriber) {
+         this.userSubscriber = userSubscriber;
+     }
+ 
++    private class SubscriptionWrapper implements Subscription {
++        final Subscription subscription;
++        SubscriptionWrapper(Subscription s) {
++            this.subscription = Objects.requireNonNull(s);
++        }
++        @Override
++        public void request(long n) {
++            subscription.request(n);
++        }
++
++        @Override
++        public void cancel() {
++            try {
++                subscription.cancel();
++                onCancel();
++            } catch (Throwable t) {
++                onError(t);
++            }
++        }
++    }
++
+     final long id() { return id; }
+ 
+     @Override
+
+--- a/src/java.net.http/share/classes/jdk/internal/net/http/common/HttpBodySubscriberWrapper.java
++++ b/src/java.net.http/share/classes/jdk/internal/net/http/common/HttpBodySubscriberWrapper.java
+@@ -97,6 +119,14 @@ private void propagateError(Throwable t) {
+         }
+     }
+ 
++    /**
++     * Called when the subscriber cancels its subscription.
++     * @apiNote
++     * This method may be used by subclasses to perform cleanup
++     * actions after a subscription has been cancelled.
++     */
++    protected void onCancel() { }
++
+     /**
+      * Complete the subscriber, either normally or exceptionally
+      * ensure that the subscriber is completed only once.
+
+--- a/src/java.net.http/share/classes/jdk/internal/net/http/common/HttpBodySubscriberWrapper.java
++++ b/src/java.net.http/share/classes/jdk/internal/net/http/common/HttpBodySubscriberWrapper.java
+@@ -137,12 +167,12 @@ public CompletionStage<T> getBody() {
+ 
+     @Override
+     public void onSubscribe(Flow.Subscription subscription) {
+-        this.subscription = subscription;
+         // race condition with propagateError: we need to wait until
+         // subscription is finished before calling onError;
+         synchronized (this) {
+             if (subscribed.compareAndSet(false, true)) {
+-                userSubscriber.onSubscribe(subscription);
++                SubscriptionWrapper wrapped = new SubscriptionWrapper(subscription);
++                userSubscriber.onSubscribe(this.subscription = wrapped);
+             } else {
+                 // could be already subscribed and completed
+                 // if an unexpected error occurred before the actual
+
+--- a/src/java.net.http/share/classes/jdk/internal/net/http/common/HttpBodySubscriberWrapper.java
++++ b/src/java.net.http/share/classes/jdk/internal/net/http/common/HttpBodySubscriberWrapper.java
+@@ -156,8 +186,9 @@ public void onSubscribe(Flow.Subscription subscription) {
+     @Override
+     public void onNext(List<ByteBuffer> item) {
+         if (completed.get()) {
++            SubscriptionWrapper subscription = this.subscription;
+             if (subscription != null) {
+-                subscription.cancel();
++                subscription.subscription.cancel();
+             }
+         } else {
+             userSubscriber.onNext(item);
+
+--- a/src/java.net.http/share/classes/jdk/internal/net/http/common/OperationTrackers.java
++++ b/src/java.net.http/share/classes/jdk/internal/net/http/common/OperationTrackers.java
+@@ -59,6 +59,8 @@ public interface Tracker {
+         long getOutstandingWebSocketOperations();
+         // number of TCP connections still opened
+         long getOutstandingTcpConnections();
++        // number of body subscribers not yet completed or canceled
++        long getOutstandingSubscribers();
+         // Whether the facade returned to the
+         // user is still referenced
+         boolean isFacadeReferenced();
+
+--- a/test/jdk/java/net/httpclient/ReferenceTracker.java
++++ b/test/jdk/java/net/httpclient/ReferenceTracker.java
+@@ -31,6 +31,7 @@
+ import java.lang.management.ThreadInfo;
+ import java.net.http.HttpClient;
+ import java.util.Arrays;
++import java.util.Objects;
+ import java.util.concurrent.ConcurrentLinkedQueue;
+ import java.util.function.Predicate;
+ import java.util.stream.Collectors;
+
+--- a/test/jdk/java/net/httpclient/ReferenceTracker.java
++++ b/test/jdk/java/net/httpclient/ReferenceTracker.java
+@@ -61,9 +62,14 @@ public StringBuilder diagnose(StringBuilder warnings) {
+         return diagnose(warnings, (t) -> t.getOutstandingHttpOperations() > 0);
+     }
+ 
++    public StringBuilder diagnose(Tracker tracker, StringBuilder warnings, Predicate<Tracker> hasOutstanding) {
++        checkOutstandingOperations(warnings, tracker, hasOutstanding);
++        return warnings;
++    }
++
+     public StringBuilder diagnose(StringBuilder warnings, Predicate<Tracker> hasOutstanding) {
+         for (Tracker tracker : TRACKERS) {
+-            checkOutstandingOperations(warnings, tracker, hasOutstanding);
++            diagnose(tracker, warnings, hasOutstanding);
+         }
+         return warnings;
+     }
+
+--- a/test/jdk/java/net/httpclient/ReferenceTracker.java
++++ b/test/jdk/java/net/httpclient/ReferenceTracker.java
+@@ -72,6 +78,10 @@ public boolean hasOutstandingOperations() {
+         return TRACKERS.stream().anyMatch(t -> t.getOutstandingOperations() > 0);
+     }
+ 
++    public boolean hasOutstandingSubscribers() {
++        return TRACKERS.stream().anyMatch(t -> t.getOutstandingSubscribers() > 0);
++    }
++
+     public long getOutstandingOperationsCount() {
+         return TRACKERS.stream()
+                 .map(Tracker::getOutstandingOperations)
+
+--- a/test/jdk/java/net/httpclient/ReferenceTracker.java
++++ b/test/jdk/java/net/httpclient/ReferenceTracker.java
+@@ -86,10 +96,24 @@ public long getOutstandingClientCount() {
+                 .count();
+     }
+ 
++    public AssertionError check(Tracker tracker, long graceDelayMs) {
++        Predicate<Tracker> hasOperations = (t) -> t.getOutstandingOperations() > 0;
++        Predicate<Tracker> hasSubscribers = (t) -> t.getOutstandingSubscribers() > 0;
++        return check(tracker, graceDelayMs,
++                hasOperations.or(hasSubscribers)
++                        .or(Tracker::isFacadeReferenced)
++                        .or(Tracker::isSelectorAlive),
++                "outstanding operations or unreleased resources", false);
++    }
++
+     public AssertionError check(long graceDelayMs) {
++        Predicate<Tracker> hasOperations = (t) -> t.getOutstandingOperations() > 0;
++        Predicate<Tracker> hasSubscribers = (t) -> t.getOutstandingSubscribers() > 0;
+         return check(graceDelayMs,
+-                (t) -> t.getOutstandingHttpOperations() > 0,
+-                "outstanding operations", true);
++                hasOperations.or(hasSubscribers)
++                .or(Tracker::isFacadeReferenced)
++                .or(Tracker::isSelectorAlive),
++        "outstanding operations or unreleased resources", true);
+     }
+ 
+     // This method is copied from ThreadInfo::toString, but removes the
+
+--- a/test/jdk/java/net/httpclient/ReferenceTracker.java
++++ b/test/jdk/java/net/httpclient/ReferenceTracker.java
+@@ -173,6 +197,49 @@ private void printThreads(String why, PrintStream out) {
+                 .forEach(out::println);
+     }
+ 
++    public Tracker getTracker(HttpClient client) {
++        return OperationTrackers.getTracker(Objects.requireNonNull(client));
++    }
++
++    public AssertionError check(Tracker tracker,
++                                long graceDelayMs,
++                                Predicate<Tracker> hasOutstanding,
++                                String description,
++                                boolean printThreads) {
++        AssertionError fail = null;
++        graceDelayMs = Math.max(graceDelayMs, 100);
++        long delay = Math.min(graceDelayMs, 10);
++        var count = delay > 0 ? graceDelayMs / delay : 1;
++        for (int i = 0; i < count; i++) {
++            if (hasOutstanding.test(tracker)) {
++                System.gc();
++                try {
++                    if (i == 0) {
++                        System.out.println("Waiting for HTTP operations to terminate...");
++                    }
++                    Thread.sleep(Math.min(graceDelayMs, Math.max(delay, 1)));
++                } catch (InterruptedException x) {
++                    // OK
++                }
++            } else break;
++        }
++        if (hasOutstanding.test(tracker)) {
++            StringBuilder warnings = diagnose(tracker, new StringBuilder(), hasOutstanding);
++            if (hasOutstanding.test(tracker)) {
++                fail = new AssertionError(warnings.toString());
++            }
++        } else {
++            System.out.println("PASSED: No " + description + " found in " + tracker.getName());
++        }
++        if (fail != null) {
++            if (printThreads && tracker.isSelectorAlive()) {
++                printThreads("Some selector manager threads are still alive: ", System.out);
++                printThreads("Some selector manager threads are still alive: ", System.err);
++            }
++        }
++        return fail;
++    }
++
+     public AssertionError check(long graceDelayMs,
+                                 Predicate<Tracker> hasOutstanding,
+                                 String description,
+
+--- a/test/jdk/java/net/httpclient/ReferenceTracker.java
++++ b/test/jdk/java/net/httpclient/ReferenceTracker.java
+@@ -243,6 +310,7 @@ private static void checkOutstandingOperations(StringBuilder warning,
+             warning.append("\n\tPending HTTP/2 streams: " + tracker.getOutstandingHttp2Streams());
+             warning.append("\n\tPending WebSocket operations: " + tracker.getOutstandingWebSocketOperations());
+             warning.append("\n\tPending TCP connections: " + tracker.getOutstandingTcpConnections());
++            warning.append("\n\tPending Subscribers: " + tracker.getOutstandingSubscribers());
+             warning.append("\n\tTotal pending operations: " + tracker.getOutstandingOperations());
+             warning.append("\n\tFacade referenced: " + tracker.isFacadeReferenced());
+             warning.append("\n\tSelector alive: " + tracker.isSelectorAlive());
+
+--- a/test/jdk/java/net/httpclient/ReferenceTracker.java
++++ b/test/jdk/java/net/httpclient/ReferenceTracker.java
+@@ -267,8 +335,11 @@ public AssertionError checkShutdown(long graceDelayMs) {
+         Predicate<Tracker> isAlive = Tracker::isSelectorAlive;
+         Predicate<Tracker> hasPendingRequests = (t) -> t.getOutstandingHttpRequests() > 0;
+         Predicate<Tracker> hasPendingConnections = (t) -> t.getOutstandingTcpConnections() > 0;
++        Predicate<Tracker> hasPendingSubscribers = (t) -> t.getOutstandingSubscribers() > 0;
+         AssertionError failed = check(graceDelayMs,
+-                isAlive.or(hasPendingRequests).or(hasPendingConnections),
++                isAlive.or(hasPendingRequests)
++                        .or(hasPendingConnections)
++                        .or(hasPendingSubscribers),
+                 "outstanding unclosed resources", true);
+         return failed;
+     }
+
+--- a/test/jdk/java/net/httpclient/SmallTimeout.java
++++ b/test/jdk/java/net/httpclient/SmallTimeout.java
+@@ -1,5 +1,5 @@
+ /*
+- * Copyright (c) 2015, 2018, Oracle and/or its affiliates. All rights reserved.
++ * Copyright (c) 2015, 2022, Oracle and/or its affiliates. All rights reserved.
+  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+  *
+  * This code is free software; you can redistribute it and/or modify it
+
+--- a/test/jdk/java/net/httpclient/SmallTimeout.java
++++ b/test/jdk/java/net/httpclient/SmallTimeout.java
+@@ -21,6 +21,8 @@
+  * questions.
+  */
+ 
++import java.lang.ref.Reference;
++import java.lang.ref.WeakReference;
+ import java.net.InetAddress;
+ import java.net.InetSocketAddress;
+ import java.net.ServerSocket;
+
+--- a/test/jdk/java/net/httpclient/SmallTimeout.java
++++ b/test/jdk/java/net/httpclient/SmallTimeout.java
+@@ -35,6 +37,8 @@
+ import java.util.concurrent.ExecutorService;
+ import java.util.concurrent.Executors;
+ import java.util.concurrent.LinkedBlockingQueue;
++import java.util.concurrent.TimeUnit;
++
+ import static java.lang.System.out;
+ 
+ /**
+
+--- a/test/jdk/java/net/httpclient/SmallTimeout.java
++++ b/test/jdk/java/net/httpclient/SmallTimeout.java
+@@ -79,6 +83,7 @@ static HttpResult of(HttpRequest request, Throwable t) {
+     public static void main(String[] args) throws Exception {
+         HttpClient client = HttpClient.newHttpClient();
+         ReferenceTracker.INSTANCE.track(client);
++        Reference<HttpClient> reference = new WeakReference<>(client);
+ 
+         Throwable failed = null;
+         try (ServerSocket ss = new ServerSocket()) {
+
+--- a/test/jdk/java/net/httpclient/SmallTimeout.java
++++ b/test/jdk/java/net/httpclient/SmallTimeout.java
+@@ -151,10 +156,12 @@ public static void main(String[] args) throws Exception {
+                                          .build();
+ 
+                 final HttpRequest req = requests[i];
++
+                 executor.execute(() -> {
+                     Throwable cause = null;
+                     try {
+-                        HttpResponse<?> r = client.send(req, BodyHandlers.replacing(null));
++                        HttpClient httpClient = reference.get();
++                        HttpResponse<?> r = httpClient.send(req, BodyHandlers.replacing(null));
+                         out.println("Unexpected success for r" + n +": " + r);
+                     } catch (HttpTimeoutException e) {
+                         out.println("Caught expected timeout for r" + n +": " + e);
+
+--- a/test/jdk/java/net/httpclient/SmallTimeout.java
++++ b/test/jdk/java/net/httpclient/SmallTimeout.java
+@@ -173,7 +180,8 @@ public static void main(String[] args) throws Exception {
+ 
+             checkReturn(requests);
+ 
+-            executor.shutdownNow();
++            // shuts down the executor and awaits its termination
++            executor.close();
+ 
+             if (error)
+                 throw new RuntimeException("Failed. Check output");
+
+--- a/test/jdk/java/net/httpclient/SmallTimeout.java
++++ b/test/jdk/java/net/httpclient/SmallTimeout.java
+@@ -182,8 +190,11 @@ public static void main(String[] args) throws Exception {
+             failed = t;
+             throw t;
+         } finally {
++            Reference.reachabilityFence(client);
++            client = null;
++            System.gc();
+             try {
+-                Thread.sleep(100);
++                Thread.sleep(10);
+             } catch (InterruptedException t) {
+                 // ignore;
+             }
