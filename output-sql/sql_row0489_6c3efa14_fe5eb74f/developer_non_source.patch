@@ -1,0 +1,29 @@
+diff --git a/integ-test/src/test/java/org/opensearch/sql/calcite/CalciteNoPushdownIT.java b/integ-test/src/test/java/org/opensearch/sql/calcite/CalciteNoPushdownIT.java
+index 0597f36b0..de6b915a7 100644
+--- a/integ-test/src/test/java/org/opensearch/sql/calcite/CalciteNoPushdownIT.java
++++ b/integ-test/src/test/java/org/opensearch/sql/calcite/CalciteNoPushdownIT.java
+@@ -39,9 +39,7 @@ import org.opensearch.sql.ppl.PPLIntegTestCase;
+   CalciteGeoPointFormatsIT.class,
+   CalciteHeadCommandIT.class,
+   CalciteInformationSchemaCommandIT.class,
+-  // TODO: Enable after implementing comparison for IP addresses with Calcite
+-  //  https://github.com/opensearch-project/sql/issues/3776
+-  // CalciteIPComparisonIT.class,
++  CalciteIPComparisonIT.class,
+   CalciteIPFunctionsIT.class,
+   CalciteJsonFunctionsIT.class,
+   CalciteLegacyAPICompatibilityIT.class,
+diff --git a/ppl/src/test/java/org/opensearch/sql/ppl/calcite/CalcitePPLFunctionTypeTest.java b/ppl/src/test/java/org/opensearch/sql/ppl/calcite/CalcitePPLFunctionTypeTest.java
+index 55f563504..ef1237fa2 100644
+--- a/ppl/src/test/java/org/opensearch/sql/ppl/calcite/CalcitePPLFunctionTypeTest.java
++++ b/ppl/src/test/java/org/opensearch/sql/ppl/calcite/CalcitePPLFunctionTypeTest.java
+@@ -49,7 +49,8 @@ public class CalcitePPLFunctionTypeTest extends CalcitePPLAbstractTest {
+     String ppl = "source=EMP | where ENAME < 6 | fields ENAME";
+     Throwable t = Assert.assertThrows(ExpressionEvaluationException.class, () -> getRelNode(ppl));
+     verifyErrorMessageContains(
+-        t, "LESS function expects {[COMPARABLE_TYPE,COMPARABLE_TYPE]}, but got [STRING,INTEGER]");
++        t,
++        "LESS function expects {[COMPARABLE_TYPE,COMPARABLE_TYPE]}," + " but got [STRING,INTEGER]");
+   }
+ 
+   @Test

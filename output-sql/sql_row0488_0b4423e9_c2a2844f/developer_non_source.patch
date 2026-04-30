@@ -1,0 +1,100 @@
+diff --git a/integ-test/src/test/java/org/opensearch/sql/calcite/remote/CalciteExplainIT.java b/integ-test/src/test/java/org/opensearch/sql/calcite/remote/CalciteExplainIT.java
+index 29ab9ec9f..a0c4eb6ea 100644
+--- a/integ-test/src/test/java/org/opensearch/sql/calcite/remote/CalciteExplainIT.java
++++ b/integ-test/src/test/java/org/opensearch/sql/calcite/remote/CalciteExplainIT.java
+@@ -8,6 +8,7 @@ package org.opensearch.sql.calcite.remote;
+ import static org.opensearch.sql.util.MatcherUtils.assertJsonEqualsIgnoreId;
+ 
+ import java.io.IOException;
++import org.junit.Assume;
+ import org.junit.Ignore;
+ import org.junit.Test;
+ import org.opensearch.sql.ppl.ExplainIT;
+@@ -67,4 +68,30 @@ public class CalciteExplainIT extends ExplainIT {
+     String expected = loadExpectedPlan("explain_merge_join_sort_push.json");
+     assertJsonEqualsIgnoreId(expected, result);
+   }
++
++  // Only for Calcite
++  @Test
++  public void supportPartialPushDown() throws IOException {
++    Assume.assumeTrue("This test is only for push down enabled", isPushdownEnabled());
++    // field `address` is text type without keyword subfield, so we cannot push it down.
++    String query =
++        "source=opensearch-sql_test_index_account | where (state = 'Seattle' or age < 10) and (age"
++            + " >= 1 and address = '880 Holmes Lane') | fields age, address";
++    var result = explainQueryToString(query);
++    String expected = loadFromFile("expectedOutput/calcite/explain_partial_filter_push.json");
++    assertJsonEqualsIgnoreId(expected, result);
++  }
++
++  // Only for Calcite
++  @Test
++  public void supportPartialPushDown_NoPushIfAllFailed() throws IOException {
++    Assume.assumeTrue("This test is only for push down enabled", isPushdownEnabled());
++    // field `address` is text type without keyword subfield, so we cannot push it down.
++    String query =
++        "source=opensearch-sql_test_index_account | where (address = '671 Bristol Street' or age <"
++            + " 10) and (age >= 10 or address = '880 Holmes Lane') | fields age, address";
++    var result = explainQueryToString(query);
++    String expected = loadFromFile("expectedOutput/calcite/explain_partial_filter_push2.json");
++    assertJsonEqualsIgnoreId(expected, result);
++  }
+ }
+diff --git a/integ-test/src/test/java/org/opensearch/sql/calcite/remote/CalciteRelevanceFunctionIT.java b/integ-test/src/test/java/org/opensearch/sql/calcite/remote/CalciteRelevanceFunctionIT.java
+index 85ac2554e..d95fa5140 100644
+--- a/integ-test/src/test/java/org/opensearch/sql/calcite/remote/CalciteRelevanceFunctionIT.java
++++ b/integ-test/src/test/java/org/opensearch/sql/calcite/remote/CalciteRelevanceFunctionIT.java
+@@ -5,6 +5,10 @@
+ 
+ package org.opensearch.sql.calcite.remote;
+ 
++import static org.opensearch.sql.legacy.TestsConstants.TEST_INDEX_BEER;
++
++import java.io.IOException;
++import org.junit.Assume;
+ import org.opensearch.sql.ppl.RelevanceFunctionIT;
+ 
+ public class CalciteRelevanceFunctionIT extends RelevanceFunctionIT {
+@@ -14,4 +18,17 @@ public class CalciteRelevanceFunctionIT extends RelevanceFunctionIT {
+     enableCalcite();
+     disallowCalciteFallback();
+   }
++
++  // For Calcite, this PPL won't throw exception since it supports partial pushdown and has
++  // optimization rule `FilterProjectTransposeRule` to push down the filter through the project.
++  @Override
++  public void not_pushdown_throws_exception() throws IOException {
++    Assume.assumeTrue("This test is only for push down enabled", isPushdownEnabled());
++    String query1 =
++        "SOURCE="
++            + TEST_INDEX_BEER
++            + " | EVAL answerId = AcceptedAnswerId + 1"
++            + " | WHERE simple_query_string(['Tags'], 'taste') and answerId > 200";
++    assertEquals(5, executeQuery(query1).getInt("total"));
++  }
+ }
+diff --git a/integ-test/src/test/resources/expectedOutput/calcite/explain_partial_filter_push.json b/integ-test/src/test/resources/expectedOutput/calcite/explain_partial_filter_push.json
+new file mode 100644
+index 000000000..642fe5cd5
+--- /dev/null
++++ b/integ-test/src/test/resources/expectedOutput/calcite/explain_partial_filter_push.json
+@@ -0,0 +1,6 @@
++{
++  "calcite": {
++    "logical": "LogicalProject(age=[$8], address=[$2])\n  LogicalFilter(condition=[AND(OR(=($7, 'Seattle'), <($8, 10)), >=($8, 1), =($2, '880 Holmes Lane'))])\n    CalciteLogicalIndexScan(table=[[OpenSearch, opensearch-sql_test_index_account]])\n",
++    "physical": "EnumerableCalc(expr#0..1=[{inputs}], expr#2=['880 Holmes Lane':VARCHAR], expr#3=[=($t0, $t2)], age=[$t1], address=[$t0], $condition=[$t3])\n  CalciteEnumerableIndexScan(table=[[OpenSearch, opensearch-sql_test_index_account]], PushDownContext=[[PROJECT->[address, state, age], FILTER->AND(OR(=($1, 'Seattle'), <($2, 10)), >=($2, 1)), PROJECT->[address, age]], OpenSearchRequestBuilder(sourceBuilder={\"from\":0,\"timeout\":\"1m\",\"query\":{\"bool\":{\"must\":[{\"bool\":{\"should\":[{\"term\":{\"state.keyword\":{\"value\":\"Seattle\",\"boost\":1.0}}},{\"range\":{\"age\":{\"from\":null,\"to\":10,\"include_lower\":true,\"include_upper\":false,\"boost\":1.0}}}],\"adjust_pure_negative\":true,\"boost\":1.0}},{\"range\":{\"age\":{\"from\":1,\"to\":null,\"include_lower\":true,\"include_upper\":true,\"boost\":1.0}}}],\"adjust_pure_negative\":true,\"boost\":1.0}},\"_source\":{\"includes\":[\"address\",\"age\"],\"excludes\":[]},\"sort\":[{\"_doc\":{\"order\":\"asc\"}}]}, requestedTotalSize=2147483647, pageSize=null, startFrom=0)])\n"
++  }
++}
+diff --git a/integ-test/src/test/resources/expectedOutput/calcite/explain_partial_filter_push2.json b/integ-test/src/test/resources/expectedOutput/calcite/explain_partial_filter_push2.json
+new file mode 100644
+index 000000000..087d2dfbe
+--- /dev/null
++++ b/integ-test/src/test/resources/expectedOutput/calcite/explain_partial_filter_push2.json
+@@ -0,0 +1,6 @@
++{
++  "calcite": {
++    "logical": "LogicalProject(age=[$8], address=[$2])\n  LogicalFilter(condition=[AND(OR(=($2, '671 Bristol Street'), <($8, 10)), OR(>=($8, 10), =($2, '880 Holmes Lane')))])\n    CalciteLogicalIndexScan(table=[[OpenSearch, opensearch-sql_test_index_account]])\n",
++    "physical": "EnumerableCalc(expr#0..1=[{inputs}], expr#2=['671 Bristol Street':VARCHAR], expr#3=[=($t0, $t2)], expr#4=[10], expr#5=[<($t1, $t4)], expr#6=[OR($t3, $t5)], expr#7=[>=($t1, $t4)], expr#8=['880 Holmes Lane':VARCHAR], expr#9=[=($t0, $t8)], expr#10=[OR($t7, $t9)], expr#11=[AND($t6, $t10)], age=[$t1], address=[$t0], $condition=[$t11])\n  CalciteEnumerableIndexScan(table=[[OpenSearch, opensearch-sql_test_index_account]], PushDownContext=[[PROJECT->[address, age]], OpenSearchRequestBuilder(sourceBuilder={\"from\":0,\"timeout\":\"1m\",\"_source\":{\"includes\":[\"address\",\"age\"],\"excludes\":[]}}, requestedTotalSize=2147483647, pageSize=null, startFrom=0)])\n"
++  }
++}

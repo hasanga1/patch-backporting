@@ -1,0 +1,147 @@
+--- a/core/src/main/java/org/opensearch/sql/analysis/Analyzer.java
++++ b/core/src/main/java/org/opensearch/sql/analysis/Analyzer.java
+@@ -10,6 +10,7 @@ import static org.opensearch.sql.ast.tree.Sort.NullOrder.NULL_FIRST;
+ import static org.opensearch.sql.ast.tree.Sort.NullOrder.NULL_LAST;
+ import static org.opensearch.sql.ast.tree.Sort.SortOrder.ASC;
+ import static org.opensearch.sql.ast.tree.Sort.SortOrder.DESC;
++import static org.opensearch.sql.common.setting.Settings.Key.CALCITE_ENGINE_ENABLED;
+ import static org.opensearch.sql.data.type.ExprCoreType.DATE;
+ import static org.opensearch.sql.data.type.ExprCoreType.STRUCT;
+ import static org.opensearch.sql.data.type.ExprCoreType.TIME;
+
+--- a/core/src/main/java/org/opensearch/sql/analysis/Analyzer.java
++++ b/core/src/main/java/org/opensearch/sql/analysis/Analyzer.java
+@@ -53,8 +54,10 @@ import org.opensearch.sql.ast.tree.FetchCursor;
+ import org.opensearch.sql.ast.tree.FillNull;
+ import org.opensearch.sql.ast.tree.Filter;
+ import org.opensearch.sql.ast.tree.Head;
++import org.opensearch.sql.ast.tree.Join;
+ import org.opensearch.sql.ast.tree.Kmeans;
+ import org.opensearch.sql.ast.tree.Limit;
++import org.opensearch.sql.ast.tree.Lookup;
+ import org.opensearch.sql.ast.tree.ML;
+ import org.opensearch.sql.ast.tree.Paginate;
+ import org.opensearch.sql.ast.tree.Parse;
+
+--- a/core/src/main/java/org/opensearch/sql/analysis/Analyzer.java
++++ b/core/src/main/java/org/opensearch/sql/analysis/Analyzer.java
+@@ -162,8 +165,8 @@ public class Analyzer extends AbstractNodeVisitor<LogicalPlan, AnalysisContext>
+           STRUCT);
+       return child;
+     } else {
+-      // TODO
+-      throw new UnsupportedOperationException("SubqueryAlias is only supported in table alias");
++      throw new UnsupportedOperationException(
++          "Subsearch is supported only when " + CALCITE_ENGINE_ENABLED.getKeyValue() + "=true");
+     }
+   }
+ 
+
+--- a/core/src/main/java/org/opensearch/sql/analysis/Analyzer.java
++++ b/core/src/main/java/org/opensearch/sql/analysis/Analyzer.java
+@@ -685,6 +688,18 @@ public class Analyzer extends AbstractNodeVisitor<LogicalPlan, AnalysisContext>
+     return new LogicalCloseCursor(closeCursor.getChild().get(0).accept(this, context));
+   }
+ 
++  @Override
++  public LogicalPlan visitJoin(Join node, AnalysisContext context) {
++    throw new UnsupportedOperationException(
++        "Join is supported only when " + CALCITE_ENGINE_ENABLED.getKeyValue() + "=true");
++  }
++
++  @Override
++  public LogicalPlan visitLookup(Lookup node, AnalysisContext context) {
++    throw new UnsupportedOperationException(
++        "Lookup is supported only when " + CALCITE_ENGINE_ENABLED.getKeyValue() + "=true");
++  }
++
+   private LogicalSort buildSort(
+       LogicalPlan child, AnalysisContext context, List<Field> sortFields) {
+     ExpressionReferenceOptimizer optimizer =
+
+--- a/core/src/main/java/org/opensearch/sql/analysis/ExpressionAnalyzer.java
++++ b/core/src/main/java/org/opensearch/sql/analysis/ExpressionAnalyzer.java
+@@ -7,6 +7,7 @@ package org.opensearch.sql.analysis;
+ 
+ import static org.opensearch.sql.ast.dsl.AstDSL.and;
+ import static org.opensearch.sql.ast.dsl.AstDSL.compare;
++import static org.opensearch.sql.common.setting.Settings.Key.CALCITE_ENGINE_ENABLED;
+ 
+ import com.google.common.collect.ImmutableList;
+ import com.google.common.collect.ImmutableMap;
+
+--- a/core/src/main/java/org/opensearch/sql/analysis/ExpressionAnalyzer.java
++++ b/core/src/main/java/org/opensearch/sql/analysis/ExpressionAnalyzer.java
+@@ -49,6 +50,9 @@ import org.opensearch.sql.ast.expression.UnresolvedExpression;
+ import org.opensearch.sql.ast.expression.When;
+ import org.opensearch.sql.ast.expression.WindowFunction;
+ import org.opensearch.sql.ast.expression.Xor;
++import org.opensearch.sql.ast.expression.subquery.ExistsSubquery;
++import org.opensearch.sql.ast.expression.subquery.InSubquery;
++import org.opensearch.sql.ast.expression.subquery.ScalarSubquery;
+ import org.opensearch.sql.data.model.ExprValueUtils;
+ import org.opensearch.sql.data.type.ExprCoreType;
+ import org.opensearch.sql.data.type.ExprType;
+
+--- a/core/src/main/java/org/opensearch/sql/analysis/ExpressionAnalyzer.java
++++ b/core/src/main/java/org/opensearch/sql/analysis/ExpressionAnalyzer.java
+@@ -406,6 +410,24 @@ public class ExpressionAnalyzer extends AbstractNodeVisitor<Expression, Analysis
+     return new NamedArgumentExpression(node.getArgName(), node.getValue().accept(this, context));
+   }
+ 
++  @Override
++  public Expression visitScalarSubquery(ScalarSubquery node, AnalysisContext context) {
++    throw new UnsupportedOperationException(
++        "Subsearch is supported only when " + CALCITE_ENGINE_ENABLED.getKeyValue() + "=true");
++  }
++
++  @Override
++  public Expression visitExistsSubquery(ExistsSubquery node, AnalysisContext context) {
++    throw new UnsupportedOperationException(
++        "Subsearch is supported only when " + CALCITE_ENGINE_ENABLED.getKeyValue() + "=true");
++  }
++
++  @Override
++  public Expression visitInSubquery(InSubquery node, AnalysisContext context) {
++    throw new UnsupportedOperationException(
++        "Subsearch is supported only when " + CALCITE_ENGINE_ENABLED.getKeyValue() + "=true");
++  }
++
+   /**
+    * If QualifiedName is actually a reserved metadata field, return the expr type associated with
+    * the metadata field.
+
+--- a/core/src/main/java/org/opensearch/sql/executor/QueryService.java
++++ b/core/src/main/java/org/opensearch/sql/executor/QueryService.java
+@@ -11,6 +11,7 @@ package org.opensearch.sql.executor;
+ import java.security.AccessController;
+ import java.security.PrivilegedAction;
+ import java.util.List;
++import java.util.Optional;
+ import lombok.AllArgsConstructor;
+ import lombok.Getter;
+ import lombok.RequiredArgsConstructor;
+
+--- a/core/src/main/java/org/opensearch/sql/executor/QueryService.java
++++ b/core/src/main/java/org/opensearch/sql/executor/QueryService.java
+@@ -67,7 +68,7 @@ public class QueryService {
+     if (shouldUseCalcite(queryType)) {
+       executeWithCalcite(plan, queryType, listener);
+     } else {
+-      executeWithLegacy(plan, queryType, listener);
++      executeWithLegacy(plan, queryType, listener, Optional.empty());
+     }
+   }
+ 
+
+--- a/core/src/main/java/org/opensearch/sql/executor/QueryService.java
++++ b/core/src/main/java/org/opensearch/sql/executor/QueryService.java
+@@ -103,7 +104,7 @@ public class QueryService {
+     } catch (Throwable t) {
+       if (isCalciteFallbackAllowed()) {
+         log.warn("Fallback to V2 query engine since got exception", t);
+-        executeWithLegacy(plan, queryType, listener);
++        executeWithLegacy(plan, queryType, listener, Optional.of(t));
+       } else {
+         if (t instanceof Error) {
+           // Calcite may throw AssertError during query execution.

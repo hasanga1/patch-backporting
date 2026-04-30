@@ -1,0 +1,68 @@
+--- a/core/src/main/java/org/opensearch/sql/ast/expression/QualifiedName.java
++++ b/core/src/main/java/org/opensearch/sql/ast/expression/QualifiedName.java
+@@ -22,6 +22,7 @@ import org.opensearch.sql.ast.AbstractNodeVisitor;
+ @Getter
+ @EqualsAndHashCode(callSuper = false)
+ public class QualifiedName extends UnresolvedExpression {
++  public static final String DELIMITER = ".";
+   private final List<String> parts;
+ 
+   public QualifiedName(String name) {
+
+--- a/core/src/main/java/org/opensearch/sql/ast/expression/QualifiedName.java
++++ b/core/src/main/java/org/opensearch/sql/ast/expression/QualifiedName.java
+@@ -94,7 +95,7 @@ public class QualifiedName extends UnresolvedExpression {
+   }
+ 
+   public String toString() {
+-    return String.join(".", this.parts);
++    return String.join(DELIMITER, this.parts);
+   }
+ 
+   @Override
+
+--- a/core/src/main/java/org/opensearch/sql/calcite/QualifiedNameResolver.java
++++ b/core/src/main/java/org/opensearch/sql/calcite/QualifiedNameResolver.java
+@@ -270,8 +270,10 @@ public class QualifiedNameResolver {
+     if (length == parts.size() - start) {
+       return field;
+     } else {
+-      String itemName = joinParts(parts, length + start, parts.size() - 1 - length);
+-      return createItemAccess(field, itemName, context);
++      String itemName = joinParts(parts, length + start, parts.size() - length);
++      return context.relBuilder.alias(
++          createItemAccess(field, itemName, context),
++          String.join(QualifiedName.DELIMITER, parts.subList(start, parts.size())));
+     }
+   }
+ 
+
+--- a/opensearch/src/main/java/org/opensearch/sql/opensearch/data/value/OpenSearchExprValueFactory.java
++++ b/opensearch/src/main/java/org/opensearch/sql/opensearch/data/value/OpenSearchExprValueFactory.java
+@@ -190,7 +190,12 @@ public class OpenSearchExprValueFactory {
+ 
+     // Field type may be not defined in mapping if users have disabled dynamic mapping.
+     // Then try to parse content directly based on the value itself
+-    if (fieldType.isEmpty()) {
++    // Besides, sub-fields of generated objects are also of type UNDEFINED. We parse the content
++    // directly on the value itself for this case as well.
++    // TODO: Remove the second condition once https://github.com/opensearch-project/sql/issues/3751
++    //  is resolved
++    if (fieldType.isEmpty()
++        || fieldType.get().equals(OpenSearchDataType.of(ExprCoreType.UNDEFINED))) {
+       return parseContent(content);
+     }
+ 
+
+--- a/opensearch/src/main/java/org/opensearch/sql/opensearch/executor/OpenSearchExecutionEngine.java
++++ b/opensearch/src/main/java/org/opensearch/sql/opensearch/executor/OpenSearchExecutionEngine.java
+@@ -5,8 +5,7 @@
+ 
+ package org.opensearch.sql.opensearch.executor;
+ 
+-import static org.opensearch.sql.expression.function.BuiltinFunctionName.DISTINCT_COUNT_APPROX;
+-
++import com.google.common.base.Suppliers;
+ import java.security.AccessController;
+ import java.security.PrivilegedAction;
+ import java.sql.PreparedStatement;

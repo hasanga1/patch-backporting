@@ -1,0 +1,143 @@
+diff --git a/integ-test/src/test/java/org/opensearch/sql/calcite/remote/CalciteExplainIT.java b/integ-test/src/test/java/org/opensearch/sql/calcite/remote/CalciteExplainIT.java
+index e37042c43..77fd11f4b 100644
+--- a/integ-test/src/test/java/org/opensearch/sql/calcite/remote/CalciteExplainIT.java
++++ b/integ-test/src/test/java/org/opensearch/sql/calcite/remote/CalciteExplainIT.java
+@@ -5,10 +5,12 @@
+ 
+ package org.opensearch.sql.calcite.remote;
+ 
++import static org.opensearch.sql.legacy.TestsConstants.TEST_INDEX_NESTED_SIMPLE;
+ import static org.opensearch.sql.legacy.TestsConstants.TEST_INDEX_BANK;
+ import static org.opensearch.sql.util.MatcherUtils.assertJsonEqualsIgnoreId;
+ 
+ import java.io.IOException;
++import java.util.Locale;
+ import org.junit.Assume;
+ import org.junit.Ignore;
+ import org.junit.Test;
+@@ -19,6 +21,7 @@ public class CalciteExplainIT extends ExplainIT {
+   public void init() throws Exception {
+     super.init();
+     enableCalcite();
++    loadIndex(Index.NESTED_SIMPLE);
+   }
+ 
+   @Override
+@@ -157,6 +160,20 @@ public class CalciteExplainIT extends ExplainIT {
+     assertJsonEqualsIgnoreId(expected, result);
+   }
+ 
++  @Test
++  public void testPartialPushdownFilterWithIsNull() throws IOException {
++    // isnull(nested_field) should not be pushed down since DSL doesn't handle it correctly, but
++    // name='david' can be pushed down
++    String query =
++        String.format(
++            Locale.ROOT,
++            "source=%s | where isnull(address) and name='david'",
++            TEST_INDEX_NESTED_SIMPLE);
++    var result = explainQueryToString(query);
++    String expected = loadExpectedPlan("explain_partial_filter_isnull.json");
++    assertJsonEqualsIgnoreId(expected, result);
++  }
++
+   @Test
+   public void testSkipScriptEncodingOnExtendedFormat() throws IOException {
+     Assume.assumeTrue("This test is only for push down enabled", isPushdownEnabled());
+diff --git a/integ-test/src/test/java/org/opensearch/sql/calcite/remote/CalcitePPLConditionBuiltinFunctionIT.java b/integ-test/src/test/java/org/opensearch/sql/calcite/remote/CalcitePPLConditionBuiltinFunctionIT.java
+index 0c422cd27..af2cf5e96 100644
+--- a/integ-test/src/test/java/org/opensearch/sql/calcite/remote/CalcitePPLConditionBuiltinFunctionIT.java
++++ b/integ-test/src/test/java/org/opensearch/sql/calcite/remote/CalcitePPLConditionBuiltinFunctionIT.java
+@@ -10,6 +10,7 @@ import static org.opensearch.sql.util.MatcherUtils.*;
+ import static org.opensearch.sql.util.MatcherUtils.rows;
+ 
+ import java.io.IOException;
++import java.util.Locale;
+ import org.json.JSONObject;
+ import org.junit.jupiter.api.Test;
+ import org.opensearch.client.Request;
+@@ -24,6 +25,8 @@ public class CalcitePPLConditionBuiltinFunctionIT extends PPLIntegTestCase {
+     loadIndex(Index.STATE_COUNTRY);
+     loadIndex(Index.STATE_COUNTRY_WITH_NULL);
+     loadIndex(Index.CALCS);
++    loadIndex(Index.NESTED_SIMPLE);
++    loadIndex(Index.BIG5);
+     Request request1 =
+         new Request("PUT", "/" + TEST_INDEX_STATE_COUNTRY_WITH_NULL + "/_doc/7?refresh=true");
+     request1.setJsonEntity(
+@@ -49,6 +52,25 @@ public class CalcitePPLConditionBuiltinFunctionIT extends PPLIntegTestCase {
+     verifyDataRows(actual, rows(10));
+   }
+ 
++  @Test
++  public void testIsNullWithStruct() throws IOException {
++    JSONObject actual = executeQuery("source=big5 | where isnull(aws) | fields aws");
++    verifySchema(actual, schema("aws", "struct"));
++    verifyNumOfRows(actual, 0);
++  }
++
++  @Test
++  public void testIsNullWithNested() throws IOException {
++    JSONObject actual =
++        executeQuery(
++            String.format(
++                Locale.ROOT,
++                "source=%s | where isnull(address) | fields address",
++                TEST_INDEX_NESTED_SIMPLE));
++    verifySchema(actual, schema("address", "array"));
++    verifyNumOfRows(actual, 0);
++  }
++
+   @Test
+   public void testIsNotNull() throws IOException {
+     JSONObject actual =
+@@ -70,6 +92,25 @@ public class CalcitePPLConditionBuiltinFunctionIT extends PPLIntegTestCase {
+         rows(""));
+   }
+ 
++  @Test
++  public void testIsNotNullWithStruct() throws IOException {
++    JSONObject actual = executeQuery("source=big5 | where isnotnull(aws) | fields aws");
++    verifySchema(actual, schema("aws", "struct"));
++    verifyNumOfRows(actual, 1);
++  }
++
++  @Test
++  public void testIsNotNullWithNested() throws IOException {
++    JSONObject actual =
++        executeQuery(
++            String.format(
++                Locale.ROOT,
++                "source=%s | where isnotnull(address) | fields address",
++                TEST_INDEX_NESTED_SIMPLE));
++    verifySchema(actual, schema("address", "array"));
++    verifyNumOfRows(actual, 5);
++  }
++
+   @Test
+   public void testNullIf() throws IOException {
+     JSONObject actual =
+diff --git a/integ-test/src/test/resources/expectedOutput/calcite/explain_partial_filter_isnull.json b/integ-test/src/test/resources/expectedOutput/calcite/explain_partial_filter_isnull.json
+new file mode 100644
+index 000000000..901a3a165
+--- /dev/null
++++ b/integ-test/src/test/resources/expectedOutput/calcite/explain_partial_filter_isnull.json
+@@ -0,0 +1,6 @@
++{
++  "calcite": {
++    "logical": "LogicalSystemLimit(fetch=[10000], type=[QUERY_SIZE_LIMIT])\n  LogicalProject(name=[$0], address=[$1], id=[$6], age=[$7])\n    LogicalFilter(condition=[AND(IS NULL($1), =($0, 'david'))])\n      CalciteLogicalIndexScan(table=[[OpenSearch, opensearch-sql_test_index_nested_simple]])\n",
++    "physical": "EnumerableLimit(fetch=[10000])\n  EnumerableCalc(expr#0..3=[{inputs}], expr#4=[IS NULL($t1)], proj#0..3=[{exprs}], $condition=[$t4])\n    CalciteEnumerableIndexScan(table=[[OpenSearch, opensearch-sql_test_index_nested_simple]], PushDownContext=[[PROJECT->[name, address, id, age], FILTER->=($0, 'david')], OpenSearchRequestBuilder(sourceBuilder={\"from\":0,\"timeout\":\"1m\",\"query\":{\"bool\":{\"must\":[{\"term\":{\"name.keyword\":{\"value\":\"david\",\"boost\":1.0}}}],\"adjust_pure_negative\":true,\"boost\":1.0}},\"_source\":{\"includes\":[\"name\",\"address\",\"id\",\"age\"],\"excludes\":[]},\"sort\":[{\"_doc\":{\"order\":\"asc\"}}]}, requestedTotalSize=2147483647, pageSize=null, startFrom=0)])\n"
++  }
++}
+diff --git a/integ-test/src/test/resources/expectedOutput/calcite_no_pushdown/explain_partial_filter_isnull.json b/integ-test/src/test/resources/expectedOutput/calcite_no_pushdown/explain_partial_filter_isnull.json
+new file mode 100644
+index 000000000..75c84e80b
+--- /dev/null
++++ b/integ-test/src/test/resources/expectedOutput/calcite_no_pushdown/explain_partial_filter_isnull.json
+@@ -0,0 +1,6 @@
++{
++  "calcite": {
++    "logical": "LogicalSystemLimit(fetch=[10000], type=[QUERY_SIZE_LIMIT])\n  LogicalProject(name=[$0], address=[$1], id=[$6], age=[$7])\n    LogicalFilter(condition=[AND(IS NULL($1), =($0, 'david'))])\n      CalciteLogicalIndexScan(table=[[OpenSearch, opensearch-sql_test_index_nested_simple]])\n",
++    "physical": "EnumerableLimit(fetch=[10000])\n  EnumerableCalc(expr#0..13=[{inputs}], expr#14=[IS NULL($t1)], expr#15=['david':VARCHAR], expr#16=[=($t0, $t15)], expr#17=[AND($t14, $t16)], proj#0..1=[{exprs}], id=[$t6], age=[$t7], $condition=[$t17])\n    CalciteEnumerableIndexScan(table=[[OpenSearch, opensearch-sql_test_index_nested_simple]])\n"
++  }
++}

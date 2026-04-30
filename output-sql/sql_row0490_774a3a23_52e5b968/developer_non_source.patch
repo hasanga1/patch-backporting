@@ -1,0 +1,95 @@
+diff --git a/integ-test/src/test/java/org/opensearch/sql/calcite/remote/CalciteExplainIT.java b/integ-test/src/test/java/org/opensearch/sql/calcite/remote/CalciteExplainIT.java
+index a3aa92f47..666b0bda3 100644
+--- a/integ-test/src/test/java/org/opensearch/sql/calcite/remote/CalciteExplainIT.java
++++ b/integ-test/src/test/java/org/opensearch/sql/calcite/remote/CalciteExplainIT.java
+@@ -5,8 +5,11 @@
+ 
+ package org.opensearch.sql.calcite.remote;
+ 
++import static org.opensearch.sql.util.MatcherUtils.assertJsonEqualsIgnoreId;
++
+ import java.io.IOException;
+ import org.junit.Ignore;
++import org.junit.Test;
+ import org.opensearch.sql.ppl.ExplainIT;
+ 
+ public class CalciteExplainIT extends ExplainIT {
+@@ -21,8 +24,39 @@ public class CalciteExplainIT extends ExplainIT {
+   @Ignore("test only in v2")
+   public void testExplainModeUnsupportedInV2() throws IOException {}
+ 
+-  @Override
+-  public void testExplain() throws IOException {
+-    super.testExplain();
++  // Only for Calcite
++  @Test
++  public void supportSearchSargPushDown_singleRange() throws IOException {
++    String query =
++        "source=opensearch-sql_test_index_account | where age >= 1.0 and age < 10 | fields age";
++    var result = explainQueryToString(query);
++    String expected =
++        loadFromFile("expectedOutput/calcite/explain_sarg_filter_push_single_range.json");
++    assertJsonEqualsIgnoreId(expected, result);
++  }
++
++  // Only for Calcite
++  @Test
++  public void supportSearchSargPushDown_multiRange() throws IOException {
++    String query =
++        "source=opensearch-sql_test_index_account | where (age > 20 and age < 28) or (age > 25 and"
++            + " age < 30) or (age >= 1 and age <= 10) or age = 0  | fields age";
++    var result = explainQueryToString(query);
++    String expected =
++        loadFromFile("expectedOutput/calcite/explain_sarg_filter_push_multi_range.json");
++    assertJsonEqualsIgnoreId(expected, result);
++  }
++
++  // Only for Calcite
++  @Test
++  public void supportSearchSargPushDown_timeRange() throws IOException {
++    String expected =
++        loadFromFile("expectedOutput/calcite/explain_sarg_filter_push_time_range.json");
++    assertJsonEqualsIgnoreId(
++        expected,
++        explainQueryToString(
++            "source=opensearch-sql_test_index_bank"
++                + "| where birthdate >= '2016-12-08 00:00:00.000000000' "
++                + "and birthdate < '2018-11-09 00:00:00.000000000' "));
+   }
+ }
+diff --git a/integ-test/src/test/resources/expectedOutput/calcite/explain_sarg_filter_push_multi_range.json b/integ-test/src/test/resources/expectedOutput/calcite/explain_sarg_filter_push_multi_range.json
+new file mode 100644
+index 000000000..959d2c7c9
+--- /dev/null
++++ b/integ-test/src/test/resources/expectedOutput/calcite/explain_sarg_filter_push_multi_range.json
+@@ -0,0 +1,6 @@
++{
++  "calcite": {
++    "logical": "LogicalProject(age=[$8])\n  LogicalFilter(condition=[SEARCH($8, Sarg[0, [1..10], (20..30)])])\n    CalciteLogicalIndexScan(table=[[OpenSearch, opensearch-sql_test_index_account]])\n",
++    "physical": "CalciteEnumerableIndexScan(table=[[OpenSearch, opensearch-sql_test_index_account]], PushDownContext=[[PROJECT->[age], FILTER->SEARCH($0, Sarg[0, [1..10], (20..30)])], OpenSearchRequestBuilder(sourceBuilder={\"from\":0,\"timeout\":\"1m\",\"query\":{\"bool\":{\"should\":[{\"term\":{\"age\":{\"value\":0,\"boost\":1.0}}},{\"range\":{\"age\":{\"from\":1,\"to\":10,\"include_lower\":true,\"include_upper\":true,\"boost\":1.0}}},{\"range\":{\"age\":{\"from\":20,\"to\":30,\"include_lower\":false,\"include_upper\":false,\"boost\":1.0}}}],\"adjust_pure_negative\":true,\"boost\":1.0}},\"_source\":{\"includes\":[\"age\"],\"excludes\":[]},\"sort\":[{\"_doc\":{\"order\":\"asc\"}}]}, requestedTotalSize=2147483647, pageSize=null, startFrom=0)])\n"
++  }
++}
+diff --git a/integ-test/src/test/resources/expectedOutput/calcite/explain_sarg_filter_push_single_range.json b/integ-test/src/test/resources/expectedOutput/calcite/explain_sarg_filter_push_single_range.json
+new file mode 100644
+index 000000000..254917903
+--- /dev/null
++++ b/integ-test/src/test/resources/expectedOutput/calcite/explain_sarg_filter_push_single_range.json
+@@ -0,0 +1,6 @@
++{
++  "calcite": {
++    "logical": "LogicalProject(age=[$8])\n  LogicalFilter(condition=[SEARCH($8, Sarg[[1.0:DECIMAL(11, 1)..10:DECIMAL(11, 1))]:DECIMAL(11, 1))])\n    CalciteLogicalIndexScan(table=[[OpenSearch, opensearch-sql_test_index_account]])\n",
++    "physical": "CalciteEnumerableIndexScan(table=[[OpenSearch, opensearch-sql_test_index_account]], PushDownContext=[[PROJECT->[age], FILTER->SEARCH($0, Sarg[[1.0:DECIMAL(11, 1)..10:DECIMAL(11, 1))]:DECIMAL(11, 1))], OpenSearchRequestBuilder(sourceBuilder={\"from\":0,\"timeout\":\"1m\",\"query\":{\"range\":{\"age\":{\"from\":1.0,\"to\":10,\"include_lower\":true,\"include_upper\":false,\"boost\":1.0}}},\"_source\":{\"includes\":[\"age\"],\"excludes\":[]},\"sort\":[{\"_doc\":{\"order\":\"asc\"}}]}, requestedTotalSize=2147483647, pageSize=null, startFrom=0)])\n"
++  }
++}
+diff --git a/integ-test/src/test/resources/expectedOutput/calcite/explain_sarg_filter_push_time_range.json b/integ-test/src/test/resources/expectedOutput/calcite/explain_sarg_filter_push_time_range.json
+new file mode 100644
+index 000000000..faccb294a
+--- /dev/null
++++ b/integ-test/src/test/resources/expectedOutput/calcite/explain_sarg_filter_push_time_range.json
+@@ -0,0 +1,6 @@
++{
++  "calcite": {
++    "logical": "LogicalProject(account_number=[$0], firstname=[$1], address=[$2], birthdate=[$3], gender=[$4], city=[$5], lastname=[$6], balance=[$7], employer=[$8], state=[$9], age=[$10], email=[$11], male=[$12])\n  LogicalFilter(condition=[AND(>=($3, TIMESTAMP('2016-12-08 00:00:00.000000000':VARCHAR)), <($3, TIMESTAMP('2018-11-09 00:00:00.000000000':VARCHAR)))])\n    CalciteLogicalIndexScan(table=[[OpenSearch, opensearch-sql_test_index_bank]])\n",
++    "physical": "CalciteEnumerableIndexScan(table=[[OpenSearch, opensearch-sql_test_index_bank]], PushDownContext=[[PROJECT->[account_number, firstname, address, birthdate, gender, city, lastname, balance, employer, state, age, email, male], FILTER->SEARCH($3, Sarg[['2016-12-08 00:00:00':VARCHAR..'2018-11-09 00:00:00':VARCHAR)]:VARCHAR)], OpenSearchRequestBuilder(sourceBuilder={\"from\":0,\"timeout\":\"1m\",\"query\":{\"range\":{\"birthdate\":{\"from\":\"2016-12-08T00:00:00.000Z\",\"to\":\"2018-11-09T00:00:00.000Z\",\"include_lower\":true,\"include_upper\":false,\"boost\":1.0}}},\"_source\":{\"includes\":[\"account_number\",\"firstname\",\"address\",\"birthdate\",\"gender\",\"city\",\"lastname\",\"balance\",\"employer\",\"state\",\"age\",\"email\",\"male\"],\"excludes\":[]},\"sort\":[{\"_doc\":{\"order\":\"asc\"}}]}, requestedTotalSize=2147483647, pageSize=null, startFrom=0)])\n"
++  }
++}
