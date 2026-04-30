@@ -101,7 +101,7 @@ HELPER_NAME_MAP: dict = {
 # Some CSV project names differ from the directory name under --repo-root.
 # "sql" is a CrateDB SQL-engine subproject cloned from the same crate/crate repo.
 REPO_DIR_MAP: dict = {
-    "sql": "crate",
+    "sql": "sql",
 }
 
 # ---------------------------------------------------------------------------
