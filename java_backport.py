@@ -90,7 +90,7 @@ GITHUB_URLS: dict = {
     "jdk25u-dev": "https://github.com/openjdk/jdk25u-dev",
     "logstash": "https://github.com/elastic/logstash",
     "spring-framework": "https://github.com/spring-projects/spring-framework",
-    "sql": "https://github.com/crate/crate",
+    "sql": "https://github.com/opensearch-project/sql",
 }
 
 # Some CSV project names differ from their helpers/ subdirectory name.
