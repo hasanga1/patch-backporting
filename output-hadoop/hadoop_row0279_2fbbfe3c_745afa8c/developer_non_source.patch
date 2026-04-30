@@ -1,0 +1,110 @@
+diff --git a/hadoop-hdfs-project/hadoop-hdfs/src/main/resources/hdfs-default.xml b/hadoop-hdfs-project/hadoop-hdfs/src/main/resources/hdfs-default.xml
+index f8abb59daa0..cbce448e078 100755
+--- a/hadoop-hdfs-project/hadoop-hdfs/src/main/resources/hdfs-default.xml
++++ b/hadoop-hdfs-project/hadoop-hdfs/src/main/resources/hdfs-default.xml
+@@ -1068,7 +1068,14 @@
+   not permitted to connect to the namenode.  The full pathname of the
+   file must be specified.  If the value is empty, no hosts are
+   excluded.</description>
+-</property> 
++</property>
++
++<property>
++  <name>dfs.hosts.timeout</name>
++  <value>0</value>
++  <description>Specifies a timeout (in milliseconds) for reading the dfs.hosts file.
++  A value of zero indicates no timeout to be set.</description>
++</property>
+ 
+ <property>
+   <name>dfs.namenode.max.objects</name>
+diff --git a/hadoop-hdfs-project/hadoop-hdfs/src/test/java/org/apache/hadoop/hdfs/util/TestCombinedHostsFileReader.java b/hadoop-hdfs-project/hadoop-hdfs/src/test/java/org/apache/hadoop/hdfs/util/TestCombinedHostsFileReader.java
+index cf021805518..751f2ad18ae 100644
+--- a/hadoop-hdfs-project/hadoop-hdfs/src/test/java/org/apache/hadoop/hdfs/util/TestCombinedHostsFileReader.java
++++ b/hadoop-hdfs-project/hadoop-hdfs/src/test/java/org/apache/hadoop/hdfs/util/TestCombinedHostsFileReader.java
+@@ -19,14 +19,21 @@
+ 
+ import java.io.File;
+ import java.io.FileWriter;
++import java.io.IOException;
++import java.util.concurrent.Callable;
+ 
+ import org.apache.hadoop.hdfs.protocol.DatanodeAdminProperties;
+ import org.apache.hadoop.test.GenericTestUtils;
+ import org.junit.Before;
+ import org.junit.After;
+ import org.junit.Test;
++import org.mockito.invocation.InvocationOnMock;
++import org.mockito.stubbing.Answer;
++import org.mockito.Mock;
+ 
+ import static org.junit.Assert.assertEquals;
++import static org.mockito.Mockito.when;
++import org.mockito.MockitoAnnotations;
+ 
+ /**
+  * Test for JSON based HostsFileReader.
+@@ -44,8 +51,12 @@ public class TestCombinedHostsFileReader {
+   private final File legacyFile =
+       new File(TESTCACHEDATADIR, "legacy.dfs.hosts.json");
+ 
++  @Mock
++  private Callable<DatanodeAdminProperties[]> callable;
++
+   @Before
+   public void setUp() throws Exception {
++    MockitoAnnotations.initMocks(this);
+   }
+ 
+   @After
+@@ -87,4 +98,50 @@ public void testEmptyCombinedHostsFileReader() throws Exception {
+         CombinedHostsFileReader.readFile(newFile.getAbsolutePath());
+     assertEquals(0, all.length);
+   }
++
++  /*
++   * When timeout is enabled, test for success when reading file within timeout
++   * limits
++   */
++  @Test
++  public void testReadFileWithTimeoutSuccess() throws Exception {
++
++    DatanodeAdminProperties[] all = CombinedHostsFileReader.readFileWithTimeout(
++        jsonFile.getAbsolutePath(), 1000);
++    assertEquals(7, all.length);
++  }
++
++  /*
++   * When timeout is enabled, test for IOException when reading file exceeds
++   * timeout limits
++   */
++  @Test(expected = IOException.class)
++  public void testReadFileWithTimeoutTimeoutException() throws Exception {
++    when(callable.call()).thenAnswer(new Answer<Void>() {
++      @Override
++      public Void answer(InvocationOnMock invocation) throws Throwable {
++        Thread.sleep(2000);
++        return null;
++      }
++    });
++
++    CombinedHostsFileReader.readFileWithTimeout(
++        jsonFile.getAbsolutePath(), 1);
++  }
++
++  /*
++   * When timeout is enabled, test for IOException when execution is interrupted
++   */
++  @Test(expected = IOException.class)
++  public void testReadFileWithTimeoutInterruptedException() throws Exception {
++    when(callable.call()).thenAnswer(new Answer<Void>() {
++      @Override
++      public Void answer(InvocationOnMock invocation) throws Throwable {
++        throw new InterruptedException();
++      }
++    });
++
++    CombinedHostsFileReader.readFileWithTimeout(
++        jsonFile.getAbsolutePath(), 1);
++  }
+ }

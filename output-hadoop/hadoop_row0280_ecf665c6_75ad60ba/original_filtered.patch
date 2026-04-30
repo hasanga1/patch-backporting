@@ -1,0 +1,88 @@
+diff --git a/hadoop-yarn-project/hadoop-yarn/hadoop-yarn-server/hadoop-yarn-server-resourcemanager/src/main/java/org/apache/hadoop/yarn/server/resourcemanager/scheduler/capacity/AbstractLeafQueue.java b/hadoop-yarn-project/hadoop-yarn/hadoop-yarn-server/hadoop-yarn-server-resourcemanager/src/main/java/org/apache/hadoop/yarn/server/resourcemanager/scheduler/capacity/AbstractLeafQueue.java
+index e40b8aaeb0b..565f89de320 100644
+--- a/hadoop-yarn-project/hadoop-yarn/hadoop-yarn-server/hadoop-yarn-server-resourcemanager/src/main/java/org/apache/hadoop/yarn/server/resourcemanager/scheduler/capacity/AbstractLeafQueue.java
++++ b/hadoop-yarn-project/hadoop-yarn/hadoop-yarn-server/hadoop-yarn-server-resourcemanager/src/main/java/org/apache/hadoop/yarn/server/resourcemanager/scheduler/capacity/AbstractLeafQueue.java
+@@ -369,6 +369,11 @@ public List<CSQueue> getChildQueues() {
+     return null;
+   }
+ 
++  @Override
++  public List<CSQueue> getChildQueuesByTryLock() {
++    return null;
++  }
++
+   /**
+    * Set user limit.
+    * @param userLimit new user limit
+diff --git a/hadoop-yarn-project/hadoop-yarn/hadoop-yarn-server/hadoop-yarn-server-resourcemanager/src/main/java/org/apache/hadoop/yarn/server/resourcemanager/scheduler/capacity/AbstractParentQueue.java b/hadoop-yarn-project/hadoop-yarn/hadoop-yarn-server/hadoop-yarn-server-resourcemanager/src/main/java/org/apache/hadoop/yarn/server/resourcemanager/scheduler/capacity/AbstractParentQueue.java
+index 9cb545d3780..87333bf50a1 100644
+--- a/hadoop-yarn-project/hadoop-yarn/hadoop-yarn-server/hadoop-yarn-server-resourcemanager/src/main/java/org/apache/hadoop/yarn/server/resourcemanager/scheduler/capacity/AbstractParentQueue.java
++++ b/hadoop-yarn-project/hadoop-yarn/hadoop-yarn-server/hadoop-yarn-server-resourcemanager/src/main/java/org/apache/hadoop/yarn/server/resourcemanager/scheduler/capacity/AbstractParentQueue.java
+@@ -27,6 +27,7 @@
+ import java.util.Map;
+ import java.util.concurrent.ConcurrentHashMap;
+ import java.util.concurrent.atomic.AtomicInteger;
++import java.util.concurrent.locks.LockSupport;
+ 
+ import org.apache.hadoop.thirdparty.com.google.common.collect.ImmutableList;
+ import org.apache.hadoop.thirdparty.com.google.common.collect.ImmutableMap;
+@@ -1347,6 +1348,18 @@ public List<CSQueue> getChildQueues() {
+ 
+   }
+ 
++  @Override
++  public List<CSQueue> getChildQueuesByTryLock() {
++    try {
++      while (!readLock.tryLock()){
++        LockSupport.parkNanos(10000);
++      }
++      return new ArrayList<>(childQueues);
++    } finally {
++      readLock.unlock();
++    }
++  }
++
+   @Override
+   public void recoverContainer(Resource clusterResource,
+       SchedulerApplicationAttempt attempt, RMContainer rmContainer) {
+diff --git a/hadoop-yarn-project/hadoop-yarn/hadoop-yarn-server/hadoop-yarn-server-resourcemanager/src/main/java/org/apache/hadoop/yarn/server/resourcemanager/scheduler/capacity/CSQueue.java b/hadoop-yarn-project/hadoop-yarn/hadoop-yarn-server/hadoop-yarn-server-resourcemanager/src/main/java/org/apache/hadoop/yarn/server/resourcemanager/scheduler/capacity/CSQueue.java
+index a5672a8bcdf..df3199220b2 100644
+--- a/hadoop-yarn-project/hadoop-yarn/hadoop-yarn-server/hadoop-yarn-server-resourcemanager/src/main/java/org/apache/hadoop/yarn/server/resourcemanager/scheduler/capacity/CSQueue.java
++++ b/hadoop-yarn-project/hadoop-yarn/hadoop-yarn-server/hadoop-yarn-server-resourcemanager/src/main/java/org/apache/hadoop/yarn/server/resourcemanager/scheduler/capacity/CSQueue.java
+@@ -175,6 +175,12 @@ public interface CSQueue extends SchedulerQueue<CSQueue> {
+    * @return child queues
+    */
+   public List<CSQueue> getChildQueues();
++
++  /**
++   * Get child queues By tryLock.
++   * @return child queues
++   */
++  List<CSQueue> getChildQueuesByTryLock();
+   
+   /**
+    * Check if the <code>user</code> has permission to perform the operation
+diff --git a/hadoop-yarn-project/hadoop-yarn/hadoop-yarn-server/hadoop-yarn-server-resourcemanager/src/main/java/org/apache/hadoop/yarn/server/resourcemanager/scheduler/capacity/preemption/PreemptionManager.java b/hadoop-yarn-project/hadoop-yarn/hadoop-yarn-server/hadoop-yarn-server-resourcemanager/src/main/java/org/apache/hadoop/yarn/server/resourcemanager/scheduler/capacity/preemption/PreemptionManager.java
+index 408198f7046..3aab8e8a509 100644
+--- a/hadoop-yarn-project/hadoop-yarn/hadoop-yarn-server/hadoop-yarn-server-resourcemanager/src/main/java/org/apache/hadoop/yarn/server/resourcemanager/scheduler/capacity/preemption/PreemptionManager.java
++++ b/hadoop-yarn-project/hadoop-yarn/hadoop-yarn-server/hadoop-yarn-server-resourcemanager/src/main/java/org/apache/hadoop/yarn/server/resourcemanager/scheduler/capacity/preemption/PreemptionManager.java
+@@ -28,6 +28,7 @@
+ import java.util.Collections;
+ import java.util.HashMap;
+ import java.util.Iterator;
++import java.util.List;
+ import java.util.Map;
+ import java.util.concurrent.locks.ReentrantReadWriteLock;
+ 
+@@ -55,8 +56,9 @@ public void refreshQueues(CSQueue parent, CSQueue current) {
+             new PreemptableQueue(parentEntity));
+       }
+ 
+-      if (current.getChildQueues() != null) {
+-        for (CSQueue child : current.getChildQueues()) {
++      List<CSQueue> childQueues = current.getChildQueuesByTryLock();
++      if (childQueues != null) {
++        for (CSQueue child : childQueues) {
+           refreshQueues(current, child);
+         }
+       }
