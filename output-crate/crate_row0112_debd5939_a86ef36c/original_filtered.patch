@@ -1,0 +1,40 @@
+diff --git a/server/src/main/java/io/crate/types/ResultSetParser.java b/server/src/main/java/io/crate/types/ResultSetParser.java
+index 42b4d3027c..063256bb54 100644
+--- a/server/src/main/java/io/crate/types/ResultSetParser.java
++++ b/server/src/main/java/io/crate/types/ResultSetParser.java
+@@ -80,11 +80,14 @@ public class ResultSetParser {
+                 return PgOidVectorType.listFromOidVectorString(textval);
+             }
+             case "char":
+-                String strValue = resultSet.getString(columnIndex);
+-                if (strValue == null) {
++                // It's NOT char(1) which is actually "character".
++                // It's char with OID 18, ie single byte "char" which can store single ASCII character.
++                // See also https://www.postgresql.org/docs/15/datatype-character.html#DATATYPE-CHARACTER-SPECIAL-TABLE
++                String str = resultSet.getString(columnIndex);
++                if (str == null) {
+                     return null;
+                 }
+-                return Byte.valueOf(strValue);
++                return str;
+             case "byte":
+                 value = resultSet.getByte(columnIndex);
+                 break;
+diff --git a/server/src/testFixtures/java/io/crate/testing/SQLTransportExecutor.java b/server/src/testFixtures/java/io/crate/testing/SQLTransportExecutor.java
+index 9b9cdb6bc4..c4e9506f29 100644
+--- a/server/src/testFixtures/java/io/crate/testing/SQLTransportExecutor.java
++++ b/server/src/testFixtures/java/io/crate/testing/SQLTransportExecutor.java
+@@ -430,6 +430,13 @@ public class SQLTransportExecutor {
+                     Object value;
+                     String typeName = metadata.getColumnTypeName(i + 1);
+                     value = getObject(resultSet, i, typeName);
++                    if (typeName.equals("char") && value != null) {
++                        // ResultSetParser is dedicated to deal with Postgres specific "char" type which can be single ASCII character.
++                        // This code is also used in tests to get results via JDBC which is not necessarily bound to PG logic.
++                        // Hence, cancel PG specific logic here.
++                        assert value instanceof String;
++                        value = Byte.parseByte((String) value);
++                    }
+                     row[i] = value;
+                 }
+                 rows.add(row);

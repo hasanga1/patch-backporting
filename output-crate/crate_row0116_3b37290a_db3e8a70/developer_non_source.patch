@@ -1,0 +1,38 @@
+diff --git a/docs/appendices/release-notes/5.7.2.rst b/docs/appendices/release-notes/5.7.2.rst
+index 3129164dcd..d7a3cff4c2 100644
+--- a/docs/appendices/release-notes/5.7.2.rst
++++ b/docs/appendices/release-notes/5.7.2.rst
+@@ -52,6 +52,10 @@ Security Fixes
+ Fixes
+ =====
+ 
++- Fixed an issue that prevented users with :ref:`DDL <privilege_types>`
++  privileges on table to execute
++  :ref:`ALTER TABLE t REROUTE... <ddl_reroute_shards>` statements.
++
+ - Fixed an issue that could lead to requests getting stuck when trying to
+   download a blob via HTTPS.
+ 
+diff --git a/server/src/test/java/io/crate/auth/AccessControlMayExecuteTest.java b/server/src/test/java/io/crate/auth/AccessControlMayExecuteTest.java
+index 5102940fdb..7657a3e9de 100644
+--- a/server/src/test/java/io/crate/auth/AccessControlMayExecuteTest.java
++++ b/server/src/test/java/io/crate/auth/AccessControlMayExecuteTest.java
+@@ -480,6 +480,18 @@ public class AccessControlMayExecuteTest extends CrateDummyClusterServiceUnitTes
+         assertAskedForTable(Permission.DDL, "doc.users");
+     }
+ 
++    @Test
++    public void test_alter_table_reroute() throws Exception {
++        analyze("alter table users reroute MOVE SHARD 1 FROM 'node1' TO 'node2'");
++        assertAskedForTable(Permission.DDL, "doc.users");
++        analyze("alter table users reroute ALLOCATE REPLICA SHARD 1 ON 'node1'");
++        assertAskedForTable(Permission.DDL, "doc.users");
++        analyze("alter table users reroute PROMOTE REPLICA SHARD 1 ON 'node1'");
++        assertAskedForTable(Permission.DDL, "doc.users");
++        analyze("alter table users reroute CANCEL SHARD 1 ON 'node1'");
++        assertAskedForTable(Permission.DDL, "doc.users");
++    }
++
+     @Test
+     public void testShowTable() throws Exception {
+         analyze("show create table users");

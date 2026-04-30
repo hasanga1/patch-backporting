@@ -1,0 +1,83 @@
+--- a/libs/sql-parser/src/main/java/io/crate/sql/ExpressionFormatter.java
++++ b/libs/sql-parser/src/main/java/io/crate/sql/ExpressionFormatter.java
+@@ -164,12 +164,12 @@ public final class ExpressionFormatter {
+ 
+         @Override
+         public String visitArrayComparisonExpression(ArrayComparisonExpression node, @Nullable List<Expression> parameters) {
+-
+             String array = node.getRight().accept(this, parameters);
+             String left = node.getLeft().accept(this, parameters);
+             String type = node.getType().getValue();
++            String quantifier = node.quantifier().name();
+ 
+-            return "(" + left + " " + type + " ANY(" + array + "))";
++            return "(" + left + " " + type + " " + quantifier + "(" + array + "))";
+         }
+ 
+         @Override
+
+--- a/server/src/main/java/io/crate/expression/operator/any/AnyOperator.java
++++ b/server/src/main/java/io/crate/expression/operator/any/AnyOperator.java
+@@ -23,7 +23,6 @@ package io.crate.expression.operator.any;
+ 
+ import java.util.List;
+ import java.util.Objects;
+-import java.util.Set;
+ import java.util.stream.StreamSupport;
+ 
+ import org.apache.lucene.search.MatchNoDocsQuery;
+
+--- a/server/src/main/java/io/crate/expression/operator/any/AnyOperator.java
++++ b/server/src/main/java/io/crate/expression/operator/any/AnyOperator.java
+@@ -48,7 +47,6 @@ import io.crate.metadata.TransactionContext;
+ import io.crate.metadata.functions.BoundSignature;
+ import io.crate.metadata.functions.Signature;
+ import io.crate.metadata.functions.TypeVariableConstraint;
+-import io.crate.sql.tree.ComparisonExpression;
+ import io.crate.types.DataType;
+ import io.crate.types.TypeSignature;
+ 
+
+--- a/server/src/main/java/io/crate/expression/operator/any/AnyOperator.java
++++ b/server/src/main/java/io/crate/expression/operator/any/AnyOperator.java
+@@ -73,15 +71,6 @@ public abstract sealed class AnyOperator<T> extends Operator<T>
+         LikeOperators.ANY_NOT_ILIKE
+     );
+ 
+-    public static final Set<String> SUPPORTED_COMPARISONS = Set.of(
+-        ComparisonExpression.Type.EQUAL.getValue(),
+-        ComparisonExpression.Type.NOT_EQUAL.getValue(),
+-        ComparisonExpression.Type.LESS_THAN.getValue(),
+-        ComparisonExpression.Type.LESS_THAN_OR_EQUAL.getValue(),
+-        ComparisonExpression.Type.GREATER_THAN.getValue(),
+-        ComparisonExpression.Type.GREATER_THAN_OR_EQUAL.getValue()
+-    );
+-
+     protected final DataType<T> leftType;
+ 
+     public static void register(Functions.Builder builder) {
+
+--- a/server/src/main/java/io/crate/planner/optimizer/symbol/Optimizer.java
++++ b/server/src/main/java/io/crate/planner/optimizer/symbol/Optimizer.java
+@@ -38,8 +38,8 @@ import io.crate.planner.PlannerContext;
+ import io.crate.planner.optimizer.matcher.Captures;
+ import io.crate.planner.optimizer.matcher.Match;
+ import io.crate.planner.optimizer.symbol.rule.MoveArrayLengthOnReferenceCastToLiteralCastInsideOperators;
+-import io.crate.planner.optimizer.symbol.rule.MoveReferenceCastToLiteralCastOnAnyOperatorsWhenLeftIsReference;
+-import io.crate.planner.optimizer.symbol.rule.MoveReferenceCastToLiteralCastOnAnyOperatorsWhenRightIsReference;
++import io.crate.planner.optimizer.symbol.rule.MoveReferenceCastToLiteralCastOnArrayOperatorsWhenLeftIsReference;
++import io.crate.planner.optimizer.symbol.rule.MoveReferenceCastToLiteralCastOnArrayOperatorsWhenRightIsReference;
+ import io.crate.planner.optimizer.symbol.rule.MoveSubscriptOnReferenceCastToLiteralCastInsideOperators;
+ import io.crate.planner.optimizer.symbol.rule.SimplifyEqualsOperationOnIdenticalReferences;
+ import io.crate.planner.optimizer.symbol.rule.SwapCastsInComparisonOperators;
+
+--- a/server/src/main/java/io/crate/planner/optimizer/symbol/rule/MoveReferenceCastToLiteralCastOnAnyOperatorsWhenLeftIsReference.java
++++ b/server/src/main/java/io/crate/planner/optimizer/symbol/rule/MoveReferenceCastToLiteralCastOnAnyOperatorsWhenLeftIsReference.java
+@@ -22,6 +22,7 @@
+ 
+ import java.util.List;
+ 
++import io.crate.expression.operator.all.AllOperator;
+ import io.crate.expression.operator.any.AnyOperator;
+ import io.crate.expression.scalar.cast.CastMode;
+ import io.crate.expression.symbol.Function;

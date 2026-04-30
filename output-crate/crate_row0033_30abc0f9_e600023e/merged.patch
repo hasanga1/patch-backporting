@@ -1,0 +1,340 @@
+--- a/server/src/main/java/io/crate/execution/engine/distribution/DistributingConsumer.java
++++ b/server/src/main/java/io/crate/execution/engine/distribution/DistributingConsumer.java
+@@ -20,7 +20,9 @@
+ 
+ package io.crate.execution.engine.distribution;
+ 
++import static io.crate.execution.engine.distribution.TransportDistributedResultAction.broadcastKill;
++
+ import java.util.ArrayList;
+ import java.util.Collection;
+ import java.util.List;
+ import java.util.UUID;
+
+--- a/server/src/main/java/io/crate/execution/engine/distribution/DistributingConsumer.java
++++ b/server/src/main/java/io/crate/execution/engine/distribution/DistributingConsumer.java
+@@ -49,6 +51,8 @@ import io.crate.data.Paging;
+ import io.crate.data.Row;
+ import io.crate.data.RowConsumer;
+ import io.crate.exceptions.SQLExceptions;
++import io.crate.execution.jobs.kill.KillJobsNodeRequest;
++import io.crate.execution.jobs.kill.KillResponse;
+ import io.crate.execution.support.ActionExecutor;
+ import io.crate.execution.support.NodeRequest;
+ 
+
+--- a/server/src/main/java/io/crate/execution/engine/distribution/DistributingConsumer.java
++++ b/server/src/main/java/io/crate/execution/engine/distribution/DistributingConsumer.java
+@@ -74,5 +74,8 @@
+ 
+     private volatile Throwable failure;
++
++    private final ActionExecutor<KillJobsNodeRequest, KillResponse> killNodeAction;
++    private final String localNodeId;
+ 
+     public DistributingConsumer(Executor responseExecutor,
+                                 UUID jobId,
+
+--- a/server/src/main/java/io/crate/execution/engine/distribution/DistributingConsumer.java
++++ b/server/src/main/java/io/crate/execution/engine/distribution/DistributingConsumer.java
+@@ -78,21 +78,25 @@
+-                                Collection<String> downstreamNodeIds,
+-                                ActionExecutor<NodeRequest<DistributedResultRequest>, DistributedResultResponse> distributedResultAction,
+-                                int pageSize) {
+-        this.traceEnabled = LOGGER.isTraceEnabled();
+-        this.responseExecutor = responseExecutor;
+-        this.jobId = jobId;
+-        this.multiBucketBuilder = multiBucketBuilder;
+-        this.targetPhaseId = targetPhaseId;
+-        this.inputId = inputId;
+-        this.bucketIdx = bucketIdx;
+-        this.distributedResultAction = distributedResultAction;
+-        this.pageSize = pageSize;
++                                Collection<String> downstreamNodeIds,
++                                ActionExecutor<NodeRequest<DistributedResultRequest>, DistributedResultResponse> distributedResultAction,
++                                ActionExecutor<KillJobsNodeRequest, KillResponse> killNodeAction,
++                                String localNodeId,
++                                int pageSize,
++                                ThreadPool threadPool) {
++        this.threadPool = threadPool;
++        this.traceEnabled = LOGGER.isTraceEnabled();
++        this.responseExecutor = responseExecutor;
++        this.jobId = jobId;
++        this.multiBucketBuilder = multiBucketBuilder;
++        this.targetPhaseId = targetPhaseId;
++        this.inputId = inputId;
++        this.bucketIdx = bucketIdx;
++        this.distributedResultAction = distributedResultAction;
++        this.pageSize = pageSize;
+         this.buckets = new StreamBucket[downstreamNodeIds.size()];
+         this.completionFuture = new CompletableFuture<>();
+         downstreams = new ArrayList<>(downstreamNodeIds.size());
+         for (String downstreamNodeId : downstreamNodeIds) {
+             downstreams.add(new Downstream(downstreamNodeId));
+         }
+         assert downstreams.size() > 0 : "Must always have at least one downstream";
+         this.maxBytes = Math.max(Paging.MAX_PAGE_BYTES / downstreams.size(), 2 * 1024 * 1024);
+     }
+
+--- a/server/src/main/java/io/crate/execution/engine/distribution/DistributingConsumer.java
++++ b/server/src/main/java/io/crate/execution/engine/distribution/DistributingConsumer.java
+@@ -107,6 +115,8 @@ public class DistributingConsumer implements RowConsumer {
+         this.inputId = inputId;
+         this.bucketIdx = bucketIdx;
+         this.distributedResultAction = distributedResultAction;
++        this.killNodeAction = killNodeAction;
++        this.localNodeId = localNodeId;
+         this.pageSize = pageSize;
+         this.buckets = new StreamBucket[downstreamNodeIds.size()];
+         this.completionFuture = new CompletableFuture<>();
+
+--- a/server/src/main/java/io/crate/execution/engine/distribution/DistributingConsumer.java
++++ b/server/src/main/java/io/crate/execution/engine/distribution/DistributingConsumer.java
+@@ -296,42 +296,43 @@
+         for (int i = 0; i < downstreams.size(); i++) {
+             Downstream downstream = downstreams.get(i);
+             if (downstream.needsMoreData == false) {
+-                countdownAndMaybeContinue(it, numActiveRequests, true);
++                countdownAndMaybeContinue(it, numActiveRequests, false);
+                 continue;
+             }
+             if (traceEnabled) {
+                 LOGGER.trace("forwardResults targetNode={} jobId={} targetPhase={}/{} bucket={} isLast={}",
+                              downstream.nodeId, jobId, targetPhaseId, inputId, bucketIdx, isLast);
+             }
+             distributedResultAction
+                 .execute(
+                     DistributedResultRequest.of(
+                         downstream.nodeId,
+                         jobId,
+                         targetPhaseId,
+                         inputId,
+                         bucketIdx,
+-                        buckets[i],
+-                        isLast))
+-                .whenComplete(
+-                    (resp, t) -> {
+-                        if (t == null) {
+-                            downstream.needsMoreData = resp.needMore();
+-                            countdownAndMaybeContinue(it, numActiveRequests, false);
+-                        } else {
+-                            LOGGER.trace(
+-                                "Failure from downstream while sending result. job={} targetNode={} failure={}",
+-                                jobId,
+-                                downstream.nodeId,
+-                                t
+-                            );
+-                            failure = t;
+-                            downstream.needsMoreData = false;
+-                            // continue because it's necessary to send something to downstreams still waiting for data
+-                            countdownAndMaybeContinue(it, numActiveRequests, false);
+-                        }
+-                    }
+-                );
++                        buckets[i],
++                        isLast))
++                .whenComplete(
++                    (resp, t) -> {
++                        if (t == null) {
++                            downstream.needsMoreData = resp.needMore();
++                            countdownAndMaybeContinue(it, numActiveRequests, false);
++                        } else {
++                            LOGGER.trace(
++                                "Failure from downstream while sending result. job={} targetNode={} failure={}",
++                                jobId,
++                                downstream.nodeId,
++                                t
++                            );
++                            failure = t;
++                            downstream.needsMoreData = false;
++
++                            it.close();
++                            completionFuture.completeExceptionally(failure);
++                        }
++                    }
++                );
+         }
+     }
+ 
+
+--- a/server/src/main/java/io/crate/execution/engine/distribution/DistributingConsumerFactory.java
++++ b/server/src/main/java/io/crate/execution/engine/distribution/DistributingConsumerFactory.java
+@@ -37,6 +37,9 @@ import io.crate.data.breaker.RamAccounting;
+ import io.crate.execution.dsl.phases.ExecutionPhases;
+ import io.crate.execution.dsl.phases.NodeOperation;
+ import io.crate.execution.jobs.PageBucketReceiver;
++import io.crate.execution.jobs.kill.KillJobsNodeAction;
++import io.crate.execution.jobs.kill.KillJobsNodeRequest;
++import io.crate.execution.jobs.kill.KillResponse;
+ import io.crate.execution.support.ActionExecutor;
+ import io.crate.execution.support.NodeRequest;
+ import io.crate.planner.distribution.DistributionInfo;
+
+--- a/server/src/main/java/io/crate/execution/engine/distribution/DistributingConsumerFactory.java
++++ b/server/src/main/java/io/crate/execution/engine/distribution/DistributingConsumerFactory.java
+@@ -48,12 +48,13 @@ public class DistributingConsumerFactory {
+     private final ClusterService clusterService;
+     private final Executor responseExecutor;
+     private final ActionExecutor<NodeRequest<DistributedResultRequest>, DistributedResultResponse> distributedResultAction;
++    private final ActionExecutor<KillJobsNodeRequest, KillResponse> killNodeAction;
+ 
+-    @Inject
++    @Inject
+     public DistributingConsumerFactory(ClusterService clusterService,
+                                        ThreadPool threadPool,
+                                        Node node) {
+         this.clusterService = clusterService;
+         this.responseExecutor = threadPool.executor(RESPONSE_EXECUTOR_NAME);
+         this.distributedResultAction = req -> node.client().execute(DistributedResultAction.INSTANCE, req);
+     }
+
+--- a/server/src/main/java/io/crate/execution/engine/distribution/DistributingConsumerFactory.java
++++ b/server/src/main/java/io/crate/execution/engine/distribution/DistributingConsumerFactory.java
+@@ -44,17 +44,21 @@
+ public class DistributingConsumerFactory {
+ 
+     private static final String RESPONSE_EXECUTOR_NAME = ThreadPool.Names.SEARCH;
+ 
+     private final ClusterService clusterService;
+     private final Executor responseExecutor;
+-    private final ActionExecutor<NodeRequest<DistributedResultRequest>, DistributedResultResponse> distributedResultAction;
++    private final ActionExecutor<NodeRequest<DistributedResultRequest>, DistributedResultResponse> distributedResultAction;
++    private final ThreadPool threadPool;
++    private final ActionExecutor<NodeRequest<KillJobsNodeRequest>, KillJobsNodeResponse> killNodeAction;
+ 
+     @Inject
+-    public DistributingConsumerFactory(ClusterService clusterService,
+-                                       ThreadPool threadPool,
+-                                       Node node) {
+-        this.clusterService = clusterService;
+-        this.responseExecutor = threadPool.executor(RESPONSE_EXECUTOR_NAME);
+-        this.distributedResultAction = req -> node.client().execute(DistributedResultAction.INSTANCE, req);
+-    }
++    public DistributingConsumerFactory(ClusterService clusterService,
++                                       ThreadPool threadPool,
++                                       Node node) {
++        this.clusterService = clusterService;
++        this.responseExecutor = threadPool.executor(RESPONSE_EXECUTOR_NAME);
++        this.distributedResultAction = req -> node.client().execute(DistributedResultAction.INSTANCE, req);
++        this.killNodeAction = req -> node.client().execute(KillJobsNodeAction.INSTANCE, req);
++        this.threadPool = threadPool;
++    }
+ 
+
+--- a/server/src/main/java/io/crate/execution/engine/distribution/TransportDistributedResultAction.java
++++ b/server/src/main/java/io/crate/execution/engine/distribution/TransportDistributedResultAction.java
+@@ -25,6 +25,7 @@ import java.util.Collections;
+ import java.util.Iterator;
+ import java.util.List;
+ import java.util.Locale;
++import java.util.UUID;
+ import java.util.concurrent.CompletableFuture;
+ import java.util.concurrent.ScheduledExecutorService;
+ import java.util.concurrent.TimeUnit;
+
+--- a/server/src/main/java/io/crate/execution/engine/distribution/TransportDistributedResultAction.java
++++ b/server/src/main/java/io/crate/execution/engine/distribution/TransportDistributedResultAction.java
+@@ -110,10 +111,7 @@ public class TransportDistributedResultAction extends TransportAction<NodeReques
+             DistributedResultAction.NAME,
+             ThreadPool.Names.SAME, // <- we will dispatch later at the nodeOperation on non failures
+             true,
+-            // Don't trip breaker on transport layer, but instead depend on ram-accounting in PageBucketReceivers
+-            // We need to always handle requests to avoid jobs from getting stuck.
+-            // (If we receive a request, but don't handle it, a task would remain open indefinitely)
+-            false,
++            true,
+             DistributedResultRequest::new,
+             new NodeActionRequestHandler<>(nodeAction));
+     }
+diff --git a/server/src/test/java/io/crate/execution/engine/distribution/DistributingConsumerTest.java b/server/src/test/java/io/crate/execution/engine/distribution/DistributingConsumerTest.java
+index 290cc91397..4ff0ea3e27 100644
+--- a/server/src/test/java/io/crate/execution/engine/distribution/DistributingConsumerTest.java
++++ b/server/src/test/java/io/crate/execution/engine/distribution/DistributingConsumerTest.java
+@@ -172,6 +172,10 @@ public class DistributingConsumerTest extends ESTestCase {
+             0,
+             Collections.singletonList("n1"),
+             distributedResultAction::execute,
++            // killAction and localNodeId are irrelevant for those tests,
++            // They are relevant for the test_dist_result_request_tripped_by_cb_no_stuck_jobs
++            null,
++            null,
+             2 // pageSize
+         );
+     }
+diff --git a/server/src/test/java/io/crate/integrationtests/GroupByAggregateTest.java b/server/src/test/java/io/crate/integrationtests/GroupByAggregateTest.java
+index b285aa1eec..2065e5d661 100644
+--- a/server/src/test/java/io/crate/integrationtests/GroupByAggregateTest.java
++++ b/server/src/test/java/io/crate/integrationtests/GroupByAggregateTest.java
+@@ -26,18 +26,28 @@ import static io.crate.protocols.postgres.PGErrorStatus.INTERNAL_ERROR;
+ import static io.crate.testing.Asserts.assertThat;
+ import static io.crate.testing.TestingHelpers.printedTable;
+ import static io.netty.handler.codec.http.HttpResponseStatus.BAD_REQUEST;
++import static org.assertj.core.api.Assertions.assertThatThrownBy;
+ import static org.assertj.core.api.Assertions.fail;
+ 
+ import java.util.Arrays;
++import java.util.Collection;
+ import java.util.List;
+ import java.util.stream.Stream;
+ 
+ import org.assertj.core.data.Percentage;
++import org.elasticsearch.common.breaker.CircuitBreakingException;
++import org.elasticsearch.plugins.Plugin;
+ import org.elasticsearch.test.IntegTestCase;
++import org.elasticsearch.test.transport.MockTransportService;
++import org.elasticsearch.transport.TransportService;
+ import org.junit.Before;
+ import org.junit.Test;
+ 
++import io.crate.common.collections.Lists;
++import io.crate.common.unit.TimeValue;
+ import io.crate.data.Paging;
++import io.crate.exceptions.JobKilledException;
++import io.crate.execution.engine.distribution.DistributedResultAction;
+ import io.crate.testing.Asserts;
+ import io.crate.testing.SQLResponse;
+ import io.crate.testing.UseJdbc;
+@@ -48,11 +58,43 @@ public class GroupByAggregateTest extends IntegTestCase {
+ 
+     private final Setup setup = new Setup(sqlExecutor);
+ 
++
+     @Before
+     public void initTestData() {
+         setup.setUpEmployees();
+     }
+ 
++    @Override
++    protected Collection<Class<? extends Plugin>> nodePlugins() {
++        return Lists.concat(super.nodePlugins(), MockTransportService.TestPlugin.class);
++    }
++
++
++    @Test
++    @UseJdbc(value = 0) // To avoid wrapping into PSQLException
++    public void test_dist_result_request_tripped_by_cb_no_stuck_jobs() throws Exception {
++        this.setup.groupBySetup("integer");
++        for (TransportService transportService : cluster().getDataOrMasterNodeInstances(TransportService.class)) {
++            MockTransportService mockTransportService = (MockTransportService) transportService;
++            mockTransportService.addRequestHandlingBehavior(DistributedResultAction.NAME, (handler, request, channel) -> {
++                throw new CircuitBreakingException("dummy");
++            });
++        }
++
++        // Using assertBusy to avoid flakiness.
++        // Sometimes a single select doesn't throw CBE, because of non-distributed execution.
++        // Depends on data distribution and which node out of 2 is selected to be a handler.
++        assertBusy(() -> {
++            try (var session = sqlExecutor.newSession()) {
++                // Timeout defeats the purpose of this test, ensure it's not applied.
++                session.sessionSettings().statementTimeout(TimeValue.ZERO);
++                assertThatThrownBy(() ->
++                    execute("select min(age) as minage, gender from characters group by gender order by gender", session)
++                ).isInstanceOfAny(JobKilledException.class, CircuitBreakingException.class);
++            }
++        });
++    }
++
+     @Test
+     public void selectGroupByAggregateMinInteger() throws Exception {
+         this.setup.groupBySetup("integer");

@@ -1,0 +1,512 @@
+diff --git a/docs/appendices/release-notes/5.10.5.rst b/docs/appendices/release-notes/5.10.5.rst
+index d334ed9241..c63c292841 100644
+--- a/docs/appendices/release-notes/5.10.5.rst
++++ b/docs/appendices/release-notes/5.10.5.rst
+@@ -44,6 +44,9 @@ See the :ref:`version_5.10.0` release notes for a full list of changes in the
+ Fixes
+ =====
+ 
++- Fixed memory estimation for ``INSERT INTO`` statements with ``ON CONFLICT``
++  clause. This should help prevent nodes from running out of memory.
++
+ - Improved the handling of ``statement_timeout`` to reduce memory consumption.
+   Before it would consume extra memory per executed query for the full
+   ``statement_duration`` even if the query finished early. Now the memory is
+diff --git a/server/src/test/java/io/crate/execution/dml/upsert/ShardUpsertRequestTest.java b/server/src/test/java/io/crate/execution/dml/upsert/ShardUpsertRequestTest.java
+index e8cd40cd52..96d60ac572 100644
+--- a/server/src/test/java/io/crate/execution/dml/upsert/ShardUpsertRequestTest.java
++++ b/server/src/test/java/io/crate/execution/dml/upsert/ShardUpsertRequestTest.java
+@@ -25,15 +25,12 @@ package io.crate.execution.dml.upsert;
+ import static org.assertj.core.api.Assertions.assertThat;
+ 
+ import java.util.List;
+-import java.util.Map;
+ import java.util.UUID;
+ 
+ import org.elasticsearch.Version;
+-import org.elasticsearch.cluster.metadata.IndexMetadata;
+ import org.elasticsearch.common.UUIDs;
+ import org.elasticsearch.common.io.stream.BytesStreamOutput;
+ import org.elasticsearch.common.io.stream.StreamInput;
+-import org.elasticsearch.common.settings.Settings;
+ import org.elasticsearch.index.seqno.SequenceNumbers;
+ import org.elasticsearch.index.shard.ShardId;
+ import org.elasticsearch.index.translog.Translog;
+@@ -44,18 +41,13 @@ import io.crate.common.unit.TimeValue;
+ import io.crate.execution.dml.upsert.ShardUpsertRequest.DuplicateKeyAction;
+ import io.crate.expression.symbol.Literal;
+ import io.crate.expression.symbol.Symbol;
+-import io.crate.metadata.Reference;
+ import io.crate.metadata.ReferenceIdent;
+ import io.crate.metadata.RelationName;
+ import io.crate.metadata.RowGranularity;
+ import io.crate.metadata.Schemas;
+ import io.crate.metadata.SearchPath;
+ import io.crate.metadata.SimpleReference;
+-import io.crate.metadata.doc.DocTableInfo;
+ import io.crate.metadata.settings.SessionSettings;
+-import io.crate.metadata.table.Operation;
+-import io.crate.sql.tree.ColumnPolicy;
+-import io.crate.statistics.Stats;
+ import io.crate.types.DataTypes;
+ 
+ public class ShardUpsertRequestTest extends ESTestCase {
+@@ -97,7 +89,8 @@ public class ShardUpsertRequestTest extends ESTestCase {
+             Translog.UNSET_AUTO_GENERATED_TIMESTAMP,
+             missingAssignmentColumns,
+             new Object[]{99, "Marvin"},
+-            null
++            null,
++            0
+         ));
+         request.add(42, ShardUpsertRequest.Item.forInsert(
+             "99",
+@@ -105,7 +98,8 @@ public class ShardUpsertRequestTest extends ESTestCase {
+             Translog.UNSET_AUTO_GENERATED_TIMESTAMP,
+             missingAssignmentColumns,
+             new Object[]{99, "Marvin"},
+-            new Symbol[0]
++            new Symbol[0],
++            0
+         ));
+         request.add(5, new ShardUpsertRequest.Item(
+             "42",
+@@ -151,7 +145,8 @@ public class ShardUpsertRequestTest extends ESTestCase {
+             Translog.UNSET_AUTO_GENERATED_TIMESTAMP,
+             missingAssignmentColumns,
+             new Object[]{99, "Marvin"},
+-            null
++            null,
++            0
+         ));
+         request.add(42, ShardUpsertRequest.Item.forInsert(
+             "99",
+@@ -159,7 +154,8 @@ public class ShardUpsertRequestTest extends ESTestCase {
+             Translog.UNSET_AUTO_GENERATED_TIMESTAMP,
+             missingAssignmentColumns,
+             new Object[]{99, "Marvin"},
+-            new Symbol[0]
++            new Symbol[0],
++            0
+         ));
+         request.add(5, new ShardUpsertRequest.Item(
+             "42",
+@@ -200,12 +196,13 @@ public class ShardUpsertRequestTest extends ESTestCase {
+         ).newRequest(shardId);
+ 
+         request.add(42, ShardUpsertRequest.Item.forInsert(
+-                "42",
+-                List.of(),
+-                Translog.UNSET_AUTO_GENERATED_TIMESTAMP,
+-                missingAssignmentColumns,
+-                new Object[]{42, "Marvin"},
+-                new Symbol[0]
++            "42",
++            List.of(),
++            Translog.UNSET_AUTO_GENERATED_TIMESTAMP,
++            missingAssignmentColumns,
++            new Object[]{42, "Marvin"},
++            new Symbol[0],
++            0
+         ));
+ 
+         BytesStreamOutput out = new BytesStreamOutput();
+@@ -217,78 +214,4 @@ public class ShardUpsertRequestTest extends ESTestCase {
+         ShardUpsertRequest request2 = new ShardUpsertRequest(in);
+         assertThat(request2.items().get(0).seqNo()).isEqualTo(SequenceNumbers.SKIP_ON_REPLICA);
+     }
+-
+-    @Test
+-    public void test_ram_estimation_with_stats() {
+-        Stats stats = new Stats(10L, 1000L, Map.of());
+-        ShardUpsertRequest request = new ShardUpsertRequest.Builder(
+-            new SessionSettings("dummyUser", SearchPath.createSearchPathFrom("dummySchema")),
+-            TimeValue.timeValueSeconds(30),
+-            DuplicateKeyAction.UPDATE_OR_FAIL,
+-            false,
+-            new String[]{ID_REF.column().name(), NAME_REF.column().name()},
+-            new Reference[]{},
+-            null,
+-            UUID.randomUUID()
+-        ).newRequest(new ShardId("test", UUIDs.randomBase64UUID(), 1));
+-        assertThat(request.ramBytesUsed()).isEqualTo(72L);
+-
+-        long sizeEstimate = ShardUpsertRequest.Item.sizeEstimateForUpdate(stats, DOC_TABLE_INFO);
+-        request.add(42, ShardUpsertRequest.Item.forUpdate(
+-            "42",
+-            new Symbol[]{ID_REF, NAME_REF},
+-            1,
+-            1,
+-            1,
+-            sizeEstimate
+-        ));
+-        assertThat(request.ramBytesUsed()).isEqualTo(836L);
+-    }
+-
+-    @Test
+-    public void test_ram_estimation_with_empty_stats_using_columns_estimates() {
+-        ShardUpsertRequest request = new ShardUpsertRequest.Builder(
+-            new SessionSettings("dummyUser", SearchPath.createSearchPathFrom("dummySchema")),
+-            TimeValue.timeValueSeconds(30),
+-            DuplicateKeyAction.UPDATE_OR_FAIL,
+-            false,
+-            new String[]{ID_REF.column().name(), NAME_REF.column().name()},
+-            new Reference[]{},
+-            null,
+-            UUID.randomUUID()
+-        ).newRequest(new ShardId("test", UUIDs.randomBase64UUID(), 1));
+-        assertThat(request.ramBytesUsed()).isEqualTo(72L);
+-
+-        long sizeEstimate = ShardUpsertRequest.Item.sizeEstimateForUpdate(Stats.EMPTY, DOC_TABLE_INFO);
+-        request.add(42, ShardUpsertRequest.Item.forUpdate(
+-            "42",
+-            new Symbol[]{ID_REF, NAME_REF},
+-            1,
+-            1,
+-            1,
+-            sizeEstimate
+-        ));
+-        assertThat(request.ramBytesUsed()).isEqualTo(2160L);
+-    }
+-
+-    private static final DocTableInfo DOC_TABLE_INFO = new DocTableInfo(
+-        CHARACTERS_IDENTS,
+-        Map.of(ID_REF.column(), ID_REF, NAME_REF.column(), NAME_REF),
+-        Map.of(),
+-        null,
+-        List.of(),
+-        List.of(),
+-        null,
+-        Settings.builder()
+-            .put(IndexMetadata.SETTING_NUMBER_OF_SHARDS, 5)
+-            .build(),
+-        List.of(),
+-        ColumnPolicy.DYNAMIC,
+-        Version.CURRENT,
+-        null,
+-        false,
+-        Operation.ALL,
+-        0
+-    );
+-
+ }
+diff --git a/server/src/test/java/io/crate/execution/dml/upsert/TransportShardUpsertActionTest.java b/server/src/test/java/io/crate/execution/dml/upsert/TransportShardUpsertActionTest.java
+index 0d9acf2a26..1e2a6059a8 100644
+--- a/server/src/test/java/io/crate/execution/dml/upsert/TransportShardUpsertActionTest.java
++++ b/server/src/test/java/io/crate/execution/dml/upsert/TransportShardUpsertActionTest.java
+@@ -212,7 +212,16 @@ public class TransportShardUpsertActionTest extends CrateDummyClusterServiceUnit
+             null,
+             UUID.randomUUID()
+         ).newRequest(shardId);
+-        request.add(1, ShardUpsertRequest.Item.forInsert("1", List.of(), Translog.UNSET_AUTO_GENERATED_TIMESTAMP, missingAssignmentsColumns, new Object[]{1}, null));
++        request.add(1, ShardUpsertRequest.Item.forInsert(
++                "1",
++                List.of(),
++                Translog.UNSET_AUTO_GENERATED_TIMESTAMP,
++                missingAssignmentsColumns,
++                new Object[]{1},
++                null,
++                0
++            )
++        );
+ 
+         TransportReplicationAction.PrimaryResult<ShardUpsertRequest, ShardResponse> result =
+             transportShardUpsertAction.processRequestItems(indexShard, request, new AtomicBoolean(false));
+@@ -234,7 +243,15 @@ public class TransportShardUpsertActionTest extends CrateDummyClusterServiceUnit
+             null,
+             UUID.randomUUID()
+         ).newRequest(shardId);
+-        request.add(1, ShardUpsertRequest.Item.forInsert("1", List.of(), Translog.UNSET_AUTO_GENERATED_TIMESTAMP, missingAssignmentsColumns, new Object[]{1}, null));
++        request.add(1, ShardUpsertRequest.Item.forInsert(
++            "1",
++            List.of(),
++            Translog.UNSET_AUTO_GENERATED_TIMESTAMP,
++            missingAssignmentsColumns,
++            new Object[]{1},
++            null,
++            0
++        ));
+ 
+         TransportReplicationAction.PrimaryResult<ShardUpsertRequest, ShardResponse> result =
+             transportShardUpsertAction.processRequestItems(indexShard, request, new AtomicBoolean(false));
+@@ -259,7 +276,15 @@ public class TransportShardUpsertActionTest extends CrateDummyClusterServiceUnit
+             null,
+             UUID.randomUUID()
+         ).newRequest(shardId);
+-        request.add(1, ShardUpsertRequest.Item.forInsert("1", List.of(), Translog.UNSET_AUTO_GENERATED_TIMESTAMP, missingAssignmentsColumns, new Object[]{1}, null));
++        request.add(1, ShardUpsertRequest.Item.forInsert(
++            "1",
++            List.of(),
++            Translog.UNSET_AUTO_GENERATED_TIMESTAMP,
++            missingAssignmentsColumns,
++            new Object[]{1},
++            null,
++            0
++        ));
+ 
+         TransportReplicationAction.PrimaryResult<ShardUpsertRequest, ShardResponse> result =
+             transportShardUpsertAction.processRequestItems(indexShard, request, new AtomicBoolean(true));
+@@ -281,7 +306,14 @@ public class TransportShardUpsertActionTest extends CrateDummyClusterServiceUnit
+             null,
+             UUID.randomUUID()
+         ).newRequest(shardId);
+-        request.add(1, ShardUpsertRequest.Item.forInsert("1", List.of(), Translog.UNSET_AUTO_GENERATED_TIMESTAMP, missingAssignmentsColumns, new Object[]{1}, null));
++        request.add(1, ShardUpsertRequest.Item.forInsert(
++            "1",
++            List.of(),
++            Translog.UNSET_AUTO_GENERATED_TIMESTAMP,
++            missingAssignmentsColumns,
++            new Object[]{1},
++            null,
++            0));
+         request.items().get(0).seqNo(SequenceNumbers.SKIP_ON_REPLICA);
+ 
+         reset(indexShard);
+@@ -319,7 +351,8 @@ public class TransportShardUpsertActionTest extends CrateDummyClusterServiceUnit
+                         "1", List.of(), Translog.UNSET_AUTO_GENERATED_TIMESTAMP,
+                         missingAssignmentsColumns,
+                         new Object[]{1}, // notice that it is not a 'long'
+-                        null));
++                        null,
++                        0));
+ 
+         // verifies that it does not throw a ClassCastException: class java.lang.Integer cannot be cast to class java.lang.Long
+         transportShardUpsertAction.processRequestItemsOnReplica(indexShard, request);
+@@ -344,13 +377,15 @@ public class TransportShardUpsertActionTest extends CrateDummyClusterServiceUnit
+                 "1", List.of(), Translog.UNSET_AUTO_GENERATED_TIMESTAMP,
+                 missingAssignmentsColumns,
+                 new Object[]{1},
+-                null));
++                null,
++                0));
+         request.add(1,
+             ShardUpsertRequest.Item.forInsert(
+                 "2", List.of(), Translog.UNSET_AUTO_GENERATED_TIMESTAMP,
+                 missingAssignmentsColumns,
+                 new Object[]{2},
+-                null));
++                null,
++                0));
+ 
+ 
+         // First item is already processed with killed = true, both items must be skipped on replica.
+diff --git a/server/src/test/java/io/crate/execution/dsl/projection/ColumnIndexWriterProjectionTest.java b/server/src/test/java/io/crate/execution/dsl/projection/ColumnIndexWriterProjectionTest.java
+index 0cf14f972f..099b6b7d5d 100644
+--- a/server/src/test/java/io/crate/execution/dsl/projection/ColumnIndexWriterProjectionTest.java
++++ b/server/src/test/java/io/crate/execution/dsl/projection/ColumnIndexWriterProjectionTest.java
+@@ -72,7 +72,8 @@ public class ColumnIndexWriterProjectionTest {
+             Settings.EMPTY,
+             true,
+             List.of(),
+-            List.of()
++            List.of(),
++            0
+         );
+ 
+         BytesStreamOutput out = new BytesStreamOutput();
+diff --git a/server/src/test/java/io/crate/execution/dsl/projection/UpdateProjectionTest.java b/server/src/test/java/io/crate/execution/dsl/projection/UpdateProjectionTest.java
+index 45ca8875bb..9cea96bb1b 100644
+--- a/server/src/test/java/io/crate/execution/dsl/projection/UpdateProjectionTest.java
++++ b/server/src/test/java/io/crate/execution/dsl/projection/UpdateProjectionTest.java
+@@ -40,10 +40,24 @@ public class UpdateProjectionTest {
+     @Test
+     public void testEquals() throws Exception {
+         UpdateProjection u1 = new UpdateProjection(
+-            Literal.of(1), new String[]{"foo"}, new Symbol[]{Literal.of(1)}, new Symbol[]{new InputColumn(0, DataTypes.STRING)}, null, null);
++            Literal.of(1),
++            new String[]{"foo"},
++            new Symbol[]{Literal.of(1)},
++            new Symbol[]{new InputColumn(0, DataTypes.STRING)},
++            null,
++            null,
++            0
++        );
+ 
+         UpdateProjection u2 = new UpdateProjection(
+-            Literal.of(1), new String[]{"foo"}, new Symbol[]{Literal.of(1)},new Symbol[]{new InputColumn(0, DataTypes.STRING)}, null, null);
++            Literal.of(1),
++            new String[]{"foo"},
++            new Symbol[]{Literal.of(1)},
++            new Symbol[]{new InputColumn(0, DataTypes.STRING)},
++            null,
++            null,
++            0
++        );
+ 
+         assertThat(u2.equals(u1)).isTrue();
+         assertThat(u1.equals(u2)).isTrue();
+@@ -60,7 +74,9 @@ public class UpdateProjectionTest {
+             new Symbol[]{Literal.of(1)},
+             new Symbol[]{new InputColumn(0, DataTypes.STRING)},
+             new Symbol[]{Literal.of(1)},
+-            null);
++            null,
++            0
++        );
+ 
+         BytesStreamOutput out = new BytesStreamOutput();
+         expected.writeTo(out);
+@@ -80,7 +96,9 @@ public class UpdateProjectionTest {
+             new Symbol[]{Literal.of(1)},
+             new Symbol[]{},
+             new Symbol[]{Literal.of(1)},
+-            null);
++            null,
++            0
++        );
+ 
+         BytesStreamOutput out = new BytesStreamOutput();
+         out.setVersion(Version.V_4_0_0);
+diff --git a/server/src/test/java/io/crate/planner/InsertPlannerTest.java b/server/src/test/java/io/crate/planner/InsertPlannerTest.java
+index 0478cf8e3b..34fd0a9797 100644
+--- a/server/src/test/java/io/crate/planner/InsertPlannerTest.java
++++ b/server/src/test/java/io/crate/planner/InsertPlannerTest.java
+@@ -21,6 +21,7 @@
+ 
+ package io.crate.planner;
+ 
++import static io.crate.common.collections.Iterables.getOnlyElement;
+ import static io.crate.testing.Asserts.assertThat;
+ import static io.crate.testing.Asserts.isReference;
+ import static java.util.Collections.singletonList;
+@@ -471,4 +472,17 @@ public class InsertPlannerTest extends CrateDummyClusterServiceUnitTest {
+             "  └ Collect[doc.users | [id] | true]"
+         );
+     }
++
++    @Test
++    public void test_insert_on_conflict_update_includes_full_doc_size_estimate() throws Exception {
++        e = SQLExecutor.of(clusterService)
++            .addTable("create table doc.t1(id TEXT PRIMARY KEY, a INT)")
++            .addTable("create table doc.t2(id TEXT PRIMARY KEY, a INT)");
++
++        Merge merge = e.plan(
++            "insert into doc.t2 (id, a) select id, a from doc.t1 on conflict(id) do update set a = excluded.a");
++        Collect collect = (Collect) merge.subPlan();
++        var columnIndexWriterProjection = (ColumnIndexWriterProjection) getOnlyElement(collect.collectPhase().projections());
++        assertThat(columnIndexWriterProjection.fullDocSizeEstimate()).isEqualTo(1424L);
++    }
+ }
+diff --git a/server/src/test/java/io/crate/planner/UpdatePlannerTest.java b/server/src/test/java/io/crate/planner/UpdatePlannerTest.java
+index a9f06160c6..58ea07e5b2 100644
+--- a/server/src/test/java/io/crate/planner/UpdatePlannerTest.java
++++ b/server/src/test/java/io/crate/planner/UpdatePlannerTest.java
+@@ -21,6 +21,7 @@
+ 
+ package io.crate.planner;
+ 
++import static io.crate.common.collections.Iterables.getOnlyElement;
+ import static io.crate.expression.symbol.SelectSymbol.ResultType.SINGLE_COLUMN_MULTIPLE_VALUES;
+ import static io.crate.expression.symbol.SelectSymbol.ResultType.SINGLE_COLUMN_SINGLE_VALUE;
+ import static io.crate.testing.Asserts.isLiteral;
+@@ -229,4 +230,15 @@ public class UpdatePlannerTest extends CrateDummyClusterServiceUnitTest {
+             .isExactlyInstanceOf(UnsupportedFeatureException.class)
+             .hasMessage(UpdatePlanner.RETURNING_VERSION_ERROR_MSG);
+     }
++
++    public void test_update_on_query_contains_full_doc_size_estimate() throws Exception {
++        e = SQLExecutor.of(clusterService)
++            .addTable("create table doc.t1(id TEXT PRIMARY KEY, a text, b text)");
++
++        UpdatePlanner.Update update = e.plan("UPDATE doc.t1 SET a = b");
++        var merge = (Merge) update.createExecutionPlan.create(e.getPlannerContext(), Row.EMPTY, SubQueryResults.EMPTY);
++        var collect = (Collect) merge.subPlan();
++        var updateProjection = (UpdateProjection) getOnlyElement(collect.collectPhase().projections());
++        assertThat(updateProjection.fullDocSizeEstimate()).isEqualTo(1920L);
++    }
+ }
+diff --git a/server/src/test/java/io/crate/statistics/TableStatsTest.java b/server/src/test/java/io/crate/statistics/TableStatsTest.java
+new file mode 100644
+index 0000000000..e07005e3cc
+--- /dev/null
++++ b/server/src/test/java/io/crate/statistics/TableStatsTest.java
+@@ -0,0 +1,89 @@
++/*
++ * Licensed to Crate.io GmbH ("Crate") under one or more contributor
++ * license agreements.  See the NOTICE file distributed with this work for
++ * additional information regarding copyright ownership.  Crate licenses
++ * this file to you under the Apache License, Version 2.0 (the "License");
++ * you may not use this file except in compliance with the License.  You may
++ * obtain a copy of the License at
++ *
++ *     http://www.apache.org/licenses/LICENSE-2.0
++ *
++ * Unless required by applicable law or agreed to in writing, software
++ * distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
++ * WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.  See the
++ * License for the specific language governing permissions and limitations
++ * under the License.
++ *
++ * However, if you have executed another commercial license agreement
++ * with Crate these terms will supersede the license and you may use the
++ * software solely pursuant to the terms of the relevant commercial agreement.
++ */
++
++package io.crate.statistics;
++
++import static org.assertj.core.api.Assertions.assertThat;
++
++import java.util.List;
++import java.util.Map;
++
++import org.elasticsearch.Version;
++import org.elasticsearch.cluster.metadata.IndexMetadata;
++import org.elasticsearch.common.settings.Settings;
++import org.elasticsearch.test.ESTestCase;
++import org.junit.Test;
++
++import io.crate.metadata.ReferenceIdent;
++import io.crate.metadata.RelationName;
++import io.crate.metadata.RowGranularity;
++import io.crate.metadata.Schemas;
++import io.crate.metadata.SimpleReference;
++import io.crate.metadata.doc.DocTableInfo;
++import io.crate.metadata.table.Operation;
++import io.crate.sql.tree.ColumnPolicy;
++import io.crate.types.DataTypes;
++
++public class TableStatsTest extends ESTestCase {
++
++    private final RelationName testRelation = new RelationName(Schemas.DOC_SCHEMA_NAME, "test");
++    private final SimpleReference idRef = new SimpleReference(
++        new ReferenceIdent(testRelation, "id"),
++        RowGranularity.DOC,
++        DataTypes.INTEGER,
++        1,
++        null);
++    private final DocTableInfo docTableInfo = new DocTableInfo(
++        testRelation,
++        Map.of(idRef.column(), idRef),
++        Map.of(),
++        null,
++        List.of(),
++        List.of(),
++        null,
++        Settings.builder()
++            .put(IndexMetadata.SETTING_NUMBER_OF_SHARDS, 5)
++            .build(),
++        List.of(),
++        ColumnPolicy.DYNAMIC,
++        Version.CURRENT,
++        null,
++        false,
++        Operation.ALL,
++        0
++    );
++
++    @Test
++    public void test_estimating_row_size_with_with_stats() {
++        TableStats tableStats = new TableStats();
++        tableStats.updateTableStats(Map.of(docTableInfo.ident(), new Stats(1L, 1000L, Map.of())));
++        long sizeEstimate = tableStats.estimatedSizePerRow(docTableInfo.ident());
++        assertThat(sizeEstimate).isEqualTo(1000L);
++    }
++
++    @Test
++    public void test_estimating_row_size_with_empty_stats_using_columns_estimates() {
++        TableStats tableStats = new TableStats();
++        long sizeEstimate = tableStats.estimatedSizePerRow(docTableInfo);
++        assertThat(sizeEstimate).isEqualTo(1168L);
++    }
++
++}

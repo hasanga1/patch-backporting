@@ -1,0 +1,50 @@
+diff --git a/server/src/main/java/io/crate/expression/scalar/HasDatabasePrivilegeFunction.java b/server/src/main/java/io/crate/expression/scalar/HasDatabasePrivilegeFunction.java
+index c6bce63d90..d3ffadbfd4 100644
+--- a/server/src/main/java/io/crate/expression/scalar/HasDatabasePrivilegeFunction.java
++++ b/server/src/main/java/io/crate/expression/scalar/HasDatabasePrivilegeFunction.java
+@@ -30,9 +30,11 @@ import org.jetbrains.annotations.Nullable;
+ 
+ import io.crate.Constants;
+ import io.crate.common.FourFunction;
++import io.crate.metadata.FunctionName;
+ import io.crate.metadata.Functions;
+ import io.crate.metadata.functions.BoundSignature;
+ import io.crate.metadata.functions.Signature;
++import io.crate.metadata.pgcatalog.PgCatalogSchemaInfo;
+ import io.crate.role.Permission;
+ import io.crate.role.Privilege;
+ import io.crate.role.Role;
+@@ -42,7 +44,7 @@ import io.crate.types.DataTypes;
+ 
+ public class HasDatabasePrivilegeFunction extends HasPrivilegeFunction {
+ 
+-    public static final String NAME = "has_database_privilege";
++    public static final FunctionName NAME = new FunctionName(PgCatalogSchemaInfo.NAME, "has_database_privilege");
+ 
+     private static final FourFunction<Roles, Role, Object, Collection<Permission>, Boolean> CHECK_BY_DB_NAME =
+         (roles, user, db, permissions) -> {
+diff --git a/server/src/main/java/io/crate/expression/scalar/HasSchemaPrivilegeFunction.java b/server/src/main/java/io/crate/expression/scalar/HasSchemaPrivilegeFunction.java
+index 2edd95495b..da119ed9c8 100644
+--- a/server/src/main/java/io/crate/expression/scalar/HasSchemaPrivilegeFunction.java
++++ b/server/src/main/java/io/crate/expression/scalar/HasSchemaPrivilegeFunction.java
+@@ -29,9 +29,11 @@ import java.util.function.BiFunction;
+ import org.jetbrains.annotations.Nullable;
+ 
+ import io.crate.common.FourFunction;
++import io.crate.metadata.FunctionName;
+ import io.crate.metadata.Functions;
+ import io.crate.metadata.functions.BoundSignature;
+ import io.crate.metadata.functions.Signature;
++import io.crate.metadata.pgcatalog.PgCatalogSchemaInfo;
+ import io.crate.metadata.pgcatalog.PgCatalogTableDefinitions;
+ import io.crate.role.Permission;
+ import io.crate.role.Role;
+@@ -41,7 +43,7 @@ import io.crate.types.DataTypes;
+ 
+ public class HasSchemaPrivilegeFunction extends HasPrivilegeFunction {
+ 
+-    public static final String NAME = "has_schema_privilege";
++    public static final FunctionName NAME = new FunctionName(PgCatalogSchemaInfo.NAME, "has_schema_privilege");
+ 
+     private static final FourFunction<Roles, Role, Object, Collection<Permission>, Boolean> CHECK_BY_SCHEMA_NAME =
+         (roles, user, schema, permissions) -> {

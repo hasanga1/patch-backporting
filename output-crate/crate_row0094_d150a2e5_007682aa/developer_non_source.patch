@@ -1,0 +1,50 @@
+diff --git a/docs/appendices/release-notes/5.9.3.rst b/docs/appendices/release-notes/5.9.3.rst
+index 9a864a193a..ea25e72cb6 100644
+--- a/docs/appendices/release-notes/5.9.3.rst
++++ b/docs/appendices/release-notes/5.9.3.rst
+@@ -71,3 +71,14 @@ Fixes
+       |       1.0 |
+       +-----------+
+ 
++- Fixed an issue which can cause the data of a table to not be queried anymore and the
++  :ref:`analyze` to fail, if a sub column is added to an object column with
++  column policy ``IGNORED`` when the table is not empty and the new column's
++  data type is different from the existing column's values.
++  This is not allowed anymore and results in an error. For example::
++
++    CREATE TABLE t (o OBJECT(IGNORED));
++    INSERT INTO t (o) VALUES ({x=1});
++    ALTER TABLE t ADD COLUMN o['x'] AS TEXT; <--- this is not allowed anymore
++    INSERT INTO t (o) VALUES ({x='foo'});
++    ANALYZE; <--- this will fail without the fix
+diff --git a/server/src/test/java/io/crate/integrationtests/AlterTableIntegrationTest.java b/server/src/test/java/io/crate/integrationtests/AlterTableIntegrationTest.java
+index fd28a0bb12..882f2bd6fc 100644
+--- a/server/src/test/java/io/crate/integrationtests/AlterTableIntegrationTest.java
++++ b/server/src/test/java/io/crate/integrationtests/AlterTableIntegrationTest.java
+@@ -340,4 +340,26 @@ public class AlterTableIntegrationTest extends IntegTestCase {
+         execute("select column_name from information_schema.columns where table_name = 't'");
+         assertThat(response).hasRows("a2", "o2", "o2['a22']", "o2['b']", "c");
+     }
++
++    @Test
++    public void test_cannot_add_sub_column_to_ignored_parent_if_table_is_not_empty() {
++        execute("CREATE TABLE t1 (obj object(ignored))");
++        execute("INSERT INTO t1 (obj) VALUES ({a={b=21, c=22}})");
++        execute("refresh table t1");
++
++        Asserts.assertSQLError(() -> execute("ALTER TABLE t1 ADD COLUMN obj['a'] text"))
++            .hasPGError(INTERNAL_ERROR)
++            .hasHTTPError(BAD_REQUEST, 4004)
++            .hasMessageContaining("Cannot add a sub column to an OBJECT(IGNORED) parent column to a table that isn't empty");
++    }
++
++    @Test
++    public void test_can_add_sub_column_to_ignored_parent_if_table_is_empty() {
++        execute("CREATE TABLE t1 (obj object(ignored))");
++        execute("ALTER TABLE t1 ADD COLUMN obj['a'] text");
++        execute("INSERT INTO t1 (obj) VALUES ({a='bar'})");
++        execute("refresh table t1");
++        execute("SELECT obj['a'] FROM t1");
++        assertThat(response).hasRows("bar");
++    }
+ }

@@ -1,0 +1,210 @@
+--- a/server/src/main/java/io/crate/auth/AccessControlImpl.java
++++ b/server/src/main/java/io/crate/auth/AccessControlImpl.java
+@@ -69,7 +69,11 @@ import io.crate.analyze.AnalyzedInsertStatement;
+ import io.crate.analyze.AnalyzedKill;
+ import io.crate.analyze.AnalyzedOptimizeTable;
+ import io.crate.analyze.AnalyzedPrivileges;
++import io.crate.analyze.AnalyzedPromoteReplica;
+ import io.crate.analyze.AnalyzedRefreshTable;
++import io.crate.analyze.AnalyzedRerouteAllocateReplicaShard;
++import io.crate.analyze.AnalyzedRerouteCancelShard;
++import io.crate.analyze.AnalyzedRerouteMoveShard;
+ import io.crate.analyze.AnalyzedRerouteRetryFailed;
+ import io.crate.analyze.AnalyzedResetStatement;
+ import io.crate.analyze.AnalyzedRestoreSnapshot;
+
+--- a/server/src/main/java/io/crate/auth/AccessControlImpl.java
++++ b/server/src/main/java/io/crate/auth/AccessControlImpl.java
+@@ -377,13 +381,7 @@ public final class AccessControlImpl implements AccessControl {
+ 
+         @Override
+         public Void visitAlterTable(AnalyzedAlterTable alterTable, Role user) {
+-            Privileges.ensureUserHasPrivilege(
+-                relationVisitor.roles,
+-                user,
+-                Permission.DDL,
+-                Securable.TABLE,
+-                alterTable.tableInfo().ident().toString()
+-            );
++            ensureDDLOnTable(user, alterTable.tableInfo().ident().fqn());
+             return null;
+         }
+ 
+
+--- a/server/src/main/java/io/crate/auth/AccessControlImpl.java
++++ b/server/src/main/java/io/crate/auth/AccessControlImpl.java
+@@ -555,13 +547,7 @@ public final class AccessControlImpl implements AccessControl {
+ 
+         @Override
+         public Void visitAnalyzedAlterTableRenameTable(AnalyzedAlterTableRenameTable analysis, Role user) {
+-            Privileges.ensureUserHasPrivilege(
+-                relationVisitor.roles,
+-                user,
+-                Permission.DDL,
+-                Securable.TABLE,
+-                analysis.sourceName().fqn()
+-            );
++            ensureDDLOnTable(user, analysis.sourceName().fqn());
+             return null;
+         }
+ 
+
+--- a/server/src/main/java/io/crate/auth/AccessControlImpl.java
++++ b/server/src/main/java/io/crate/auth/AccessControlImpl.java
+@@ -594,62 +580,32 @@ public final class AccessControlImpl implements AccessControl {
+ 
+         @Override
+         public Void visitAlterTableAddColumn(AnalyzedAlterTableAddColumn analysis, Role user) {
+-            Privileges.ensureUserHasPrivilege(
+-                relationVisitor.roles,
+-                user,
+-                Permission.DDL,
+-                Securable.TABLE,
+-                analysis.table().ident().toString()
+-            );
++            ensureDDLOnTable(user, analysis.table().ident().fqn());
+             return null;
+         }
+ 
+         @Override
+         public Void visitAlterTableDropColumn(AnalyzedAlterTableDropColumn analysis, Role user) {
+-            Privileges.ensureUserHasPrivilege(
+-                relationVisitor.roles,
+-                user,
+-                Permission.DDL,
+-                Securable.TABLE,
+-                analysis.table().ident().toString()
+-            );
++            ensureDDLOnTable(user, analysis.table().ident().fqn());
+             return null;
+         }
+ 
+         @Override
+         public Void visitAlterTableRenameColumn(AnalyzedAlterTableRenameColumn analysis, Role user) {
+-            Privileges.ensureUserHasPrivilege(
+-                relationVisitor.roles,
+-                user,
+-                Permission.DDL,
+-                Securable.TABLE,
+-                analysis.table().toString()
+-            );
++            ensureDDLOnTable(user, analysis.table().fqn());
+             return null;
+         }
+ 
+         @Override
+         public Void visitAlterTableDropCheckConstraint(AnalyzedAlterTableDropCheckConstraint dropCheckConstraint,
+-                                                      Role user) {
+-            Privileges.ensureUserHasPrivilege(
+-                relationVisitor.roles,
+-                user,
+-                Permission.DDL,
+-                Securable.TABLE,
+-                dropCheckConstraint.tableInfo().ident().toString()
+-            );
++                                                       Role user) {
++            ensureDDLOnTable(user, dropCheckConstraint.tableInfo().ident().fqn());
+             return null;
+         }
+ 
+         @Override
+         public Void visitAnalyzedAlterTableOpenClose(AnalyzedAlterTableOpenClose analysis, Role user) {
+-            Privileges.ensureUserHasPrivilege(
+-                relationVisitor.roles,
+-                user,
+-                Permission.DDL,
+-                Securable.TABLE,
+-                analysis.tableInfo().ident().toString()
+-            );
++            ensureDDLOnTable(user, analysis.tableInfo().ident().fqn());
+             return null;
+         }
+ 
+
+--- a/server/src/main/java/io/crate/auth/AccessControlImpl.java
++++ b/server/src/main/java/io/crate/auth/AccessControlImpl.java
+@@ -812,6 +768,30 @@ public final class AccessControlImpl implements AccessControl {
+             return null;
+         }
+ 
++        @Override
++        protected Void visitRerouteMoveShard(AnalyzedRerouteMoveShard analysis, Role user) {
++            ensureDDLOnTable(user, analysis.shardedTable().ident().fqn());
++            return null;
++        }
++
++        @Override
++        protected Void visitRerouteAllocateReplicaShard(AnalyzedRerouteAllocateReplicaShard analysis, Role user) {
++            ensureDDLOnTable(user, analysis.shardedTable().ident().fqn());
++            return null;
++        }
++
++        @Override
++        protected Void visitRerouteCancelShard(AnalyzedRerouteCancelShard analysis, Role user) {
++            ensureDDLOnTable(user, analysis.shardedTable().ident().fqn());
++            return null;
++        }
++
++        @Override
++        public Void visitReroutePromoteReplica(AnalyzedPromoteReplica analysis, Role user) {
++            ensureDDLOnTable(user, analysis.shardedTable().ident().fqn());
++            return null;
++        }
++
+         @Override
+         public Void visitDropView(AnalyzedDropView dropView, Role user) {
+             for (RelationName name : dropView.views()) {
+
+--- a/server/src/main/java/io/crate/auth/AccessControlImpl.java
++++ b/server/src/main/java/io/crate/auth/AccessControlImpl.java
+@@ -839,13 +819,7 @@ public final class AccessControlImpl implements AccessControl {
+         @Override
+         public Void visitOptimizeTableStatement(AnalyzedOptimizeTable optimizeTable, Role user) {
+             for (TableInfo table : optimizeTable.tables().values()) {
+-                Privileges.ensureUserHasPrivilege(
+-                    relationVisitor.roles,
+-                    user,
+-                    Permission.DDL,
+-                    Securable.TABLE,
+-                    table.ident().toString()
+-                );
++                ensureDDLOnTable(user, table.ident().fqn());
+             }
+             return null;
+         }
+
+--- a/server/src/main/java/io/crate/auth/AccessControlImpl.java
++++ b/server/src/main/java/io/crate/auth/AccessControlImpl.java
+@@ -1031,6 +1005,16 @@ public final class AccessControlImpl implements AccessControl {
+             }
+             return null;
+         }
++
++        private void ensureDDLOnTable(Role user, String tableFqn) {
++            Privileges.ensureUserHasPrivilege(
++                relationVisitor.roles,
++                user,
++                Permission.DDL,
++                Securable.TABLE,
++                tableFqn
++            );
++        }
+     }
+ 
+     private static class MaskSensitiveExceptions extends CrateExceptionVisitor<Role, Void> {
+
+--- a/server/src/main/java/io/crate/metadata/table/ShardedTable.java
++++ b/server/src/main/java/io/crate/metadata/table/ShardedTable.java
+@@ -24,9 +24,12 @@ package io.crate.metadata.table;
+ import org.elasticsearch.cluster.metadata.Metadata;
+ 
+ import io.crate.metadata.ColumnIdent;
++import io.crate.metadata.RelationName;
+ 
+ public interface ShardedTable {
+ 
++    RelationName ident();
++
+     int numberOfShards();
+ 
+     String numberOfReplicas();

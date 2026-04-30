@@ -1,0 +1,46 @@
+diff --git a/docs/appendices/release-notes/5.6.4.rst b/docs/appendices/release-notes/5.6.4.rst
+index 91f720fcd4..dd94fce006 100644
+--- a/docs/appendices/release-notes/5.6.4.rst
++++ b/docs/appendices/release-notes/5.6.4.rst
+@@ -47,4 +47,6 @@ See the :ref:`version_5.6.0` release notes for a full list of changes in the
+ Fixes
+ =====
+ 
+-None
++- Changed :ref:`scalar-has-database-priv` and :ref:`scalar-has-schema-priv`
++  functions to be registered under :ref:`postgres-pg_catalog` schema, to be
++  compatible with PostgreSQL behaviour.
+diff --git a/server/src/test/java/io/crate/expression/scalar/HasDatabasePrivilegeFunctionTest.java b/server/src/test/java/io/crate/expression/scalar/HasDatabasePrivilegeFunctionTest.java
+index 14b43043bb..884c2153c9 100644
+--- a/server/src/test/java/io/crate/expression/scalar/HasDatabasePrivilegeFunctionTest.java
++++ b/server/src/test/java/io/crate/expression/scalar/HasDatabasePrivilegeFunctionTest.java
+@@ -65,6 +65,12 @@ public class HasDatabasePrivilegeFunctionTest extends ScalarTestCase {
+             List.of(Role.CRATE_USER, TEST_USER, TEST_USER_WITH_CREATE));
+     }
+ 
++    @Test
++    public void test_function_registered_under_pg_catalog() {
++        sqlExpressions = new SqlExpressions(tableSources, null, Role.CRATE_USER);
++        assertEvaluate("pg_catalog.has_database_privilege('crate', 'crate', 'CONNECT')", true);
++    }
++
+     @Test
+     public void test_no_user_compile_gets_new_instance() {
+         assertCompileAsSuperUser("has_database_privilege(name, 'CONNECT')", isNotSameInstance());
+diff --git a/server/src/test/java/io/crate/expression/scalar/HasSchemaPrivilegeFunctionTest.java b/server/src/test/java/io/crate/expression/scalar/HasSchemaPrivilegeFunctionTest.java
+index a09add86b7..96246ff15b 100644
+--- a/server/src/test/java/io/crate/expression/scalar/HasSchemaPrivilegeFunctionTest.java
++++ b/server/src/test/java/io/crate/expression/scalar/HasSchemaPrivilegeFunctionTest.java
+@@ -61,6 +61,12 @@ public class HasSchemaPrivilegeFunctionTest extends ScalarTestCase {
+             tableSources, null, randomFrom(TEST_USER_WITH_AL_ON_CLUSTER, TEST_USER_WITH_DQL_ON_SYS, Role.CRATE_USER), List.of(TEST_USER));
+     }
+ 
++    @Test
++    public void test_function_registered_under_pg_catalog() {
++        sqlExpressions = new SqlExpressions(tableSources, null, Role.CRATE_USER);
++        assertEvaluate("pg_catalog.has_schema_privilege('crate', 'sys', 'USAGE')", true);
++    }
++
+     @Test
+     public void test_no_user_compile_gets_new_instance() {
+         assertCompileAsSuperUser("has_schema_privilege(name, 'USAGE')", isNotSameInstance());

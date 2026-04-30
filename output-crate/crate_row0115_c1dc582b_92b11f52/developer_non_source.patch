@@ -1,0 +1,81 @@
+diff --git a/docs/appendices/release-notes/5.7.3.rst b/docs/appendices/release-notes/5.7.3.rst
+index 7add06fd16..fcba0f1e33 100644
+--- a/docs/appendices/release-notes/5.7.3.rst
++++ b/docs/appendices/release-notes/5.7.3.rst
+@@ -48,4 +48,9 @@ See the :ref:`version_5.7.0` release notes for a full list of changes in the
+ Fixes
+ =====
+ 
+-None
++- Fixed an issue that prevented sub-columns of a view to be shown in the
++  ``information_schema.columns`` table if only top-level columns were used in
++  the view's SELECT query. Workaround: explicitly select sub-columns in the
++  view definition, e.g.::
++
++      CREATE VIEW v AS SELECT a, a['b'] FROM t;
+diff --git a/docs/sql/statements/create-view.rst b/docs/sql/statements/create-view.rst
+index 3f2175a35c..c2ad34a199 100644
+--- a/docs/sql/statements/create-view.rst
++++ b/docs/sql/statements/create-view.rst
+@@ -61,6 +61,14 @@ operations.
+   been created, these columns will show up in subsequent queries on the view.
+   It is generally recommended to avoid using ``*`` in view definitions.
+ 
++ .. NOTE::
++
++   If an object column is selected, sub-columns are visible in the
++   ``information_schema.columns`` table. Added sub-columns at the source
++   relation are visible there while dropped columns won't show up there anymore
++   as well. This applies both to views where ``*`` is used to select columns
++   and to views with a static selection of top level columns.
++
+ 
+ Privileges
+ ==========
+diff --git a/server/src/test/java/io/crate/integrationtests/ViewsITest.java b/server/src/test/java/io/crate/integrationtests/ViewsITest.java
+index be878aea47..1d517f290c 100644
+--- a/server/src/test/java/io/crate/integrationtests/ViewsITest.java
++++ b/server/src/test/java/io/crate/integrationtests/ViewsITest.java
+@@ -83,6 +83,42 @@ public class ViewsITest extends IntegTestCase {
+         }
+     }
+ 
++    @Test
++    public void test_view_on_top_level_columns_sub_columns_are_shown_in_information_schema() throws Exception {
++        execute("CREATE TABLE with_object (a OBJECT AS (b INTEGER), x int, y int)");
++        execute("CREATE VIEW view_with_object AS SELECT x, a, y FROM with_object");
++
++        execute("SELECT column_name, data_type, ordinal_position FROM information_schema.columns WHERE table_name = 'with_object'");
++        assertThat(response).hasRows(
++            "a| object| 1",
++            "a['b']| integer| 2",
++            "x| integer| 3",
++            "y| integer| 4"
++        );
++
++        // Note, that ordinal of the column "a" in the view is different from ordinal in the table.
++        // Ordinals in views assigned by select order and not related to original ordinal in table.
++        // This is compatible with PG behavior.
++        execute("SELECT column_name, data_type, ordinal_position FROM information_schema.columns WHERE table_name = 'view_with_object'");
++        assertThat(response).hasRows(
++            "x| integer| 1",
++            "a| object| 2",
++            "y| integer| 3",
++            "a['b']| integer| 4"
++        );
++
++        // View dynamically binds new sub-columns (even if SELECT is static).
++        execute("ALTER TABLE with_object ADD COLUMN a['c'] text");
++        execute("SELECT column_name, data_type, ordinal_position FROM information_schema.columns WHERE table_name = 'view_with_object'");
++        assertThat(response).hasRows(
++            "x| integer| 1",
++            "a| object| 2",
++            "y| integer| 3",
++            "a['b']| integer| 4",
++            "a['c']| text| 5" // New columns have higher ordinals to keep all ordinals stable.
++        );
++    }
++
+     @Test
+     public void testViewCanBeUsedForJoins() {
+         execute("CREATE TABLE t1 (a STRING, x INTEGER)");

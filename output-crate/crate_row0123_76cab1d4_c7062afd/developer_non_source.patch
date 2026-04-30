@@ -1,0 +1,43 @@
+diff --git a/docs/appendices/release-notes/5.6.3.rst b/docs/appendices/release-notes/5.6.3.rst
+index 4b7c08993d..1ae72dee31 100644
+--- a/docs/appendices/release-notes/5.6.3.rst
++++ b/docs/appendices/release-notes/5.6.3.rst
+@@ -47,6 +47,11 @@ See the :ref:`version_5.6.0` release notes for a full list of changes in the
+ Fixes
+ =====
+ 
++- Fixed an issue with PostgreSQL style :ref:`INTERVALs <type-interval>`, which
++  allowed duplicate unit definitions, e.g.::
++
++     SELECT '1 year 3 days 2 years'::INTERVAL
++
+ - Fixed an issue with PostgreSQL style :ref:`INTERVALs <type-interval>`, which
+   didn't allow units next to values without whitespace separation, e.g.::
+ 
+diff --git a/server/src/test/java/io/crate/interval/IntervalParserTest.java b/server/src/test/java/io/crate/interval/IntervalParserTest.java
+index d15e951830..a7ed3422f9 100644
+--- a/server/src/test/java/io/crate/interval/IntervalParserTest.java
++++ b/server/src/test/java/io/crate/interval/IntervalParserTest.java
+@@ -232,6 +232,22 @@ public class IntervalParserTest extends ESTestCase {
+             .hasMessage("Invalid interval format: 1 week 2 monthss 3 days");
+     }
+ 
++    @Test
++    public void test_invalid_duplicate_units() {
++        assertThatThrownBy(() -> IntervalParser.apply("1 week 2 mons 3 days 4w"))
++            .isExactlyInstanceOf(IllegalArgumentException.class)
++            .hasMessage("Invalid interval format: 1 week 2 mons 3 days 4w");
++        assertThatThrownBy(() -> IntervalParser.apply("1y 11:22:33 11:22:33"))
++            .isExactlyInstanceOf(IllegalArgumentException.class)
++            .hasMessage("Invalid interval format: 1y 11:22:33 11:22:33");
++        assertThatThrownBy(() -> IntervalParser.apply("2sec 11:22:33"))
++            .isExactlyInstanceOf(IllegalArgumentException.class)
++            .hasMessage("Invalid interval format: 2sec 11:22:33");
++        assertThatThrownBy(() -> IntervalParser.apply("1 years 2 mons 3 days 2 years"))
++            .isExactlyInstanceOf(IllegalArgumentException.class)
++            .hasMessage("Invalid interval format: 1 years 2 mons 3 days 2 years");
++    }
++
+     @Test
+     public void test_normalization() {
+         var expected = new Period(1, 2, 0, 827, 4, 40, 43, 0)

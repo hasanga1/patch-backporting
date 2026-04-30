@@ -1,0 +1,61 @@
+diff --git a/docs/appendices/release-notes/5.10.3.rst b/docs/appendices/release-notes/5.10.3.rst
+index 776e9f209d..3ef1aa9435 100644
+--- a/docs/appendices/release-notes/5.10.3.rst
++++ b/docs/appendices/release-notes/5.10.3.rst
+@@ -44,4 +44,6 @@ See the :ref:`version_5.10.0` release notes for a full list of changes in the
+ Fixes
+ =====
+ 
+-None
++- Fixed an issue that would prevent users with ``DDL`` privilege on ``CLUSTER``
++  level, to execute :ref:`DROP ANALYZER<drop-analyzer>`, thus before the fix,
++  only allowing the ``crate`` superuser to execute ``DROP ANALYZER`` statements.
+diff --git a/server/src/test/java/io/crate/analyze/DropAnalyzerTest.java b/server/src/test/java/io/crate/analyze/DropAnalyzerTest.java
+index 3fcecf076f..79e838f2fc 100644
+--- a/server/src/test/java/io/crate/analyze/DropAnalyzerTest.java
++++ b/server/src/test/java/io/crate/analyze/DropAnalyzerTest.java
+@@ -26,6 +26,7 @@ import static io.crate.metadata.FulltextAnalyzerResolver.CustomType.CHAR_FILTER;
+ import static io.crate.metadata.FulltextAnalyzerResolver.CustomType.TOKENIZER;
+ import static io.crate.metadata.FulltextAnalyzerResolver.CustomType.TOKEN_FILTER;
+ import static org.assertj.core.api.Assertions.assertThat;
++import static org.assertj.core.api.Assertions.assertThatThrownBy;
+ 
+ import org.elasticsearch.action.admin.cluster.settings.ClusterUpdateSettingsRequest;
+ import org.elasticsearch.cluster.ClusterState;
+@@ -35,6 +36,7 @@ import org.elasticsearch.test.ClusterServiceUtils;
+ import org.junit.Before;
+ import org.junit.Test;
+ 
++import io.crate.exceptions.AnalyzerUnknownException;
+ import io.crate.planner.node.ddl.DropAnalyzerPlan;
+ import io.crate.test.integration.CrateDummyClusterServiceUnitTest;
+ import io.crate.testing.SQLExecutor;
+@@ -133,4 +135,11 @@ public class DropAnalyzerTest extends CrateDummyClusterServiceUnitTest {
+         assertIsMarkedToBeRemove(request.persistentSettings(), ANALYZER.buildSettingName("a4"));
+         assertIsMarkedToBeRemove(request.persistentSettings(), CHAR_FILTER.buildSettingName("a4_mymapping"));
+     }
++
++    @Test
++    public void test_non_existing_custom_analyzer() {
++        assertThatThrownBy(() -> analyze("DROP ANALYZER invalid"))
++            .isExactlyInstanceOf(AnalyzerUnknownException.class)
++            .hasMessage("Analyzer 'invalid' unknown");
++    }
+ }
+diff --git a/server/src/test/java/io/crate/auth/AccessControlMayExecuteTest.java b/server/src/test/java/io/crate/auth/AccessControlMayExecuteTest.java
+index 854793ffd5..5cf9c7f72e 100644
+--- a/server/src/test/java/io/crate/auth/AccessControlMayExecuteTest.java
++++ b/server/src/test/java/io/crate/auth/AccessControlMayExecuteTest.java
+@@ -421,6 +421,12 @@ public class AccessControlMayExecuteTest extends CrateDummyClusterServiceUnitTes
+         assertAskedForCluster(Permission.DDL);
+     }
+ 
++    @Test
++    public void testDropAnalyzer() {
++        analyze("drop analyzer a1");
++        assertAskedForCluster(Permission.DDL);
++    }
++
+     @Test
+     public void testRefresh() throws Exception {
+         analyze("refresh table users, parted partition (date = 1395874800000)");

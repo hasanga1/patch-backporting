@@ -1,0 +1,44 @@
+diff --git a/docs/appendices/release-notes/5.6.3.rst b/docs/appendices/release-notes/5.6.3.rst
+index d41bde5efb..1c0ee3ce38 100644
+--- a/docs/appendices/release-notes/5.6.3.rst
++++ b/docs/appendices/release-notes/5.6.3.rst
+@@ -47,4 +47,5 @@ See the :ref:`version_5.6.0` release notes for a full list of changes in the
+ Fixes
+ =====
+ 
+-None
++- Fixed ``NullPointerException`` thrown when joining tables with ``USING``
++  clause which contains columns not existing in either or both tables.
+diff --git a/server/src/test/java/io/crate/planner/operators/JoinTest.java b/server/src/test/java/io/crate/planner/operators/JoinTest.java
+index 3d721f03f1..0bd7f97ca1 100644
+--- a/server/src/test/java/io/crate/planner/operators/JoinTest.java
++++ b/server/src/test/java/io/crate/planner/operators/JoinTest.java
+@@ -986,6 +986,28 @@ public class JoinTest extends CrateDummyClusterServiceUnitTest {
+ 
+     }
+ 
++    @Test
++    public void test_using_clause_specifying_multiple_columns_with_a_non_existing_column_raises_error() throws IOException {
++        var executor = SQLExecutor.builder(clusterService, 2, Randomness.get(), List.of())
++            .addTable("CREATE TABLE j1 (x INT, y INT)")
++            .addTable("CREATE TABLE j2 (x INT)")
++            .build();
++
++        assertThatThrownBy(() -> executor.analyze("SELECT * FROM j1 JOIN j2 USING(x, y)"))
++            .isExactlyInstanceOf(IllegalArgumentException.class)
++            .hasMessageContaining("column y specified in USING clause does not exist in right table");
++
++        // left and right sides swapped
++        assertThatThrownBy(() -> executor.analyze("SELECT * FROM j2 JOIN j1 USING(x, y)"))
++            .isExactlyInstanceOf(IllegalArgumentException.class)
++            .hasMessageContaining("column y specified in USING clause does not exist in left table");
++
++        // column unknown from both sides
++        assertThatThrownBy(() -> executor.analyze("SELECT * FROM j2 JOIN j1 USING(x, z)"))
++            .isExactlyInstanceOf(IllegalArgumentException.class)
++            .hasMessageContaining("column z specified in USING clause does not exist in left table");
++    }
++
+     /**
+      * Verifies a bug fix (and regression that was introduced with 5.2.4)
+      * See https://github.com/crate/crate/issues/13808

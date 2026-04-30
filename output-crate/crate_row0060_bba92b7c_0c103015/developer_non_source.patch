@@ -1,0 +1,47 @@
+diff --git a/docs/appendices/release-notes/5.9.13.rst b/docs/appendices/release-notes/5.9.13.rst
+index 9ad06c33dc..64242a6246 100644
+--- a/docs/appendices/release-notes/5.9.13.rst
++++ b/docs/appendices/release-notes/5.9.13.rst
+@@ -59,3 +59,7 @@ Fixes
+   restarting with still holding a lock on the shard. The existing retry logic
+   to solve this situation was not working in some cases.
+ 
++- Fixed an issue causing a ``ALTER TABLE <table> RESET <setting>`` statement on
++  a complete partitioned table to not reset the setting on all partitions, but
++  only on the table itself, so the reset value of the setting would only have
++  taken effect for new partitions.
+diff --git a/server/src/test/java/io/crate/integrationtests/AlterTableIntegrationTest.java b/server/src/test/java/io/crate/integrationtests/AlterTableIntegrationTest.java
+index df8c8d372a..8e294127bd 100644
+--- a/server/src/test/java/io/crate/integrationtests/AlterTableIntegrationTest.java
++++ b/server/src/test/java/io/crate/integrationtests/AlterTableIntegrationTest.java
+@@ -414,4 +414,30 @@ public class AlterTableIntegrationTest extends IntegTestCase {
+         execute("alter table tbl partition (p = 1) set (number_of_shards = ?)", new Object[] { numShards }, TimeValue.timeValueSeconds(30));
+         assertBusy(() -> assertThat(execute("select * from tbl")).hasRowCount(4));
+     }
++
++    @Test
++    public void test_reset_setting_on_complete_partitioned_table() {
++        execute("CREATE TABLE t1 (a INTEGER, b INTEGER) PARTITIONED BY (a)");
++        execute("INSERT INTO t1 VALUES (1, 2), (2, 3)");
++        execute("ALTER TABLE t1 SET (\"blocks.write\" = TRUE)");
++        execute("SELECT table_name, settings['blocks']['write'] FROM information_schema.tables WHERE table_name = 't1' ORDER BY 1");
++        assertThat(response).hasRows(
++            "t1| true"
++        );
++        execute("SELECT partition_ident, settings['blocks']['write'] FROM information_schema.table_partitions WHERE table_name = 't1' ORDER BY 1");
++        assertThat(response).hasRows(
++            "04132| true",
++            "04134| true"
++        );
++        execute("ALTER TABLE t1 RESET (\"blocks.write\")");
++        execute("SELECT table_name, settings['blocks']['write'] FROM information_schema.tables WHERE table_name = 't1' ORDER BY 1");
++        assertThat(response).hasRows(
++            "t1| false"
++        );
++        execute("SELECT partition_ident, settings['blocks']['write'] FROM information_schema.table_partitions WHERE table_name = 't1' ORDER BY 1");
++        assertThat(response).hasRows(
++            "04132| false",
++            "04134| false"
++        );
++    }
+ }

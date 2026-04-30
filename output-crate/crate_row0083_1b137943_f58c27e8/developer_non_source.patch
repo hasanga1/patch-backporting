@@ -1,0 +1,138 @@
+diff --git a/docs/appendices/release-notes/5.9.7.rst b/docs/appendices/release-notes/5.9.7.rst
+index ec797ef14d..b01c678cd2 100644
+--- a/docs/appendices/release-notes/5.9.7.rst
++++ b/docs/appendices/release-notes/5.9.7.rst
+@@ -74,4 +74,5 @@ Fixes
+   :ref:`information_schema.tables <information_schema_tables>` and
+   :ref:`information_schema.table_partitions <is_table_partitions>` for
+   partitioned tables and their new partitions to the latest version following a
+-  node upgrade.
++  node upgrade. The fix can't fully repair incorrectly updated versions but
++  includes mitigation logic that infers the version based on existing partitions.
+diff --git a/server/src/test/java/io/crate/analyze/AlterTableRenameColumnAnalyzerTest.java b/server/src/test/java/io/crate/analyze/AlterTableRenameColumnAnalyzerTest.java
+index cd859e72b5..910475b8c8 100644
+--- a/server/src/test/java/io/crate/analyze/AlterTableRenameColumnAnalyzerTest.java
++++ b/server/src/test/java/io/crate/analyze/AlterTableRenameColumnAnalyzerTest.java
+@@ -138,7 +138,7 @@ public class AlterTableRenameColumnAnalyzerTest extends CrateDummyClusterService
+ 
+         assertThatThrownBy(() -> e.analyze("ALTER TABLE t RENAME COLUMN a to b"))
+             .isExactlyInstanceOf(UnsupportedOperationException.class)
+-            .hasMessage("Renaming columns of a table created before version 5.5 is not supported");
++            .hasMessage("Renaming columns of a table created before version 5.5.0 is not supported");
+     }
+ 
+     @Test
+diff --git a/server/src/test/java/io/crate/metadata/doc/DocTableInfoFactoryTest.java b/server/src/test/java/io/crate/metadata/doc/DocTableInfoFactoryTest.java
+index 08b57381d8..5d9bf44330 100644
+--- a/server/src/test/java/io/crate/metadata/doc/DocTableInfoFactoryTest.java
++++ b/server/src/test/java/io/crate/metadata/doc/DocTableInfoFactoryTest.java
+@@ -23,15 +23,19 @@ package io.crate.metadata.doc;
+ 
+ import static com.carrotsearch.randomizedtesting.RandomizedTest.randomAsciiLettersOfLength;
+ import static io.crate.testing.TestingHelpers.createNodeContext;
++import static org.assertj.core.api.Assertions.assertThat;
+ import static org.assertj.core.api.Assertions.assertThatThrownBy;
+ 
+ import java.util.Collections;
++import java.util.List;
+ import java.util.Locale;
+ 
+ import org.elasticsearch.Version;
+ import org.elasticsearch.cluster.ClusterName;
+ import org.elasticsearch.cluster.ClusterState;
++import org.elasticsearch.cluster.metadata.AliasMetadata;
+ import org.elasticsearch.cluster.metadata.IndexMetadata;
++import org.elasticsearch.cluster.metadata.IndexTemplateMetadata;
+ import org.elasticsearch.cluster.metadata.Metadata;
+ import org.elasticsearch.common.settings.Settings;
+ import org.elasticsearch.test.ESTestCase;
+@@ -88,4 +92,89 @@ public class DocTableInfoFactoryTest extends ESTestCase {
+             .isExactlyInstanceOf(RelationUnknown.class)
+             .hasMessage(String.format(Locale.ENGLISH, "Relation '%s.test' unknown", schemaName));
+     }
++
++    @Test
++    public void test_sets_created_version_based_on_oldest_partition() throws Exception {
++        // Mitigation for https://github.com/crate/crate/pull/17178
++
++        String schema = randomSchema();
++        RelationName tbl = new RelationName(schema, "tbl");
++        PartitionName p1 = new PartitionName(tbl, List.of("p1"));
++
++        String templateName = PartitionName.templateName(schema, "tbl");
++        String mapping = """
++            {
++                "default": {
++                    "properties": {
++                        "id": {
++                            "type": "integer",
++                            "position": 1,
++                            "index": "not_analyzed",
++                            "oid": 1
++                        }
++                    }
++                }
++            }
++            """;
++        IndexTemplateMetadata template = IndexTemplateMetadata.builder(templateName)
++            .patterns(List.of(PartitionName.templatePrefix(schema, "tbl")))
++            .settings(Settings.builder()
++                .put("index.version.created", Version.V_5_9_6)
++                .put("index.number_of_shards", 5)
++                .build()
++            )
++            .putMapping(mapping)
++            .putAlias(new AliasMetadata(tbl.indexNameOrAlias()))
++            .build();
++        IndexMetadata.Builder indexMetadataBuilder = IndexMetadata.builder(p1.asIndexName())
++            .settings(Settings.builder().put("index.version.created", Version.V_5_7_5).build())
++            .numberOfReplicas(0)
++            .numberOfShards(5)
++            .putMapping(
++                mapping);
++        Metadata metadata = Metadata.builder()
++                .put(indexMetadataBuilder)
++                .put(template)
++                .build();
++
++        DocTableInfoFactory docTableInfoFactory = new DocTableInfoFactory(nodeCtx);
++        DocTableInfo docTableInfo = docTableInfoFactory.create(tbl, metadata);
++        assertThat(docTableInfo.versionCreated()).isEqualTo(Version.V_5_9_6);
++    }
++
++    @Test
++    public void test_uses_5_4_0_as_version_if_mapping_has_no_oid() throws Exception {
++        String schema = randomSchema();
++        RelationName tbl = new RelationName(schema, "tbl");
++        String templateName = PartitionName.templateName(schema, "tbl");
++        String mapping = """
++            {
++                "default": {
++                    "properties": {
++                        "id": {
++                            "type": "integer",
++                            "position": 1,
++                            "index": "not_analyzed"
++                        }
++                    }
++                }
++            }
++            """;
++        IndexTemplateMetadata template = IndexTemplateMetadata.builder(templateName)
++            .patterns(List.of(PartitionName.templatePrefix(schema, "tbl")))
++            .settings(Settings.builder()
++                .put("index.version.created", Version.V_5_9_6)
++                .put("index.number_of_shards", 5)
++                .build()
++            )
++            .putMapping(mapping)
++            .putAlias(new AliasMetadata(tbl.indexNameOrAlias()))
++            .build();
++        Metadata metadata = Metadata.builder()
++                .put(template)
++                .build();
++        DocTableInfoFactory docTableInfoFactory = new DocTableInfoFactory(nodeCtx);
++        DocTableInfo docTableInfo = docTableInfoFactory.create(tbl, metadata);
++        assertThat(docTableInfo.versionCreated()).isEqualTo(Version.V_5_4_0);
++    }
+ }

@@ -1,0 +1,90 @@
+--- a/server/src/main/java/io/crate/role/PrivilegesModifier.java
++++ b/server/src/main/java/io/crate/role/PrivilegesModifier.java
+@@ -96,7 +96,7 @@ public final class PrivilegesModifier {
+             }
+ 
+             if (affectedCount > 0) {
+-                roles.put(userName, role.with(privileges));
++                roles.put(userName, role.with(new RolePrivileges(privileges)));
+             }
+         }
+ 
+
+--- a/server/src/main/java/io/crate/role/PrivilegesModifier.java
++++ b/server/src/main/java/io/crate/role/PrivilegesModifier.java
+@@ -139,7 +139,7 @@ public final class PrivilegesModifier {
+                     privileges.add(privilege);
+                 }
+             }
+-            newRoles.put(entry.getKey(), role.with(privileges));
++            newRoles.put(entry.getKey(), role.with(new RolePrivileges(privileges)));
+         }
+ 
+         if (privilegesChanged) {
+
+--- a/server/src/main/java/io/crate/role/PrivilegesModifier.java
++++ b/server/src/main/java/io/crate/role/PrivilegesModifier.java
+@@ -171,7 +171,7 @@ public final class PrivilegesModifier {
+                     updatedPrivileges.add(privilege);
+                 }
+             }
+-            newRoles.put(role.name(), role.with(updatedPrivileges));
++            newRoles.put(role.name(), role.with(new RolePrivileges(updatedPrivileges)));
+         }
+         mdBuilder.putCustom(RolesMetadata.TYPE, new RolesMetadata(newRoles));
+         return affectedPrivileges;
+
+--- a/server/src/main/java/io/crate/role/PrivilegesModifier.java
++++ b/server/src/main/java/io/crate/role/PrivilegesModifier.java
+@@ -201,7 +201,7 @@ public final class PrivilegesModifier {
+                     updatedPrivileges.add(privilege);
+                 }
+             }
+-            newRoles.put(user, role.with(updatedPrivileges));
++            newRoles.put(user, role.with(new RolePrivileges(updatedPrivileges)));
+         }
+         return new RolesMetadata(newRoles);
+     }
+
+--- a/server/src/main/java/io/crate/role/Role.java
++++ b/server/src/main/java/io/crate/role/Role.java
+@@ -241,8 +241,12 @@ public class Role implements Writeable, ToXContent {
+ 
+     }
+ 
+-    public Role with(Set<Privilege> privileges) {
+-        return new Role(name, new RolePrivileges(privileges), grantedRoles, properties, false);
++    public Role with(RolePrivileges privileges) {
++        return new Role(name, privileges, grantedRoles, properties, isSuperUser);
++    }
++
++    public Role with(Set<GrantedRole> grantedRoles) {
++        return new Role(name, privileges, grantedRoles, properties, isSuperUser);
+     }
+ 
+     public Role with(@Nullable SecureHash password,
+
+--- a/server/src/main/java/io/crate/role/Role.java
++++ b/server/src/main/java/io/crate/role/Role.java
+@@ -399,8 +399,8 @@
+         return new Role(
+             roleName,
+             new RolePrivileges(privileges),
+             grantedRoles,
+             properties,
+-            false);
++            isSuperUser);
+     }
+ }
+
+--- a/server/src/main/java/io/crate/role/metadata/RolesMetadata.java
++++ b/server/src/main/java/io/crate/role/metadata/RolesMetadata.java
+@@ -239,7 +239,7 @@ public class RolesMetadata extends AbstractNamedDiffable<Metadata.Custom> implem
+             }
+         }
+         if (affectedCount > 0) {
+-            roles.put(role.name(), new Role(role.name(), role.isUser(), Set.of(), grantedRoles, role.password(), role.jwtProperties()));
++            roles.put(role.name(), new Role(role.name(), role.isUser(), Set.of(), grantedRoles, role.password(), role.jwtProperties()));
+         }
+         return affectedCount;
+     }

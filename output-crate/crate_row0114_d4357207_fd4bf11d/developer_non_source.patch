@@ -1,0 +1,40 @@
+diff --git a/docs/appendices/release-notes/5.7.3.rst b/docs/appendices/release-notes/5.7.3.rst
+index 9a4f54bffc..a66b991853 100644
+--- a/docs/appendices/release-notes/5.7.3.rst
++++ b/docs/appendices/release-notes/5.7.3.rst
+@@ -48,6 +48,10 @@ See the :ref:`version_5.7.0` release notes for a full list of changes in the
+ Fixes
+ =====
+ 
++- Fixed an issue that caused queries to incorrectly filter out rows when the
++  ``WHERE`` clause contained :ref:`scalar-format_type` function under ``NOT`` or
++  ``!=`` operators.
++
+ - Fixed an issue that resulted in an ``unsupported ExecutionNode`` error if
+   joining a foreign table with another table that's sharded across many nodes.
+ 
+diff --git a/server/src/test/java/io/crate/lucene/ThreeValuedLogicQueryBuilderTest.java b/server/src/test/java/io/crate/lucene/ThreeValuedLogicQueryBuilderTest.java
+index fc3f74bbd8..dd7a00cf91 100644
+--- a/server/src/test/java/io/crate/lucene/ThreeValuedLogicQueryBuilderTest.java
++++ b/server/src/test/java/io/crate/lucene/ThreeValuedLogicQueryBuilderTest.java
+@@ -21,7 +21,8 @@
+ 
+ package io.crate.lucene;
+ 
+-import static org.assertj.core.api.Assertions.assertThat;
++
++import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
+ 
+ import org.apache.lucene.search.Query;
+ import org.junit.Test;
+@@ -119,4 +120,10 @@ public class ThreeValuedLogicQueryBuilderTest extends LuceneQueryBuilderTest {
+         assertThat(convert("NOT (CURRENT_SETTING(name, true))"))
+             .hasToString("+(+*:* -pg_catalog.current_setting(name, true)) #(NOT pg_catalog.current_setting(name, true))");
+     }
++
++    @Test
++    public void test_negated_format_type_with_three_valued_logic() {
++        assertThat(convert("NOT pg_catalog.format_type(x, null)")).hasToString(
++            "+(+*:* -pg_catalog.format_type(x, NULL)) #(NOT pg_catalog.format_type(x, NULL))");
++    }
+ }

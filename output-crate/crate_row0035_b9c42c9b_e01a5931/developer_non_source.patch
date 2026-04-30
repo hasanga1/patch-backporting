@@ -1,0 +1,278 @@
+diff --git a/docs/appendices/release-notes/5.10.12.rst b/docs/appendices/release-notes/5.10.12.rst
+index 9c6f83085f..053dae6209 100644
+--- a/docs/appendices/release-notes/5.10.12.rst
++++ b/docs/appendices/release-notes/5.10.12.rst
+@@ -47,5 +47,9 @@ See the :ref:`version_5.10.0` release notes for a full list of changes in the
+ Fixes
+ =====
+ 
++- Fixed an issue that could cause ``SELECT`` statements to get stuck if executed
++  via a PostgreSQL client that set the ``maxRow`` option as part of an
++  ``EXECUTE`` message and it matched the number of result rows exactly.
++
+ - Fixed an issue that prevented users to change the value of the
+   :ref:`indices.recovery.max_concurrent_file_chunks` setting.
+diff --git a/server/src/test/java/io/crate/integrationtests/PostgresITest.java b/server/src/test/java/io/crate/integrationtests/PostgresITest.java
+index 9d6437eebb..0339fdb7f8 100644
+--- a/server/src/test/java/io/crate/integrationtests/PostgresITest.java
++++ b/server/src/test/java/io/crate/integrationtests/PostgresITest.java
+@@ -969,6 +969,22 @@ public class PostgresITest extends IntegTestCase {
+         }
+     }
+ 
++    @Test
++    public void testExecuteBatchDoesNotLeakSysJobsLog() throws Exception {
++        try (Connection conn = DriverManager.getConnection(url(RW), properties)) {
++            PreparedStatement stmt = conn.prepareStatement("SELECT ?");
++            for (int i = 1; i <= 3; i++) {
++                stmt.setInt(1, i);
++                stmt.addBatch();
++            }
++            stmt.executeBatch();
++        }
++        for (JobsLogService jobsLogService : cluster().getDataNodeInstances(JobsLogService.class)) {
++            assertBusy(() -> assertThat(jobsLogService.get().activeJobs()).isEmpty());
++        }
++    }
++
++
+     @Test
+     public void test_insert_with_on_conflict_do_nothing_batch_error_resp_is_0_for_conflicting_items() throws Exception {
+         try (Connection conn = DriverManager.getConnection(url(RW), properties)) {
+diff --git a/server/src/test/java/io/crate/session/RowConsumerToResultReceiverTest.java b/server/src/test/java/io/crate/session/RowConsumerToResultReceiverTest.java
+index bc004a0580..6cd7c125a5 100644
+--- a/server/src/test/java/io/crate/session/RowConsumerToResultReceiverTest.java
++++ b/server/src/test/java/io/crate/session/RowConsumerToResultReceiverTest.java
+@@ -21,7 +21,7 @@
+ 
+ package io.crate.session;
+ 
+-import static io.crate.testing.Asserts.assertThat;
++import static org.assertj.core.api.Assertions.assertThat;
+ 
+ import java.util.ArrayList;
+ import java.util.List;
+@@ -30,15 +30,17 @@ import java.util.concurrent.TimeUnit;
+ import java.util.concurrent.atomic.AtomicReference;
+ import java.util.stream.IntStream;
+ 
++import org.elasticsearch.test.ESTestCase;
+ import org.jetbrains.annotations.Nullable;
+ import org.junit.Test;
+ 
++import io.crate.data.BatchIterator;
+ import io.crate.data.Row;
+ import io.crate.data.testing.BatchSimulatingIterator;
+ import io.crate.data.testing.FailingBatchIterator;
+ import io.crate.data.testing.TestingBatchIterators;
+ 
+-public class RowConsumerToResultReceiverTest {
++public class RowConsumerToResultReceiverTest extends ESTestCase {
+ 
+     @Test
+     public void testBatchedIteratorConsumption() throws Exception {
+@@ -100,18 +102,45 @@ public class RowConsumerToResultReceiverTest {
+                 return writeFutureRef.get();
+             }
+         };
+-        RowConsumerToResultReceiver batchConsumer =
+-            new RowConsumerToResultReceiver(resultReceiver, 0, t -> {});
++        var batchConsumer = new RowConsumerToResultReceiver(resultReceiver, 1, _ -> {});
+ 
+         batchConsumer.accept(batchSimulatingIterator, null);
+ 
+         assertThat(rowCount[0]).isEqualTo(1);
+-        assertThat(batchConsumer.suspended()).isTrue();
++        assertThat(batchConsumer.waitingForWrite()).isTrue();
++        assertThat(batchConsumer.suspended())
++            .as("Must not set suspended, as it causes further portal usage in Session to close the consumer")
++            .isFalse();
+ 
+         writeFutureRef.get().complete(null);
+         resultReceiver.completionFuture().get(10, TimeUnit.SECONDS);
+ 
+-        assertThat(batchConsumer.suspended()).isFalse();
++        assertThat(batchConsumer.waitingForWrite()).isFalse();
+         assertThat(rowCount[0]).isEqualTo(10);
+     }
++
++    @Test
++    public void test_does_not_suspend_consumer_on_last_row() throws Exception {
++        {
++            int numRows = randomIntBetween(1, 10);
++            BatchIterator<Row> batchIterator = TestingBatchIterators.range(0, numRows);
++            BaseResultReceiver resultReceiver = new BaseResultReceiver();
++            var consumer = new RowConsumerToResultReceiver(resultReceiver, numRows, _ -> {});
++
++            consumer.accept(batchIterator, null);
++            assertThat(consumer.suspended()).isFalse();
++            assertThat(consumer.completionFuture()).isDone();
++        }
++        {
++            int numRows = randomIntBetween(2, 10);
++            BatchIterator<Row> numbers = TestingBatchIterators.range(0, numRows);
++            var batchIterator = new BatchSimulatingIterator<>(numbers, numRows - 1, 1, null);
++            BaseResultReceiver resultReceiver = new BaseResultReceiver();
++            var consumer = new RowConsumerToResultReceiver(resultReceiver, numRows, _ -> {});
++
++            consumer.accept(batchIterator, null);
++            assertThat(consumer.completionFuture()).succeedsWithin(5, TimeUnit.SECONDS);
++            assertThat(consumer.suspended()).isFalse();
++        }
++    }
+ }
+diff --git a/server/src/test/java/io/crate/session/SessionTest.java b/server/src/test/java/io/crate/session/SessionTest.java
+index d674004c1b..612ee93e60 100644
+--- a/server/src/test/java/io/crate/session/SessionTest.java
++++ b/server/src/test/java/io/crate/session/SessionTest.java
+@@ -24,6 +24,7 @@ package io.crate.session;
+ import static io.crate.session.Session.UNNAMED;
+ import static io.crate.testing.Asserts.assertThat;
+ import static java.util.concurrent.CompletableFuture.completedFuture;
++import static org.assertj.core.api.Assertions.assertThat;
+ import static org.assertj.core.api.Assertions.assertThatThrownBy;
+ import static org.mockito.ArgumentMatchers.any;
+ import static org.mockito.ArgumentMatchers.anyInt;
+@@ -43,6 +44,7 @@ import java.util.concurrent.ScheduledExecutorService;
+ import java.util.concurrent.ScheduledFuture;
+ import java.util.concurrent.ScheduledThreadPoolExecutor;
+ import java.util.concurrent.TimeUnit;
++import java.util.concurrent.atomic.AtomicReference;
+ 
+ import org.elasticsearch.client.ElasticsearchClient;
+ import org.elasticsearch.threadpool.ThreadPool;
+@@ -59,6 +61,7 @@ import io.crate.common.unit.TimeValue;
+ import io.crate.data.InMemoryBatchIterator;
+ import io.crate.data.Row;
+ import io.crate.data.RowConsumer;
++import io.crate.data.testing.TestingBatchIterators;
+ import io.crate.exceptions.JobKilledException;
+ import io.crate.execution.dml.BulkResponse;
+ import io.crate.execution.engine.collect.stats.QueueSink;
+@@ -69,6 +72,7 @@ import io.crate.planner.Plan;
+ import io.crate.planner.Planner;
+ import io.crate.planner.PlannerContext;
+ import io.crate.planner.operators.SubQueryResults;
++import io.crate.protocols.postgres.FormatCodes.FormatCode;
+ import io.crate.protocols.postgres.Portal;
+ import io.crate.test.integration.CrateDummyClusterServiceUnitTest;
+ import io.crate.testing.SQLExecutor;
+@@ -398,35 +402,34 @@ public class SessionTest extends CrateDummyClusterServiceUnitTest {
+     @Test
+     public void test_statement_timeout_schedule_is_removed_for_finished_jobs() throws Exception {
+         Planner planner = mock(Planner.class, Answers.RETURNS_MOCKS);
++        Plan plan = new Plan() {
++            @Override
++            public StatementType type() {
++                return StatementType.INSERT;
++            }
++
++            @Override
++            public void executeOrFail(DependencyCarrier dependencies,
++                                      PlannerContext plannerContext,
++                                      RowConsumer consumer,
++                                      Row params,
++                                      SubQueryResults subQueryResults) throws Exception {
++                consumer.accept(InMemoryBatchIterator.empty(null), null);
++            }
++
++            @Override
++            public CompletableFuture<BulkResponse> executeBulk(DependencyCarrier executor,
++                                                               PlannerContext plannerContext,
++                                                               List<Row> bulkParams,
++                                                               SubQueryResults subQueryResults) {
++                return new CompletableFuture<>();
++            }
++        };
++        when(planner.plan(any(AnalyzedStatement.class), any(PlannerContext.class)))
++            .thenReturn(plan);
+         SQLExecutor sqlExecutor = SQLExecutor.builder(clusterService)
+             .setPlanner(planner)
+             .build();
+-        when(planner.plan(any(AnalyzedStatement.class), any(PlannerContext.class)))
+-            .thenReturn(
+-                new Plan() {
+-                    @Override
+-                    public StatementType type() {
+-                        return StatementType.INSERT;
+-                    }
+-
+-                    @Override
+-                    public void executeOrFail(DependencyCarrier dependencies,
+-                                              PlannerContext plannerContext,
+-                                              RowConsumer consumer,
+-                                              Row params,
+-                                              SubQueryResults subQueryResults) throws Exception {
+-                        consumer.accept(InMemoryBatchIterator.empty(null), null);
+-                    }
+-
+-                    @Override
+-                    public CompletableFuture<BulkResponse> executeBulk(DependencyCarrier executor,
+-                                                                       PlannerContext plannerContext,
+-                                                                       List<Row> bulkParams,
+-                                                                       SubQueryResults subQueryResults) {
+-                        return new CompletableFuture<>();
+-                    }
+-                }
+-            );
+ 
+         DependencyCarrier dependencies = sqlExecutor.dependencyMock;
+         when(dependencies.scheduler()).thenReturn(THREAD_POOL.scheduler());
+@@ -512,6 +515,57 @@ public class SessionTest extends CrateDummyClusterServiceUnitTest {
+         }
+     }
+ 
++    @Test
++    public void test_binding_portal_again_closes_suspended_consumers_eventually() throws Exception {
++        Planner planner = mock(Planner.class, Answers.RETURNS_MOCKS);
++        AtomicReference<RowConsumer> consumerRef = new AtomicReference<>();
++        Plan plan = new Plan() {
++            @Override
++            public StatementType type() {
++                return StatementType.INSERT;
++            }
++
++            @Override
++            public void executeOrFail(DependencyCarrier dependencies,
++                                      PlannerContext plannerContext,
++                                      RowConsumer consumer,
++                                      Row params,
++                                      SubQueryResults subQueryResults) throws Exception {
++                consumerRef.set(consumer);
++            }
++
++            @Override
++            public CompletableFuture<BulkResponse> executeBulk(DependencyCarrier executor,
++                                                               PlannerContext plannerContext,
++                                                               List<Row> bulkParams,
++                                                               SubQueryResults subQueryResults) {
++                return new CompletableFuture<>();
++            }
++        };
++        when(planner.plan(any(AnalyzedStatement.class), any(PlannerContext.class)))
++            .thenReturn(plan);
++        SQLExecutor sqlExecutor = SQLExecutor.builder(clusterService)
++            .setPlanner(planner)
++            .build();
++        try (Session session = sqlExecutor.createSession()) {
++            session.parse("S1", "SELECT 1", Collections.emptyList());
++            session.bind("", "S1", List.of(), new FormatCode[0]);
++            BaseResultReceiver baseResultReceiver = new BaseResultReceiver();
++            session.execute("", 5, baseResultReceiver);
++
++            assertThat(baseResultReceiver.completionFuture()).isNotDone();
++            Portal portal = session.portals.get("");
++            assertThat(portal.activeConsumer()).isNotNull();
++            assertThat(portal.activeConsumer().suspended()).isFalse();
++
++            session.bind("", "S1", List.of(), new FormatCode[0]);
++            assertThat(portal.activeConsumer().suspended()).isFalse();
++            consumerRef.get().accept(TestingBatchIterators.range(0, 10), null);
++            assertThat(portal.activeConsumer().completionFuture()).succeedsWithin(1, TimeUnit.SECONDS);
++        }
++
++    }
++
+     @Test
+     public void test_bulk_operations_completed_exceptionally_sys_job_cleared() throws Exception {
+         Planner planner = mock(Planner.class, Answers.RETURNS_MOCKS);

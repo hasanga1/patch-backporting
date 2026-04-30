@@ -1,0 +1,59 @@
+--- a/server/src/main/java/io/crate/analyze/where/EqualityExtractor.java
++++ b/server/src/main/java/io/crate/analyze/where/EqualityExtractor.java
+@@ -115,8 +115,10 @@
+-        var context = new ProxyInjectingVisitor.Context(columns);
+-        Symbol proxiedTree = symbol.accept(ProxyInjectingVisitor.INSTANCE, context);
++        var context = new ProxyInjectingVisitor.Context(columns);
++        // Normalize the query so that any casts on literals are evaluated
++        var normalizedQuery = normalizer.normalize(symbol, transactionContext);
++        Symbol proxiedTree = normalizedQuery.accept(ProxyInjectingVisitor.INSTANCE, context);
+ 
+-        // Match cannot execute without Lucene
+-        if (shortCircuitOnMatchPredicateUnknown && context.unknowns.size() == 1) {
++        // Match cannot execute without Lucene
++        if (shortCircuitOnMatchPredicateUnknown && context.unknowns.size() == 1) {
+             Symbol unknown = context.unknowns.iterator().next();
+             if (unknown instanceof MatchPredicate || unknown instanceof Function fn && fn.name().equals(io.crate.expression.predicate.MatchPredicate.NAME)) {
+                 return EqMatches.NONE;
+
+--- a/server/src/main/java/io/crate/analyze/where/EqualityExtractor.java
++++ b/server/src/main/java/io/crate/analyze/where/EqualityExtractor.java
+@@ -292,7 +292,7 @@
+         @Override
+         public void writeTo(StreamOutput out) throws IOException {
+-            throw new UnsupportedOperationException("writeTo not supported for " +
+-                                                    EqProxy.class.getSimpleName());
++            throw new UnsupportedOperationException("writeTo not supported for " +
++                EqProxy.class.getSimpleName());
+         }
+ 
+         public String forDisplay() {
+
+--- a/server/src/main/java/io/crate/analyze/where/EqualityExtractor.java
++++ b/server/src/main/java/io/crate/analyze/where/EqualityExtractor.java
+@@ -367,12 +367,12 @@
+-        static class Context {
++        static class Context {
+ 
+-            private LinkedHashMap<ColumnIdent, Comparison> comparisons;
++            private final LinkedHashMap<ColumnIdent, Comparison> comparisons;
+             private boolean proxyBelow;
+             private final Set<Symbol> unknowns = new HashSet<>();
+ 
+             private Context(Collection<ColumnIdent> references) {
+                 comparisons = new LinkedHashMap<>(references.size());
+                 for (ColumnIdent reference : references) {
+                     comparisons.put(reference, new Comparison());
+                 }
+             }
+
+--- a/server/src/main/java/io/crate/planner/WhereClauseOptimizer.java
++++ b/server/src/main/java/io/crate/planner/WhereClauseOptimizer.java
+@@ -49,6 +49,7 @@ import io.crate.metadata.doc.DocSysColumns;
+ import io.crate.metadata.doc.DocTableInfo;
+ import io.crate.planner.operators.SubQueryAndParamBinder;
+ import io.crate.planner.operators.SubQueryResults;
++import io.crate.planner.optimizer.symbol.Optimizer;
+ 
+ /**
+  * Used to analyze a query for primaryKey/partition "direct access" possibilities.

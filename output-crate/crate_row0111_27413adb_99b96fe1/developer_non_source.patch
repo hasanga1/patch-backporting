@@ -1,0 +1,74 @@
+diff --git a/docs/appendices/release-notes/5.7.4.rst b/docs/appendices/release-notes/5.7.4.rst
+index 745b449146..2ab28aeceb 100644
+--- a/docs/appendices/release-notes/5.7.4.rst
++++ b/docs/appendices/release-notes/5.7.4.rst
+@@ -55,3 +55,9 @@ Fixes
+ 
+ - Fixed an issue that could lead to ``ANALYZE`` over account the number of
+   documents in a table if shards were relocating.
++
++- Fixed an issue that caused ``WHERE`` clause to fail to filter rows when
++  the clause contained array scalar functions under ``NOT`` operator. The
++  affected scalars include :ref:`scalar-array_min`, :ref:`scalar-array_max`,
++  :ref:`scalar-array_sum`, :ref:`scalar-array_avg`, :ref:`scalar-array_upper`,
++  :ref:`scalar-array_lower` and :ref:`scalar-array_length`.
+diff --git a/server/src/test/java/io/crate/expression/predicate/NotPredicateTest.java b/server/src/test/java/io/crate/expression/predicate/NotPredicateTest.java
+index e4a94ba78d..7575dd2549 100644
+--- a/server/src/test/java/io/crate/expression/predicate/NotPredicateTest.java
++++ b/server/src/test/java/io/crate/expression/predicate/NotPredicateTest.java
+@@ -25,6 +25,7 @@ import static io.crate.testing.Asserts.isFunction;
+ import static io.crate.testing.Asserts.isLiteral;
+ import static org.assertj.core.api.Assertions.assertThat;
+ 
++import java.util.ArrayList;
+ import java.util.List;
+ 
+ import org.elasticsearch.Version;
+@@ -76,4 +77,47 @@ public class NotPredicateTest extends ScalarTestCase {
+             assertThat(result).isEmpty();
+         }
+     }
++
++    @Test
++    public void test_neq_on_array_scalars_that_evaluate_non_null_inputs_to_nulls() throws Exception {
++        var listOfNulls = new ArrayList<Integer>();
++        listOfNulls.add(null);
++        listOfNulls.add(null);
++        Object[] values = new Object[] {List.of(), listOfNulls}; // '[]' and [null, null]
++        try (QueryTester tester = new QueryTester.Builder(
++            THREAD_POOL,
++            clusterService,
++            Version.CURRENT,
++            "create table t (xs array(int))"
++        ).indexValues("xs", values).build()) {
++
++            String query = "array_max(xs) != 1";
++            List<Object> result = tester.runQuery("xs", query);
++            assertThat(result).isEmpty();
++
++            query = "array_min(xs) != 1";
++            result = tester.runQuery("xs", query);
++            assertThat(result).isEmpty();
++
++            query = "array_avg(xs) != 1";
++            result = tester.runQuery("xs", query);
++            assertThat(result).isEmpty();
++
++            query = "array_sum(xs) != 1";
++            result = tester.runQuery("xs", query);
++            assertThat(result).isEmpty();
++
++            query = "array_length(xs, -1) != 1";
++            result = tester.runQuery("xs", query);
++            assertThat(result).isEmpty();
++
++            query = "array_lower(xs, -1) != 1";
++            result = tester.runQuery("xs", query);
++            assertThat(result).isEmpty();
++
++            query = "array_lower(xs, -1) != 1";
++            result = tester.runQuery("xs", query);
++            assertThat(result).isEmpty();
++        }
++    }
+ }

@@ -1,0 +1,19 @@
+--- a/server/src/main/java/io/crate/planner/optimizer/symbol/rule/SwapCastsInComparisonOperators.java
++++ b/server/src/main/java/io/crate/planner/optimizer/symbol/rule/SwapCastsInComparisonOperators.java
+@@ -60,13 +60,14 @@
+             Reference ref = (Reference) cast.arguments().getFirst();
+             DataType<?> refInnerType = ArrayType.unnest(ref.valueType());
+             DataType<?> literalInnerType = ArrayType.unnest(literal.valueType());
++            var value = literal.value();
+             if (!DataTypes.isNumeric(literalInnerType) || !DataTypes.isNumeric(refInnerType)) {
+-                return true;
++                return literalInnerType.isConvertableTo(refInnerType, false);
+             }
+             if (isSafeConversion(literalInnerType, refInnerType)) {
+                 return true;
+             }
+-            return isNarrowingConversionPossible(literal.value(), ref.valueType());
++            return isNarrowingConversionPossible(value, ref.valueType());
+         }
+         return true;
+     }

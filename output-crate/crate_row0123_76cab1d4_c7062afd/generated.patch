@@ -1,0 +1,42 @@
+--- a/server/src/main/java/io/crate/interval/PGIntervalParser.java
++++ b/server/src/main/java/io/crate/interval/PGIntervalParser.java
+@@ -63,10 +63,13 @@ final class PGIntervalParser {
+         int minutes = 0;
+         int seconds = 0;
+         int milliSeconds = 0;
++        boolean weeksParsed = false;
++        boolean daysParsed = false;
+ 
+         try {
+             String unitToken = null;
+-            String valueToken = null;
++            String valueToken;
++            boolean timeParsed = false;
+             final StringTokenizer st = new StringTokenizer(strInterval);
+             while (st.hasMoreTokens()) {
+                 String token = st.nextToken();
+
+--- a/server/src/main/java/io/crate/interval/PGIntervalParser.java
++++ b/server/src/main/java/io/crate/interval/PGIntervalParser.java
+@@ -84,6 +87,10 @@ final class PGIntervalParser {
+ 
+                 int endHours = token.indexOf(':');
+                 if (endHours > 0) {
++                    if (timeParsed) {
++                        throw new IllegalArgumentException("Invalid interval format: " + value);
++                    }
++
+                     // This handles hours, minutes, seconds and microseconds for
+                     // ISO intervals
+                     int offset = (token.charAt(0) == '-') ? 1 : 0;
+
+--- a/server/src/main/java/io/crate/interval/PGIntervalParser.java
++++ b/server/src/main/java/io/crate/interval/PGIntervalParser.java
+@@ -101,6 +108,7 @@ final class PGIntervalParser {
+                         seconds = -seconds;
+                         milliSeconds = -milliSeconds;
+                     }
++                    timeParsed = true;
+                 } else {
+                     if (unitToken == null) {
+                         throw new IllegalArgumentException("Invalid interval format: " + value);

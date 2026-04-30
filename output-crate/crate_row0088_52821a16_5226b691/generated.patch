@@ -1,0 +1,101 @@
+--- a/plugins/es-repository-azure/src/main/java/org/elasticsearch/repositories/azure/AzureRepository.java
++++ b/plugins/es-repository-azure/src/main/java/org/elasticsearch/repositories/azure/AzureRepository.java
+@@ -23,6 +23,7 @@ import static org.elasticsearch.repositories.azure.AzureStorageService.MAX_CHUNK
+ import static org.elasticsearch.repositories.azure.AzureStorageService.MIN_CHUNK_SIZE;
+ 
+ import java.net.Proxy;
++import java.net.URI;
+ import java.util.List;
+ import java.util.Locale;
+ import java.util.function.Function;
+
+--- a/plugins/es-repository-azure/src/main/java/org/elasticsearch/repositories/azure/AzureRepository.java
++++ b/plugins/es-repository-azure/src/main/java/org/elasticsearch/repositories/azure/AzureRepository.java
+@@ -30,6 +31,7 @@ import java.util.function.Function;
+ import org.apache.logging.log4j.LogManager;
+ import org.apache.logging.log4j.Logger;
+ import org.apache.logging.log4j.message.ParameterizedMessage;
++import org.elasticsearch.ElasticsearchParseException;
+ import org.elasticsearch.cluster.metadata.RepositoryMetadata;
+ import org.elasticsearch.cluster.service.ClusterService;
+ import org.elasticsearch.common.Strings;
+
+--- a/plugins/es-repository-azure/src/main/java/org/elasticsearch/repositories/azure/AzureRepository.java
++++ b/plugins/es-repository-azure/src/main/java/org/elasticsearch/repositories/azure/AzureRepository.java
+@@ -112,10 +114,16 @@ public class AzureRepository extends BlobStoreRepository {
+             Setting.Property.NodeScope);
+ 
+         static final Setting<String> ENDPOINT_SETTING =
+-            Setting.simpleString("endpoint", Property.NodeScope);
++            Setting.simpleString(
++                "endpoint",
++                val -> validateEndpoint(val, "endpoint"),
++                Property.NodeScope);
+ 
+         static final Setting<String> SECONDARY_ENDPOINT_SETTING =
+-            Setting.simpleString("secondary_endpoint", Property.NodeScope);
++            Setting.simpleString(
++                "secondary_endpoint",
++                val -> validateEndpoint(val, "secondary_endpoint"),
++                Property.NodeScope);
+ 
+         /**
+          * Azure endpoint suffix. Default to core.windows.net (CloudStorageAccount.DEFAULT_DNS).
+
+--- a/plugins/es-repository-azure/src/main/java/org/elasticsearch/repositories/azure/AzureRepository.java
++++ b/plugins/es-repository-azure/src/main/java/org/elasticsearch/repositories/azure/AzureRepository.java
+@@ -147,6 +155,24 @@ public class AzureRepository extends BlobStoreRepository {
+          */
+         static final Setting<Integer> PROXY_PORT_SETTING =
+             Setting.intSetting("proxy_port", 0, 0, 65535, Setting.Property.NodeScope);
++
++        /**
++         * Verify that the endpoint is a valid URI with a nonnull scheme and host.
++         * Otherwise, the Azure SDK will throw an NPE exception if host is null.
++         */
++        private static void validateEndpoint(String endpoint, String settingName) {
++            if (Strings.isNullOrEmpty(endpoint)) {
++                return;
++            }
++            try {
++                var uri = new URI(endpoint);
++                if (uri.getScheme() == null || uri.getHost() == null) {
++                    throw new ElasticsearchParseException("Invalid " + settingName + " URI: " + endpoint);
++                }
++            } catch (Exception e) {
++                throw new ElasticsearchParseException("Invalid " + settingName + " URI: " + endpoint, e);
++            }
++        }
+     }
+ 
+     public static List<Setting<?>> optionalSettings() {
+
+--- a/plugins/es-repository-azure/src/main/java/org/elasticsearch/repositories/azure/AzureStorageSettings.java
++++ b/plugins/es-repository-azure/src/main/java/org/elasticsearch/repositories/azure/AzureStorageSettings.java
+@@ -29,11 +29,11 @@ import org.elasticsearch.common.settings.SecureString;
+ import org.elasticsearch.common.settings.Setting;
+ import org.elasticsearch.common.settings.Settings;
+ import org.elasticsearch.common.settings.SettingsException;
++import org.jetbrains.annotations.Nullable;
++import org.jetbrains.annotations.VisibleForTesting;
+ 
+ import com.microsoft.azure.storage.LocationMode;
+ 
+-import org.jetbrains.annotations.Nullable;
+-import org.jetbrains.annotations.VisibleForTesting;
+ import io.crate.common.unit.TimeValue;
+ 
+ public final class AzureStorageSettings {
+
+--- a/server/src/main/java/org/elasticsearch/repositories/blobstore/BlobStoreRepository.java
++++ b/server/src/main/java/org/elasticsearch/repositories/blobstore/BlobStoreRepository.java
+@@ -1190,7 +1190,8 @@ public abstract class BlobStoreRepository extends AbstractLifecycleComponent imp
+                     metadata.name(),
+                     errorInfo.getClass().getSimpleName(),
+                     errorInfo.getMessage()
+-                )
++                ),
++                errorInfo
+             );
+         }
+     }

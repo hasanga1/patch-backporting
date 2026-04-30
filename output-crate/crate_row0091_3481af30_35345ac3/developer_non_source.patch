@@ -1,0 +1,35 @@
+diff --git a/docs/appendices/release-notes/5.9.3.rst b/docs/appendices/release-notes/5.9.3.rst
+index 7fb94f8793..db490b5c1d 100644
+--- a/docs/appendices/release-notes/5.9.3.rst
++++ b/docs/appendices/release-notes/5.9.3.rst
+@@ -148,3 +148,8 @@ Fixes
+   ``ORDER BY`` expression contained a nested function. For example::
+ 
+     SELECT * FROM t ORDER BY LEFT(txt_col, 1) = ANY(['a']);
++
++- Fixed an issue that caused casting values of the ``NUMERIC`` type to the
++  ``float`` or ``double`` types to hang. For example::
++
++    SELECT exp(-1110102730.1852759636)::float;
+diff --git a/server/src/test/java/io/crate/planner/SelectPlannerTest.java b/server/src/test/java/io/crate/planner/SelectPlannerTest.java
+index 06066af965..c5ab497d7c 100644
+--- a/server/src/test/java/io/crate/planner/SelectPlannerTest.java
++++ b/server/src/test/java/io/crate/planner/SelectPlannerTest.java
+@@ -1631,4 +1631,17 @@ public class SelectPlannerTest extends CrateDummyClusterServiceUnitTest {
+         );
+     }
+ 
++    @Test
++    public void test_float_and_double_implicit_cast_dont_hang_on_range_validation() throws Exception {
++        var e = SQLExecutor.of(clusterService);
++
++        // Used to hang in the value range validation in FloatType.implicitCast.
++        LogicalPlan logicalPlan = e.logicalPlan("SELECT EXP(-1110102730.1852759636)::float");
++        assertThat(logicalPlan).hasOperators("TableFunction[empty_row | [0.0] | true]");
++
++        // Used to hang in the value range validation in DoubleType.implicitCast.
++        logicalPlan = e.logicalPlan("SELECT EXP(-1110102730.1852759636)::double");
++        assertThat(logicalPlan).hasOperators("TableFunction[empty_row | [0.0] | true]");
++    }
++
+ }

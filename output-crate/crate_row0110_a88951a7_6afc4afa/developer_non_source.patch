@@ -1,0 +1,51 @@
+diff --git a/docs/appendices/release-notes/5.7.4.rst b/docs/appendices/release-notes/5.7.4.rst
+index 21a898905e..4429ac0d4b 100644
+--- a/docs/appendices/release-notes/5.7.4.rst
++++ b/docs/appendices/release-notes/5.7.4.rst
+@@ -48,6 +48,12 @@ See the :ref:`version_5.7.0` release notes for a full list of changes in the
+ Fixes
+ =====
+ 
++- Fixed an issue that caused an ``IndexOutOfBoundsException`` when the
++  :ref:`max_by <aggregation-max_by>` aggregation was called with a literal
++  as searchfield parameter instead of a column e.g.::
++
++    SELECT MAX_BY(x, 1) from tbl;
++
+ - Fixed an issue that caused write operations to fail if the table contained
+   generated columns with a cast to ``geo_shape``.
+ 
+diff --git a/docs/appendices/release-notes/5.8.1.rst b/docs/appendices/release-notes/5.8.1.rst
+index 24db6836dc..6360ccc1db 100644
+--- a/docs/appendices/release-notes/5.8.1.rst
++++ b/docs/appendices/release-notes/5.8.1.rst
+@@ -47,6 +47,12 @@ See the :ref:`version_5.8.0` release notes for a full list of changes in the
+ Fixes
+ =====
+ 
++- Fixed an issue that caused an ``IndexOutOfBoundsException`` when the
++  :ref:`max_by <aggregation-max_by>` aggregation was called with a literal
++  as searchfield parameter instead of a column e.g.::
++
++    SELECT MAX_BY(x, 1) from tbl;
++
+ - Fixed an issue that caused write operations to fail if the table contained
+   generated columns with a cast to ``geo_shape``.
+ 
+diff --git a/server/src/test/java/io/crate/integrationtests/AggregateExpressionIntegrationTest.java b/server/src/test/java/io/crate/integrationtests/AggregateExpressionIntegrationTest.java
+index b40cd23259..e160536dfd 100644
+--- a/server/src/test/java/io/crate/integrationtests/AggregateExpressionIntegrationTest.java
++++ b/server/src/test/java/io/crate/integrationtests/AggregateExpressionIntegrationTest.java
+@@ -297,4 +297,12 @@ public class AggregateExpressionIntegrationTest extends IntegTestCase {
+             "b",
+             "c");
+     }
++
++    public void test_assure_cmp_by_function_call_with_reference_and_literal_does_not_throw_exception() {
++        execute("create table tbl (name text, x int);");
++        execute("insert into tbl (name, x) values ('foo', 10)");
++        execute("refresh table tbl");
++        execute("select max_by(name, 1) from tbl;");
++        assertThat(response).hasRows("foo");
++    }
+ }

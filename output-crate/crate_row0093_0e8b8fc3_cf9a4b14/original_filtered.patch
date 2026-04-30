@@ -1,0 +1,39 @@
+diff --git a/server/src/main/java/io/crate/execution/ddl/tables/MappingUtil.java b/server/src/main/java/io/crate/execution/ddl/tables/MappingUtil.java
+index 8f1b7c46cd..19c47db8f2 100644
+--- a/server/src/main/java/io/crate/execution/ddl/tables/MappingUtil.java
++++ b/server/src/main/java/io/crate/execution/ddl/tables/MappingUtil.java
+@@ -287,7 +287,7 @@ public final class MappingUtil {
+ 
+         // Generated expressions
+         List<GeneratedReference> newGenExpressions = references.stream()
+-            .filter(ref -> ref instanceof GeneratedReference)
++            .filter(ref -> ref instanceof GeneratedReference && !ref.isDropped())
+             .map(ref -> (GeneratedReference) ref)
+             .toList();
+         if (newGenExpressions.isEmpty() == false) {
+diff --git a/server/src/main/java/io/crate/metadata/GeneratedReference.java b/server/src/main/java/io/crate/metadata/GeneratedReference.java
+index 8c51481a18..7a55d1a8f7 100644
+--- a/server/src/main/java/io/crate/metadata/GeneratedReference.java
++++ b/server/src/main/java/io/crate/metadata/GeneratedReference.java
+@@ -232,7 +232,7 @@ public final class GeneratedReference implements Reference {
+ 
+     @Override
+     public boolean isDropped() {
+-        return false;
++        return ref.isDropped();
+     }
+ 
+     @Override
+diff --git a/server/src/main/java/io/crate/metadata/doc/DocTableInfo.java b/server/src/main/java/io/crate/metadata/doc/DocTableInfo.java
+index f823fc2cbd..4ba47c328b 100644
+--- a/server/src/main/java/io/crate/metadata/doc/DocTableInfo.java
++++ b/server/src/main/java/io/crate/metadata/doc/DocTableInfo.java
+@@ -244,7 +244,7 @@ public class DocTableInfo implements TableInfo, ShardedTable, StoredTable {
+             return ref;
+         });
+         this.generatedColumns = this.references.values().stream()
+-            .filter(r -> r instanceof GeneratedReference)
++            .filter(r -> r instanceof GeneratedReference && !r.isDropped())
+             .map(r -> (GeneratedReference) r)
+             .toList();
+         this.indexColumns = indexColumns;

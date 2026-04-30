@@ -1,0 +1,35 @@
+--- a/server/src/main/java/io/crate/protocols/postgres/PgClient.java
++++ b/server/src/main/java/io/crate/protocols/postgres/PgClient.java
+@@ -597,7 +597,6 @@ public class PgClient extends AbstractClient {
+                 action,
+                 request,
+                 options,
+-                version,
+                 connectionProfile.getCompressionEnabled(),
+                 false // isHandshake
+             );
+
+--- a/server/src/main/java/org/elasticsearch/Version.java
++++ b/server/src/main/java/org/elasticsearch/Version.java
+@@ -425,6 +426,10 @@ public class Version implements Comparable<Version> {
+     public final byte build;
+     public final org.apache.lucene.util.Version luceneVersion;
+ 
++    // lazy initialized because we don't yet have the declared versions ready when instantiating the cached Version
++    // instances
++    private Version minCompatVersion;
++
+     Version(int internalId, boolean isSnapshot, org.apache.lucene.util.Version luceneVersion) {
+         this(internalId, internalId - INTERNAL_OFFSET, isSnapshot, luceneVersion);
+     }
+
+--- a/server/src/main/java/org/elasticsearch/Version.java
++++ b/server/src/main/java/org/elasticsearch/Version.java
+@@ -495,7 +500,6 @@ public class Version implements Comparable<Version> {
+         static final List<Version> DECLARED_VERSIONS = Collections.unmodifiableList(getDeclaredVersions(Version.class));
+     }
+ 
+-
+     /**
+      * Returns the minimum compatible version based on the current
+      * version. Ie a node needs to have at least the return version in order
