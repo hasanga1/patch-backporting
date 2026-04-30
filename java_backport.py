@@ -99,9 +99,18 @@ HELPER_NAME_MAP: dict = {
 }
 
 # Some CSV project names differ from the directory name under --repo-root.
-# "sql" is a CrateDB SQL-engine subproject cloned from the same crate/crate repo.
 REPO_DIR_MAP: dict = {
     "sql": "sql",
+}
+
+# For OpenJDK variant projects the ORIGINAL commit lives in the mainline jdk
+# repo, while the BACKPORT commit lives in the version-specific repo.
+# Maps CSV project name → repo dir name that holds the original commit.
+ORIGINAL_REPO_MAP: dict = {
+    "jdk11u-dev": "jdk",
+    "jdk17u-dev": "jdk",
+    "jdk21u-dev": "jdk",
+    "jdk25u-dev": "jdk",
 }
 
 # ---------------------------------------------------------------------------
@@ -725,9 +734,31 @@ def process_row(
         except TypeError:
             original_head = _resolve_commit(repo, "HEAD")
 
+        # ── 0.5. Open original repo (for OpenJDK two-repo layout) ────────────
+        # For jdk* projects the upstream fix commit lives in the mainline jdk
+        # repo while the backport commit lives in the version-specific repo
+        # (e.g. jdk17u-dev).  Open a separate Repo object for the former so
+        # original.patch is extracted from the right place.
+        original_repo_dir_name = ORIGINAL_REPO_MAP.get(project_name, repo_dir_name)
+        if original_repo_dir_name != repo_dir_name:
+            original_repo_path = os.path.join(repo_root, original_repo_dir_name)
+            if not os.path.isdir(original_repo_path):
+                raise ValueError(
+                    f"Original repo not found: {original_repo_path} "
+                    f"(required for {project_name} original commit)"
+                )
+            original_repo = git.Repo(original_repo_path)
+            logger.info(
+                f"Row {row_num}: two-repo layout — "
+                f"original_commit from '{original_repo_dir_name}', "
+                f"backport_commit from '{repo_dir_name}'"
+            )
+        else:
+            original_repo = repo
+
         # ── 1. Extract full original.patch ──────────────────────────────────
         logger.info(f"Row {row_num} [{project_name}]: extracting original.patch")
-        original_patch_text = _extract_patch_text(repo, original_commit)
+        original_patch_text = _extract_patch_text(original_repo, original_commit)
         _save_text(os.path.join(sample_dir, "original.patch"), original_patch_text)
         metadata["num_hunks_original"] = _count_hunks(original_patch_text)
 
@@ -768,12 +799,27 @@ def process_row(
                 logger.warning(f"Row {row_num}: test target detection failed — {exc}")
 
         # ── 5. Resolve PortGPT refs ──────────────────────────────────────────
-        # new_patch        = upstream fix commit
-        # new_patch_parent = its parent (state before the fix, used by viewcode)
-        # target_release   = parent of the backport (state we must patch)
-        new_patch        = _resolve_commit(repo, original_commit)
-        new_patch_parent = _resolve_commit(repo, f"{original_commit}^")
-        target_release   = _resolve_commit(repo, f"{backport_commit}^")
+        # new_patch        = upstream fix commit (resolved in original_repo)
+        # new_patch_parent = its parent; falls back to target_release when the
+        #                    upstream parent SHA is absent from the target repo
+        # target_release   = parent of the backport commit (in target repo)
+        new_patch      = _resolve_commit(original_repo, original_commit)
+        _np_parent_candidate = _resolve_commit(original_repo, f"{original_commit}^")
+        target_release = _resolve_commit(repo, f"{backport_commit}^")
+
+        # For two-repo layouts the upstream parent often doesn't exist in the
+        # target repo — fall back to target_release so viewcode/git_history tools
+        # still have a valid reference.
+        try:
+            repo.git.rev_parse("--verify", _np_parent_candidate)
+            new_patch_parent = _np_parent_candidate
+        except git.exc.GitCommandError:
+            if original_repo is not repo:
+                logger.info(
+                    f"Row {row_num}: upstream parent {_np_parent_candidate[:8]} "
+                    f"absent from target repo — using target_release as new_patch_parent"
+                )
+            new_patch_parent = target_release
 
         # ── 6. Build PortGPT data object ─────────────────────────────────────
         tmp_patch_dir = tempfile.mkdtemp()
@@ -844,34 +890,61 @@ def process_row(
                        else generated_text or dev_non_source_text)
         _save_text(os.path.join(sample_dir, "merged.patch"), merged_text)
 
-        # Apply developer non-source changes on top of already-applied generated patch
+        # Apply developer non-source changes on top of already-applied generated patch.
+        # Use per-file checkout from the backport commit instead of git apply to avoid
+        # "corrupt patch" errors caused by binary files, resource blobs, etc.
         dev_non_source_applied = False
-        if portgpt_success and dev_non_source_text:
-            patch_tmp = None
-            try:
-                import tempfile as _tmpmod
-                with _tmpmod.NamedTemporaryFile(
-                    mode="w", suffix=".patch", delete=False, encoding="utf-8"
-                ) as f:
-                    f.write(dev_non_source_text)
-                    patch_tmp = f.name
-                portgpt_project.repo.git.apply(patch_tmp)
-                dev_non_source_applied = True
+        if portgpt_success and bp_file_entries:
+            applied_count = 0
+            error_count = 0
+            for entry in bp_file_entries:
+                status   = entry[0]
+                raw_path = entry[1]
+
+                # Rename/copy entries pack "old\tnew" into entry[1]
+                if status.startswith(("R", "C")):
+                    path_parts = raw_path.split("\t", 1)
+                    old_path = path_parts[0] if len(path_parts) == 2 else None
+                    new_path = path_parts[1] if len(path_parts) == 2 else raw_path
+                else:
+                    old_path = None
+                    new_path = raw_path
+
+                # Skip Java source files — PortGPT already handles those.
+                if _is_java_source_file(new_path):
+                    continue
+
+                try:
+                    if status == "D":
+                        portgpt_project.repo.git.rm("-f", "--", new_path)
+                    elif status.startswith(("R", "C")):
+                        portgpt_project.repo.git.checkout(
+                            backport_commit, "--", new_path
+                        )
+                        if old_path and old_path != new_path:
+                            old_abs = os.path.join(repo_path, old_path)
+                            if os.path.exists(old_abs):
+                                os.remove(old_abs)
+                    else:
+                        # A (added) or M (modified)
+                        portgpt_project.repo.git.checkout(
+                            backport_commit, "--", new_path
+                        )
+                    applied_count += 1
+                except Exception as exc:
+                    logger.warning(
+                        f"Row {row_num}: non-source file {new_path!r} "
+                        f"(status={status}) — {exc}"
+                    )
+                    error_count += 1
+
+            dev_non_source_applied = applied_count > 0
+            if applied_count > 0:
                 logger.info(
-                    f"Row {row_num}: merged {num_non_source_hunks} non-source "
-                    f"hunk(s) from developer.patch into working tree"
+                    f"Row {row_num}: checked out {applied_count} non-source "
+                    f"file(s) from backport commit "
+                    f"({error_count} skipped/errored)"
                 )
-            except Exception as exc:
-                logger.warning(
-                    f"Row {row_num}: could not apply developer non-source changes "
-                    f"— {exc}"
-                )
-            finally:
-                if patch_tmp:
-                    try:
-                        os.unlink(patch_tmp)
-                    except OSError:
-                        pass
         metadata["dev_non_source_applied"] = dev_non_source_applied
 
         # ── 9. Build + test validation via helpers/ ──────────────────────────
