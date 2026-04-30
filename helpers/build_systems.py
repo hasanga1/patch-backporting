@@ -839,6 +839,7 @@ def run_tests(
                 env.update({
                     "PROJECT_NAME": normalized,
                     "PROJECT_DIR": abs_repo_path,
+                    "TOOLKIT_DIR": hdir,
                     "BUILDER_IMAGE_TAG": image_tag,
                     "IMAGE_TAG": image_tag,
                     "COMMIT_SHA": _get_current_head(repo_path),
